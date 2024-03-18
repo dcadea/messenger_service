@@ -1,42 +1,14 @@
 mod handler;
 mod ws;
 mod repository;
+mod models;
 
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::RwLock;
 use warp::{Filter, Rejection};
-use warp::ws::Message;
-
-#[derive(Clone)]
-pub struct Client {
-    pub user_id: usize,
-    pub topics: Vec<String>,
-    pub sender: Option<mpsc::UnboundedSender<std::result::Result<Message, warp::Error>>>,
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct RegisterRequest {
-    user_id: usize,
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct RegisterResponse {
-    url: String,
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct Event {
-    topic: String,
-    user_id: Option<usize>,
-    message: String,
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct TopicsRequest {
-    topics: Vec<String>,
-}
+use crate::models::Client;
 
 type Result<T> = std::result::Result<T, Rejection>;
 type Clients = Arc<RwLock<HashMap<String, Client>>>;

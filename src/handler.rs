@@ -1,19 +1,23 @@
 use std::future::Future;
+
 use uuid::Uuid;
 use warp::http::StatusCode;
 use warp::Reply;
 use warp::reply::json;
 use warp::ws::Message;
-use crate::{Client, Clients, Event, RegisterRequest, RegisterResponse, Result, ws};
+
+use crate::Result;
+use crate::{Clients, ws};
+use crate::models::Client;
+use crate::models::Event;
+use crate::models::{RegisterRequest, RegisterResponse};
 
 pub async fn register_handler(body: RegisterRequest, clients: Clients) -> Result<impl Reply> {
-    let user_id = body.user_id;
+    let user_id = body.user_id();
     let uuid = Uuid::new_v4().simple().to_string();
 
     register_client(uuid.clone(), user_id, clients).await;
-    Ok(json(&RegisterResponse {
-        url: format!("ws://127.0.0.1:8000/ws/{}", uuid),
-    }))
+    Ok(json(&RegisterResponse::new(format!("ws://127.0.0.1:8000/ws/{}", uuid))))
 }
 
 async fn register_client(id: String, user_id: usize, clients: Clients) {
@@ -56,14 +60,14 @@ pub async fn publish_handler(body: Event, clients: Clients) -> Result<impl Reply
         .write()
         .await
         .iter_mut()
-        .filter(|(_, client)| match body.user_id {
+        .filter(|(_, client)| match body.user_id() {
             Some(v) => client.user_id == v,
             None => true,
         })
-        .filter(|(_, client)| client.topics.contains(&body.topic))
+        .filter(|(_, client)| client.topics.contains(&body.topic()))
         .for_each(|(_, client)| {
             if let Some(sender) = &client.sender {
-                let _ = sender.send(Ok(Message::text(body.message.clone())));
+                let _ = sender.send(Ok(Message::text(body.message().clone())));
             }
         });
 
