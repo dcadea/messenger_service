@@ -6,11 +6,12 @@ use warp::Reply;
 use warp::reply::json;
 use warp::ws::Message;
 
-use crate::Result;
 use crate::{Clients, ws};
-use crate::models::Client;
-use crate::models::Event;
+use crate::models::{Client, User, UserResponse};
 use crate::models::{RegisterRequest, RegisterResponse};
+use crate::models::Event;
+use crate::repository::UserRepository;
+use crate::Result;
 
 pub async fn register_handler(body: RegisterRequest, clients: Clients) -> Result<impl Reply> {
     let user_id = body.user_id();
@@ -74,3 +75,21 @@ pub async fn publish_handler(body: Event, clients: Clients) -> Result<impl Reply
     Ok(StatusCode::OK)
 }
 
+pub async fn login_handler(user: User, user_repository: UserRepository) -> Result<impl Reply> {
+    let password = user.password();
+    let result = user_repository.find_one(user.username()).await;
+
+    match result {
+        Ok(Some(user)) => {
+            if user.password().eq(password) {
+                return Ok(json(&UserResponse::new(user.username())));
+            }
+        }
+        _ => {
+            eprintln!("Failed to find user: {}", user.username());
+        }
+    }
+
+    // FIXME: should return StatusCode::UNAUTHORIZED
+    return Ok(json(&UserResponse::new("{}")));
+}

@@ -5,7 +5,8 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
-use crate::{Client, Clients};
+use crate::models::Client;
+use crate::Clients;
 use crate::models::TopicsRequest;
 
 pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut client: Client) {
@@ -60,7 +61,7 @@ async fn client_msg(id: &str, msg: Message, clients: &Clients) {
 
     let mut locked = clients.write().await;
     match locked.get_mut(id) {
-        Some( v) => {
+        Some(v) => {
             v.topics = topics_req.topics().clone();
         }
         None => return,

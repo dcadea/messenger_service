@@ -8,14 +8,19 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use warp::{Filter, Rejection};
-use crate::models::Client;
+
+const MONGO_URI: &str = "mongodb://root:example@localhost:27017";
+const MONGO_DB: &str = "messenger";
 
 type Result<T> = std::result::Result<T, Rejection>;
-type Clients = Arc<RwLock<HashMap<String, Client>>>;
+type Clients = Arc<RwLock<HashMap<String, models::Client>>>;
 
 #[tokio::main]
 async fn main() {
     let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
+
+    let database = mongodb::Client::with_uri_str(MONGO_URI).await.unwrap().database(MONGO_DB);
+    let user_repository = repository::UserRepository::new(database);
 
     let health_route = warp::path!("health").and_then(handler::health_handler);
 
@@ -42,10 +47,17 @@ async fn main() {
         .and(with_clients(clients.clone()))
         .and_then(handler::ws_handler);
 
+    let login_route = warp::path("login")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_user_repository(user_repository.clone()))
+        .and_then(handler::login_handler);
+
     let routes = health_route
         .or(register_routes)
         .or(ws_route)
         .or(publish)
+        .or(login_route)
         .with(warp::cors().allow_any_origin());
 
     warp::serve(routes).run(([127, 0, 0, 1], 8000)).await;
@@ -53,4 +65,8 @@ async fn main() {
 
 fn with_clients(clients: Clients) -> impl Filter<Extract=(Clients, ), Error=Infallible> + Clone {
     warp::any().map(move || clients.clone())
+}
+
+fn with_user_repository(repository: repository::UserRepository) -> impl Filter<Extract=(repository::UserRepository, ), Error=Infallible> + Clone {
+    warp::any().map(move || repository.clone())
 }

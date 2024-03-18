@@ -1,3 +1,4 @@
+use mongodb::bson;
 use tokio::sync::mpsc;
 use warp::ws::Message;
 
@@ -59,5 +60,42 @@ pub struct TopicsRequest {
 impl TopicsRequest {
     pub fn topics(&self) -> Vec<String> {
         self.topics.clone()
+    }
+}
+
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct User {
+    #[serde(skip)]
+    pub _id: Option<bson::oid::ObjectId>,
+    pub username: String,
+    pub password: String,
+}
+
+impl User {
+    pub fn new(username: &str, password: &str) -> Self {
+        Self {
+            _id: None,
+            username: String::from(username),
+            password: String::from(password),
+        }
+    }
+
+    pub fn username(&self) -> &str {
+        self.username.as_str()
+    }
+
+    pub fn password(&self) -> &str {
+        self.password.as_str()
+    }
+}
+
+#[derive(serde::Serialize)]
+pub struct UserResponse {
+    pub username: String,
+}
+
+impl UserResponse {
+    pub fn new(username: &str) -> Self {
+        Self { username: String::from(username) }
     }
 }
