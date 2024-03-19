@@ -1,6 +1,9 @@
+use std::fmt::Debug;
+
 use mongodb::bson;
 use tokio::sync::mpsc::UnboundedSender;
 use warp::Error;
+use warp::reject::Reject;
 use warp::ws::Message;
 
 #[derive(Clone)]
@@ -130,3 +133,17 @@ impl UserResponse {
         Self { username: username.to_string() }
     }
 }
+
+#[derive(Debug, serde::Serialize)]
+pub struct ApiError {
+    code: u16,
+    message: String,
+}
+
+impl ApiError {
+    pub fn new(code: u16, message: &str) -> Self {
+        Self { code, message: message.to_string() }
+    }
+}
+
+impl Reject for ApiError {}

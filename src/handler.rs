@@ -7,7 +7,7 @@ use warp::reply::json;
 use warp::ws::Message;
 
 use crate::{Clients, ws};
-use crate::models::{Client, User, UserResponse};
+use crate::models::{ApiError, Client, User, UserResponse};
 use crate::models::{RegisterRequest, RegisterResponse};
 use crate::models::Event;
 use crate::repository::UserRepository;
@@ -73,19 +73,20 @@ pub async fn publish_handler(body: Event, clients: Clients) -> Result<impl Reply
 
 pub async fn login_handler(user: User, user_repository: UserRepository) -> Result<impl Reply> {
     let password = user.password();
-    let result = user_repository.find_one(user.username()).await;
 
-    match result {
-        Ok(Some(user)) => {
-            if user.password().eq(password) {
-                return Ok(json(&UserResponse::new(user.username())));
+    return match user_repository.find_one(user.username()).await {
+        Ok(user) => match user {
+            Some(user) => {
+                if user.password().eq(password) {
+                    return Ok(json(&UserResponse::new(user.username())));
+                }
+
+                // FIXME: currently the output is
+                //  'Unhandled rejection: ApiError { code: 401, message: "Invalid credentials" }'
+                return Err(warp::reject::custom(ApiError::new(401, "Invalid credentials")));
             }
+            None => Err(warp::reject::not_found())
         }
-        _ => {
-            eprintln!("Failed to find user: {}", user.username());
-        }
-    }
-
-    // FIXME: should return StatusCode::UNAUTHORIZED
-    return Ok(json(&UserResponse::new("{}")));
+        Err(_) => Err(warp::reject::custom(ApiError::new(500, "Internal error"))),
+    };
 }
