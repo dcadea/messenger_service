@@ -24,18 +24,14 @@ pub async fn register_handler(body: RegisterRequest, clients: Clients) -> Result
 async fn register_client(id: String, user_id: usize, clients: Clients) {
     clients.write().await.insert(
         id,
-        Client {
-            user_id,
-            topics: vec![String::from("cats")],
-            sender: None,
-        },
+        Client::new(user_id, vec![String::from("cats")], None),
     );
 }
 
 pub async fn unregister_handler(id: String, clients: Clients) -> Result<impl Reply> {
     let mut clients_locked = clients.write().await;
     if let Some(client) = clients_locked.get(&id) {
-        if let Some(sender) = &client.sender {
+        if let Some(sender) = &client.sender() {
             let _ = sender.send(Ok(Message::close()));
         }
     }
@@ -62,12 +58,12 @@ pub async fn publish_handler(body: Event, clients: Clients) -> Result<impl Reply
         .await
         .iter_mut()
         .filter(|(_, client)| match body.user_id() {
-            Some(v) => client.user_id == v,
+            Some(v) => client.user_id() == v,
             None => true,
         })
-        .filter(|(_, client)| client.topics.contains(&body.topic()))
+        .filter(|(_, client)| client.topics().contains(&body.topic()))
         .for_each(|(_, client)| {
-            if let Some(sender) = &client.sender {
+            if let Some(sender) = &client.sender() {
                 let _ = sender.send(Ok(Message::text(body.message().clone())));
             }
         });

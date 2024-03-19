@@ -4,9 +4,39 @@ use warp::ws::Message;
 
 #[derive(Clone)]
 pub struct Client {
-    pub user_id: usize,
-    pub topics: Vec<String>,
-    pub sender: Option<mpsc::UnboundedSender<Result<Message, warp::Error>>>,
+    user_id: usize,
+    topics: Vec<String>,
+    sender: Option<mpsc::UnboundedSender<Result<Message, warp::Error>>>,
+}
+
+impl Client {
+    pub fn new(user_id: usize, topics: Vec<String>, sender: Option<mpsc::UnboundedSender<Result<Message, warp::Error>>>) -> Self {
+        Self {
+            user_id,
+            topics,
+            sender,
+        }
+    }
+
+    pub fn user_id(&self) -> usize {
+        self.user_id
+    }
+
+    pub fn topics(&self) -> Vec<String> {
+        self.topics.clone()
+    }
+
+    pub fn set_topics(&mut self, topics: Vec<String>) {
+        self.topics = topics;
+    }
+
+    pub fn sender(&self) -> Option<mpsc::UnboundedSender<Result<Message, warp::Error>>> {
+        self.sender.clone()
+    }
+
+    pub fn set_sender(&mut self, sender: mpsc::UnboundedSender<Result<Message, warp::Error>>) {
+        self.sender = Some(sender);
+    }
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
@@ -66,9 +96,9 @@ impl TopicsRequest {
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct User {
     #[serde(skip)]
-    pub _id: Option<bson::oid::ObjectId>,
-    pub username: String,
-    pub password: String,
+    _id: Option<bson::oid::ObjectId>,
+    username: String,
+    password: String,
 }
 
 impl User {
@@ -91,7 +121,7 @@ impl User {
 
 #[derive(serde::Serialize)]
 pub struct UserResponse {
-    pub username: String,
+    username: String,
 }
 
 impl UserResponse {
