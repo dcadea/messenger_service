@@ -1,13 +1,16 @@
+use std::collections::HashMap;
+use std::convert::Infallible;
+use std::sync::Arc;
+
+use tokio::sync::RwLock;
+use warp::{Filter, Rejection};
+
+use repository::UserRepository;
+
 mod handler;
 mod ws;
 mod repository;
 mod models;
-
-use std::collections::HashMap;
-use std::convert::Infallible;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-use warp::{Filter, Rejection};
 
 const MONGO_URI: &str = "mongodb://root:example@localhost:27017";
 const MONGO_DB: &str = "messenger";
@@ -20,7 +23,7 @@ async fn main() {
     let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
 
     let database = mongodb::Client::with_uri_str(MONGO_URI).await.unwrap().database(MONGO_DB);
-    let user_repository = repository::UserRepository::new(database);
+    let user_repository = UserRepository::new(database);
 
     let health_route = warp::path!("health").and_then(handler::health_handler);
 
@@ -67,6 +70,6 @@ fn with_clients(clients: Clients) -> impl Filter<Extract=(Clients, ), Error=Infa
     warp::any().map(move || clients.clone())
 }
 
-fn with_user_repository(repository: repository::UserRepository) -> impl Filter<Extract=(repository::UserRepository, ), Error=Infallible> + Clone {
+fn with_user_repository(repository: UserRepository) -> impl Filter<Extract=(UserRepository, ), Error=Infallible> + Clone {
     warp::any().map(move || repository.clone())
 }

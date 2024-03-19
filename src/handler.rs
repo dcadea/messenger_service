@@ -61,10 +61,10 @@ pub async fn publish_handler(body: Event, clients: Clients) -> Result<impl Reply
             Some(v) => client.user_id() == v,
             None => true,
         })
-        .filter(|(_, client)| client.topics().contains(&body.topic()))
+        .filter(|(_, client)| client.topics().contains(&body.topic().to_string()))
         .for_each(|(_, client)| {
             if let Some(sender) = &client.sender() {
-                let _ = sender.send(Ok(Message::text(body.message().clone())));
+                let _ = sender.send(Ok(Message::text(body.message())));
             }
         });
 

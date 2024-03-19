@@ -1,16 +1,17 @@
 use mongodb::bson;
-use tokio::sync::mpsc;
+use tokio::sync::mpsc::UnboundedSender;
+use warp::Error;
 use warp::ws::Message;
 
 #[derive(Clone)]
 pub struct Client {
     user_id: usize,
     topics: Vec<String>,
-    sender: Option<mpsc::UnboundedSender<Result<Message, warp::Error>>>,
+    sender: Option<UnboundedSender<Result<Message, Error>>>,
 }
 
 impl Client {
-    pub fn new(user_id: usize, topics: Vec<String>, sender: Option<mpsc::UnboundedSender<Result<Message, warp::Error>>>) -> Self {
+    pub fn new(user_id: usize, topics: Vec<String>, sender: Option<UnboundedSender<Result<Message, Error>>>) -> Self {
         Self {
             user_id,
             topics,
@@ -30,11 +31,11 @@ impl Client {
         self.topics = topics;
     }
 
-    pub fn sender(&self) -> Option<mpsc::UnboundedSender<Result<Message, warp::Error>>> {
+    pub fn sender(&self) -> Option<UnboundedSender<Result<Message, Error>>> {
         self.sender.clone()
     }
 
-    pub fn set_sender(&mut self, sender: mpsc::UnboundedSender<Result<Message, warp::Error>>) {
+    pub fn set_sender(&mut self, sender: UnboundedSender<Result<Message, Error>>) {
         self.sender = Some(sender);
     }
 }
@@ -47,16 +48,16 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn topic(&self) -> String {
-        self.topic.clone()
+    pub fn topic(&self) -> &str {
+        self.topic.as_str()
     }
 
     pub fn user_id(&self) -> Option<usize> {
         self.user_id
     }
 
-    pub fn message(&self) -> String {
-        self.message.clone()
+    pub fn message(&self) -> &str {
+        self.message.as_str()
     }
 }
 
@@ -105,8 +106,8 @@ impl User {
     pub fn new(username: &str, password: &str) -> Self {
         Self {
             _id: None,
-            username: String::from(username),
-            password: String::from(password),
+            username: username.to_string(),
+            password: password.to_string(),
         }
     }
 
@@ -126,6 +127,6 @@ pub struct UserResponse {
 
 impl UserResponse {
     pub fn new(username: &str) -> Self {
-        Self { username: String::from(username) }
+        Self { username: username.to_string() }
     }
 }
