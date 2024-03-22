@@ -1,4 +1,5 @@
 use std::future::Future;
+use log::debug;
 
 use uuid::Uuid;
 use warp::http::StatusCode;
@@ -36,7 +37,7 @@ pub async fn unregister_handler(id: String, clients: Clients) -> Result<impl Rep
         }
     }
     clients_locked.remove(&id);
-    println!("{} disconnected", id);
+    debug!("{} disconnected", id);
     Ok(StatusCode::OK)
 }
 
