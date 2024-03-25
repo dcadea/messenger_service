@@ -1,6 +1,12 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::RwLock;
 use warp::Error;
 use warp::ws::Message;
+
+pub type Clients = Arc<RwLock<HashMap<String, Client>>>;
 
 #[derive(Clone)]
 pub struct Client {
@@ -92,5 +98,3 @@ impl TopicsRequest {
         self.topics.clone()
     }
 }
-
-
