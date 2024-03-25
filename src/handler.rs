@@ -75,19 +75,26 @@ pub async fn publish_handler(body: Event, clients: Clients) -> Result<impl Reply
 pub async fn login_handler(user: User, user_repository: UserRepository) -> Result<impl Reply> {
     let password = user.password();
 
-    return match user_repository.find_one(user.username()).await {
+    let result = user_repository.find_one(user.username()).await;
+    match result {
         Ok(user) => match user {
             Some(user) => {
                 if user.password().eq(password) {
-                    return Ok(json(&UserResponse::new(user.username())));
+                    let response = UserResponse::new(user.username());
+                    Ok(warp::reply::with_status(json(&response), StatusCode::OK))
+                } else {
+                    let error = ApiError::new(401, "Invalid credentials");
+                    Ok(warp::reply::with_status(json(&error), StatusCode::UNAUTHORIZED))
                 }
-
-                // FIXME: currently the output is
-                //  'Unhandled rejection: ApiError { code: 401, message: "Invalid credentials" }'
-                return Err(warp::reject::custom(ApiError::new(401, "Invalid credentials")));
             }
-            None => Err(warp::reject::not_found())
+            None => {
+                let error = ApiError::new(404, "User not found");
+                Ok(warp::reply::with_status(json(&error), StatusCode::NOT_FOUND))
+            }
         }
-        Err(_) => Err(warp::reject::custom(ApiError::new(500, "Internal error"))),
-    };
+        Err(_) => {
+            let error = ApiError::new(500, "Internal server error");
+            Ok(warp::reply::with_status(json(&error), StatusCode::INTERNAL_SERVER_ERROR))
+        }
+    }
 }
