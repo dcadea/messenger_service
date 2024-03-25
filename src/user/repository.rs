@@ -3,8 +3,8 @@ use mongodb::{bson, Database};
 use mongodb::bson::{doc, Document};
 use mongodb::error::Error;
 use mongodb::results::{DeleteResult, InsertOneResult, UpdateResult};
+use crate::user::model::User;
 
-use crate::models::User;
 
 #[derive(Clone)]
 pub struct UserRepository {

@@ -1,6 +1,6 @@
 use std::future::Future;
-use log::debug;
 
+use log::debug;
 use uuid::Uuid;
 use warp::http::StatusCode;
 use warp::Reply;
@@ -8,11 +8,13 @@ use warp::reply::json;
 use warp::ws::Message;
 
 use crate::{Clients, ws};
-use crate::models::{ApiError, Client, User, UserResponse};
+use crate::error::model::ApiError;
 use crate::models::{RegisterRequest, RegisterResponse};
+use crate::models::Client;
 use crate::models::Event;
-use crate::repository::UserRepository;
 use crate::Result;
+use crate::user::model::{User, UserResponse};
+use crate::user::repository::UserRepository;
 
 pub async fn register_handler(body: RegisterRequest, clients: Clients) -> Result<impl Reply> {
     let user_id = body.user_id();

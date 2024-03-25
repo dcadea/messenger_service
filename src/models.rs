@@ -1,9 +1,5 @@
-use std::fmt::Debug;
-
-use mongodb::bson;
 use tokio::sync::mpsc::UnboundedSender;
 use warp::Error;
-use warp::reject::Reject;
 use warp::ws::Message;
 
 #[derive(Clone)]
@@ -97,53 +93,4 @@ impl TopicsRequest {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct User {
-    #[serde(skip)]
-    _id: Option<bson::oid::ObjectId>,
-    username: String,
-    password: String,
-}
 
-impl User {
-    pub fn new(username: &str, password: &str) -> Self {
-        Self {
-            _id: None,
-            username: username.to_string(),
-            password: password.to_string(),
-        }
-    }
-
-    pub fn username(&self) -> &str {
-        self.username.as_str()
-    }
-
-    pub fn password(&self) -> &str {
-        self.password.as_str()
-    }
-}
-
-#[derive(serde::Serialize)]
-pub struct UserResponse {
-    username: String,
-}
-
-impl UserResponse {
-    pub fn new(username: &str) -> Self {
-        Self { username: username.to_string() }
-    }
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct ApiError {
-    code: u16,
-    message: String,
-}
-
-impl ApiError {
-    pub fn new(code: u16, message: &str) -> Self {
-        Self { code, message: message.to_string() }
-    }
-}
-
-impl Reject for ApiError {}

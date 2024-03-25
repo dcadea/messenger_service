@@ -1,22 +1,16 @@
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
-use std::time::Duration;
-use mongodb::{Client, Database};
-use mongodb::options::ClientOptions;
-
 use tokio::sync::RwLock;
 use warp::{Filter, Rejection};
+use crate::user::repository::UserRepository;
 
-use repository::UserRepository;
-
+mod user;
 mod handler;
 mod ws;
-mod repository;
 mod models;
-
-const MONGO_URI: &str = "mongodb://root:example@localhost:27017";
-const MONGO_DB: &str = "messenger";
+mod error;
+mod db;
 
 type Result<T> = std::result::Result<T, Rejection>;
 type Clients = Arc<RwLock<HashMap<String, models::Client>>>;
@@ -27,7 +21,7 @@ async fn main() {
 
     let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
 
-    let database = init_mongodb().await;
+    let database = db::client::init_mongodb().await;
     let user_repository = UserRepository::new(database);
 
     let health_route = warp::path!("health").and_then(handler::health_handler);
@@ -87,13 +81,4 @@ fn with_clients(clients: Clients) -> impl Filter<Extract=(Clients, ), Error=Infa
 
 fn with_user_repository(repository: UserRepository) -> impl Filter<Extract=(UserRepository, ), Error=Infallible> + Clone {
     warp::any().map(move || repository.clone())
-}
-
-async fn init_mongodb() -> Database {
-    let mut mongo_client_options = ClientOptions::parse(MONGO_URI).await.unwrap();
-    mongo_client_options.connect_timeout = Some(Duration::from_secs(5));
-    mongo_client_options.server_selection_timeout = Some(Duration::from_secs(2));
-    let client = Client::with_options(mongo_client_options).unwrap();
-    let database = client.database(MONGO_DB);
-    database
 }

@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use messenger_api::models::User;
-    use messenger_api::repository::UserRepository;
+    use messenger_api::user::model::User;
+    use messenger_api::user::repository::UserRepository;
 
     const MONGO_URI: &str = "mongodb://root:example@localhost:27017";
 
