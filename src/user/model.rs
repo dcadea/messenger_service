@@ -1,6 +1,7 @@
 use mongodb::bson;
+use mongodb::bson::Bson;
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub struct User {
     #[serde(skip)]
     _id: Option<bson::oid::ObjectId>,
@@ -23,6 +24,12 @@ impl User {
 
     pub fn password(&self) -> &str {
         self.password.as_str()
+    }
+}
+
+impl Into<Bson> for User {
+    fn into(self) -> Bson {
+        bson::to_bson(&self).unwrap()
     }
 }
 

@@ -1,6 +1,6 @@
 use log::{debug, error};
-use mongodb::{bson, Database};
-use mongodb::bson::{doc, Document};
+use mongodb::Database;
+use mongodb::bson::doc;
 use mongodb::error::Error;
 use mongodb::results::{DeleteResult, InsertOneResult, UpdateResult};
 use crate::user::model::User;
@@ -8,7 +8,7 @@ use crate::user::model::User;
 
 #[derive(Clone)]
 pub struct UserRepository {
-    collection: mongodb::Collection<Document>,
+    collection: mongodb::Collection<User>,
 }
 
 impl UserRepository {
@@ -21,7 +21,7 @@ impl UserRepository {
         debug!("Finding user with username: {}", username);
         let filter = doc! { "username": username };
         match self.collection.find_one(filter, None).await {
-            Ok(result) => Ok(result.map(|doc| bson::from_document(doc).unwrap())),
+            Ok(user) => Ok(user),
             Err(e) => {
                 error!("Failed to find user with username: {}. Error: {}", username, e);
                 Err(e)
@@ -29,10 +29,9 @@ impl UserRepository {
         }
     }
 
-    pub async fn insert(&self, user: User) -> Result<InsertOneResult, Error> {
+    pub async fn insert(&self, user: &User) -> Result<InsertOneResult, Error> {
         debug!("Inserting user with username: {}", user.username());
-        let document = bson::to_document(&user).unwrap();
-        match self.collection.insert_one(document, None).await {
+        match self.collection.insert_one(user, None).await {
             Ok(result) => Ok(result),
             Err(e) => {
                 error!("Failed to insert user with username: {}. Error: {}", user.username(), e);
@@ -41,10 +40,10 @@ impl UserRepository {
         }
     }
 
-    pub async fn update(&self, user: User) -> Result<UpdateResult, Error> {
+    pub async fn update(&self, user: &User) -> Result<UpdateResult, Error> {
         debug!("Updating user with username: {}", user.username());
         let filter = doc! { "username": user.username() };
-        let document = doc! { "$set": bson::to_document(&user).unwrap() };
+        let document = doc! { "$set": user };
         match self.collection.update_one(filter, document, None).await {
             Ok(result) => Ok(result),
             Err(e) => {

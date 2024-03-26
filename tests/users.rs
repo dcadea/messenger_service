@@ -31,7 +31,7 @@ mod tests {
         let database = mongodb::Client::with_uri_str(MONGO_URI).await.unwrap().database("test");
 
         let username = "user2";
-        let user = User::new(username, "password2");
+        let user = &User::new(username, "password2");
         let repository = UserRepository::new(database);
 
         let result = repository.insert(user).await;
@@ -52,11 +52,11 @@ mod tests {
         let database = mongodb::Client::with_uri_str(MONGO_URI).await.unwrap().database("test");
 
         let username = "user3";
-        let user = User::new(username, "password3");
+        let user = &User::new(username, "password3");
         let repository = UserRepository::new(database);
         repository.insert(user).await.unwrap();
 
-        let user = User::new(username, "new_password3");
+        let user = &User::new(username, "new_password3");
 
         let result = repository.update(user).await;
 
@@ -79,7 +79,7 @@ mod tests {
         let database = mongodb::Client::with_uri_str(MONGO_URI).await.unwrap().database("test");
 
         let username = "user4";
-        let user = User::new(username, "password4");
+        let user = &User::new(username, "password4");
         let repository = UserRepository::new(database);
         repository.insert(user).await.unwrap();
 

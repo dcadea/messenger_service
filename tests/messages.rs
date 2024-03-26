@@ -16,7 +16,7 @@ mod tests {
         let text = "Hello, world!";
         let sender = "me";
         let recipient = "you";
-        let message = Message::new(sender, recipient, text, 1234567890);
+        let message = &Message::new(sender, recipient, text, 1234567890);
         let result = repository.insert(message).await;
 
         match result {

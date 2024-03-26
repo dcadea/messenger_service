@@ -1,7 +1,7 @@
 use futures::stream::TryStreamExt;
 use log::{debug, error};
-use mongodb::{bson, Database};
-use mongodb::bson::{doc, Document};
+use mongodb::Database;
+use mongodb::bson::doc;
 use mongodb::error::Error;
 use mongodb::results::InsertOneResult;
 
@@ -9,7 +9,7 @@ use crate::message::model::Message;
 
 #[derive(Clone)]
 pub struct MessageRepository {
-    collection: mongodb::Collection<Document>,
+    collection: mongodb::Collection<Message>,
 }
 
 impl MessageRepository {
@@ -18,10 +18,9 @@ impl MessageRepository {
         Self { collection }
     }
 
-    pub async fn insert(&self, message: Message) -> Result<InsertOneResult, Error> {
+    pub async fn insert(&self, message: &Message) -> Result<InsertOneResult, Error> {
         debug!("Inserting message: {:?}", message);
-        let document = bson::to_document(&message).unwrap();
-        match self.collection.insert_one(document, None).await {
+        match self.collection.insert_one(message, None).await {
             Ok(result) => Ok(result),
             Err(e) => {
                 error!("Failed to insert message from: {} to: {} on {}",
@@ -34,17 +33,14 @@ impl MessageRepository {
     pub async fn find_by_recipient(&self, recipient: &str) -> Result<Vec<Message>, Error> {
         debug!("Finding messages by recipient: {}", recipient);
         let filter = doc! { "recipient": recipient };
-
-        let mut cursor = self.collection.find(filter, None).await?;
-
-        let mut messages = Vec::new();
-
-        while let Some(doc) = cursor.try_next().await? {
-            let message = bson::from_document(doc).unwrap();
-            messages.push(message);
+        let cursor = self.collection.find(filter, None).await?;
+        match cursor.try_collect().await {
+            Ok(messages) => Ok(messages),
+            Err(e) => {
+                error!("Failed to find messages by recipient: {}", recipient);
+                Err(e)
+            }
         }
-
-        Ok(messages)
     }
 
     pub async fn delete_by_sender(&self, sender: &str) -> Result<(), Error> {
