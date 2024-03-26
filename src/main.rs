@@ -5,14 +5,15 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use warp::{Filter, Rejection};
 
+use crate::message::repository::MessageRepository;
 use crate::user::repository::UserRepository;
-use crate::ws::model::Clients;
 
 mod user;
 mod error;
 mod db;
 mod ws;
 mod handler;
+mod message;
 
 type Result<T> = std::result::Result<T, Rejection>;
 
@@ -20,7 +21,7 @@ type Result<T> = std::result::Result<T, Rejection>;
 async fn main() {
     env_logger::init();
 
-    let clients: Clients = Arc::new(RwLock::new(HashMap::new()));
+    let clients: ws::model::Clients = Arc::new(RwLock::new(HashMap::new()));
 
     let database = db::client::init_mongodb().await;
     let user_repository = UserRepository::new(database);
@@ -76,10 +77,14 @@ async fn main() {
     warp::serve(routes).run(([127, 0, 0, 1], 8000)).await;
 }
 
-fn with_clients(clients: Clients) -> impl Filter<Extract=(Clients, ), Error=Infallible> + Clone {
+fn with_clients(clients: ws::model::Clients) -> impl Filter<Extract=(ws::model::Clients, ), Error=Infallible> + Clone {
     warp::any().map(move || clients.clone())
 }
 
 fn with_user_repository(repository: UserRepository) -> impl Filter<Extract=(UserRepository, ), Error=Infallible> + Clone {
+    warp::any().map(move || repository.clone())
+}
+
+fn with_message_repository(repository: MessageRepository) -> impl Filter<Extract=(MessageRepository, ), Error=Infallible> + Clone {
     warp::any().map(move || repository.clone())
 }
