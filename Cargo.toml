@@ -16,3 +16,4 @@ serde_json = "1.0.114"
 futures = { version = "0.3.30", default-features = false }
 uuid = { version = "1.7.0", features = ["serde", "v4"] }
 mongodb = "2.8.2"
+redis = "0.25.2"

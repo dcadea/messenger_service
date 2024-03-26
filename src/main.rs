@@ -5,7 +5,6 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use warp::{Filter, Rejection};
 
-use crate::message::repository::MessageRepository;
 use crate::user::repository::UserRepository;
 
 mod user;
@@ -14,6 +13,7 @@ mod db;
 mod ws;
 mod handler;
 mod message;
+mod queue;
 
 type Result<T> = std::result::Result<T, Rejection>;
 
@@ -25,6 +25,9 @@ async fn main() {
 
     let database = db::client::init_mongodb().await;
     let user_repository = UserRepository::new(database);
+
+    // TODO
+    let _ = queue::client::init_redis().await;
 
     let health_route = warp::path!("health").and_then(handler::health_handler);
 
@@ -85,6 +88,11 @@ fn with_user_repository(repository: UserRepository) -> impl Filter<Extract=(User
     warp::any().map(move || repository.clone())
 }
 
-fn with_message_repository(repository: MessageRepository) -> impl Filter<Extract=(MessageRepository, ), Error=Infallible> + Clone {
-    warp::any().map(move || repository.clone())
-}
+// TODO
+// fn with_message_repository(repository: MessageRepository) -> impl Filter<Extract=(MessageRepository, ), Error=Infallible> + Clone {
+//     warp::any().map(move || repository.clone())
+// }
+//
+// fn with_redis_client(redis_client: redis::Client) -> impl Filter<Extract=(redis::Client, ), Error=Infallible> + Clone {
+//     warp::any().map(move || redis_client.clone())
+// }
