@@ -2,7 +2,7 @@
 mod tests {
     use redis::Commands;
 
-    use messenger_api::queue::client::init_redis;
+    use messenger_api::cache::client::init_redis;
 
     #[tokio::test]
     async fn test_set() {

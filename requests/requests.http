@@ -1,16 +1,24 @@
 ### Healthcheck
 GET {{baseUrl}}/health
 
+
+### Login
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{"username":"user1","password":"password1"}
+
+
 ### Register a client
 POST {{baseUrl}}/register
 Content-Type: application/json
 
-{
-  "user_id": 1
-}
+{"user_id":1}
+
 
 ### Deregister a client
 DELETE {{baseUrl}}/register/a60955b32e2c4a9c9e9fe078b2a392c3
+
 
 ### Publish a message
 POST {{baseUrl}}/publish
@@ -22,13 +30,11 @@ Content-Type: application/json
   "message": "you are awesome"
 }
 
+
 ### Open a ws connection listening for topics [cats, dogs]
 WEBSOCKET {{wsUrl}}/ws/e06722e40a0e40cfad5e5c5a4fadf21a
 Content-Type: application/json
 
 {
-  "topics": [
-    "cats",
-    "dogs"
-  ]
+  "topics": ["cats", "dogs"]
 }

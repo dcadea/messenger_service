@@ -13,7 +13,7 @@ mod db;
 mod ws;
 mod handler;
 mod message;
-mod queue;
+mod cache;
 
 type Result<T> = std::result::Result<T, Rejection>;
 
@@ -27,7 +27,7 @@ async fn main() {
     let user_repository = UserRepository::new(database);
 
     // TODO
-    let _ = queue::client::init_redis().await;
+    // let _ = cache::client::init_redis().await;
 
     let health_route = warp::path!("health").and_then(handler::health_handler);
 
