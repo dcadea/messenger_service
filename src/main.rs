@@ -56,6 +56,7 @@ async fn main() {
         .and(warp::ws())
         .and(warp::path::param())
         .and(with_clients(clients.clone()))
+        .and(with_ws_client_service(Arc::clone(&ws_client_service)))
         .and_then(ws::handler::ws_handler);
 
     let login_route = warp::path("login")

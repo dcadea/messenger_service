@@ -32,8 +32,10 @@ pub async fn unregister_handler(id: String, ws_client_service: Arc<WsClientServi
     Ok(StatusCode::OK)
 }
 
-pub async fn ws_handler(ws: warp::ws::Ws, id: String, ws_clients: WsClients) -> crate::Result<impl Reply> {
-    let ws_client = ws_clients.read().await.get(&id).cloned();
+pub async fn ws_handler(ws: warp::ws::Ws, id: String, ws_clients: WsClients, ws_client_service: Arc<WsClientService>) -> crate::Result<impl Reply> {
+    let ws_client_service = Arc::clone(&ws_client_service);
+
+    let ws_client = ws_client_service.get_client(id.clone()).await;
     match ws_client {
         Some(wsc) => Ok(ws.on_upgrade(move |socket| client_connection(socket, id, ws_clients, wsc))),
         None => Err(warp::reject::not_found()),
