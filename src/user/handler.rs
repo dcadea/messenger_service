@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use warp::{Rejection, Reply};
 use warp::http::StatusCode;
 use warp::reply::{json, with_status};
@@ -6,7 +7,9 @@ use crate::error::model::ApiError;
 use crate::user::model::{User, UserResponse};
 use crate::user::repository::UserRepository;
 
-pub async fn login_handler(user: User, user_repository: UserRepository) -> Result<impl Reply, Rejection> {
+pub async fn login_handler(user: User, user_repository: Arc<UserRepository>) -> Result<impl Reply, Rejection> {
+    let user_repository = Arc::clone(&user_repository);
+
     let password = user.password();
     match user_repository.find_one(user.username()).await {
         Ok(user) => match user {

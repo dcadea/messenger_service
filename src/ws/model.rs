@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
@@ -8,10 +9,11 @@ use warp::ws::Message;
 
 pub type WsClients = Arc<RwLock<HashMap<String, WsClient>>>;
 
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct WsClient {
     user_id: usize,
     topics: Vec<String>,
+    #[serde(skip)]
     sender: Option<UnboundedSender<Result<Message, Error>>>,
 }
 

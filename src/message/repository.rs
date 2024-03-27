@@ -7,7 +7,6 @@ use mongodb::results::InsertOneResult;
 
 use crate::message::model::Message;
 
-#[derive(Clone)]
 pub struct MessageRepository {
     collection: mongodb::Collection<Message>,
 }

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use warp::{Filter, Rejection};
 
 use crate::user::repository::UserRepository;
@@ -24,8 +24,11 @@ async fn main() {
 
     let clients: ws::model::WsClients = Arc::new(RwLock::new(HashMap::new()));
 
+    let redis_con = Arc::new(Mutex::new(cache::client::init_redis().await));
+    let ws_client_service = Arc::new(ws::service::init_ws_client_service(redis_con));
+
     let database = db::client::init_mongodb().await;
-    let user_repository = UserRepository::new(database);
+    let user_repository = Arc::new(UserRepository::new(database));
 
     // TODO
     // let _ = cache::client::init_redis().await;
@@ -36,12 +39,12 @@ async fn main() {
     let register_routes = register
         .and(warp::post())
         .and(warp::path::param())
-        .and(with_clients(clients.clone()))
+        .and(with_ws_client_service(Arc::clone(&ws_client_service)))
         .and_then(ws::handler::register_handler)
         .or(register
             .and(warp::delete())
             .and(warp::path::param())
-            .and(with_clients(clients.clone()))
+            .and(with_ws_client_service(Arc::clone(&ws_client_service)))
             .and_then(ws::handler::unregister_handler));
 
     let publish = warp::path!("publish")
@@ -58,7 +61,7 @@ async fn main() {
     let login_route = warp::path("login")
         .and(warp::post())
         .and(warp::body::json())
-        .and(with_user_repository(user_repository.clone()))
+        .and(with_user_repository(user_repository))
         .and_then(user::handler::login_handler);
 
     let routes = health_route
@@ -85,7 +88,11 @@ fn with_clients(clients: ws::model::WsClients) -> impl Filter<Extract=(ws::model
     warp::any().map(move || clients.clone())
 }
 
-fn with_user_repository(repository: UserRepository) -> impl Filter<Extract=(UserRepository, ), Error=Infallible> + Clone {
+fn with_ws_client_service(service: Arc<ws::service::WsClientService>) -> impl Filter<Extract=(Arc<ws::service::WsClientService>, ), Error=Infallible> + Clone {
+    warp::any().map(move || service.clone())
+}
+
+fn with_user_repository(repository: Arc<UserRepository>) -> impl Filter<Extract=(Arc<UserRepository>, ), Error=Infallible> + Clone {
     warp::any().map(move || repository.clone())
 }
 

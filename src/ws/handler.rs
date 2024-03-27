@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use log::debug;
 use uuid::Uuid;
 use warp::http::StatusCode;
@@ -6,30 +8,26 @@ use warp::reply::json;
 use warp::ws::Message;
 
 use crate::ws::client::client_connection;
-use crate::ws::model::{WsClient, WsClients, Event, RegisterResponse};
+use crate::ws::model::{Event, RegisterResponse, WsClient, WsClients};
+use crate::ws::service::WsClientService;
 
-pub async fn register_handler(user_id: usize, ws_clients: WsClients) -> crate::Result<impl Reply> {
+pub async fn register_handler(user_id: usize, ws_client_service: Arc<WsClientService>) -> crate::Result<impl Reply> {
     let uuid = Uuid::new_v4().simple().to_string();
 
-    register_client(uuid.clone(), user_id, ws_clients).await;
+    register_ws_client(uuid.clone(), user_id, ws_client_service).await;
     Ok(json(&RegisterResponse::new(format!("ws://127.0.0.1:8000/ws/{}", uuid))))
 }
 
-async fn register_client(id: String, user_id: usize, ws_clients: WsClients) {
-    ws_clients.write().await.insert(
-        id,
-        WsClient::new(user_id, vec![String::from("cats")], None),
-    );
+async fn register_ws_client(id: String, user_id: usize, ws_client_service: Arc<WsClientService>) {
+    Arc::clone(&ws_client_service)
+        .register_client(
+            id.clone(),
+            WsClient::new(user_id, vec![String::from("cats")], None),
+        ).await;
 }
 
-pub async fn unregister_handler(id: String, ws_clients: WsClients) -> crate::Result<impl Reply> {
-    let mut ws_clients_locked = ws_clients.write().await;
-    if let Some(ws_client) = ws_clients_locked.get(&id) {
-        if let Some(sender) = &ws_client.sender() {
-            let _ = sender.send(Ok(Message::close()));
-        }
-    }
-    ws_clients_locked.remove(&id);
+pub async fn unregister_handler(id: String, ws_client_service: Arc<WsClientService>) -> crate::Result<impl Reply> {
+    Arc::clone(&ws_client_service).unregister_client(id.clone()).await;
     debug!("{} disconnected", id);
     Ok(StatusCode::OK)
 }

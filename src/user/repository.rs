@@ -1,12 +1,11 @@
 use log::{debug, error};
-use mongodb::Database;
 use mongodb::bson::doc;
+use mongodb::Database;
 use mongodb::error::Error;
 use mongodb::results::{DeleteResult, InsertOneResult, UpdateResult};
+
 use crate::user::model::User;
 
-
-#[derive(Clone)]
 pub struct UserRepository {
     collection: mongodb::Collection<User>,
 }

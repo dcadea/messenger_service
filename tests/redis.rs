@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
     use redis::Commands;
-
     use messenger_api::cache::client::init_redis;
 
     #[tokio::test]
