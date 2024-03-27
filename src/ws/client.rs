@@ -6,9 +6,9 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
-use crate::ws::model::{Client, Clients, TopicsRequest};
+use crate::ws::model::{WsClient, WsClients, TopicsRequest};
 
-pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut client: Client) {
+pub async fn client_connection(ws: WebSocket, id: String, ws_clients: WsClients, mut ws_client: WsClient) {
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
     let (client_sender, client_rcv) = mpsc::unbounded_channel();
 
@@ -19,8 +19,8 @@ pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut 
         }
     }));
 
-    client.set_sender(client_sender);
-    clients.write().await.insert(id.clone(), client);
+    ws_client.set_sender(client_sender);
+    ws_clients.write().await.insert(id.clone(), ws_client);
 
     debug!("{} connected", id);
 
@@ -32,14 +32,14 @@ pub async fn client_connection(ws: WebSocket, id: String, clients: Clients, mut 
                 break;
             }
         };
-        client_msg(&id, msg, &clients).await;
+        client_msg(&id, msg, &ws_clients).await;
     }
 
-    clients.write().await.remove(&id);
+    ws_clients.write().await.remove(&id);
     debug!("{} disconnected", id);
 }
 
-async fn client_msg(id: &str, msg: Message, clients: &Clients) {
+async fn client_msg(id: &str, msg: Message, ws_clients: &WsClients) {
     debug!("received message from {}: {:?}", id, msg);
     let message = match msg.to_str() {
         Ok(v) => v,
@@ -58,7 +58,7 @@ async fn client_msg(id: &str, msg: Message, clients: &Clients) {
         }
     };
 
-    let mut locked = clients.write().await;
+    let mut locked = ws_clients.write().await;
     match locked.get_mut(id) {
         Some(v) => {
             v.set_topics(topics_req.topics().clone());

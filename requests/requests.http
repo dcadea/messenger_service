@@ -10,10 +10,8 @@ Content-Type: application/json
 
 
 ### Register a client
-POST {{baseUrl}}/register
+POST {{baseUrl}}/register/1
 Content-Type: application/json
-
-{"user_id":1}
 
 
 ### Deregister a client

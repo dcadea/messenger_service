@@ -22,7 +22,7 @@ type Result<T> = std::result::Result<T, Rejection>;
 async fn main() {
     env_logger::init();
 
-    let clients: ws::model::Clients = Arc::new(RwLock::new(HashMap::new()));
+    let clients: ws::model::WsClients = Arc::new(RwLock::new(HashMap::new()));
 
     let database = db::client::init_mongodb().await;
     let user_repository = UserRepository::new(database);
@@ -35,7 +35,7 @@ async fn main() {
     let register = warp::path("register");
     let register_routes = register
         .and(warp::post())
-        .and(warp::body::json())
+        .and(warp::path::param())
         .and(with_clients(clients.clone()))
         .and_then(ws::handler::register_handler)
         .or(register
@@ -81,7 +81,7 @@ async fn main() {
     warp::serve(routes).run(([127, 0, 0, 1], 8000)).await;
 }
 
-fn with_clients(clients: ws::model::Clients) -> impl Filter<Extract=(ws::model::Clients, ), Error=Infallible> + Clone {
+fn with_clients(clients: ws::model::WsClients) -> impl Filter<Extract=(ws::model::WsClients, ), Error=Infallible> + Clone {
     warp::any().map(move || clients.clone())
 }
 

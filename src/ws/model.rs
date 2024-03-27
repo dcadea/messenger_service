@@ -6,16 +6,16 @@ use tokio::sync::RwLock;
 use warp::Error;
 use warp::ws::Message;
 
-pub type Clients = Arc<RwLock<HashMap<String, Client>>>;
+pub type WsClients = Arc<RwLock<HashMap<String, WsClient>>>;
 
 #[derive(Clone)]
-pub struct Client {
+pub struct WsClient {
     user_id: usize,
     topics: Vec<String>,
     sender: Option<UnboundedSender<Result<Message, Error>>>,
 }
 
-impl Client {
+impl WsClient {
     pub fn new(user_id: usize, topics: Vec<String>, sender: Option<UnboundedSender<Result<Message, Error>>>) -> Self {
         Self {
             user_id,
@@ -63,17 +63,6 @@ impl Event {
 
     pub fn message(&self) -> &str {
         self.message.as_str()
-    }
-}
-
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct RegisterRequest {
-    user_id: usize,
-}
-
-impl RegisterRequest {
-    pub fn user_id(&self) -> usize {
-        self.user_id
     }
 }
 
