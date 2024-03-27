@@ -14,6 +14,7 @@ mod ws;
 mod handler;
 mod message;
 mod cache;
+mod queue;
 
 type Result<T> = std::result::Result<T, Rejection>;
 
