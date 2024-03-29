@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use redis::{Commands, Connection};
+use redis::{Commands, Connection, RedisResult};
 use tokio::sync::Mutex;
 
 use crate::ws::model::WsClient;
@@ -32,10 +32,9 @@ impl WsClientService {
     pub async fn get_client(&self, id: String) -> Option<WsClient> {
         let con = Arc::clone(&self.con);
         let mut con = con.lock().await;
-        let ws_client_json: String = con.get(format!("ws_client:{}", &id)).unwrap();
-        match serde_json::from_str(&ws_client_json) {
-            Ok(v) => Some(v),
-            Err(_) => None,
-        }
+
+        let ws_client_json: RedisResult<String> = con.get(format!("ws_client:{}", &id));
+
+        ws_client_json.map(|json| serde_json::from_str(&json).ok()).unwrap_or(None)
     }
 }
