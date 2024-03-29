@@ -11,18 +11,18 @@ use crate::ws::client::client_connection;
 use crate::ws::model::{Event, RegisterResponse, WsClient, WsClients};
 use crate::ws::service::WsClientService;
 
-pub async fn register_handler(user_id: usize, ws_client_service: Arc<WsClientService>) -> crate::Result<impl Reply> {
+pub async fn register_handler(username: String, ws_client_service: Arc<WsClientService>) -> crate::Result<impl Reply> {
     let uuid = Uuid::new_v4().simple().to_string();
 
-    register_ws_client(uuid.clone(), user_id, ws_client_service).await;
+    register_ws_client(uuid.clone(), username, ws_client_service).await;
     Ok(json(&RegisterResponse::new(format!("ws://127.0.0.1:8000/ws/{}", uuid))))
 }
 
-async fn register_ws_client(id: String, user_id: usize, ws_client_service: Arc<WsClientService>) {
+async fn register_ws_client(id: String, username: String, ws_client_service: Arc<WsClientService>) {
     Arc::clone(&ws_client_service)
         .register_client(
             id.clone(),
-            WsClient::new(user_id, vec![String::from("cats")], None),
+            WsClient::new(username, vec![String::from("cats")], None),
         ).await;
 }
 
@@ -47,8 +47,8 @@ pub async fn publish_handler(body: Event, ws_clients: WsClients) -> crate::Resul
         .write()
         .await
         .iter_mut()
-        .filter(|(_, ws_client)| match body.user_id() {
-            Some(v) => ws_client.user_id() == v,
+        .filter(|(_, ws_client)| match body.username() {
+            Some(v) => ws_client.username() == v,
             None => true,
         })
         .filter(|(_, ws_client)| ws_client.topics().contains(&body.topic().to_string()))

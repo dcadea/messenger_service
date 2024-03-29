@@ -11,23 +11,23 @@ pub type WsClients = Arc<RwLock<HashMap<String, WsClient>>>;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct WsClient {
-    user_id: usize,
+    username: String,
     topics: Vec<String>,
     #[serde(skip)]
     sender: Option<UnboundedSender<Result<Message, Error>>>,
 }
 
 impl WsClient {
-    pub fn new(user_id: usize, topics: Vec<String>, sender: Option<UnboundedSender<Result<Message, Error>>>) -> Self {
+    pub fn new(username: String, topics: Vec<String>, sender: Option<UnboundedSender<Result<Message, Error>>>) -> Self {
         Self {
-            user_id,
+            username,
             topics,
             sender,
         }
     }
 
-    pub fn user_id(&self) -> usize {
-        self.user_id
+    pub fn username(&self) -> String {
+        self.username.clone()
     }
 
     pub fn topics(&self) -> Vec<String> {
@@ -50,7 +50,7 @@ impl WsClient {
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct Event {
     topic: String,
-    user_id: Option<usize>,
+    username: Option<String>,
     message: String,
 }
 
@@ -59,8 +59,8 @@ impl Event {
         self.topic.as_str()
     }
 
-    pub fn user_id(&self) -> Option<usize> {
-        self.user_id
+    pub fn username(&self) -> Option<String> {
+        self.username.clone()
     }
 
     pub fn message(&self) -> &str {
