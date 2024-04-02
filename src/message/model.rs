@@ -12,7 +12,6 @@ pub struct Message {
 }
 
 impl Message {
-
     pub fn new(sender: &str, recipient: &str, text: &str, timestamp: i64) -> Self {
         Self {
             _id: None,

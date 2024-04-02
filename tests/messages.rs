@@ -7,10 +7,12 @@ mod tests {
 
     const MONGO_URI: &str = "mongodb://root:example@localhost:27017";
 
-
     #[tokio::test]
     async fn test_insert_message() {
-        let database: Database = mongodb::Client::with_uri_str(MONGO_URI).await.unwrap().database("messenger");
+        let database: Database = mongodb::Client::with_uri_str(MONGO_URI)
+            .await
+            .unwrap()
+            .database("messenger");
         let repository: MessageRepository = MessageRepository::new(database);
 
         let text = "Hello, world!";
@@ -22,7 +24,11 @@ mod tests {
         match result {
             Ok(_) => {
                 let messages = repository.find_by_recipient(recipient).await.unwrap();
-                assert!(messages.iter().any(|m| m.text() == text), "Expected to find a message with content '{}'", text);
+                assert!(
+                    messages.iter().any(|m| m.text() == text),
+                    "Expected to find a message with content '{}'",
+                    text
+                );
             }
             Err(err) => panic!("Failed to insert message: {}", err),
         }

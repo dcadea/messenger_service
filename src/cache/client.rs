@@ -5,12 +5,10 @@ pub async fn init_redis() -> Connection {
     let port = std::env::var("REDIS_PORT").unwrap_or_else(|_| "6379".into());
 
     match Client::open(format!("redis://{}:{}", host, port)) {
-        Ok(client) => {
-            match client.get_connection_with_timeout(std::time::Duration::from_secs(2)) {
-                Ok(connection) => connection,
-                Err(e) => panic!("Error connecting to redis: {}", e),
-            }
-        }
-        Err(e) => panic!("Error creating redis client: {}", e)
+        Ok(client) => match client.get_connection_with_timeout(std::time::Duration::from_secs(2)) {
+            Ok(connection) => connection,
+            Err(e) => panic!("Error connecting to redis: {}", e),
+        },
+        Err(e) => panic!("Error creating redis client: {}", e),
     }
 }

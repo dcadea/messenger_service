@@ -1,9 +1,9 @@
 use futures::stream::TryStreamExt;
 use log::{debug, error};
-use mongodb::Database;
 use mongodb::bson::doc;
 use mongodb::error::Error;
 use mongodb::results::InsertOneResult;
+use mongodb::Database;
 
 use crate::message::model::Message;
 
@@ -22,8 +22,12 @@ impl MessageRepository {
         match self.collection.insert_one(message, None).await {
             Ok(result) => Ok(result),
             Err(e) => {
-                error!("Failed to insert message from: {} to: {} on {}",
-                    message.sender(), message.recipient(), message.timestamp());
+                error!(
+                    "Failed to insert message from: {} to: {} on {}",
+                    message.sender(),
+                    message.recipient(),
+                    message.timestamp()
+                );
                 Err(e)
             }
         }

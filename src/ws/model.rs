@@ -1,11 +1,11 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use serde::{Deserialize, Serialize};
 
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
-use warp::Error;
 use warp::ws::Message;
+use warp::Error;
 
 pub type WsClients = Arc<RwLock<HashMap<String, WsClient>>>;
 
@@ -18,7 +18,11 @@ pub struct WsClient {
 }
 
 impl WsClient {
-    pub fn new(username: String, topics: Vec<String>, sender: Option<UnboundedSender<Result<Message, Error>>>) -> Self {
+    pub fn new(
+        username: String,
+        topics: Vec<String>,
+        sender: Option<UnboundedSender<Result<Message, Error>>>,
+    ) -> Self {
         Self {
             username,
             topics,

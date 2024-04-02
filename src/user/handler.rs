@@ -1,13 +1,16 @@
 use std::sync::Arc;
-use warp::{Rejection, Reply};
 use warp::http::StatusCode;
 use warp::reply::{json, with_status};
+use warp::{Rejection, Reply};
 
 use crate::error::model::ApiError;
 use crate::user::model::{User, UserResponse};
 use crate::user::repository::UserRepository;
 
-pub async fn login_handler(user: User, user_repository: Arc<UserRepository>) -> Result<impl Reply, Rejection> {
+pub async fn login_handler(
+    user: User,
+    user_repository: Arc<UserRepository>,
+) -> Result<impl Reply, Rejection> {
     let user_repository = Arc::clone(&user_repository);
 
     let password = user.password();
@@ -15,12 +18,24 @@ pub async fn login_handler(user: User, user_repository: Arc<UserRepository>) -> 
         Ok(user) => match user {
             Some(user) => {
                 if user.password().eq(password) {
-                    return Ok(with_status(json(&UserResponse::new(user.username())), StatusCode::OK))
+                    return Ok(with_status(
+                        json(&UserResponse::new(user.username())),
+                        StatusCode::OK,
+                    ));
                 }
-                Ok(with_status(json(&ApiError::new("Invalid credentials")), StatusCode::UNAUTHORIZED))
+                Ok(with_status(
+                    json(&ApiError::new("Invalid credentials")),
+                    StatusCode::UNAUTHORIZED,
+                ))
             }
-            None => Ok(with_status(json(&ApiError::new("User not found")), StatusCode::NOT_FOUND))
-        }
-        Err(_) => Ok(with_status(json(&ApiError::new("Internal server error")), StatusCode::INTERNAL_SERVER_ERROR))
+            None => Ok(with_status(
+                json(&ApiError::new("User not found")),
+                StatusCode::NOT_FOUND,
+            )),
+        },
+        Err(_) => Ok(with_status(
+            json(&ApiError::new("Internal server error")),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        )),
     }
 }

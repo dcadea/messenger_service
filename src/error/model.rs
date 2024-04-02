@@ -7,7 +7,9 @@ pub struct ApiError {
 
 impl ApiError {
     pub fn new(message: &str) -> Self {
-        Self { message: message.to_string() }
+        Self {
+            message: message.to_string(),
+        }
     }
 }
 

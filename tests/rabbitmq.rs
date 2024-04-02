@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod test {
-    use lapin::BasicProperties;
     use lapin::options::{BasicGetOptions, BasicPublishOptions, QueueDeclareOptions};
     use lapin::publisher_confirm::Confirmation;
     use lapin::types::FieldTable;
+    use lapin::BasicProperties;
 
     use messenger_api::queue::client::init_rabbitmq;
 
@@ -19,7 +19,8 @@ mod test {
                 QueueDeclareOptions::default(),
                 FieldTable::default(),
             )
-            .await.unwrap();
+            .await
+            .unwrap();
 
         let payload = b"Hello world!";
 
@@ -31,17 +32,17 @@ mod test {
                 payload,
                 BasicProperties::default(),
             )
-            .await.unwrap()
-            .await.unwrap();
+            .await
+            .unwrap()
+            .await
+            .unwrap();
 
         assert_eq!(confirm, Confirmation::NotRequested);
 
         let message = channel
-            .basic_get(
-                "test_queue",
-                BasicGetOptions::default(),
-            )
-            .await.unwrap()
+            .basic_get("test_queue", BasicGetOptions::default())
+            .await
+            .unwrap()
             .unwrap();
         assert_eq!(message.data, payload);
     }

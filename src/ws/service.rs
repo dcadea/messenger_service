@@ -10,9 +10,7 @@ pub struct WsClientService {
 }
 
 pub fn init_ws_client_service(con: Arc<Mutex<Connection>>) -> WsClientService {
-    WsClientService {
-        con,
-    }
+    WsClientService { con }
 }
 
 impl WsClientService {
@@ -20,7 +18,9 @@ impl WsClientService {
         let ws_client_json = serde_json::to_string(&ws_client).unwrap();
         let con = Arc::clone(&self.con);
         let mut con = con.lock().await;
-        let _: () = con.set(format!("ws_client:{}", &id), ws_client_json).unwrap();
+        let _: () = con
+            .set(format!("ws_client:{}", &id), ws_client_json)
+            .unwrap();
     }
 
     pub async fn unregister_client(&self, id: String) {
@@ -35,6 +35,8 @@ impl WsClientService {
 
         let ws_client_json: RedisResult<String> = con.get(format!("ws_client:{}", &id));
 
-        ws_client_json.map(|json| serde_json::from_str(&json).ok()).unwrap_or(None)
+        ws_client_json
+            .map(|json| serde_json::from_str(&json).ok())
+            .unwrap_or(None)
     }
 }

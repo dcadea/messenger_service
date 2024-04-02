@@ -1,8 +1,8 @@
 use log::{debug, error};
 use mongodb::bson::doc;
-use mongodb::Database;
 use mongodb::error::Error;
 use mongodb::results::{DeleteResult, InsertOneResult, UpdateResult};
+use mongodb::Database;
 
 use crate::user::model::User;
 
@@ -22,7 +22,10 @@ impl UserRepository {
         match self.collection.find_one(filter, None).await {
             Ok(user) => Ok(user),
             Err(e) => {
-                error!("Failed to find user with username: {}. Error: {}", username, e);
+                error!(
+                    "Failed to find user with username: {}. Error: {}",
+                    username, e
+                );
                 Err(e)
             }
         }
@@ -33,7 +36,11 @@ impl UserRepository {
         match self.collection.insert_one(user, None).await {
             Ok(result) => Ok(result),
             Err(e) => {
-                error!("Failed to insert user with username: {}. Error: {}", user.username(), e);
+                error!(
+                    "Failed to insert user with username: {}. Error: {}",
+                    user.username(),
+                    e
+                );
                 Err(e)
             }
         }
@@ -46,7 +53,11 @@ impl UserRepository {
         match self.collection.update_one(filter, document, None).await {
             Ok(result) => Ok(result),
             Err(e) => {
-                error!("Failed to update user with username: {}. Error: {}", user.username(), e);
+                error!(
+                    "Failed to update user with username: {}. Error: {}",
+                    user.username(),
+                    e
+                );
                 Err(e)
             }
         }
@@ -58,7 +69,10 @@ impl UserRepository {
         match self.collection.delete_one(filter, None).await {
             Ok(result) => Ok(result),
             Err(e) => {
-                error!("Failed to delete user with username: {}. Error: {}", username, e);
+                error!(
+                    "Failed to delete user with username: {}. Error: {}",
+                    username, e
+                );
                 Err(e)
             }
         }

@@ -40,6 +40,8 @@ pub struct UserResponse {
 
 impl UserResponse {
     pub fn new(username: &str) -> Self {
-        Self { username: username.to_string() }
+        Self {
+            username: username.to_string(),
+        }
     }
 }

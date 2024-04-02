@@ -7,14 +7,14 @@ use warp::{Filter, Rejection};
 
 use crate::user::repository::UserRepository;
 
-mod user;
-mod error;
+mod cache;
 mod db;
-mod ws;
+mod error;
 mod handler;
 mod message;
-mod cache;
 mod queue;
+mod user;
+mod ws;
 
 type Result<T> = std::result::Result<T, Rejection>;
 
@@ -70,30 +70,36 @@ async fn main() {
         .or(ws_route)
         .or(publish)
         .or(login_route)
-        .with(warp::cors()
-            .allow_any_origin()
-            .allow_origins(vec!["http://localhost:4200"])
-            .allow_headers(vec![
-                "Content-Type",
-                "Access-Control-Request-Method",
-                "Access-Control-Request-Headers",
-            ])
-            .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "OPTIONS"])
+        .with(
+            warp::cors()
+                .allow_any_origin()
+                .allow_origins(vec!["http://localhost:4200"])
+                .allow_headers(vec![
+                    "Content-Type",
+                    "Access-Control-Request-Method",
+                    "Access-Control-Request-Headers",
+                ])
+                .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "OPTIONS"]),
         );
-
 
     warp::serve(routes).run(([127, 0, 0, 1], 8000)).await;
 }
 
-fn with_clients(clients: ws::model::WsClients) -> impl Filter<Extract=(ws::model::WsClients, ), Error=Infallible> + Clone {
+fn with_clients(
+    clients: ws::model::WsClients,
+) -> impl Filter<Extract = (ws::model::WsClients,), Error = Infallible> + Clone {
     warp::any().map(move || clients.clone())
 }
 
-fn with_ws_client_service(service: Arc<ws::service::WsClientService>) -> impl Filter<Extract=(Arc<ws::service::WsClientService>, ), Error=Infallible> + Clone {
+fn with_ws_client_service(
+    service: Arc<ws::service::WsClientService>,
+) -> impl Filter<Extract = (Arc<ws::service::WsClientService>,), Error = Infallible> + Clone {
     warp::any().map(move || service.clone())
 }
 
-fn with_user_repository(repository: Arc<UserRepository>) -> impl Filter<Extract=(Arc<UserRepository>, ), Error=Infallible> + Clone {
+fn with_user_repository(
+    repository: Arc<UserRepository>,
+) -> impl Filter<Extract = (Arc<UserRepository>,), Error = Infallible> + Clone {
     warp::any().map(move || repository.clone())
 }
 

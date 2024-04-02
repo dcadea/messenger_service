@@ -3,19 +3,25 @@ use std::sync::Arc;
 use log::debug;
 use uuid::Uuid;
 use warp::http::StatusCode;
-use warp::Reply;
 use warp::reply::json;
 use warp::ws::Message;
+use warp::Reply;
 
 use crate::ws::client::client_connection;
 use crate::ws::model::{Event, RegisterResponse, WsClient, WsClients};
 use crate::ws::service::WsClientService;
 
-pub async fn register_handler(username: String, ws_client_service: Arc<WsClientService>) -> crate::Result<impl Reply> {
+pub async fn register_handler(
+    username: String,
+    ws_client_service: Arc<WsClientService>,
+) -> crate::Result<impl Reply> {
     let uuid = Uuid::new_v4().simple().to_string();
 
     register_ws_client(uuid.clone(), username, ws_client_service).await;
-    Ok(json(&RegisterResponse::new(format!("ws://127.0.0.1:8000/ws/{}", uuid))))
+    Ok(json(&RegisterResponse::new(format!(
+        "ws://127.0.0.1:8000/ws/{}",
+        uuid
+    ))))
 }
 
 async fn register_ws_client(id: String, username: String, ws_client_service: Arc<WsClientService>) {
@@ -23,21 +29,34 @@ async fn register_ws_client(id: String, username: String, ws_client_service: Arc
         .register_client(
             id.clone(),
             WsClient::new(username, vec![String::from("cats")], None),
-        ).await;
+        )
+        .await;
 }
 
-pub async fn unregister_handler(id: String, ws_client_service: Arc<WsClientService>) -> crate::Result<impl Reply> {
-    Arc::clone(&ws_client_service).unregister_client(id.clone()).await;
+pub async fn unregister_handler(
+    id: String,
+    ws_client_service: Arc<WsClientService>,
+) -> crate::Result<impl Reply> {
+    Arc::clone(&ws_client_service)
+        .unregister_client(id.clone())
+        .await;
     debug!("{} disconnected", id);
     Ok(StatusCode::OK)
 }
 
-pub async fn ws_handler(ws: warp::ws::Ws, id: String, ws_clients: WsClients, ws_client_service: Arc<WsClientService>) -> crate::Result<impl Reply> {
+pub async fn ws_handler(
+    ws: warp::ws::Ws,
+    id: String,
+    ws_clients: WsClients,
+    ws_client_service: Arc<WsClientService>,
+) -> crate::Result<impl Reply> {
     let ws_client_service = Arc::clone(&ws_client_service);
 
     let ws_client = ws_client_service.get_client(id.clone()).await;
     match ws_client {
-        Some(wsc) => Ok(ws.on_upgrade(move |socket| client_connection(socket, id, ws_clients, wsc))),
+        Some(wsc) => {
+            Ok(ws.on_upgrade(move |socket| client_connection(socket, id, ws_clients, wsc)))
+        }
         None => Err(warp::reject::not_found()),
     }
 }

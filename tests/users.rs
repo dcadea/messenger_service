@@ -8,7 +8,10 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_user() {
         // FIXME: use test db
-        let database = mongodb::Client::with_uri_str(MONGO_URI).await.unwrap().database("messenger");
+        let database = mongodb::Client::with_uri_str(MONGO_URI)
+            .await
+            .unwrap()
+            .database("messenger");
 
         let username = "user1";
         let repository = UserRepository::new(database);
@@ -17,7 +20,11 @@ mod tests {
 
         match result {
             Ok(user) => {
-                assert!(user.is_some(), "Expected to find a user with username {}", username);
+                assert!(
+                    user.is_some(),
+                    "Expected to find a user with username {}",
+                    username
+                );
                 if let Some(user) = user {
                     assert_eq!(user.username(), username);
                 }
@@ -28,7 +35,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_insert_user() {
-        let database = mongodb::Client::with_uri_str(MONGO_URI).await.unwrap().database("test");
+        let database = mongodb::Client::with_uri_str(MONGO_URI)
+            .await
+            .unwrap()
+            .database("test");
 
         let username = "user2";
         let user = &User::new(username, "password2");
@@ -39,7 +49,11 @@ mod tests {
         match result {
             Ok(_) => {
                 let user = repository.find_one(username).await.unwrap();
-                assert!(user.is_some(), "Expected to find a user with username {}", username);
+                assert!(
+                    user.is_some(),
+                    "Expected to find a user with username {}",
+                    username
+                );
             }
             Err(err) => panic!("Failed to insert user: {}", err),
         }
@@ -49,7 +63,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_update_user() {
-        let database = mongodb::Client::with_uri_str(MONGO_URI).await.unwrap().database("test");
+        let database = mongodb::Client::with_uri_str(MONGO_URI)
+            .await
+            .unwrap()
+            .database("test");
 
         let username = "user3";
         let user = &User::new(username, "password3");
@@ -63,7 +80,11 @@ mod tests {
         match result {
             Ok(_) => {
                 let user = repository.find_one(username).await.unwrap();
-                assert!(user.is_some(), "Expected to find a user with id {}", username);
+                assert!(
+                    user.is_some(),
+                    "Expected to find a user with id {}",
+                    username
+                );
                 if let Some(user) = user {
                     assert_eq!(user.password(), "new_password3");
                 }
@@ -76,7 +97,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_delete_user() {
-        let database = mongodb::Client::with_uri_str(MONGO_URI).await.unwrap().database("test");
+        let database = mongodb::Client::with_uri_str(MONGO_URI)
+            .await
+            .unwrap()
+            .database("test");
 
         let username = "user4";
         let user = &User::new(username, "password4");
@@ -88,7 +112,11 @@ mod tests {
         match result {
             Ok(_) => {
                 let user = repository.find_one(username).await.unwrap();
-                assert!(user.is_none(), "Expected to not find a user with id {}", username);
+                assert!(
+                    user.is_none(),
+                    "Expected to not find a user with id {}",
+                    username
+                );
             }
             Err(err) => panic!("Failed to delete user: {}", err),
         }

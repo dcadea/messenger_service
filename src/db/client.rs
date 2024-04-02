@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use mongodb::{Client, Database};
 use mongodb::options::ClientOptions;
+use mongodb::{Client, Database};
 
 pub async fn init_mongodb() -> Database {
     let username = std::env::var("MONGO_USERNAME").unwrap_or_else(|_| "root".into());
