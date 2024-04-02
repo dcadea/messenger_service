@@ -10,7 +10,7 @@ pub async fn init_mongodb() -> Database {
     let port = std::env::var("MONGO_PORT").unwrap_or_else(|_| "27017".into());
     let database = std::env::var("MONGO_DB").unwrap_or_else(|_| "messenger".into());
 
-    let connection_url = format!("mongodb://{}:{}@{}:{}/{}", username, password, host, port, database);
+    let connection_url = format!("mongodb://{}:{}@{}:{}", username, password, host, port);
 
     let mut mongo_client_options = ClientOptions::parse(connection_url).await.unwrap();
     mongo_client_options.connect_timeout = Some(Duration::from_secs(5));
