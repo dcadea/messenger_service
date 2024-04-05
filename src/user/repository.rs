@@ -16,17 +16,17 @@ impl UserRepository {
         Self { collection }
     }
 
-    pub async fn find_one(&self, username: &str) -> Result<Option<User>, Error> {
+    pub async fn find_one(&self, username: &str) -> Option<User> {
         debug!("Finding user with username: {}", username);
         let filter = doc! { "username": username };
         match self.collection.find_one(filter, None).await {
-            Ok(user) => Ok(user),
+            Ok(user) => user,
             Err(e) => {
                 error!(
                     "Failed to find user with username: {}. Error: {}",
                     username, e
                 );
-                Err(e)
+                None
             }
         }
     }

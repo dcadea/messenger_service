@@ -18,7 +18,7 @@ pub async fn register_handler(
 ) -> crate::Result<impl Reply> {
     let uuid = Uuid::new_v4().simple().to_string();
 
-    Arc::clone(&ws_client_service)
+    ws_client_service
         .register_client(
             uuid.clone(),
             WsClient::new(username, topics_request.topics().clone(), None),
@@ -35,9 +35,7 @@ pub async fn unregister_handler(
     id: String,
     ws_client_service: Arc<WsClientService>,
 ) -> crate::Result<impl Reply> {
-    Arc::clone(&ws_client_service)
-        .unregister_client(id.clone())
-        .await;
+    ws_client_service.unregister_client(id.clone()).await;
     debug!("{} disconnected", id);
     Ok(StatusCode::OK)
 }
