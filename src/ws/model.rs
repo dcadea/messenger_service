@@ -1,13 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::sync::RwLock;
 use warp::ws::Message;
 use warp::Error;
-
-pub type WsClients = Arc<RwLock<HashMap<String, WsClient>>>;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct WsClient {
@@ -36,10 +30,6 @@ impl WsClient {
 
     pub fn topics(&self) -> Vec<String> {
         self.topics.clone()
-    }
-
-    pub fn set_topics(&mut self, topics: Vec<String>) {
-        self.topics = topics;
     }
 
     pub fn sender(&self) -> Option<UnboundedSender<Result<Message, Error>>> {

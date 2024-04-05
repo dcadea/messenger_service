@@ -13,6 +13,10 @@ Content-Type: application/json
 POST {{baseUrl}}/register/user1
 Content-Type: application/json
 
+{
+  "topics": ["cats", "dogs"]
+}
+
 
 ### Deregister a client
 DELETE {{baseUrl}}/register/2dbca41149664d09bb5daeb324f29dba
@@ -25,14 +29,9 @@ Content-Type: application/json
 {
   "username": "user1",
   "topic": "cats",
-  "message": "you are awesome"
+  "message": "finally a cat message"
 }
 
 
 ### Open a ws connection listening for topics [cats, dogs]
-WEBSOCKET {{wsUrl}}/ws/bd62aa8a32094576b793f1a09652bd28
-Content-Type: application/json
-
-{
-  "topics": ["cats", "dogs"]
-}
+WEBSOCKET {{wsUrl}}/ws/9a397c81f2d14a868939fab840254219

@@ -1,18 +1,20 @@
+use std::sync::Arc;
+
 use futures::FutureExt;
 use futures::StreamExt;
 use log::{debug, error};
-use serde_json::from_str;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use warp::ws::{Message, WebSocket};
+use warp::ws::WebSocket;
 
-use crate::ws::model::{TopicsRequest, WsClient, WsClients};
+use crate::ws::model::WsClient;
+use crate::ws::service::WsClientService;
 
 pub async fn client_connection(
     ws: WebSocket,
     id: String,
-    ws_clients: WsClients,
     mut ws_client: WsClient,
+    ws_client_service: Arc<WsClientService>,
 ) {
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
     let (client_sender, client_rcv) = mpsc::unbounded_channel();
@@ -25,49 +27,21 @@ pub async fn client_connection(
     }));
 
     ws_client.set_sender(client_sender);
-    ws_clients.write().await.insert(id.clone(), ws_client);
+    ws_client_service.sync_client(id.clone(), ws_client).await;
 
     debug!("{} connected", id);
 
     while let Some(result) = client_ws_rcv.next().await {
-        let msg = match result {
-            Ok(msg) => msg,
+        let _ = match result {
+            Ok(_) => continue,
             Err(e) => {
                 error!("error receiving ws message for id: {}): {}", id.clone(), e);
                 break;
             }
         };
-        client_msg(&id, msg, &ws_clients).await;
     }
 
-    ws_clients.write().await.remove(&id);
+    ws_client_service.unregister_client(id.clone()).await;
+
     debug!("{} disconnected", id);
-}
-
-async fn client_msg(id: &str, msg: Message, ws_clients: &WsClients) {
-    debug!("received message from {}: {:?}", id, msg);
-    let message = match msg.to_str() {
-        Ok(v) => v,
-        Err(_) => return,
-    };
-
-    if message == "ping" || message == "ping\n" {
-        return;
-    }
-
-    let topics_req: TopicsRequest = match from_str(&message) {
-        Ok(v) => v,
-        Err(e) => {
-            error!("error while parsing message to topics request: {}", e);
-            return;
-        }
-    };
-
-    let mut locked = ws_clients.write().await;
-    match locked.get_mut(id) {
-        Some(v) => {
-            v.set_topics(topics_req.topics().clone());
-        }
-        None => return,
-    };
 }

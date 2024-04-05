@@ -1,8 +1,7 @@
-use std::collections::HashMap;
 use std::convert::Infallible;
 use std::sync::Arc;
 
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::Mutex;
 use warp::{Filter, Rejection};
 
 use crate::user::repository::UserRepository;
@@ -22,8 +21,6 @@ type Result<T> = std::result::Result<T, Rejection>;
 async fn main() {
     env_logger::init();
 
-    let clients: ws::model::WsClients = Arc::new(RwLock::new(HashMap::new()));
-
     let redis_con = Arc::new(Mutex::new(cache::client::init_redis().await));
     let ws_client_service = Arc::new(ws::service::init_ws_client_service(redis_con));
 
@@ -39,6 +36,7 @@ async fn main() {
     let register_routes = register
         .and(warp::post())
         .and(warp::path::param())
+        .and(warp::body::json())
         .and(with_ws_client_service(Arc::clone(&ws_client_service)))
         .and_then(ws::handler::register_handler)
         .or(register
@@ -49,13 +47,12 @@ async fn main() {
 
     let publish = warp::path!("publish")
         .and(warp::body::json())
-        .and(with_clients(clients.clone()))
+        .and(with_ws_client_service(Arc::clone(&ws_client_service)))
         .and_then(ws::handler::publish_handler);
 
     let ws_route = warp::path("ws")
         .and(warp::ws())
         .and(warp::path::param())
-        .and(with_clients(clients.clone()))
         .and(with_ws_client_service(Arc::clone(&ws_client_service)))
         .and_then(ws::handler::ws_handler);
 
@@ -83,12 +80,6 @@ async fn main() {
         );
 
     warp::serve(routes).run(([127, 0, 0, 1], 8000)).await;
-}
-
-fn with_clients(
-    clients: ws::model::WsClients,
-) -> impl Filter<Extract = (ws::model::WsClients,), Error = Infallible> + Clone {
-    warp::any().map(move || clients.clone())
 }
 
 fn with_ws_client_service(

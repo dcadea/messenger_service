@@ -13,7 +13,7 @@ mod test {
 
         let channel = conn.create_channel().await.unwrap();
 
-        let queue = channel
+        let _ = channel
             .queue_declare(
                 "test_queue",
                 QueueDeclareOptions::default(),
