@@ -13,7 +13,7 @@ mod tests {
             .await
             .unwrap()
             .database("messenger");
-        let repository: MessageRepository = MessageRepository::new(database);
+        let repository: MessageRepository = MessageRepository::new(&database);
 
         let text = "Hello, world!";
         let sender = "me";

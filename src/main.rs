@@ -5,6 +5,7 @@ use tokio::sync::Mutex;
 use warp::Filter;
 
 use crate::integration::client::ClientFactory;
+use crate::message::repository::MessageRepository;
 use message::service::MessageService;
 
 use crate::user::repository::UserRepository;
@@ -20,11 +21,12 @@ mod ws;
 async fn main() {
     env_logger::init();
 
-    let rabbitmq_client = Arc::new(Mutex::new(ClientFactory::init_rabbitmq().await));
-    let message_service = Arc::new(MessageService::new(rabbitmq_client));
-
     let database = ClientFactory::init_mongodb().await;
-    let user_repository = Arc::new(UserRepository::new(database));
+    let user_repository = Arc::new(UserRepository::new(&database));
+    let message_repository = Arc::new(MessageRepository::new(&database));
+
+    let rabbitmq_client = Arc::new(Mutex::new(ClientFactory::init_rabbitmq().await));
+    let message_service = Arc::new(MessageService::new(rabbitmq_client, message_repository));
 
     let health_route = warp::path!("health").and_then(handler::health_handler);
 

@@ -8,15 +8,23 @@ use lapin::{BasicProperties, Channel, Connection, Consumer};
 use log::{debug, error};
 use tokio::sync::Mutex;
 
+use crate::message::repository::MessageRepository;
 use crate::ws::model::Event;
 
 pub struct MessageService {
     rabbitmq_con: Arc<Mutex<Connection>>,
+    message_repository: Arc<MessageRepository>,
 }
 
 impl MessageService {
-    pub fn new(rabbitmq_con: Arc<Mutex<Connection>>) -> Self {
-        MessageService { rabbitmq_con }
+    pub fn new(
+        rabbitmq_con: Arc<Mutex<Connection>>,
+        message_repository: Arc<MessageRepository>,
+    ) -> Self {
+        MessageService {
+            rabbitmq_con,
+            message_repository,
+        }
     }
 
     pub async fn publish(&self, body: Event) {
@@ -28,7 +36,7 @@ impl MessageService {
         let conn = self.rabbitmq_con.lock().await;
         let channel = conn.create_channel().await.unwrap();
 
-        if let Err(e) = channel
+        match channel
             .basic_publish(
                 "",
                 &queue_name,
@@ -38,7 +46,12 @@ impl MessageService {
             )
             .await
         {
-            error!("Failed to publish message: {}", e);
+            Ok(_) => {
+                debug!("Message published to queue: {}", queue_name);
+                let message = body.into();
+                self.message_repository.insert(&message).await.unwrap();
+            },
+            Err(e) => error!("Failed to publish message: {}", e)
         }
     }
 

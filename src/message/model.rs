@@ -1,3 +1,5 @@
+use crate::ws::model::Event;
+use chrono::Utc;
 use mongodb::bson;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -37,5 +39,18 @@ impl Message {
 
     pub fn text(&self) -> &str {
         &self.text
+    }
+}
+
+impl From<Event> for Message {
+    fn from(event: Event) -> Self {
+        Self {
+            _id: None,
+            sender: "valera".to_string(),
+            recipient: event.topic().to_string(),
+            text: event.message().to_string(),
+            timestamp: Utc::now().timestamp(),
+            seen: false,
+        }
     }
 }
