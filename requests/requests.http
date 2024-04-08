@@ -8,30 +8,15 @@ Content-Type: application/json
 
 {"username":"user1","password":"password1"}
 
-
-### Register a client
-POST {{baseUrl}}/register/user1
-Content-Type: application/json
-
-{
-  "topics": ["cats", "dogs"]
-}
-
-
-### Deregister a client
-DELETE {{baseUrl}}/register/2dbca41149664d09bb5daeb324f29dba
-
-
 ### Publish a message
 POST {{baseUrl}}/publish
 Content-Type: application/json
 
 {
-  "username": "user1",
-  "topic": "cats",
+  "topic": "user1",
   "message": "finally a cat message"
 }
 
 
 ### Open a ws connection listening for topics [cats, dogs]
-WEBSOCKET {{wsUrl}}/ws/8203e3ca869a4b13bba097493a4f3041
+WEBSOCKET {{wsUrl}}/ws/user1

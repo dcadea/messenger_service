@@ -8,7 +8,6 @@ use crate::integration::client::ClientFactory;
 use message::service::MessageService;
 
 use crate::user::repository::UserRepository;
-use crate::ws::service::WsClientService;
 
 mod error;
 mod handler;
@@ -21,32 +20,13 @@ mod ws;
 async fn main() {
     env_logger::init();
 
-    let redis_con = Arc::new(Mutex::new(ClientFactory::init_redis().await));
-    let ws_client_service = Arc::new(WsClientService::new(redis_con));
-
     let rabbitmq_client = Arc::new(Mutex::new(ClientFactory::init_rabbitmq().await));
     let message_service = Arc::new(MessageService::new(rabbitmq_client));
 
     let database = ClientFactory::init_mongodb().await;
     let user_repository = Arc::new(UserRepository::new(database));
 
-    // TODO
-    // let _ = cache::client::init_redis().await;
-
     let health_route = warp::path!("health").and_then(handler::health_handler);
-
-    let register = warp::path("register");
-    let register_routes = register
-        .and(warp::post())
-        .and(warp::path::param())
-        .and(warp::body::json())
-        .and(with_ws_client_service(Arc::clone(&ws_client_service)))
-        .and_then(ws::handler::register_handler)
-        .or(register
-            .and(warp::delete())
-            .and(warp::path::param())
-            .and(with_ws_client_service(Arc::clone(&ws_client_service)))
-            .and_then(ws::handler::unregister_handler));
 
     let publish = warp::path!("publish")
         .and(warp::body::json())
@@ -56,7 +36,7 @@ async fn main() {
     let ws_route = warp::path("ws")
         .and(warp::ws())
         .and(warp::path::param())
-        .and(with_ws_client_service(Arc::clone(&ws_client_service)))
+        .and(with_user_repository(Arc::clone(&user_repository)))
         .and(with_message_service(Arc::clone(&message_service)))
         .and_then(ws::handler::ws_handler);
 
@@ -66,30 +46,19 @@ async fn main() {
         .and(with_user_repository(user_repository))
         .and_then(user::handler::login_handler);
 
-    let routes = health_route
-        .or(register_routes)
-        .or(ws_route)
-        .or(publish)
-        .or(login_route)
-        .with(
-            warp::cors()
-                .allow_any_origin()
-                .allow_origins(vec!["http://localhost:4200"])
-                .allow_headers(vec![
-                    "Content-Type",
-                    "Access-Control-Request-Method",
-                    "Access-Control-Request-Headers",
-                ])
-                .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "OPTIONS"]),
-        );
+    let routes = health_route.or(ws_route).or(publish).or(login_route).with(
+        warp::cors()
+            .allow_any_origin()
+            .allow_origins(vec!["http://localhost:4200"])
+            .allow_headers(vec![
+                "Content-Type",
+                "Access-Control-Request-Method",
+                "Access-Control-Request-Headers",
+            ])
+            .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "OPTIONS"]),
+    );
 
     warp::serve(routes).run(([127, 0, 0, 1], 8000)).await;
-}
-
-fn with_ws_client_service(
-    service: Arc<ws::service::WsClientService>,
-) -> impl Filter<Extract = (Arc<ws::service::WsClientService>,), Error = Infallible> + Clone {
-    warp::any().map(move || service.clone())
 }
 
 fn with_user_repository(
