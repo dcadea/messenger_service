@@ -4,18 +4,20 @@ use log::debug;
 use uuid::Uuid;
 use warp::http::StatusCode;
 use warp::reply::json;
-use warp::ws::Message;
-use warp::Reply;
+use warp::{Rejection, Reply};
 
+use crate::message::service::MessageService;
 use crate::ws::client::client_connection;
 use crate::ws::model::{Event, RegisterResponse, TopicsRequest, WsClient};
 use crate::ws::service::WsClientService;
+
+type Result<T> = std::result::Result<T, Rejection>;
 
 pub async fn register_handler(
     username: String,
     topics_request: TopicsRequest,
     ws_client_service: Arc<WsClientService>,
-) -> crate::Result<impl Reply> {
+) -> Result<impl Reply> {
     let uuid = Uuid::new_v4().simple().to_string();
 
     ws_client_service
@@ -34,7 +36,7 @@ pub async fn register_handler(
 pub async fn unregister_handler(
     id: String,
     ws_client_service: Arc<WsClientService>,
-) -> crate::Result<impl Reply> {
+) -> Result<impl Reply> {
     ws_client_service.unregister_client(id.clone()).await;
     debug!("{} disconnected", id);
     Ok(StatusCode::OK)
@@ -44,11 +46,12 @@ pub async fn ws_handler(
     ws: warp::ws::Ws,
     id: String,
     ws_client_service: Arc<WsClientService>,
-) -> crate::Result<impl Reply> {
+    message_service: Arc<MessageService>,
+) -> Result<impl Reply> {
     let ws_client = ws_client_service.get_client(id.clone()).await;
     match ws_client {
         Some(wsc) => Ok(ws.on_upgrade(move |socket| {
-            client_connection(socket, id, wsc, Arc::clone(&ws_client_service))
+            client_connection(socket, id, wsc, ws_client_service, message_service)
         })),
         None => Err(warp::reject::not_found()),
     }
@@ -56,24 +59,8 @@ pub async fn ws_handler(
 
 pub async fn publish_handler(
     body: Event,
-    ws_client_service: Arc<WsClientService>,
-) -> crate::Result<impl Reply> {
-    ws_client_service
-        .get_clients()
-        .await
-        .read()
-        .await
-        .iter()
-        .filter(|(_, ws_client)| match body.username() {
-            Some(v) => ws_client.username() == v,
-            None => true,
-        })
-        .filter(|(_, ws_client)| ws_client.topics().contains(&body.topic().to_string()))
-        .for_each(|(_, ws_client)| {
-            if let Some(sender) = &ws_client.sender() {
-                let _ = sender.send(Ok(Message::text(body.message())));
-            }
-        });
-
+    message_service: Arc<MessageService>,
+) -> Result<impl Reply> {
+    message_service.publish(body).await;
     Ok(StatusCode::OK)
 }

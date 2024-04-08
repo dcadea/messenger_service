@@ -34,4 +34,4 @@ Content-Type: application/json
 
 
 ### Open a ws connection listening for topics [cats, dogs]
-WEBSOCKET {{wsUrl}}/ws/9a397c81f2d14a868939fab840254219
+WEBSOCKET {{wsUrl}}/ws/8203e3ca869a4b13bba097493a4f3041

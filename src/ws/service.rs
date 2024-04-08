@@ -13,14 +13,14 @@ pub struct WsClientService {
     clients: WsClients,
 }
 
-pub fn init_ws_client_service(con: Arc<Mutex<Connection>>) -> WsClientService {
-    WsClientService {
-        con,
-        clients: Arc::new(RwLock::new(HashMap::new())),
-    }
-}
-
 impl WsClientService {
+    pub fn new(con: Arc<Mutex<Connection>>) -> Self {
+        WsClientService {
+            con,
+            clients: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
     pub async fn register_client(&self, id: String, ws_client: WsClient) {
         let ws_client_json = serde_json::to_string(&ws_client).unwrap();
         let con = Arc::clone(&self.con);

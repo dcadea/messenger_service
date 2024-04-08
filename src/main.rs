@@ -2,29 +2,32 @@ use std::convert::Infallible;
 use std::sync::Arc;
 
 use tokio::sync::Mutex;
-use warp::{Filter, Rejection};
+use warp::Filter;
+
+use crate::integration::client::ClientFactory;
+use message::service::MessageService;
 
 use crate::user::repository::UserRepository;
+use crate::ws::service::WsClientService;
 
-mod cache;
-mod db;
 mod error;
 mod handler;
+mod integration;
 mod message;
-mod queue;
 mod user;
 mod ws;
-
-type Result<T> = std::result::Result<T, Rejection>;
 
 #[tokio::main]
 async fn main() {
     env_logger::init();
 
-    let redis_con = Arc::new(Mutex::new(cache::client::init_redis().await));
-    let ws_client_service = Arc::new(ws::service::init_ws_client_service(redis_con));
+    let redis_con = Arc::new(Mutex::new(ClientFactory::init_redis().await));
+    let ws_client_service = Arc::new(WsClientService::new(redis_con));
 
-    let database = db::client::init_mongodb().await;
+    let rabbitmq_client = Arc::new(Mutex::new(ClientFactory::init_rabbitmq().await));
+    let message_service = Arc::new(MessageService::new(rabbitmq_client));
+
+    let database = ClientFactory::init_mongodb().await;
     let user_repository = Arc::new(UserRepository::new(database));
 
     // TODO
@@ -47,13 +50,14 @@ async fn main() {
 
     let publish = warp::path!("publish")
         .and(warp::body::json())
-        .and(with_ws_client_service(Arc::clone(&ws_client_service)))
+        .and(with_message_service(Arc::clone(&message_service)))
         .and_then(ws::handler::publish_handler);
 
     let ws_route = warp::path("ws")
         .and(warp::ws())
         .and(warp::path::param())
         .and(with_ws_client_service(Arc::clone(&ws_client_service)))
+        .and(with_message_service(Arc::clone(&message_service)))
         .and_then(ws::handler::ws_handler);
 
     let login_route = warp::path("login")
@@ -92,6 +96,12 @@ fn with_user_repository(
     repository: Arc<UserRepository>,
 ) -> impl Filter<Extract = (Arc<UserRepository>,), Error = Infallible> + Clone {
     warp::any().map(move || repository.clone())
+}
+
+fn with_message_service(
+    service: Arc<MessageService>,
+) -> impl Filter<Extract = (Arc<MessageService>,), Error = Infallible> + Clone {
+    warp::any().map(move || service.clone())
 }
 
 // TODO

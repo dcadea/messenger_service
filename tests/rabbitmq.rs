@@ -4,12 +4,11 @@ mod test {
     use lapin::publisher_confirm::Confirmation;
     use lapin::types::FieldTable;
     use lapin::BasicProperties;
-
-    use messenger_api::queue::client::init_rabbitmq;
+    use messenger_api::integration::client::ClientFactory;
 
     #[tokio::test]
     async fn test_queue_message() {
-        let conn = init_rabbitmq().await;
+        let conn = ClientFactory::init_rabbitmq().await;
 
         let channel = conn.create_channel().await.unwrap();
 

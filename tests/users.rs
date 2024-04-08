@@ -19,17 +19,8 @@ mod tests {
         let result = repository.find_one(username).await;
 
         match result {
-            Ok(user) => {
-                assert!(
-                    user.is_some(),
-                    "Expected to find a user with username {}",
-                    username
-                );
-                if let Some(user) = user {
-                    assert_eq!(user.username(), username);
-                }
-            }
-            Err(err) => panic!("Failed to fetch user: {}", err),
+            Some(user) => assert_eq!(user.username(), username),
+            None => panic!("Failed to fetch user: {}", username),
         }
     }
 
@@ -48,7 +39,7 @@ mod tests {
 
         match result {
             Ok(_) => {
-                let user = repository.find_one(username).await.unwrap();
+                let user = repository.find_one(username).await;
                 assert!(
                     user.is_some(),
                     "Expected to find a user with username {}",
@@ -79,7 +70,7 @@ mod tests {
 
         match result {
             Ok(_) => {
-                let user = repository.find_one(username).await.unwrap();
+                let user = repository.find_one(username).await;
                 assert!(
                     user.is_some(),
                     "Expected to find a user with id {}",
@@ -111,7 +102,7 @@ mod tests {
 
         match result {
             Ok(_) => {
-                let user = repository.find_one(username).await.unwrap();
+                let user = repository.find_one(username).await;
                 assert!(
                     user.is_none(),
                     "Expected to not find a user with id {}",
