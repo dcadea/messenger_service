@@ -1,12 +1,17 @@
 #[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub struct Event {
-    topic: String,
+    sender: String,
+    recipient: String,
     message: String,
 }
 
 impl Event {
-    pub fn topic(&self) -> &str {
-        self.topic.as_str()
+    pub fn sender(&self) -> &str {
+        self.sender.as_str()
+    }
+
+    pub fn recipient(&self) -> &str {
+        self.recipient.as_str()
     }
 
     pub fn message(&self) -> &str {

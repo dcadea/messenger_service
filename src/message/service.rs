@@ -6,6 +6,7 @@ use lapin::options::{
 use lapin::types::FieldTable;
 use lapin::{BasicProperties, Channel, Connection, Consumer};
 use log::{debug, error};
+use serde_json::json;
 use tokio::sync::Mutex;
 
 use crate::message::repository::MessageRepository;
@@ -34,7 +35,7 @@ impl MessageService {
             Ok(_) => {
                 debug!("Message saved to database.");
 
-                let queue_name = match self.declare_queue(body.topic()).await {
+                let queue_name = match self.declare_queue(body.recipient()).await {
                     Ok(name) => name,
                     Err(_) => return,
                 };
@@ -42,12 +43,14 @@ impl MessageService {
                 let conn = self.rabbitmq_con.lock().await;
                 let channel = conn.create_channel().await.unwrap();
 
+                let message_json = json!(message).to_string();
+
                 match channel
                     .basic_publish(
                         "",
                         &queue_name,
                         BasicPublishOptions::default(),
-                        body.message().as_bytes(),
+                        message_json.as_bytes(),
                         BasicProperties::default(),
                     )
                     .await
@@ -123,4 +126,11 @@ impl MessageService {
             }
         }
     }
+
+    // pub async fn find_by_recipient(
+    //     &self,
+    //     username: &str,
+    // ) -> Result<Vec<Message>, mongodb::error::Error> {
+    //     self.message_repository.find_by_recipient(username).await
+    // }
 }

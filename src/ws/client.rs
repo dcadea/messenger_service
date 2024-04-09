@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
-pub async fn client_connection(ws: WebSocket, topic: String, message_service: Arc<MessageService>) {
+pub async fn client_connection(ws: WebSocket, recipient: String, message_service: Arc<MessageService>) {
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
     let (client_sender, client_rcv) = mpsc::unbounded_channel();
 
@@ -20,9 +20,9 @@ pub async fn client_connection(ws: WebSocket, topic: String, message_service: Ar
         }
     }));
 
-    debug!("{} connected", topic);
+    debug!("{} connected", recipient);
 
-    let (mut consumer, channel) = message_service.consume(topic.as_str()).await.unwrap();
+    let (mut consumer, channel) = message_service.consume(recipient.as_str()).await.unwrap();
     let consumer_tag = consumer.tag();
 
     tokio::spawn(async move {
@@ -42,8 +42,8 @@ pub async fn client_connection(ws: WebSocket, topic: String, message_service: Ar
             Ok(_) => continue,
             Err(e) => {
                 error!(
-                    "error receiving ws message for topic: {}): {}",
-                    topic.clone(),
+                    "error receiving ws message for recipient: {}): {}",
+                    recipient.clone(),
                     e
                 );
                 break;
@@ -55,5 +55,5 @@ pub async fn client_connection(ws: WebSocket, topic: String, message_service: Ar
         .close_consumer(consumer_tag.as_str(), channel)
         .await
         .unwrap();
-    debug!("{} disconnected", topic);
+    debug!("{} disconnected", recipient);
 }

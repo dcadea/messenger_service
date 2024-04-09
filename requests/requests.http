@@ -13,10 +13,11 @@ POST {{baseUrl}}/publish
 Content-Type: application/json
 
 {
-  "topic": "user1",
+  "sender": "valera",
+  "recipient": "user1",
   "message": "finally a cat message"
 }
 
 
-### Open a ws connection listening for topic 'user1'
+### Open a ws connection listening for recipient 'user1'
 WEBSOCKET {{wsUrl}}/ws/user1

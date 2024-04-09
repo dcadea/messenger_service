@@ -12,13 +12,13 @@ type Result<T> = std::result::Result<T, Rejection>;
 
 pub async fn ws_handler(
     ws: warp::ws::Ws,
-    topic: String,
+    recipient: String,
     user_repository: Arc<UserRepository>,
     message_service: Arc<MessageService>,
 ) -> Result<impl Reply> {
-    match user_repository.find_one(topic.as_str()).await {
+    match user_repository.find_one(recipient.as_str()).await {
         Some(_) => {
-            Ok(ws.on_upgrade(move |socket| client_connection(socket, topic, message_service)))
+            Ok(ws.on_upgrade(move |socket| client_connection(socket, recipient, message_service)))
         }
         None => Err(warp::reject::not_found()),
     }

@@ -2,6 +2,7 @@ use futures::stream::TryStreamExt;
 use log::{debug, error};
 use mongodb::bson::doc;
 use mongodb::error::Error;
+use mongodb::options::FindOptions;
 use mongodb::results::InsertOneResult;
 use mongodb::Database;
 
@@ -33,7 +34,7 @@ impl MessageRepository {
         }
     }
 
-    // TODO: Implement this method
+    // TODO: Implement this methods
     // pub async fn mark_as_seen(&self, id: &str) -> Result<(), Error> {
     //     debug!("Marking message as seen: {}", id);
     //     let filter = doc! { "_id": id };
@@ -50,7 +51,8 @@ impl MessageRepository {
     pub async fn find_by_recipient(&self, recipient: &str) -> Result<Vec<Message>, Error> {
         debug!("Finding messages by recipient: {}", recipient);
         let filter = doc! { "recipient": recipient };
-        let cursor = self.collection.find(filter, None).await?;
+        let asc_by_timestamp = FindOptions::builder().sort(doc! { "timestamp": 1 }).build();
+        let cursor = self.collection.find(filter, asc_by_timestamp).await?;
         match cursor.try_collect().await {
             Ok(messages) => Ok(messages),
             Err(e) => {

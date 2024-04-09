@@ -46,8 +46,8 @@ impl From<Event> for Message {
     fn from(event: Event) -> Self {
         Self {
             _id: None,
-            sender: "valera".to_string(),
-            recipient: event.topic().to_string(),
+            sender: event.sender().to_string(),
+            recipient: event.recipient().to_string(),
             text: event.message().to_string(),
             timestamp: Utc::now().timestamp(),
             seen: false,
