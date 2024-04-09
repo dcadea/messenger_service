@@ -28,30 +28,35 @@ impl MessageService {
     }
 
     pub async fn publish(&self, body: Event) {
-        let queue_name = match self.declare_queue(body.topic()).await {
-            Ok(name) => name,
-            Err(_) => return,
-        };
+        let message = body.clone().into();
 
-        let conn = self.rabbitmq_con.lock().await;
-        let channel = conn.create_channel().await.unwrap();
-
-        match channel
-            .basic_publish(
-                "",
-                &queue_name,
-                BasicPublishOptions::default(),
-                body.message().as_bytes(),
-                BasicProperties::default(),
-            )
-            .await
-        {
+        match self.message_repository.insert(&message).await {
             Ok(_) => {
-                debug!("Message published to queue: {}", queue_name);
-                let message = body.into();
-                self.message_repository.insert(&message).await.unwrap();
-            },
-            Err(e) => error!("Failed to publish message: {}", e)
+                debug!("Message saved to database.");
+
+                let queue_name = match self.declare_queue(body.topic()).await {
+                    Ok(name) => name,
+                    Err(_) => return,
+                };
+
+                let conn = self.rabbitmq_con.lock().await;
+                let channel = conn.create_channel().await.unwrap();
+
+                match channel
+                    .basic_publish(
+                        "",
+                        &queue_name,
+                        BasicPublishOptions::default(),
+                        body.message().as_bytes(),
+                        BasicProperties::default(),
+                    )
+                    .await
+                {
+                    Ok(_) => debug!("Message published to queue: {}", queue_name),
+                    Err(e) => error!("Failed to publish message: {}", e),
+                }
+            }
+            Err(e) => error!("Failed to save message to database: {}", e),
         }
     }
 
