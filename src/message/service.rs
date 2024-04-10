@@ -1,8 +1,10 @@
 use std::sync::Arc;
 
-use lapin::{BasicProperties, Channel, Connection, Consumer};
-use lapin::options::{BasicCancelOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions};
+use lapin::options::{
+    BasicCancelOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
+};
 use lapin::types::FieldTable;
+use lapin::{BasicProperties, Channel, Connection, Consumer};
 use log::{debug, error};
 use serde_json::json;
 use tokio::sync::Mutex;

@@ -3,14 +3,15 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 use warp::Filter;
+
 use handler::health_handler;
 use message::handler::{messages_handler, ws_handler};
-
-use crate::integration::client::ClientFactory;
-use crate::message::repository::MessageRepository;
 use message::service::MessageService;
 use user::handler::login_handler;
 
+use crate::integration::client::ClientFactory;
+use crate::message::repository::MessageRepository;
+use crate::user::handler::register_handler;
 use crate::user::repository::UserRepository;
 
 mod error;
@@ -50,20 +51,31 @@ async fn main() {
     let login_route = warp::path("login")
         .and(warp::post())
         .and(warp::body::json())
-        .and(with_user_repository(user_repository))
+        .and(with_user_repository(Arc::clone(&user_repository)))
         .and_then(login_handler);
 
-    let routes = health_route.or(ws_route).or(messages).or(login_route).with(
-        warp::cors()
-            .allow_any_origin()
-            .allow_origins(vec!["http://localhost:4200"])
-            .allow_headers(vec![
-                "Content-Type",
-                "Access-Control-Request-Method",
-                "Access-Control-Request-Headers",
-            ])
-            .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "OPTIONS"]),
-    );
+    let register_route = warp::path("register")
+        .and(warp::post())
+        .and(warp::body::json())
+        .and(with_user_repository(Arc::clone(&user_repository)))
+        .and_then(register_handler);
+
+    let routes = health_route
+        .or(ws_route)
+        .or(messages)
+        .or(login_route)
+        .or(register_route)
+        .with(
+            warp::cors()
+                .allow_any_origin()
+                .allow_origins(vec!["http://localhost:4200"])
+                .allow_headers(vec![
+                    "Content-Type",
+                    "Access-Control-Request-Method",
+                    "Access-Control-Request-Headers",
+                ])
+                .allow_methods(vec!["GET", "POST", "DELETE", "PUT", "OPTIONS"]),
+        );
 
     warp::serve(routes).run(([127, 0, 0, 1], 8000)).await;
 }

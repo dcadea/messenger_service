@@ -1,14 +1,14 @@
-use std::sync::Arc;
 use futures::StreamExt;
 use lapin::options::BasicAckOptions;
 use log::{debug, error};
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use crate::message::model::MessageRequest;
 use warp::http::StatusCode;
-use warp::{Rejection, Reply};
 use warp::ws::{Message, WebSocket};
+use warp::{Rejection, Reply};
 
 use futures::FutureExt;
 

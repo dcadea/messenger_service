@@ -8,6 +8,14 @@ Content-Type: application/json
 
 {"username":"user1","password":"password1"}
 
+
+### Register
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{"username":"user2","password":"password2"}
+
+
 ### Send a message
 POST {{baseUrl}}/messages
 Content-Type: application/json
