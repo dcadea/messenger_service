@@ -9,7 +9,11 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::ws::{Message, WebSocket};
 
-pub async fn client_connection(ws: WebSocket, recipient: String, message_service: Arc<MessageService>) {
+pub async fn client_connection(
+    ws: WebSocket,
+    recipient: String,
+    message_service: Arc<MessageService>,
+) {
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
     let (client_sender, client_rcv) = mpsc::unbounded_channel();
 
@@ -28,9 +32,9 @@ pub async fn client_connection(ws: WebSocket, recipient: String, message_service
     tokio::spawn(async move {
         while let Some(delivery) = consumer.next().await {
             let delivery = delivery.unwrap();
-            let message = std::str::from_utf8(&delivery.data).unwrap();
+            let message_json = std::str::from_utf8(&delivery.data).unwrap();
 
-            let _ = client_sender.send(Ok(Message::text(message)));
+            let _ = client_sender.send(Ok(Message::text(message_json)));
 
             // TODO: move to message service
             delivery.ack(BasicAckOptions::default()).await.unwrap();

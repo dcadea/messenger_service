@@ -43,6 +43,7 @@ mod test {
             .await
             .unwrap()
             .unwrap();
+
         assert_eq!(message.data, payload);
     }
 }

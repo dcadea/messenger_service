@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
+use crate::message::model::MessageRequest;
 use warp::http::StatusCode;
 use warp::{Rejection, Reply};
 
 use crate::message::service::MessageService;
 use crate::user::repository::UserRepository;
 use crate::ws::client::client_connection;
-use crate::ws::model::Event;
 
 type Result<T> = std::result::Result<T, Rejection>;
 
@@ -25,9 +25,9 @@ pub async fn ws_handler(
 }
 
 pub async fn publish_handler(
-    body: Event,
+    request: MessageRequest,
     message_service: Arc<MessageService>,
 ) -> Result<impl Reply> {
-    message_service.publish(body).await;
+    message_service.publish(request).await;
     Ok(StatusCode::OK)
 }

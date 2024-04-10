@@ -1,4 +1,3 @@
-use crate::ws::model::Event;
 use chrono::Utc;
 use mongodb::bson;
 
@@ -42,13 +41,34 @@ impl Message {
     }
 }
 
-impl From<Event> for Message {
-    fn from(event: Event) -> Self {
+#[derive(serde::Deserialize, serde::Serialize, Clone)]
+pub struct MessageRequest {
+    sender: String,
+    recipient: String,
+    text: String,
+}
+
+impl MessageRequest {
+    pub fn sender(&self) -> &str {
+        self.sender.as_str()
+    }
+
+    pub fn recipient(&self) -> &str {
+        self.recipient.as_str()
+    }
+
+    pub fn text(&self) -> &str {
+        self.text.as_str()
+    }
+}
+
+impl From<MessageRequest> for Message {
+    fn from(request: MessageRequest) -> Self {
         Self {
             _id: None,
-            sender: event.sender().to_string(),
-            recipient: event.recipient().to_string(),
-            text: event.message().to_string(),
+            sender: request.sender().to_string(),
+            recipient: request.recipient().to_string(),
+            text: request.text().to_string(),
             timestamp: Utc::now().timestamp(),
             seen: false,
         }

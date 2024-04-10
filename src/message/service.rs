@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::message::model::MessageRequest;
 use lapin::options::{
     BasicCancelOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
 };
@@ -10,7 +11,6 @@ use serde_json::json;
 use tokio::sync::Mutex;
 
 use crate::message::repository::MessageRepository;
-use crate::ws::model::Event;
 
 pub struct MessageService {
     rabbitmq_con: Arc<Mutex<Connection>>,
@@ -28,14 +28,14 @@ impl MessageService {
         }
     }
 
-    pub async fn publish(&self, body: Event) {
-        let message = body.clone().into();
+    pub async fn publish(&self, request: MessageRequest) {
+        let message = request.clone().into();
 
         match self.message_repository.insert(&message).await {
             Ok(_) => {
                 debug!("Message saved to database.");
 
-                let queue_name = match self.declare_queue(body.recipient()).await {
+                let queue_name = match self.declare_queue(request.recipient()).await {
                     Ok(name) => name,
                     Err(_) => return,
                 };
@@ -126,11 +126,4 @@ impl MessageService {
             }
         }
     }
-
-    // pub async fn find_by_recipient(
-    //     &self,
-    //     username: &str,
-    // ) -> Result<Vec<Message>, mongodb::error::Error> {
-    //     self.message_repository.find_by_recipient(username).await
-    // }
 }

@@ -34,20 +34,6 @@ impl MessageRepository {
         }
     }
 
-    // TODO: Implement this methods
-    // pub async fn mark_as_seen(&self, id: &str) -> Result<(), Error> {
-    //     debug!("Marking message as seen: {}", id);
-    //     let filter = doc! { "_id": id };
-    //     let update = doc! { "$set": { "seen": true } };
-    //     match self.collection.update_one(filter, update, None).await {
-    //         Ok(_) => Ok(()),
-    //         Err(e) => {
-    //             error!("Failed to mark message as seen: {}", id);
-    //             Err(e)
-    //         }
-    //     }
-    // }
-
     pub async fn find_by_recipient(&self, recipient: &str) -> Result<Vec<Message>, Error> {
         debug!("Finding messages by recipient: {}", recipient);
         let filter = doc! { "recipient": recipient };

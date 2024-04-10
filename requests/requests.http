@@ -15,7 +15,7 @@ Content-Type: application/json
 {
   "sender": "valera",
   "recipient": "user1",
-  "message": "finally a cat message"
+  "text": "finally a cat message"
 }
 
 
