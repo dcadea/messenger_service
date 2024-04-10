@@ -1,15 +1,13 @@
 use std::sync::Arc;
 
-use crate::message::model::MessageRequest;
-use lapin::options::{
-    BasicCancelOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
-};
-use lapin::types::FieldTable;
 use lapin::{BasicProperties, Channel, Connection, Consumer};
+use lapin::options::{BasicCancelOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions};
+use lapin::types::FieldTable;
 use log::{debug, error};
 use serde_json::json;
 use tokio::sync::Mutex;
 
+use crate::message::model::MessageRequest;
 use crate::message::repository::MessageRepository;
 
 pub struct MessageService {
@@ -28,7 +26,7 @@ impl MessageService {
         }
     }
 
-    pub async fn publish(&self, request: MessageRequest) {
+    pub async fn send(&self, request: MessageRequest) {
         let message = request.clone().into();
 
         match self.message_repository.insert(&message).await {

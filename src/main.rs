@@ -3,10 +3,13 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 use warp::Filter;
+use handler::health_handler;
+use message::handler::{messages_handler, ws_handler};
 
 use crate::integration::client::ClientFactory;
 use crate::message::repository::MessageRepository;
 use message::service::MessageService;
+use user::handler::login_handler;
 
 use crate::user::repository::UserRepository;
 
@@ -15,11 +18,13 @@ mod handler;
 mod integration;
 mod message;
 mod user;
-mod ws;
 
 #[tokio::main]
 async fn main() {
     env_logger::init();
+
+    // TODO
+    let _ = ClientFactory::init_redis().await;
 
     let database = ClientFactory::init_mongodb().await;
     let user_repository = Arc::new(UserRepository::new(&database));
@@ -28,27 +33,27 @@ async fn main() {
     let rabbitmq_client = Arc::new(Mutex::new(ClientFactory::init_rabbitmq().await));
     let message_service = Arc::new(MessageService::new(rabbitmq_client, message_repository));
 
-    let health_route = warp::path!("health").and_then(handler::health_handler);
+    let health_route = warp::path!("health").and_then(health_handler);
 
-    let publish = warp::path!("publish")
+    let messages = warp::path!("messages")
         .and(warp::body::json())
         .and(with_message_service(Arc::clone(&message_service)))
-        .and_then(ws::handler::publish_handler);
+        .and_then(messages_handler);
 
     let ws_route = warp::path("ws")
         .and(warp::ws())
         .and(warp::path::param())
         .and(with_user_repository(Arc::clone(&user_repository)))
         .and(with_message_service(Arc::clone(&message_service)))
-        .and_then(ws::handler::ws_handler);
+        .and_then(ws_handler);
 
     let login_route = warp::path("login")
         .and(warp::post())
         .and(warp::body::json())
         .and(with_user_repository(user_repository))
-        .and_then(user::handler::login_handler);
+        .and_then(login_handler);
 
-    let routes = health_route.or(ws_route).or(publish).or(login_route).with(
+    let routes = health_route.or(ws_route).or(messages).or(login_route).with(
         warp::cors()
             .allow_any_origin()
             .allow_origins(vec!["http://localhost:4200"])

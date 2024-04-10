@@ -1,13 +1,43 @@
 use std::sync::Arc;
-
-use crate::message::service::MessageService;
-use futures::FutureExt;
 use futures::StreamExt;
 use lapin::options::BasicAckOptions;
 use log::{debug, error};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+
+use crate::message::model::MessageRequest;
+use warp::http::StatusCode;
+use warp::{Rejection, Reply};
 use warp::ws::{Message, WebSocket};
+
+use futures::FutureExt;
+
+use crate::message::service::MessageService;
+use crate::user::repository::UserRepository;
+
+type Result<T> = std::result::Result<T, Rejection>;
+
+pub async fn ws_handler(
+    ws: warp::ws::Ws,
+    recipient: String,
+    user_repository: Arc<UserRepository>,
+    message_service: Arc<MessageService>,
+) -> Result<impl Reply> {
+    match user_repository.find_one(recipient.as_str()).await {
+        Some(_) => {
+            Ok(ws.on_upgrade(move |socket| client_connection(socket, recipient, message_service)))
+        }
+        None => Err(warp::reject::not_found()),
+    }
+}
+
+pub async fn messages_handler(
+    request: MessageRequest,
+    message_service: Arc<MessageService>,
+) -> Result<impl Reply> {
+    message_service.send(request).await;
+    Ok(StatusCode::OK)
+}
 
 pub async fn client_connection(
     ws: WebSocket,

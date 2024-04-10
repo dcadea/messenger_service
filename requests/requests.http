@@ -8,8 +8,8 @@ Content-Type: application/json
 
 {"username":"user1","password":"password1"}
 
-### Publish a message
-POST {{baseUrl}}/publish
+### Send a message
+POST {{baseUrl}}/messages
 Content-Type: application/json
 
 {
