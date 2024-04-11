@@ -38,26 +38,26 @@ async fn main() {
 
     let messages = warp::path!("messages")
         .and(warp::body::json())
-        .and(with_message_service(Arc::clone(&message_service)))
+        .and(with_message_service(message_service.clone()))
         .and_then(messages_handler);
 
     let ws_route = warp::path("ws")
         .and(warp::ws())
         .and(warp::path::param())
-        .and(with_user_repository(Arc::clone(&user_repository)))
-        .and(with_message_service(Arc::clone(&message_service)))
+        .and(with_user_repository(user_repository.clone()))
+        .and(with_message_service(message_service.clone()))
         .and_then(ws_handler);
 
     let login_route = warp::path("login")
         .and(warp::post())
         .and(warp::body::json())
-        .and(with_user_repository(Arc::clone(&user_repository)))
+        .and(with_user_repository(user_repository.clone()))
         .and_then(login_handler);
 
     let register_route = warp::path("register")
         .and(warp::post())
         .and(warp::body::json())
-        .and(with_user_repository(Arc::clone(&user_repository)))
+        .and(with_user_repository(user_repository.clone()))
         .and_then(register_handler);
 
     let routes = health_route
