@@ -1,4 +1,6 @@
+use futures::TryStreamExt;
 use std::pin::Pin;
+use std::str::from_utf8;
 use std::sync::Arc;
 
 use lapin::options::{
@@ -75,9 +77,10 @@ impl MessageService {
 
         let consumer_tag = consumer.tag().clone();
 
-        let stream = consumer.then(|delivery| {
-            let delivery = delivery.unwrap();
-            let data = std::str::from_utf8(&delivery.data).unwrap().to_string();
+        let stream = consumer.and_then(|delivery| {
+            let data = from_utf8(&delivery.data)
+                .expect("not a utf8 string")
+                .to_string();
             async move {
                 delivery.ack(BasicAckOptions::default()).await?;
                 Ok(data)

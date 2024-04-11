@@ -29,7 +29,7 @@ impl User {
 
 impl Into<Bson> for User {
     fn into(self) -> Bson {
-        bson::to_bson(&self).unwrap()
+        bson::to_bson(&self).expect("Failed to convert User into Bson")
     }
 }
 

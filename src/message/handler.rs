@@ -47,11 +47,7 @@ pub async fn messages_handler(
     }
 }
 
-pub async fn client_connection(
-    ws: WebSocket,
-    recipient: String,
-    message_service: Arc<MessageService>,
-) {
+async fn client_connection(ws: WebSocket, recipient: String, message_service: Arc<MessageService>) {
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
     let (client_sender, client_rcv) = mpsc::unbounded_channel();
     let client_sender = Arc::new(Mutex::new(client_sender));
@@ -100,9 +96,9 @@ pub async fn client_connection(
         };
     }
 
-    message_service
-        .close_consumer(consumer_tag, channel)
-        .await
-        .unwrap();
+    if let Err(e) = message_service.close_consumer(consumer_tag, channel).await {
+        error!("Failed to close consumer: {}", e);
+    };
+
     debug!("{} disconnected", recipient);
 }

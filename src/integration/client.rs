@@ -27,10 +27,14 @@ impl ClientFactory {
 
         let mut mongo_client_options = mongodb::options::ClientOptions::parse(connection_url)
             .await
-            .unwrap();
+            .expect("Error parsing mongodb connection options");
+
         mongo_client_options.connect_timeout = Some(Duration::from_secs(5));
         mongo_client_options.server_selection_timeout = Some(Duration::from_secs(2));
-        let client = mongodb::Client::with_options(mongo_client_options).unwrap();
+
+        let client = mongodb::Client::with_options(mongo_client_options)
+            .expect("Error creating mongodb client");
+
         client.database(&*database)
     }
 
@@ -38,11 +42,8 @@ impl ClientFactory {
         let addr =
             std::env::var("AMQP_ADDR").unwrap_or_else(|_| "amqp://127.0.0.1:5672/%2f".into());
 
-        let conn = lapin::Connection::connect(&addr, lapin::ConnectionProperties::default()).await;
-
-        match conn {
-            Ok(conn) => conn,
-            Err(e) => panic!("Error connecting to RabbitMQ: {}", e),
-        }
+        lapin::Connection::connect(&addr, lapin::ConnectionProperties::default())
+            .await
+            .expect("Error connecting to RabbitMQ")
     }
 }
