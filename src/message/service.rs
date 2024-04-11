@@ -1,13 +1,16 @@
+use std::pin::Pin;
 use std::sync::Arc;
 
 use lapin::options::{
-    BasicCancelOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
+    BasicAckOptions, BasicCancelOptions, BasicConsumeOptions, BasicPublishOptions,
+    QueueDeclareOptions,
 };
 use lapin::types::FieldTable;
-use lapin::{BasicProperties, Channel, Connection, Consumer};
+use lapin::{BasicProperties, Channel, Connection};
 use log::{debug, error};
 use serde_json::json;
 use tokio::sync::Mutex;
+use tokio_stream::{Stream, StreamExt};
 
 use crate::message::model::MessageRequest;
 use crate::message::repository::MessageRepository;
@@ -63,8 +66,18 @@ impl MessageService {
         }
     }
 
-    pub async fn consume(&self, queue_name: &str) -> Result<(Consumer, Channel), lapin::Error> {
-        let queue_name = match self.declare_queue(queue_name).await {
+    pub async fn read(
+        &self,
+        recipient: &str,
+    ) -> Result<
+        (
+            String, // consumer_tag
+            Channel,
+            Pin<Box<dyn Stream<Item = Result<String, lapin::Error>> + Send>>,
+        ),
+        lapin::Error,
+    > {
+        let queue_name = match self.declare_queue(recipient).await {
             Ok(name) => name,
             Err(e) => return Err(e),
         };
@@ -81,16 +94,27 @@ impl MessageService {
             )
             .await?;
 
-        Ok((consumer, channel))
+        let consumer_tag = consumer.tag().clone();
+
+        let stream = consumer.then(|delivery| {
+            let delivery = delivery.unwrap();
+            let data = std::str::from_utf8(&delivery.data).unwrap().to_string();
+            async move {
+                delivery.ack(BasicAckOptions::default()).await?;
+                Ok(data)
+            }
+        });
+
+        Ok((consumer_tag.to_string(), channel, Box::pin(stream)))
     }
 
     pub async fn close_consumer(
         &self,
-        consumer_tag: &str,
+        consumer_tag: String,
         channel: Channel,
     ) -> Result<(), lapin::Error> {
         match channel
-            .basic_cancel(consumer_tag, BasicCancelOptions::default())
+            .basic_cancel(&consumer_tag, BasicCancelOptions::default())
             .await
         {
             Ok(_) => {

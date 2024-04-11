@@ -1,17 +1,15 @@
-use futures::StreamExt;
-use lapin::options::BasicAckOptions;
-use log::{debug, error};
 use std::sync::Arc;
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
-use crate::message::model::MessageRequest;
+use futures::FutureExt;
+use futures::StreamExt;
+use log::{debug, error};
+use tokio::sync::{mpsc, Mutex};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::http::StatusCode;
 use warp::ws::{Message, WebSocket};
 use warp::{Rejection, Reply};
 
-use futures::FutureExt;
-
+use crate::message::model::MessageRequest;
 use crate::message::service::MessageService;
 use crate::user::repository::UserRepository;
 
@@ -46,6 +44,7 @@ pub async fn client_connection(
 ) {
     let (client_ws_sender, mut client_ws_rcv) = ws.split();
     let (client_sender, client_rcv) = mpsc::unbounded_channel();
+    let client_sender = Arc::new(Mutex::new(client_sender));
 
     let client_rcv = UnboundedReceiverStream::new(client_rcv);
     tokio::task::spawn(client_rcv.forward(client_ws_sender).map(|result| {
@@ -56,20 +55,26 @@ pub async fn client_connection(
 
     debug!("{} connected", recipient);
 
-    let (mut consumer, channel) = message_service.consume(recipient.as_str()).await.unwrap();
-    let consumer_tag = consumer.tag();
-
-    tokio::spawn(async move {
-        while let Some(delivery) = consumer.next().await {
-            let delivery = delivery.unwrap();
-            let message_json = std::str::from_utf8(&delivery.data).unwrap();
-
-            let _ = client_sender.send(Ok(Message::text(message_json)));
-
-            // TODO: move to message service
-            delivery.ack(BasicAckOptions::default()).await.unwrap();
+    let (consumer_tag, channel, messages_stream) = match message_service.read(&recipient).await {
+        Ok(binding) => binding,
+        Err(e) => {
+            error!("Failed to read messages: {}", e);
+            return;
         }
-    });
+    };
+
+    let client_sender_clone = Arc::clone(&client_sender);
+    tokio::spawn(messages_stream.for_each(move |data| {
+        let client_sender = Arc::clone(&client_sender_clone);
+        async move {
+            match data {
+                Ok(data) => {
+                    let _ = client_sender.lock().await.send(Ok(Message::text(data)));
+                }
+                Err(e) => error!("Failed to read message: {}", e),
+            }
+        }
+    }));
 
     while let Some(result) = client_ws_rcv.next().await {
         let _ = match result {
@@ -86,7 +91,7 @@ pub async fn client_connection(
     }
 
     message_service
-        .close_consumer(consumer_tag.as_str(), channel)
+        .close_consumer(consumer_tag, channel)
         .await
         .unwrap();
     debug!("{} disconnected", recipient);
