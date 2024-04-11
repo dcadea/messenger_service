@@ -41,6 +41,17 @@ impl Message {
     }
 }
 
+impl From<MessageRequest> for Message {
+    fn from(request: MessageRequest) -> Self {
+        Self::new(
+            request.sender(),
+            request.recipient(),
+            request.text(),
+            Utc::now().timestamp(),
+        )
+    }
+}
+
 #[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub struct MessageRequest {
     sender: String,
@@ -62,15 +73,19 @@ impl MessageRequest {
     }
 }
 
-impl From<MessageRequest> for Message {
-    fn from(request: MessageRequest) -> Self {
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct MessageResponse {
+    sender: String,
+    text: String,
+    timestamp: i64,
+}
+
+impl From<Message> for MessageResponse {
+    fn from(message: Message) -> Self {
         Self {
-            _id: None,
-            sender: request.sender().to_string(),
-            recipient: request.recipient().to_string(),
-            text: request.text().to_string(),
-            timestamp: Utc::now().timestamp(),
-            seen: false,
+            sender: message.sender().to_string(),
+            text: message.text().to_string(),
+            timestamp: message.timestamp(),
         }
     }
 }

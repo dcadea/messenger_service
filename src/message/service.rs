@@ -12,7 +12,7 @@ use serde_json::json;
 use tokio::sync::Mutex;
 use tokio_stream::{Stream, StreamExt};
 
-use crate::message::model::MessageRequest;
+use crate::message::model::{Message, MessageRequest, MessageResponse};
 use crate::message::repository::MessageRepository;
 
 pub struct MessageService {
@@ -31,39 +31,24 @@ impl MessageService {
         }
     }
 
-    pub async fn send(&self, request: MessageRequest) {
-        let message = request.clone().into();
+    /**
+     * Send a message to a recipient.
+     */
+    pub async fn send(&self, request: MessageRequest) -> Result<MessageResponse, lapin::Error> {
+        let message: Message = request.clone().into();
+        let (queue_name, channel) = self.split_queue(request.recipient()).await?;
+        let message_json = json!(message).to_string();
 
-        match self.message_repository.insert(&message).await {
-            Ok(_) => {
-                debug!("Message saved to database.");
-
-                let queue_name = match self.declare_queue(request.recipient()).await {
-                    Ok(name) => name,
-                    Err(_) => return,
-                };
-
-                let conn = self.rabbitmq_con.lock().await;
-                let channel = conn.create_channel().await.unwrap();
-
-                let message_json = json!(message).to_string();
-
-                match channel
-                    .basic_publish(
-                        "",
-                        &queue_name,
-                        BasicPublishOptions::default(),
-                        message_json.as_bytes(),
-                        BasicProperties::default(),
-                    )
-                    .await
-                {
-                    Ok(_) => debug!("Message published to queue: {}", queue_name),
-                    Err(e) => error!("Failed to publish message: {}", e),
-                }
-            }
-            Err(e) => error!("Failed to save message to database: {}", e),
-        }
+        channel
+            .basic_publish(
+                "",
+                &queue_name,
+                BasicPublishOptions::default(),
+                message_json.as_bytes(),
+                BasicProperties::default(),
+            )
+            .await
+            .map(|_| message.into())
     }
 
     pub async fn read(
@@ -77,13 +62,7 @@ impl MessageService {
         ),
         lapin::Error,
     > {
-        let queue_name = match self.declare_queue(recipient).await {
-            Ok(name) => name,
-            Err(e) => return Err(e),
-        };
-
-        let conn = self.rabbitmq_con.lock().await;
-        let channel = conn.create_channel().await?;
+        let (queue_name, channel) = self.split_queue(recipient).await?;
 
         let consumer = channel
             .basic_consume(
@@ -128,11 +107,11 @@ impl MessageService {
         }
     }
 
-    async fn declare_queue(&self, queue_name: &str) -> Result<String, lapin::Error> {
+    async fn split_queue(&self, queue_name: &str) -> Result<(String, Channel), lapin::Error> {
         let conn = self.rabbitmq_con.lock().await;
         let channel = conn.create_channel().await?;
 
-        match channel
+        let queue_name = channel
             .queue_declare(
                 queue_name,
                 QueueDeclareOptions {
@@ -142,12 +121,8 @@ impl MessageService {
                 FieldTable::default(),
             )
             .await
-        {
-            Ok(queue) => Ok(queue.name().to_string()),
-            Err(e) => {
-                error!("Failed to declare queue: {}", e);
-                Err(e)
-            }
-        }
+            .map(|queue| queue.name().to_string())?;
+
+        Ok((queue_name, channel))
     }
 }

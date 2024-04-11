@@ -6,9 +6,11 @@ use log::{debug, error};
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use warp::http::StatusCode;
+use warp::reply::{json, with_status};
 use warp::ws::{Message, WebSocket};
 use warp::{Rejection, Reply};
 
+use crate::error::model::ApiError;
 use crate::message::model::MessageRequest;
 use crate::message::service::MessageService;
 use crate::user::repository::UserRepository;
@@ -33,8 +35,16 @@ pub async fn messages_handler(
     request: MessageRequest,
     message_service: Arc<MessageService>,
 ) -> Result<impl Reply> {
-    message_service.send(request).await;
-    Ok(StatusCode::OK)
+    match message_service.send(request).await {
+        Ok(response) => Ok(with_status(json(&response), StatusCode::CREATED)),
+        Err(e) => {
+            error!("Failed to send a message: {}", e);
+            Ok(with_status(
+                json(&ApiError::new("Failed to send a message")),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ))
+        }
+    }
 }
 
 pub async fn client_connection(
