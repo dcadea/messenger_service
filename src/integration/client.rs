@@ -1,4 +1,7 @@
+use std::sync::Arc;
 use std::time::Duration;
+
+use tokio::sync::Mutex;
 
 pub struct ClientFactory {}
 
@@ -38,12 +41,13 @@ impl ClientFactory {
         client.database(&*database)
     }
 
-    pub async fn init_rabbitmq() -> lapin::Connection {
+    pub async fn init_rabbitmq() -> Arc<Mutex<lapin::Connection>> {
         let addr =
             std::env::var("AMQP_ADDR").unwrap_or_else(|_| "amqp://127.0.0.1:5672/%2f".into());
 
         lapin::Connection::connect(&addr, lapin::ConnectionProperties::default())
             .await
+            .map(|con| Arc::new(Mutex::new(con)))
             .expect("Error connecting to RabbitMQ")
     }
 }

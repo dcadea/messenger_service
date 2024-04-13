@@ -1,7 +1,6 @@
 use std::convert::Infallible;
 use std::sync::Arc;
 
-use tokio::sync::Mutex;
 use warp::Filter;
 
 use handler::health_handler;
@@ -11,6 +10,7 @@ use user::handler::login_handler;
 
 use crate::integration::client::ClientFactory;
 use crate::message::repository::MessageRepository;
+use crate::message::service::start_purging;
 use crate::user::handler::register_handler;
 use crate::user::repository::UserRepository;
 
@@ -24,15 +24,14 @@ mod user;
 async fn main() {
     env_logger::init();
 
-    // TODO
-    let _ = ClientFactory::init_redis().await;
-
     let database = ClientFactory::init_mongodb().await;
-    let user_repository = Arc::new(UserRepository::new(&database));
-    let message_repository = Arc::new(MessageRepository::new(&database));
+    let user_repository = UserRepository::new(&database);
+    let message_repository = MessageRepository::new(&database);
 
-    let rabbitmq_client = Arc::new(Mutex::new(ClientFactory::init_rabbitmq().await));
-    let message_service = Arc::new(MessageService::new(rabbitmq_client, message_repository));
+    let rabbitmq_client = ClientFactory::init_rabbitmq().await;
+    let message_service = MessageService::new(rabbitmq_client.clone());
+
+    start_purging(message_service.clone(), message_repository.clone());
 
     let health_route = warp::path!("health").and_then(health_handler);
 
@@ -91,12 +90,3 @@ fn with_message_service(
 ) -> impl Filter<Extract = (Arc<MessageService>,), Error = Infallible> + Clone {
     warp::any().map(move || service.clone())
 }
-
-// TODO
-// fn with_message_repository(repository: MessageRepository) -> impl Filter<Extract=(MessageRepository, ), Error=Infallible> + Clone {
-//     warp::any().map(move || repository.clone())
-// }
-//
-// fn with_redis_client(redis_client: redis::Client) -> impl Filter<Extract=(redis::Client, ), Error=Infallible> + Clone {
-//     warp::any().map(move || redis_client.clone())
-// }

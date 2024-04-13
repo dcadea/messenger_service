@@ -35,7 +35,7 @@ pub async fn messages_handler(
     request: MessageRequest,
     message_service: Arc<MessageService>,
 ) -> Result<impl Reply> {
-    match message_service.send(request).await {
+    match message_service.publish_for_recipient(request).await {
         Ok(response) => Ok(with_status(json(&response), StatusCode::CREATED)),
         Err(e) => {
             error!("Failed to send a message: {}", e);
@@ -69,13 +69,21 @@ async fn client_connection(ws: WebSocket, recipient: String, message_service: Ar
         }
     };
 
-    let client_sender_clone = Arc::clone(&client_sender);
+    let client_sender_clone = client_sender.clone();
+    let message_service_clone = message_service.clone();
     tokio::spawn(messages_stream.for_each(move |data| {
-        let client_sender = Arc::clone(&client_sender_clone);
+        let client_sender = client_sender_clone.clone();
+        let message_service = message_service_clone.clone();
         async move {
             match data {
                 Ok(data) => {
-                    let _ = client_sender.lock().await.send(Ok(Message::text(data)));
+                    let _ = client_sender
+                        .lock()
+                        .await
+                        .send(Ok(Message::text(data.clone())));
+                    if let Err(e) = message_service.publish_for_storage(data).await {
+                        error!("Failed to store message: {}", e);
+                    }
                 }
                 Err(e) => error!("Failed to read message: {}", e),
             }

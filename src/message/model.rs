@@ -1,7 +1,7 @@
 use chrono::Utc;
 use mongodb::bson;
 
-#[derive(serde::Deserialize, serde::Serialize, Debug)]
+#[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub struct Message {
     #[serde(skip)]
     _id: Option<bson::oid::ObjectId>,
@@ -22,22 +22,6 @@ impl Message {
             timestamp,
             seen: false,
         }
-    }
-
-    pub fn sender(&self) -> &str {
-        &self.sender
-    }
-
-    pub fn recipient(&self) -> &str {
-        &self.recipient
-    }
-
-    pub fn timestamp(&self) -> i64 {
-        self.timestamp
-    }
-
-    pub fn text(&self) -> &str {
-        &self.text
     }
 }
 
@@ -83,9 +67,9 @@ pub struct MessageResponse {
 impl From<Message> for MessageResponse {
     fn from(message: Message) -> Self {
         Self {
-            sender: message.sender().to_string(),
-            text: message.text().to_string(),
-            timestamp: message.timestamp(),
+            sender: message.sender.to_string(),
+            text: message.text.to_string(),
+            timestamp: message.timestamp,
         }
     }
 }
