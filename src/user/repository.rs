@@ -1,8 +1,9 @@
+use std::sync::Arc;
+
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
 use mongodb::error::Error;
 use mongodb::Database;
-use std::sync::Arc;
 
 use crate::user::model::User;
 
@@ -33,7 +34,7 @@ impl UserRepository {
             .map(|r| r.inserted_id.as_object_id())
     }
 
-    pub async fn update(&self, user: &User) -> Result<bool, Error> {
+    pub async fn update(&self, user: User) -> Result<bool, Error> {
         let filter = doc! { "username": user.username() };
         let document = doc! { "$set": user };
 

@@ -6,3 +6,4 @@ pub mod user;
 
 // used between modules
 pub mod error;
+pub mod state;

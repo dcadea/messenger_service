@@ -16,7 +16,7 @@ use tokio::sync::Mutex;
 use tokio_stream::Stream;
 
 use crate::message::model::{Message, MessageRequest, MessageResponse};
-use crate::message::repository::MessageRepository;
+use crate::state::AppState;
 
 type MessageStream = Pin<Box<dyn Stream<Item = Result<String, lapin::Error>> + Send>>;
 
@@ -49,13 +49,12 @@ impl MessageService {
      * Publishes a message to a storage queue.
      */
     pub async fn publish_for_storage(&self, data: String) -> Result<(), lapin::Error> {
-        self.publish(DB_MESSAGES_QUEUE, data).await
+        let message = serde_json::from_str::<Message>(&data).unwrap();
+
+        self.publish(DB_MESSAGES_QUEUE, message).await
     }
 
-    async fn publish<T>(&self, queue_name: &str, payload: T) -> Result<(), lapin::Error>
-    where
-        T: serde::Serialize,
-    {
+    async fn publish(&self, queue_name: &str, payload: Message) -> Result<(), lapin::Error> {
         let (queue_name, channel) = self.split_queue(queue_name).await?;
         let message_json = json!(payload).to_string();
 
@@ -132,11 +131,8 @@ impl MessageService {
     }
 }
 
-pub fn start_purging(
-    message_service: Arc<MessageService>,
-    message_repository: Arc<MessageRepository>,
-) {
-    let message_service_clone = message_service.clone();
+pub fn start_purging(state: AppState) {
+    let message_service_clone = state.message_service.clone();
     tokio::spawn(async move {
         let message_service = message_service_clone.clone();
         let (consumer_tag, channel, messages_stream) =
@@ -150,7 +146,7 @@ pub fn start_purging(
 
         messages_stream
             .for_each(move |data| {
-                let message_repository = message_repository.clone();
+                let message_repository = state.message_repository.clone();
                 async move {
                     match data {
                         Ok(data) => {

@@ -1,48 +1,49 @@
 use std::sync::Arc;
 
-use futures::FutureExt;
-use futures::StreamExt;
+use crate::error::ApiError;
+use crate::message::model::{MessageRequest, MessageResponse};
+use axum::extract::ws::{Message, WebSocket};
+use axum::extract::{Path, State, WebSocketUpgrade};
+use axum::response::{ErrorResponse, Response, Result};
+use axum::routing::{get, post};
+use axum::{Json, Router};
+use futures::{FutureExt, StreamExt};
 use log::{debug, error};
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use warp::http::StatusCode;
-use warp::reply::{json, with_status};
-use warp::ws::{Message, WebSocket};
-use warp::{Rejection, Reply};
 
-use crate::error::model::ApiError;
-use crate::message::model::MessageRequest;
 use crate::message::service::MessageService;
-use crate::user::repository::UserRepository;
+use crate::state::AppState;
 
-type Result<T> = std::result::Result<T, Rejection>;
+pub fn router<S>(state: AppState) -> Router<S> {
+    Router::new()
+        .route("/ws/:recipient", get(ws_handler))
+        .route("/messages", post(messages_handler))
+        .with_state(state)
+}
 
-pub async fn ws_handler(
-    ws: warp::ws::Ws,
-    recipient: String,
-    user_repository: Arc<UserRepository>,
-    message_service: Arc<MessageService>,
-) -> Result<impl Reply> {
-    match user_repository.find_one(recipient.as_str()).await {
-        Some(_) => {
-            Ok(ws.on_upgrade(move |socket| client_connection(socket, recipient, message_service)))
-        }
-        None => Err(warp::reject::not_found()),
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    Path(recipient): Path<String>,
+    state: State<AppState>,
+) -> Result<Response> {
+    match state.user_repository.find_one(recipient.as_str()).await {
+        Some(_) => Ok(ws.on_upgrade(move |socket| {
+            client_connection(socket, recipient, state.message_service.clone())
+        })),
+        None => Err(ErrorResponse::from(ApiError::UserNotFound)),
     }
 }
 
-pub async fn messages_handler(
-    request: MessageRequest,
-    message_service: Arc<MessageService>,
-) -> Result<impl Reply> {
-    match message_service.publish_for_recipient(request).await {
-        Ok(response) => Ok(with_status(json(&response), StatusCode::CREATED)),
+async fn messages_handler(
+    state: State<AppState>,
+    Json(request): Json<MessageRequest>,
+) -> Result<Json<MessageResponse>> {
+    match state.message_service.publish_for_recipient(request).await {
+        Ok(response) => Ok(Json(response)),
         Err(e) => {
             error!("Failed to send a message: {}", e);
-            Ok(with_status(
-                json(&ApiError::new("Failed to send a message")),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            ))
+            Err(ErrorResponse::from(ApiError::InternalServerError))
         }
     }
 }
@@ -80,7 +81,7 @@ async fn client_connection(ws: WebSocket, recipient: String, message_service: Ar
                     let _ = client_sender
                         .lock()
                         .await
-                        .send(Ok(Message::text(data.clone())));
+                        .send(Ok(Message::Text(data.clone())));
                     if let Err(e) = message_service.publish_for_storage(data).await {
                         error!("Failed to store message: {}", e);
                     }

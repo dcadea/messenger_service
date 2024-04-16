@@ -1,7 +1,8 @@
 use mongodb::bson;
 use mongodb::bson::Bson;
+use serde::{Deserialize, Serialize};
 
-#[derive(serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Serialize, Deserialize)]
 pub struct User {
     #[serde(skip)]
     _id: Option<bson::oid::ObjectId>,
@@ -33,7 +34,7 @@ impl Into<Bson> for User {
     }
 }
 
-#[derive(serde::Serialize)]
+#[derive(Serialize)]
 pub struct UserResponse {
     username: String,
 }

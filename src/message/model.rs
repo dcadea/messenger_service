@@ -1,7 +1,8 @@
 use chrono::Utc;
 use mongodb::bson;
+use serde::{Deserialize, Serialize};
 
-#[derive(serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Message {
     #[serde(skip)]
     _id: Option<bson::oid::ObjectId>,
@@ -36,7 +37,7 @@ impl From<MessageRequest> for Message {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Clone)]
+#[derive(Deserialize, Clone)]
 pub struct MessageRequest {
     sender: String,
     recipient: String,
@@ -57,7 +58,7 @@ impl MessageRequest {
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Serialize)]
 pub struct MessageResponse {
     sender: String,
     text: String,
