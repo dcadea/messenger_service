@@ -5,9 +5,10 @@ use tower_http::cors::{Any, CorsLayer};
 
 use crate::integration::client::ClientFactory;
 use crate::message::repository::MessageRepository;
-use crate::message::service::{start_purging, MessageService};
+use crate::message::service::MessageService;
 use crate::state::AppState;
 use crate::user::repository::UserRepository;
+use crate::user::service::UserService;
 
 mod error;
 mod integration;
@@ -21,15 +22,16 @@ async fn main() {
 
     let database = ClientFactory::init_mongodb().await;
 
-    let rabbitmq_client = ClientFactory::init_rabbitmq().await;
-
     let state = AppState {
-        message_service: MessageService::new(rabbitmq_client.clone()),
-        user_repository: UserRepository::new(&database),
-        message_repository: MessageRepository::new(&database),
+        message_service: MessageService::new(
+            ClientFactory::init_rabbitmq().await,
+            MessageRepository::new(&database),
+        ),
+
+        user_service: UserService::new(UserRepository::new(&database)),
     };
 
-    start_purging(state.clone());
+    state.clone().message_service.start_purging();
 
     let cors = CorsLayer::new()
         .allow_origin(Any)

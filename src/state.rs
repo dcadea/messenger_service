@@ -1,15 +1,12 @@
 use std::sync::Arc;
 
-use crate::message::repository::MessageRepository;
 use crate::message::service::MessageService;
-use crate::user::repository::UserRepository;
+use crate::user::service::UserService;
 
 #[derive(Clone)]
 pub struct AppState {
     pub message_service: Arc<MessageService>,
-
-    pub user_repository: Arc<UserRepository>,
-    pub message_repository: Arc<MessageRepository>,
+    pub user_service: Arc<UserService>,
 }
 
 // TODO: investigate

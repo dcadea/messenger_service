@@ -1,5 +1,5 @@
 use axum::extract::State;
-use axum::response::{ErrorResponse, Result};
+use axum::response::Result;
 use axum::routing::post;
 use axum::{Json, Router};
 
@@ -14,30 +14,27 @@ pub fn router<S>(state: AppState) -> Router<S> {
         .with_state(state)
 }
 
-async fn login_handler(state: State<AppState>, user: Json<User>) -> Result<Json<UserResponse>> {
-    let password = user.password();
-
-    match state.user_repository.find_one(user.username()).await {
-        Some(u) => {
-            if u.password().eq(password) {
-                return Ok(Json(UserResponse::new(user.username())));
-            }
-
-            return Err(ErrorResponse::from(ApiError::InvalidCredentials));
-        }
-        None => Err(ErrorResponse::from(ApiError::UserNotFound)),
-    }
+async fn login_handler(
+    state: State<AppState>,
+    user: Json<User>,
+) -> Result<Json<UserResponse>, ApiError> {
+    state
+        .user_service
+        .login(user.username(), user.password())
+        .await
+        .map(Json)
 }
 
-async fn register_handler(state: State<AppState>, user: Json<User>) -> Result<Json<UserResponse>> {
-    match state.user_repository.find_one(user.username()).await {
-        Some(_) => Err(ErrorResponse::from(ApiError::UserAlreadyExists)),
-        None => {
-            match state.user_repository.insert(&user).await {
-                // TODO: return 201 Created
-                Ok(_) => Ok(Json(UserResponse::new(user.username()))),
-                Err(_) => Err(ErrorResponse::from(ApiError::InternalServerError)),
-            }
-        }
+async fn register_handler(
+    state: State<AppState>,
+    user: Json<User>,
+) -> Result<Json<UserResponse>, ApiError> {
+    if state.user_service.exists(user.username()).await {
+        return Err(ApiError::UserAlreadyExists);
     }
+
+    let created = state.user_service.create(&user).await?;
+
+    // TODO: return 201 Created
+    Ok(Json(created))
 }

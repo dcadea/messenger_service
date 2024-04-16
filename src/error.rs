@@ -10,14 +10,21 @@ pub enum ApiError {
 
     InvalidCredentials,
 
-    InternalServerError,
+    WebSocketConnectionRejected,
 
     RabbitMQError(lapin::Error),
+    MongoDBError(mongodb::error::Error),
 }
 
 impl From<lapin::Error> for ApiError {
     fn from(error: lapin::Error) -> Self {
         Self::RabbitMQError(error)
+    }
+}
+
+impl From<mongodb::error::Error> for ApiError {
+    fn from(error: mongodb::error::Error) -> Self {
+        Self::MongoDBError(error)
     }
 }
 
@@ -29,20 +36,25 @@ impl IntoResponse for ApiError {
         }
 
         let (status, message) = match self {
-            // TODO: implement error payload
             Self::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists".to_owned()),
             Self::UserNotFound => (StatusCode::NOT_FOUND, "User not found".to_owned()),
 
             Self::InvalidCredentials => (StatusCode::FORBIDDEN, "Invalid credentials".to_owned()),
 
-            // TODO: remove
-            Self::InternalServerError => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal server error".to_string(),
-            ),
+            Self::WebSocketConnectionRejected => {
+                (StatusCode::FORBIDDEN, "WS connection rejected".to_owned())
+            }
 
             Self::RabbitMQError(e) => {
                 debug!("RabbitMQ error: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Something went wrong".to_owned(),
+                )
+            }
+
+            Self::MongoDBError(e) => {
+                debug!("MongoDB error: {}", e);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Something went wrong".to_owned(),

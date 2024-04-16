@@ -1,10 +1,8 @@
 use std::sync::Arc;
 
-use crate::error::ApiError;
-use crate::message::model::{MessageRequest, MessageResponse};
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{Path, State, WebSocketUpgrade};
-use axum::response::{ErrorResponse, Response, Result};
+use axum::response::{Response, Result};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use futures::{FutureExt, StreamExt};
@@ -12,6 +10,8 @@ use log::{debug, error};
 use tokio::sync::{mpsc, Mutex};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+use crate::error::ApiError;
+use crate::message::model::{MessageRequest, MessageResponse};
 use crate::message::service::MessageService;
 use crate::state::AppState;
 
@@ -26,26 +26,25 @@ async fn ws_handler(
     ws: WebSocketUpgrade,
     Path(recipient): Path<String>,
     state: State<AppState>,
-) -> Result<Response> {
-    match state.user_repository.find_one(recipient.as_str()).await {
-        Some(_) => Ok(ws.on_upgrade(move |socket| {
+) -> Result<Response, ApiError> {
+    if state.user_service.exists(recipient.as_str()).await {
+        Ok(ws.on_upgrade(move |socket| {
             client_connection(socket, recipient, state.message_service.clone())
-        })),
-        None => Err(ErrorResponse::from(ApiError::UserNotFound)),
+        }))
+    } else {
+        Err(ApiError::WebSocketConnectionRejected)
     }
 }
 
 async fn messages_handler(
     state: State<AppState>,
     Json(request): Json<MessageRequest>,
-) -> Result<Json<MessageResponse>> {
-    match state.message_service.publish_for_recipient(request).await {
-        Ok(response) => Ok(Json(response)),
-        Err(e) => {
-            error!("Failed to send a message: {}", e);
-            Err(ErrorResponse::from(ApiError::InternalServerError))
-        }
-    }
+) -> Result<Json<MessageResponse>, ApiError> {
+    state
+        .message_service
+        .publish_for_recipient(request)
+        .await
+        .map(|v| Ok(Json(v)))?
 }
 
 async fn client_connection(ws: WebSocket, recipient: String, message_service: Arc<MessageService>) {
