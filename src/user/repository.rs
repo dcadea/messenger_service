@@ -33,23 +33,4 @@ impl UserRepository {
             .await
             .map(|r| r.inserted_id.as_object_id())
     }
-
-    pub async fn update(&self, user: User) -> Result<bool, Error> {
-        let filter = doc! { "username": user.username() };
-        let document = doc! { "$set": user };
-
-        self.collection
-            .update_one(filter, document, None)
-            .await
-            .map(|r| r.modified_count > 0)
-    }
-
-    pub async fn delete(&self, username: &str) -> Result<bool, Error> {
-        let filter = doc! { "username": username };
-
-        self.collection
-            .delete_one(filter, None)
-            .await
-            .map(|r| r.deleted_count > 0)
-    }
 }

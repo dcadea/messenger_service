@@ -10,7 +10,7 @@ mod test {
     async fn test_queue_message() {
         let conn = ClientFactory::init_rabbitmq().await;
 
-        let channel = conn.create_channel().await.unwrap();
+        let channel = conn.lock().await.create_channel().await.unwrap();
 
         let _ = channel
             .queue_declare(

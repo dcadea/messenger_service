@@ -21,6 +21,7 @@ async fn main() {
     env_logger::init();
 
     let database = ClientFactory::init_mongodb().await;
+    let _ = ClientFactory::init_redis().await;
 
     let state = AppState {
         message_service: MessageService::new(

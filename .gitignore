@@ -1,2 +1,7 @@
 /target
 /.idea
+/.zed
+
+.env
+
+.DS_Store
