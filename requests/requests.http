@@ -15,17 +15,14 @@ Content-Type: application/json
 
 {"username":"user2","password":"password2"}
 
-
-### Send a message
-POST {{baseUrl}}/messages
-Content-Type: application/json
-
-{
-  "sender": "valera",
-  "recipient": "user1",
-  "text": "finally a cat message"
-}
-
-
-### Open a ws connection listening for recipient 'user1'
+### WS for 'user1'
+# Acceptable body:
+#{
+#  "sender": "user2",
+#  "recipient": "user1",
+#  "text": "finally a cat message"
+#}
 WEBSOCKET {{wsUrl}}/ws/user1
+
+### WS for 'user2'
+WEBSOCKET {{wsUrl}}/ws/user2

@@ -15,7 +15,7 @@ use serde_json::json;
 use tokio::sync::Mutex;
 use tokio_stream::Stream;
 
-use crate::message::model::{Message, MessageRequest, MessageResponse};
+use crate::message::model::{Message, MessageRequest};
 use crate::message::repository::MessageRepository;
 
 type MessageStream = Pin<Box<dyn Stream<Item = Result<String, lapin::Error>> + Send>>;
@@ -44,15 +44,9 @@ impl MessageService {
     /**
      * Publishes a message to a recipient's dedicated queue.
      */
-    pub async fn publish_for_recipient(
-        &self,
-        request: MessageRequest,
-    ) -> Result<MessageResponse, lapin::Error> {
+    pub async fn publish_for_recipient(&self, request: MessageRequest) -> Result<(), lapin::Error> {
         let message: Message = request.clone().into();
-        let response: MessageResponse = message.clone().into();
-        self.publish(&request.recipient(), message)
-            .await
-            .map(|_| response)
+        self.publish(&request.recipient(), message).await
     }
 
     /**
@@ -133,7 +127,7 @@ impl MessageService {
                     async move {
                         match data {
                             Ok(data) => {
-                                let message: Message = serde_json::from_str(&data)
+                                let message = serde_json::from_str::<Message>(&data)
                                     .expect("Failed to deserialize message");
                                 if let Err(e) = message_repository.insert(&message).await {
                                     error!("Failed to store message: {}", e);

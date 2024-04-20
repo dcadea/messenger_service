@@ -57,20 +57,3 @@ impl MessageRequest {
         self.text.as_str()
     }
 }
-
-#[derive(Serialize)]
-pub struct MessageResponse {
-    sender: String,
-    text: String,
-    timestamp: i64,
-}
-
-impl From<Message> for MessageResponse {
-    fn from(message: Message) -> Self {
-        Self {
-            sender: message.sender.to_string(),
-            text: message.text.to_string(),
-            timestamp: message.timestamp,
-        }
-    }
-}
