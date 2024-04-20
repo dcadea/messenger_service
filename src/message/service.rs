@@ -54,7 +54,6 @@ impl MessageService {
      */
     pub async fn publish_for_storage(&self, data: String) -> Result<(), lapin::Error> {
         let message = serde_json::from_str::<Message>(&data).unwrap();
-
         self.publish(DB_MESSAGES_QUEUE, message).await
     }
 
