@@ -50,7 +50,8 @@ async fn handle_socket(ws: WebSocket, topic: String, message_service: Arc<Messag
 async fn read(
     mut receiver: SplitStream<WebSocket>,
     message_service: Arc<MessageService>,
-    notify: Arc<Notify>) {
+    notify: Arc<Notify>,
+) {
     while let Some(frame) = receiver.next().await {
         match frame {
             Ok(Message::Text(content)) => {
@@ -62,11 +63,11 @@ async fn read(
                 } else {
                     warn!("skipping frame, content is malformed: {:?}", content);
                 }
-            },
+            }
             Ok(Message::Close(_)) => {
                 notify.notify_one();
                 break;
-            },
+            }
             Ok(wtf) => debug!("received non-text ws frame: {:?}", wtf),
             Err(e) => {
                 error!("error receiving ws frame: {}", e);
@@ -80,7 +81,7 @@ async fn write(
     topic: String,
     sender: SplitSink<WebSocket, Message>,
     message_service: Arc<MessageService>,
-    notify: Arc<Notify>
+    notify: Arc<Notify>,
 ) {
     let sender = Arc::new(Mutex::new(sender));
 

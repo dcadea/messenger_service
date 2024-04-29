@@ -3,6 +3,8 @@ use axum::Router;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 
+use crate::chat::repository::ChatRepository;
+use crate::chat::service::ChatService;
 use crate::integration::client::ClientFactory;
 use crate::message::repository::MessageRepository;
 use crate::message::service::MessageService;
@@ -10,9 +12,11 @@ use crate::state::AppState;
 use crate::user::repository::UserRepository;
 use crate::user::service::UserService;
 
+mod chat;
 mod error;
 mod integration;
 mod message;
+mod result;
 mod state;
 mod user;
 
@@ -28,7 +32,7 @@ async fn main() {
             ClientFactory::init_rabbitmq().await,
             MessageRepository::new(&database),
         ),
-
+        chat_service: ChatService::new(ChatRepository::new(&database)),
         user_service: UserService::new(UserRepository::new(&database)),
     };
 
@@ -43,6 +47,7 @@ async fn main() {
         .route("/health", get(|| async { () }))
         .merge(message::api::router(state.clone()))
         .merge(user::api::router(state.clone()))
+        .merge(chat::api::router(state.clone()))
         .layer(cors);
 
     let listener = TcpListener::bind("127.0.0.1:8000").await.unwrap();

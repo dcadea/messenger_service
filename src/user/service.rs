@@ -14,7 +14,7 @@ impl UserService {
     }
 
     pub async fn login(&self, username: &str, password: &str) -> Result<UserResponse, ApiError> {
-        return match self.user_repository.find_one(username).await {
+        match self.user_repository.find_one(username).await {
             Some(user) => {
                 if user.password().eq(password) {
                     return Ok(UserResponse::new(username));
@@ -23,7 +23,7 @@ impl UserService {
                 Err(ApiError::InvalidCredentials)
             }
             None => Err(ApiError::UserNotFound),
-        };
+        }
     }
 
     pub async fn exists(&self, username: &str) -> bool {

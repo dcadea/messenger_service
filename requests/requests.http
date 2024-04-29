@@ -15,6 +15,11 @@ Content-Type: application/json
 
 {"username":"user2","password":"password2"}
 
+
+### Get chats for 'user1'
+GET {{baseUrl}}/chats/user1
+
+
 ### WS for 'user1'
 # Acceptable body:
 #{
@@ -23,6 +28,7 @@ Content-Type: application/json
 #  "text": "finally a cat message"
 #}
 WEBSOCKET {{wsUrl}}/ws/user1
+
 
 ### WS for 'user2'
 WEBSOCKET {{wsUrl}}/ws/user2
