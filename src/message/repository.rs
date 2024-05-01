@@ -14,7 +14,7 @@ impl MessageRepository {
         Self { collection }.into()
     }
 
-    pub async fn insert(&self, message: &Message) -> Result<()> {
+    pub(super) async fn insert(&self, message: &Message) -> Result<()> {
         self.collection.insert_one(message, None).await?;
         Ok(())
     }

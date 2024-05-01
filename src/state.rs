@@ -5,7 +5,7 @@ use crate::message::service::MessageService;
 use crate::user::service::UserService;
 
 #[derive(Clone)]
-pub struct AppState {
+pub(crate) struct AppState {
     pub message_service: Arc<MessageService>,
     pub chat_service: Arc<ChatService>,
     pub user_service: Arc<UserService>,

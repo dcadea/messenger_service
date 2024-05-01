@@ -16,11 +16,11 @@ impl UserService {
 }
 
 impl UserService {
-    pub async fn create(&self, user: &User) -> Result<()> {
+    pub(super) async fn create(&self, user: &User) -> Result<()> {
         self.repository.insert(user).await
     }
 
-    pub async fn matches(&self, username: &str, password: &str) -> Result<()> {
+    pub(super) async fn matches(&self, username: &str, password: &str) -> Result<()> {
         match self.repository.find_one(username).await {
             Some(user) => {
                 if user.password.eq(password) {

@@ -5,7 +5,7 @@ use log::debug;
 use serde::Serialize;
 
 #[derive(Debug)]
-pub enum ApiError {
+pub(crate) enum ApiError {
     UserAlreadyExists,
     UserNotFound,
 

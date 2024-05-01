@@ -16,7 +16,7 @@ impl UserRepository {
         Self { collection }.into()
     }
 
-    pub async fn find_one(&self, username: &str) -> Option<User> {
+    pub(super) async fn find_one(&self, username: &str) -> Option<User> {
         let filter = doc! { "username": username };
 
         if let Ok(u) = self.collection.find_one(filter, None).await {
@@ -26,7 +26,7 @@ impl UserRepository {
         None
     }
 
-    pub async fn insert(&self, user: &User) -> Result<()> {
+    pub(super) async fn insert(&self, user: &User) -> Result<()> {
         self.collection.insert_one(user, None).await?;
         Ok(())
     }

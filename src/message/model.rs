@@ -3,7 +3,7 @@ use mongodb::bson;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone)]
-pub struct Message {
+pub(super) struct Message {
     #[serde(skip)]
     _id: Option<bson::oid::ObjectId>,
     sender: String,
@@ -14,7 +14,7 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn new(sender: &str, recipient: &str, text: &str, timestamp: i64) -> Self {
+    fn new(sender: &str, recipient: &str, text: &str, timestamp: i64) -> Self {
         Self {
             _id: None,
             sender: sender.to_string(),
@@ -29,31 +29,17 @@ impl Message {
 impl From<MessageRequest> for Message {
     fn from(request: MessageRequest) -> Self {
         Self::new(
-            request.sender(),
-            request.recipient(),
-            request.text(),
+            &request.sender,
+            &request.recipient,
+            &request.text,
             Utc::now().timestamp(),
         )
     }
 }
 
 #[derive(Deserialize, Clone)]
-pub struct MessageRequest {
+pub(super) struct MessageRequest {
     sender: String,
-    recipient: String,
+    pub recipient: String,
     text: String,
-}
-
-impl MessageRequest {
-    pub fn sender(&self) -> &str {
-        self.sender.as_str()
-    }
-
-    pub fn recipient(&self) -> &str {
-        self.recipient.as_str()
-    }
-
-    pub fn text(&self) -> &str {
-        self.text.as_str()
-    }
 }

@@ -45,16 +45,16 @@ impl MessageService {
     /**
      * Publishes a message to a recipient's dedicated queue.
      */
-    pub async fn publish_for_recipient(&self, request: MessageRequest) -> Result<()> {
+    pub(super) async fn publish_for_recipient(&self, request: MessageRequest) -> Result<()> {
         let message: Message = request.clone().into();
-        self.publish(&request.recipient(), message).await?;
+        self.publish(&request.recipient, message).await?;
         Ok(())
     }
 
     /**
      * Publishes a message to a storage queue.
      */
-    pub async fn publish_for_storage(&self, data: String) -> Result<()> {
+    pub(super) async fn publish_for_storage(&self, data: String) -> Result<()> {
         let message = serde_json::from_str::<Message>(&data).unwrap();
         self.publish(DB_MESSAGES_QUEUE, message).await?;
         Ok(())
@@ -63,7 +63,7 @@ impl MessageService {
     /**
      * Reads messages from a recipient's dedicated queue.
      */
-    pub async fn read(
+    pub(super) async fn read(
         &self,
         recipient: &str,
     ) -> Result<(String, Channel, MessageStream)> {
@@ -96,7 +96,7 @@ impl MessageService {
     /**
      * Closes a consumer by its tag.
      */
-    pub async fn close_consumer(
+    pub(super) async fn close_consumer(
         &self,
         consumer_tag: String,
         channel: Channel,
