@@ -30,8 +30,8 @@ async fn main() {
 
     let state = AppState {
         message_service: MessageService::new(
-            client::init_rabbitmq().await,
             MessageRepository::new(&database),
+            client::init_rabbitmq().await,
         ),
         chat_service: ChatService::new(ChatRepository::new(&database)),
         user_service: UserService::new(UserRepository::new(&database)),
@@ -44,7 +44,9 @@ async fn main() {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let resources_router = Router::new().merge(chat::api::resources(state.clone()));
+    let resources_router = Router::new()
+        .merge(chat::api::resources(state.clone()))
+        .merge(message::api::resources(state.clone()));
 
     let router = Router::new()
         .route("/health", get(|| async { () }))

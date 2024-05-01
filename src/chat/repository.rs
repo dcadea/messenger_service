@@ -26,10 +26,7 @@ impl ChatRepository {
 
     pub(super) async fn find_all(&self) -> Result<Vec<Chat>> {
         let cursor = self.collection.find(None, None).await?;
-        cursor
-            .try_collect::<Vec<Chat>>()
-            .await
-            .map_err(ApiError::from)
+        cursor.try_collect().await.map_err(ApiError::from)
     }
 
     pub(super) async fn find_by_username(&self, username: &str) -> Result<Vec<Chat>> {
@@ -43,9 +40,6 @@ impl ChatRepository {
             )
             .await?;
 
-        cursor
-            .try_collect::<Vec<Chat>>()
-            .await
-            .map_err(ApiError::from)
+        cursor.try_collect().await.map_err(ApiError::from)
     }
 }

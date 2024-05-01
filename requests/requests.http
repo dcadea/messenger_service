@@ -16,6 +16,18 @@ Content-Type: application/json
 {"username":"user2","password":"password2"}
 
 
+### Get all messages
+GET {{apiUrl}}/messages
+
+
+### Get messages for 'user2'
+GET {{apiUrl}}/messages?recipient=user2
+
+
+### Get all chats
+GET {{apiUrl}}/chats
+
+
 ### Get chats for 'user1'
 GET {{apiUrl}}/chats?username=user1
 

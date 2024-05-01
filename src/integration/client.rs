@@ -32,8 +32,8 @@ pub async fn init_mongodb() -> mongodb::Database {
     mongo_client_options.connect_timeout = Some(Duration::from_secs(5));
     mongo_client_options.server_selection_timeout = Some(Duration::from_secs(2));
 
-    let client = mongodb::Client::with_options(mongo_client_options)
-        .expect("Error creating mongodb client");
+    let client =
+        mongodb::Client::with_options(mongo_client_options).expect("Error creating mongodb client");
 
     client.database(&*database)
 }

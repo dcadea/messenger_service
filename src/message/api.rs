@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use axum::extract::ws::{Message, WebSocket};
-use axum::extract::{Path, State, WebSocketUpgrade};
-use axum::response::{Response, Result};
+use axum::extract::ws::{Message as WsMessage, WebSocket};
+use axum::extract::{Path, Query, State, WebSocketUpgrade};
+use axum::response::Response;
 use axum::routing::get;
-use axum::Router;
+use axum::{Json, Router};
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 use log::{debug, error, warn};
@@ -12,9 +12,16 @@ use tokio::sync::{Mutex, Notify};
 use tokio::try_join;
 
 use crate::error::ApiError;
-use crate::message::model::MessageRequest;
+use crate::message::model::{Message, MessageParams, MessageRequest};
 use crate::message::service::MessageService;
+use crate::result::Result;
 use crate::state::AppState;
+
+pub fn resources<S>(state: AppState) -> Router<S> {
+    Router::new()
+        .route("/messages", get(find_handler))
+        .with_state(state)
+}
 
 pub fn ws_router<S>(state: AppState) -> Router<S> {
     Router::new()
@@ -22,11 +29,22 @@ pub fn ws_router<S>(state: AppState) -> Router<S> {
         .with_state(state)
 }
 
+async fn find_handler(
+    Query(params): Query<MessageParams>,
+    state: State<AppState>,
+) -> Result<Json<Vec<Message>>> {
+    match params.recipient {
+        Some(recipient) => state.message_service.find_by_recipient(&recipient).await,
+        None => state.message_service.find_all().await,
+    }
+    .map(Json)
+}
+
 async fn ws_handler(
     ws: WebSocketUpgrade,
     Path(topic): Path<String>,
     state: State<AppState>,
-) -> Result<Response, ApiError> {
+) -> Result<Response> {
     if !state.user_service.exists(topic.as_str()).await {
         return Err(ApiError::WebSocketConnectionRejected);
     }
@@ -50,7 +68,7 @@ async fn handle_socket(ws: WebSocket, topic: String, ms: Arc<MessageService>) {
 async fn read(mut receiver: SplitStream<WebSocket>, ms: Arc<MessageService>, notify: Arc<Notify>) {
     while let Some(frame) = receiver.next().await {
         match frame {
-            Ok(Message::Text(content)) => {
+            Ok(WsMessage::Text(content)) => {
                 debug!("received ws frame: {:?}", content);
                 if let Ok(msg) = serde_json::from_str::<MessageRequest>(content.as_str()) {
                     if let Err(e) = ms.publish_for_recipient(msg).await {
@@ -60,7 +78,7 @@ async fn read(mut receiver: SplitStream<WebSocket>, ms: Arc<MessageService>, not
                     warn!("skipping frame, content is malformed: {}", content);
                 }
             }
-            Ok(Message::Close(_)) => {
+            Ok(WsMessage::Close(_)) => {
                 notify.notify_one();
                 break;
             }
@@ -75,7 +93,7 @@ async fn read(mut receiver: SplitStream<WebSocket>, ms: Arc<MessageService>, not
 
 async fn write(
     topic: String,
-    sender: SplitSink<WebSocket, Message>,
+    sender: SplitSink<WebSocket, WsMessage>,
     ms: Arc<MessageService>,
     notify: Arc<Notify>,
 ) {
@@ -94,7 +112,7 @@ async fn write(
             item = messages_stream.next() => {
                 match item {
                     Some(Ok(item)) => {
-                        let message = Message::Text(item.clone());
+                        let message = WsMessage::Text(item.clone());
                         let mut sender = sender.lock().await;
                         let _ = sender.send(message).await;
                         if let Err(e) = ms.publish_for_storage(item).await {

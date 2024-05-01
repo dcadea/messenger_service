@@ -43,3 +43,8 @@ pub(super) struct MessageRequest {
     pub recipient: String,
     text: String,
 }
+
+#[derive(Deserialize)]
+pub(super) struct MessageParams {
+    pub recipient: Option<String>,
+}

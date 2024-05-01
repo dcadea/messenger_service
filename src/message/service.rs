@@ -24,20 +24,30 @@ type MessageStream = Pin<Box<dyn Stream<Item = Result<String>> + Send>>;
 const DB_MESSAGES_QUEUE: &str = "db.messages";
 
 pub struct MessageService {
-    rabbitmq_con: Arc<Mutex<Connection>>,
     repository: Arc<MessageRepository>,
+    rabbitmq_con: Arc<Mutex<Connection>>,
 }
 
 impl MessageService {
     pub fn new(
-        rabbitmq_con: Arc<Mutex<Connection>>,
         repository: Arc<MessageRepository>,
+        rabbitmq_con: Arc<Mutex<Connection>>,
     ) -> Arc<Self> {
         Self {
-            rabbitmq_con,
             repository,
+            rabbitmq_con,
         }
         .into()
+    }
+}
+
+impl MessageService {
+    pub(super) async fn find_all(&self) -> Result<Vec<Message>> {
+        self.repository.find_all().await
+    }
+
+    pub(super) async fn find_by_recipient(&self, recipient: &str) -> Result<Vec<Message>> {
+        self.repository.find_by_recipient(recipient).await
     }
 }
 
