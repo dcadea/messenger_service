@@ -34,11 +34,11 @@ async fn ws_handler(
     Ok(ws.on_upgrade(move |socket| handle_socket(socket, topic, state.message_service.clone())))
 }
 
-async fn handle_socket(ws: WebSocket, topic: String, message_service: Arc<MessageService>) {
+async fn handle_socket(ws: WebSocket, topic: String, ms: Arc<MessageService>) {
     let (sender, receiver) = ws.split();
     let notify = Arc::new(Notify::new());
-    let read_task = tokio::spawn(read(receiver, message_service.clone(), notify.clone()));
-    let write_task = tokio::spawn(write(topic.clone(), sender, message_service.clone(), notify.clone()));
+    let read_task = tokio::spawn(read(receiver, ms.clone(), notify.clone()));
+    let write_task = tokio::spawn(write(topic.clone(), sender, ms.clone(), notify.clone()));
     debug!("'{}' connected", topic.clone());
 
     match try_join!(read_task, write_task) {
@@ -47,17 +47,13 @@ async fn handle_socket(ws: WebSocket, topic: String, message_service: Arc<Messag
     }
 }
 
-async fn read(
-    mut receiver: SplitStream<WebSocket>,
-    message_service: Arc<MessageService>,
-    notify: Arc<Notify>,
-) {
+async fn read(mut receiver: SplitStream<WebSocket>, ms: Arc<MessageService>, notify: Arc<Notify>) {
     while let Some(frame) = receiver.next().await {
         match frame {
             Ok(Message::Text(content)) => {
                 debug!("received ws frame: {:?}", content);
                 if let Ok(msg) = serde_json::from_str::<MessageRequest>(content.as_str()) {
-                    if let Err(e) = message_service.publish_for_recipient(msg).await {
+                    if let Err(e) = ms.publish_for_recipient(msg).await {
                         error!("failed to publish message to queue: {}, {:?}", content, e);
                     };
                 } else {
@@ -80,12 +76,12 @@ async fn read(
 async fn write(
     topic: String,
     sender: SplitSink<WebSocket, Message>,
-    message_service: Arc<MessageService>,
+    ms: Arc<MessageService>,
     notify: Arc<Notify>,
 ) {
     let sender = Arc::new(Mutex::new(sender));
 
-    let (consumer_tag, channel, mut messages_stream) = match message_service.read(&topic).await {
+    let (consumer_tag, channel, mut messages_stream) = match ms.read(&topic).await {
         Ok(binding) => binding,
         Err(e) => {
             error!("Failed to read messages: {:?}", e);
@@ -101,7 +97,7 @@ async fn write(
                         let message = Message::Text(item.clone());
                         let mut sender = sender.lock().await;
                         let _ = sender.send(message).await;
-                        if let Err(e) = message_service.publish_for_storage(item).await {
+                        if let Err(e) = ms.publish_for_storage(item).await {
                             error!("Failed to store message: {:?}", e);
                         }
                     },
@@ -113,7 +109,7 @@ async fn write(
         }
     }
 
-    match message_service.close_consumer(consumer_tag.clone(), channel).await {
+    match ms.close_consumer(consumer_tag.clone(), channel).await {
         Ok(_) => debug!("Consumer '{:?}' closed", consumer_tag),
         Err(e) => error!("Failed to close consumer: {:?}", e),
     };

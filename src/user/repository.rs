@@ -3,8 +3,8 @@ use std::sync::Arc;
 use mongodb::bson::doc;
 use mongodb::Database;
 
-use crate::user::model::User;
 use crate::result::Result;
+use crate::user::model::User;
 
 pub struct UserRepository {
     collection: mongodb::Collection<User>,
@@ -15,7 +15,9 @@ impl UserRepository {
         let collection = database.collection("users");
         Self { collection }.into()
     }
+}
 
+impl UserRepository {
     pub(super) async fn find_one(&self, username: &str) -> Option<User> {
         let filter = doc! { "username": username };
 

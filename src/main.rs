@@ -6,7 +6,7 @@ use tower_http::cors::{Any, CorsLayer};
 
 use crate::chat::repository::ChatRepository;
 use crate::chat::service::ChatService;
-use crate::integration::client::ClientFactory;
+use crate::integration::client;
 use crate::message::repository::MessageRepository;
 use crate::message::service::MessageService;
 use crate::state::AppState;
@@ -25,12 +25,12 @@ mod user;
 async fn main() {
     env_logger::init();
 
-    let database = ClientFactory::init_mongodb().await;
-    let _ = ClientFactory::init_redis().await;
+    let database = client::init_mongodb().await;
+    let _ = client::init_redis().await;
 
     let state = AppState {
         message_service: MessageService::new(
-            ClientFactory::init_rabbitmq().await,
+            client::init_rabbitmq().await,
             MessageRepository::new(&database),
         ),
         chat_service: ChatService::new(ChatRepository::new(&database)),
@@ -44,13 +44,12 @@ async fn main() {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let resources_router = Router::new()
-        .merge(chat::api::resources(state.clone()));
+    let resources_router = Router::new().merge(chat::api::resources(state.clone()));
 
     let router = Router::new()
         .route("/health", get(|| async { () }))
         .nest("/api/v1", resources_router)
-        .merge(user::api::router(state.clone()))
+        .merge(user::api::auth_router(state.clone()))
         .merge(message::api::ws_router(state.clone()))
         .fallback(|| async { (StatusCode::NOT_FOUND, "Why are you here?") })
         .layer(cors);

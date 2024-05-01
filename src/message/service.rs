@@ -25,17 +25,17 @@ const DB_MESSAGES_QUEUE: &str = "db.messages";
 
 pub struct MessageService {
     rabbitmq_con: Arc<Mutex<Connection>>,
-    message_repository: Arc<MessageRepository>,
+    repository: Arc<MessageRepository>,
 }
 
 impl MessageService {
     pub fn new(
         rabbitmq_con: Arc<Mutex<Connection>>,
-        message_repository: Arc<MessageRepository>,
+        repository: Arc<MessageRepository>,
     ) -> Arc<Self> {
         Self {
             rabbitmq_con,
-            message_repository,
+            repository,
         }
         .into()
     }
@@ -63,10 +63,7 @@ impl MessageService {
     /**
      * Reads messages from a recipient's dedicated queue.
      */
-    pub(super) async fn read(
-        &self,
-        recipient: &str,
-    ) -> Result<(String, Channel, MessageStream)> {
+    pub(super) async fn read(&self, recipient: &str) -> Result<(String, Channel, MessageStream)> {
         let (queue_name, channel) = self.split_queue(recipient).await?;
 
         let consumer = channel
@@ -80,15 +77,17 @@ impl MessageService {
 
         let consumer_tag = consumer.tag().clone();
 
-        let stream = consumer.and_then(|delivery| {
-            let data = from_utf8(&delivery.data)
-                .expect("not a utf8 string")
-                .to_string();
-            async move {
-                delivery.ack(BasicAckOptions::default()).await?;
-                Ok(data)
-            }
-        }).map_err(ApiError::from);
+        let stream = consumer
+            .and_then(|delivery| {
+                let data = from_utf8(&delivery.data)
+                    .expect("not a utf8 string")
+                    .to_string();
+                async move {
+                    delivery.ack(BasicAckOptions::default()).await?;
+                    Ok(data)
+                }
+            })
+            .map_err(ApiError::from);
 
         Ok((consumer_tag.to_string(), channel, Box::pin(stream)))
     }
@@ -128,7 +127,7 @@ impl MessageService {
 
             messages_stream
                 .for_each(move |data| {
-                    let message_repository = self_clone.message_repository.clone();
+                    let message_repository = self_clone.repository.clone();
                     async move {
                         match data {
                             Ok(data) => {

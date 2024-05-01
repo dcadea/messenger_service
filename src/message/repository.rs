@@ -13,7 +13,9 @@ impl MessageRepository {
         let collection = database.collection("messages");
         Self { collection }.into()
     }
+}
 
+impl MessageRepository {
     pub(super) async fn insert(&self, message: &Message) -> Result<()> {
         self.collection.insert_one(message, None).await?;
         Ok(())

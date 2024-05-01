@@ -1,8 +1,8 @@
-use axum::{Json, Router};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::post;
+use axum::{Json, Router};
 use serde_json::{json, Value};
 
 use crate::error::ApiError;
@@ -10,7 +10,7 @@ use crate::result::Result;
 use crate::state::AppState;
 use crate::user::model::User;
 
-pub fn router<S>(state: AppState) -> Router<S> {
+pub fn auth_router<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/login", post(login_handler))
         .route("/register", post(register_handler))
@@ -18,7 +18,10 @@ pub fn router<S>(state: AppState) -> Router<S> {
 }
 
 async fn login_handler(state: State<AppState>, user: Json<User>) -> Result<Json<Value>> {
-    state.user_service.matches(&user.username, &user.password).await?;
+    state
+        .user_service
+        .matches(&user.username, &user.password)
+        .await?;
     Ok(Json::from(json!({"username": user.username})))
 }
 
