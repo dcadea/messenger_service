@@ -1,24 +1,30 @@
 use std::sync::Arc;
 
 use crate::error::ApiError;
-use crate::user::model::{User, UserResponse};
-use crate::user::repository::UserRepository;
 use crate::result::Result;
+use crate::user::model::User;
+use crate::user::repository::UserRepository;
 
 pub struct UserService {
-    user_repository: Arc<UserRepository>,
+    repository: Arc<UserRepository>,
 }
 
 impl UserService {
-    pub fn new(user_repository: Arc<UserRepository>) -> Arc<Self> {
-        Self { user_repository }.into()
+    pub fn new(repository: Arc<UserRepository>) -> Arc<Self> {
+        Self { repository }.into()
+    }
+}
+
+impl UserService {
+    pub async fn create(&self, user: &User) -> Result<()> {
+        self.repository.insert(user).await
     }
 
-    pub async fn login(&self, username: &str, password: &str) -> Result<UserResponse> {
-        match self.user_repository.find_one(username).await {
+    pub async fn matches(&self, username: &str, password: &str) -> Result<()> {
+        match self.repository.find_one(username).await {
             Some(user) => {
-                if user.password().eq(password) {
-                    return Ok(UserResponse::new(username));
+                if user.password.eq(password) {
+                    return Ok(());
                 }
 
                 Err(ApiError::InvalidCredentials)
@@ -28,13 +34,6 @@ impl UserService {
     }
 
     pub async fn exists(&self, username: &str) -> bool {
-        self.user_repository.find_one(username).await.is_some()
-    }
-
-    pub async fn create(&self, user: &User) -> Result<UserResponse> {
-        self.user_repository
-            .insert(user)
-            .await
-            .map(|_| UserResponse::new(user.username()))
+        self.repository.find_one(username).await.is_some()
     }
 }

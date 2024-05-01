@@ -1,4 +1,3 @@
-use mongodb::bson::oid::ObjectId;
 use mongodb::Database;
 use std::sync::Arc;
 
@@ -15,14 +14,8 @@ impl MessageRepository {
         Self { collection }.into()
     }
 
-    pub async fn insert(&self, message: &Message) -> Result<Option<ObjectId>> {
-        let inserted_id = self
-            .collection
-            .insert_one(message, None)
-            .await?
-            .inserted_id
-            .as_object_id();
-
-        Ok(inserted_id)
+    pub async fn insert(&self, message: &Message) -> Result<()> {
+        self.collection.insert_one(message, None).await?;
+        Ok(())
     }
 }

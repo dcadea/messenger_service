@@ -14,6 +14,14 @@ impl ChatService {
 }
 
 impl ChatService {
+    pub async fn create(&self, chat: &Chat) -> Result<()> {
+        self.repository.insert(&chat).await
+    }
+
+    pub async fn find_all(&self) -> Result<Vec<Chat>> {
+        self.repository.find_all().await
+    }
+
     pub async fn find_by_username(&self, username: &str) -> Result<Vec<Chat>> {
         self.repository.find_by_username(username).await
     }

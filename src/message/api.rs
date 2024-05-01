@@ -16,7 +16,7 @@ use crate::message::model::MessageRequest;
 use crate::message::service::MessageService;
 use crate::state::AppState;
 
-pub fn router<S>(state: AppState) -> Router<S> {
+pub fn ws_router<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/ws/:topic", get(ws_handler))
         .with_state(state)

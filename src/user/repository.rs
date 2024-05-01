@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use mongodb::bson::doc;
-use mongodb::bson::oid::ObjectId;
 use mongodb::Database;
 
 use crate::user::model::User;
@@ -27,14 +26,8 @@ impl UserRepository {
         None
     }
 
-    pub async fn insert(&self, user: &User) -> Result<Option<ObjectId>> {
-        let inserted_id = self
-            .collection
-            .insert_one(user, None)
-            .await?
-            .inserted_id
-            .as_object_id();
-
-        Ok(inserted_id)
+    pub async fn insert(&self, user: &User) -> Result<()> {
+        self.collection.insert_one(user, None).await?;
+        Ok(())
     }
 }

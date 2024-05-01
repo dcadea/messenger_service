@@ -4,6 +4,7 @@ use std::sync::Arc;
 use mongodb::bson::doc;
 
 use crate::chat::model::Chat;
+use crate::error::ApiError;
 use crate::result::Result;
 
 pub struct ChatRepository {
@@ -14,6 +15,16 @@ impl ChatRepository {
     pub fn new(database: &mongodb::Database) -> Arc<Self> {
         let collection = database.collection("chats");
         Self { collection }.into()
+    }
+
+    pub async fn insert(&self, chat: &Chat) -> Result<()> {
+        self.collection.insert_one(chat, None).await?;
+        Ok(())
+    }
+
+    pub async fn find_all(&self) -> Result<Vec<Chat>> {
+        let cursor = self.collection.find(None, None).await?;
+        cursor.try_collect::<Vec<Chat>>().await.map_err(ApiError::from)
     }
 
     pub async fn find_by_username(&self, username: &str) -> Result<Vec<Chat>> {
@@ -27,8 +38,6 @@ impl ChatRepository {
             )
             .await?;
 
-        let chats: Vec<Chat> = cursor.try_collect().await?;
-
-        Ok(chats)
+        cursor.try_collect::<Vec<Chat>>().await.map_err(ApiError::from)
     }
 }

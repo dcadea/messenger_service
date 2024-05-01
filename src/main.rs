@@ -1,3 +1,4 @@
+use axum::http::StatusCode;
 use axum::routing::get;
 use axum::Router;
 use tokio::net::TcpListener;
@@ -43,11 +44,15 @@ async fn main() {
         .allow_methods(Any)
         .allow_headers(Any);
 
+    let resources_router = Router::new()
+        .merge(chat::api::resources(state.clone()));
+
     let router = Router::new()
         .route("/health", get(|| async { () }))
-        .merge(message::api::router(state.clone()))
+        .nest("/api/v1", resources_router)
         .merge(user::api::router(state.clone()))
-        .merge(chat::api::router(state.clone()))
+        .merge(message::api::ws_router(state.clone()))
+        .fallback(|| async { (StatusCode::NOT_FOUND, "Why are you here?") })
         .layer(cors);
 
     let listener = TcpListener::bind("127.0.0.1:8000").await.unwrap();

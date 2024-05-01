@@ -17,7 +17,18 @@ Content-Type: application/json
 
 
 ### Get chats for 'user1'
-GET {{baseUrl}}/chats/user1
+GET {{apiUrl}}/chats?username=user1
+
+
+### Create chat for 'user1'
+POST {{apiUrl}}/chats
+Content-Type: application/json
+
+{
+  "username": "user1",
+  "recipient": "user2",
+  "last_message": "hey there"
+}
 
 
 ### WS for 'user1'

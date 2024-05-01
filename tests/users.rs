@@ -18,7 +18,7 @@ mod tests {
         let result = repository.find_one(username).await;
 
         match result {
-            Some(user) => assert_eq!(user.username(), username),
+            Some(user) => assert_eq!(user.username, username),
             None => panic!("Failed to fetch user: {}", username),
         }
     }
