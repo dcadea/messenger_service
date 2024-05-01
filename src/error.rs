@@ -4,6 +4,7 @@ use axum::Json;
 use log::debug;
 use serde::Serialize;
 
+#[derive(Debug)]
 pub enum ApiError {
     UserAlreadyExists,
     UserNotFound,

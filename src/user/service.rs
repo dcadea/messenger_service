@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::error::ApiError;
 use crate::user::model::{User, UserResponse};
 use crate::user::repository::UserRepository;
+use crate::result::Result;
 
 pub struct UserService {
     user_repository: Arc<UserRepository>,
@@ -13,7 +14,7 @@ impl UserService {
         Self { user_repository }.into()
     }
 
-    pub async fn login(&self, username: &str, password: &str) -> Result<UserResponse, ApiError> {
+    pub async fn login(&self, username: &str, password: &str) -> Result<UserResponse> {
         match self.user_repository.find_one(username).await {
             Some(user) => {
                 if user.password().eq(password) {
@@ -30,7 +31,7 @@ impl UserService {
         self.user_repository.find_one(username).await.is_some()
     }
 
-    pub async fn create(&self, user: &User) -> Result<UserResponse, mongodb::error::Error> {
+    pub async fn create(&self, user: &User) -> Result<UserResponse> {
         self.user_repository
             .insert(user)
             .await

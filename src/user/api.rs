@@ -1,12 +1,12 @@
 use axum::extract::State;
 use axum::http::StatusCode;
-use axum::response::Result;
 use axum::routing::post;
 use axum::{Json, Router};
 
 use crate::error::ApiError;
 use crate::state::AppState;
 use crate::user::model::{User, UserResponse};
+use crate::result::Result;
 
 pub fn router<S>(state: AppState) -> Router<S> {
     Router::new()
@@ -18,7 +18,7 @@ pub fn router<S>(state: AppState) -> Router<S> {
 async fn login_handler(
     state: State<AppState>,
     user: Json<User>,
-) -> Result<Json<UserResponse>, ApiError> {
+) -> Result<Json<UserResponse>> {
     state
         .user_service
         .login(user.username(), user.password())
@@ -29,7 +29,7 @@ async fn login_handler(
 async fn register_handler(
     state: State<AppState>,
     user: Json<User>,
-) -> Result<(StatusCode, Json<UserResponse>), ApiError> {
+) -> Result<(StatusCode, Json<UserResponse>)> {
     if state.user_service.exists(user.username()).await {
         return Err(ApiError::UserAlreadyExists);
     }

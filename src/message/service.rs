@@ -2,8 +2,7 @@ use std::pin::Pin;
 use std::str::from_utf8;
 use std::sync::Arc;
 
-use futures::StreamExt;
-use futures::TryStreamExt;
+use futures::{StreamExt, TryStreamExt};
 use lapin::options::{
     BasicAckOptions, BasicCancelOptions, BasicConsumeOptions, BasicPublishOptions,
     QueueDeclareOptions,
@@ -15,10 +14,12 @@ use serde_json::json;
 use tokio::sync::Mutex;
 use tokio_stream::Stream;
 
+use crate::error::ApiError;
 use crate::message::model::{Message, MessageRequest};
 use crate::message::repository::MessageRepository;
+use crate::result::Result;
 
-type MessageStream = Pin<Box<dyn Stream<Item = Result<String, lapin::Error>> + Send>>;
+type MessageStream = Pin<Box<dyn Stream<Item = Result<String>> + Send>>;
 
 const DB_MESSAGES_QUEUE: &str = "db.messages";
 
@@ -44,17 +45,19 @@ impl MessageService {
     /**
      * Publishes a message to a recipient's dedicated queue.
      */
-    pub async fn publish_for_recipient(&self, request: MessageRequest) -> Result<(), lapin::Error> {
+    pub async fn publish_for_recipient(&self, request: MessageRequest) -> Result<()> {
         let message: Message = request.clone().into();
-        self.publish(&request.recipient(), message).await
+        self.publish(&request.recipient(), message).await?;
+        Ok(())
     }
 
     /**
      * Publishes a message to a storage queue.
      */
-    pub async fn publish_for_storage(&self, data: String) -> Result<(), lapin::Error> {
+    pub async fn publish_for_storage(&self, data: String) -> Result<()> {
         let message = serde_json::from_str::<Message>(&data).unwrap();
-        self.publish(DB_MESSAGES_QUEUE, message).await
+        self.publish(DB_MESSAGES_QUEUE, message).await?;
+        Ok(())
     }
 
     /**
@@ -63,7 +66,7 @@ impl MessageService {
     pub async fn read(
         &self,
         recipient: &str,
-    ) -> Result<(String, Channel, MessageStream), lapin::Error> {
+    ) -> Result<(String, Channel, MessageStream)> {
         let (queue_name, channel) = self.split_queue(recipient).await?;
 
         let consumer = channel
@@ -85,7 +88,7 @@ impl MessageService {
                 delivery.ack(BasicAckOptions::default()).await?;
                 Ok(data)
             }
-        });
+        }).map_err(ApiError::from);
 
         Ok((consumer_tag.to_string(), channel, Box::pin(stream)))
     }
@@ -97,11 +100,12 @@ impl MessageService {
         &self,
         consumer_tag: String,
         channel: Channel,
-    ) -> Result<(), lapin::Error> {
+    ) -> Result<()> {
         channel
             .basic_cancel(&consumer_tag, BasicCancelOptions::default())
-            .await
-            .map(|_| ())
+            .await?;
+
+        Ok(())
     }
 
     /**
@@ -115,10 +119,12 @@ impl MessageService {
             {
                 Ok(binding) => binding,
                 Err(e) => {
-                    error!("Failed to read messages: {}", e);
+                    error!("Failed to read messages: {:?}", e);
                     return;
                 }
             };
+
+            // messages_stream.for_each_concurrent(None, move |data| data);
 
             messages_stream
                 .for_each(move |data| {
@@ -129,17 +135,17 @@ impl MessageService {
                                 let message = serde_json::from_str::<Message>(&data)
                                     .expect("Failed to deserialize message");
                                 if let Err(e) = message_repository.insert(&message).await {
-                                    error!("Failed to store message: {}", e);
+                                    error!("Failed to store message: {:?}", e);
                                 }
                             }
-                            Err(e) => error!("Failed to read message: {}", e),
+                            Err(e) => error!("Failed to read message: {:?}", e),
                         }
                     }
                 })
                 .await;
 
             if let Err(e) = message_service.close_consumer(consumer_tag, channel).await {
-                error!("Failed to close consumer: {}", e);
+                error!("Failed to close consumer: {:?}", e);
             };
         });
     }
@@ -147,7 +153,7 @@ impl MessageService {
 
 // Private methods
 impl MessageService {
-    async fn publish(&self, queue_name: &str, payload: Message) -> Result<(), lapin::Error> {
+    async fn publish(&self, queue_name: &str, payload: Message) -> Result<()> {
         let (queue_name, channel) = self.split_queue(queue_name).await?;
         let message_json = json!(payload).to_string();
 
@@ -159,11 +165,12 @@ impl MessageService {
                 message_json.as_bytes(),
                 BasicProperties::default(),
             )
-            .await
-            .map(|_| ())
+            .await?;
+
+        Ok(())
     }
 
-    async fn split_queue(&self, queue_name: &str) -> Result<(String, Channel), lapin::Error> {
+    async fn split_queue(&self, queue_name: &str) -> Result<(String, Channel)> {
         let conn = self.rabbitmq_con.lock().await;
         let channel = conn.create_channel().await?;
 

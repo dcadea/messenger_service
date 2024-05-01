@@ -58,10 +58,10 @@ async fn read(
                 debug!("received ws frame: {:?}", content);
                 if let Ok(msg) = serde_json::from_str::<MessageRequest>(content.as_str()) {
                     if let Err(e) = message_service.publish_for_recipient(msg).await {
-                        error!("failed to publish message to queue: {:?}, {}", content, e);
+                        error!("failed to publish message to queue: {}, {:?}", content, e);
                     };
                 } else {
-                    warn!("skipping frame, content is malformed: {:?}", content);
+                    warn!("skipping frame, content is malformed: {}", content);
                 }
             }
             Ok(Message::Close(_)) => {
@@ -70,7 +70,7 @@ async fn read(
             }
             Ok(wtf) => debug!("received non-text ws frame: {:?}", wtf),
             Err(e) => {
-                error!("error receiving ws frame: {}", e);
+                error!("error receiving ws frame: {:?}", e);
                 break;
             }
         };
@@ -88,7 +88,7 @@ async fn write(
     let (consumer_tag, channel, mut messages_stream) = match message_service.read(&topic).await {
         Ok(binding) => binding,
         Err(e) => {
-            error!("Failed to read messages: {}", e);
+            error!("Failed to read messages: {:?}", e);
             return;
         }
     };
@@ -102,10 +102,10 @@ async fn write(
                         let mut sender = sender.lock().await;
                         let _ = sender.send(message).await;
                         if let Err(e) = message_service.publish_for_storage(item).await {
-                            error!("Failed to store message: {}", e);
+                            error!("Failed to store message: {:?}", e);
                         }
                     },
-                    Some(Err(e)) => error!("Failed to read message: {}", e),
+                    Some(Err(e)) => error!("Failed to read message: {:?}", e),
                     None => break,
                 }
             },
@@ -115,6 +115,6 @@ async fn write(
 
     match message_service.close_consumer(consumer_tag.clone(), channel).await {
         Ok(_) => debug!("Consumer '{:?}' closed", consumer_tag),
-        Err(e) => error!("Failed to close consumer: {}", e),
+        Err(e) => error!("Failed to close consumer: {:?}", e),
     };
 }

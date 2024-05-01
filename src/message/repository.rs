@@ -1,9 +1,9 @@
 use mongodb::bson::oid::ObjectId;
-use mongodb::error::Error;
 use mongodb::Database;
 use std::sync::Arc;
 
 use crate::message::model::Message;
+use crate::result::Result;
 
 pub struct MessageRepository {
     collection: mongodb::Collection<Message>,
@@ -15,10 +15,14 @@ impl MessageRepository {
         Self { collection }.into()
     }
 
-    pub async fn insert(&self, message: &Message) -> Result<Option<ObjectId>, Error> {
-        self.collection
+    pub async fn insert(&self, message: &Message) -> Result<Option<ObjectId>> {
+        let inserted_id = self
+            .collection
             .insert_one(message, None)
-            .await
-            .map(|r| r.inserted_id.as_object_id())
+            .await?
+            .inserted_id
+            .as_object_id();
+
+        Ok(inserted_id)
     }
 }

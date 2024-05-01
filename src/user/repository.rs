@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use mongodb::bson::doc;
 use mongodb::bson::oid::ObjectId;
-use mongodb::error::Error;
 use mongodb::Database;
 
 use crate::user::model::User;
+use crate::result::Result;
 
 pub struct UserRepository {
     collection: mongodb::Collection<User>,
@@ -27,10 +27,14 @@ impl UserRepository {
         None
     }
 
-    pub async fn insert(&self, user: &User) -> Result<Option<ObjectId>, Error> {
-        self.collection
+    pub async fn insert(&self, user: &User) -> Result<Option<ObjectId>> {
+        let inserted_id = self
+            .collection
             .insert_one(user, None)
-            .await
-            .map(|r| r.inserted_id.as_object_id())
+            .await?
+            .inserted_id
+            .as_object_id();
+
+        Ok(inserted_id)
     }
 }

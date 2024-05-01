@@ -1,5 +1,5 @@
 use crate::chat::model::Chat;
-use crate::error::ApiError;
+use crate::result::Result;
 use crate::state::AppState;
 use axum::extract::{Path, State};
 use axum::routing::get;
@@ -14,7 +14,7 @@ pub fn router<S>(state: AppState) -> Router<S> {
 async fn chat_handler(
     Path(username): Path<String>,
     state: State<AppState>,
-) -> Result<Json<Vec<Chat>>, ApiError> {
+) -> Result<Json<Vec<Chat>>> {
     state
         .chat_service
         .find_by_username(&username)
