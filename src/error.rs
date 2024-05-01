@@ -11,6 +11,8 @@ pub(crate) enum ApiError {
 
     InvalidCredentials,
 
+    BadRequest(String),
+
     WebSocketConnectionRejected,
 
     RabbitMQError(lapin::Error),
@@ -41,6 +43,8 @@ impl IntoResponse for ApiError {
             Self::UserNotFound => (StatusCode::NOT_FOUND, "User not found".to_owned()),
 
             Self::InvalidCredentials => (StatusCode::FORBIDDEN, "Invalid credentials".to_owned()),
+
+            Self::BadRequest(message) => (StatusCode::BAD_REQUEST, message),
 
             Self::WebSocketConnectionRejected => {
                 (StatusCode::FORBIDDEN, "WS connection rejected".to_owned())

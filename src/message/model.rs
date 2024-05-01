@@ -46,5 +46,6 @@ pub(super) struct MessageRequest {
 
 #[derive(Deserialize)]
 pub(super) struct MessageParams {
-    pub recipient: Option<String>,
+    pub sender: Option<Vec<String>>,
+    pub recipient: Option<Vec<String>>,
 }

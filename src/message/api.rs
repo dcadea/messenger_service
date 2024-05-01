@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use axum::extract::ws::{Message as WsMessage, WebSocket};
-use axum::extract::{Path, Query, State, WebSocketUpgrade};
+use axum::extract::{Path, State, WebSocketUpgrade};
 use axum::response::Response;
 use axum::routing::get;
 use axum::{Json, Router};
+use axum_extra::extract::Query;
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
 use log::{debug, error, warn};
@@ -33,11 +34,24 @@ async fn find_handler(
     Query(params): Query<MessageParams>,
     state: State<AppState>,
 ) -> Result<Json<Vec<Message>>> {
-    match params.recipient {
-        Some(recipient) => state.message_service.find_by_recipient(&recipient).await,
-        None => state.message_service.find_all().await,
+    match (params.sender, params.recipient) {
+        (None, None) => state.message_service.find_all().await.map(Json),
+
+        (Some(sender), Some(recipient)) => {
+            let mut participants = sender.clone();
+            participants.append(&mut recipient.clone());
+
+            state
+                .message_service
+                .find_by_participants(participants)
+                .await
+                .map(Json)
+        }
+
+        _ => Err(ApiError::BadRequest(
+            "Both sender and recipient must be provided".to_owned(),
+        )),
     }
-    .map(Json)
 }
 
 async fn ws_handler(

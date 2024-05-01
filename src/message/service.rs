@@ -46,8 +46,8 @@ impl MessageService {
         self.repository.find_all().await
     }
 
-    pub(super) async fn find_by_recipient(&self, recipient: &str) -> Result<Vec<Message>> {
-        self.repository.find_by_recipient(recipient).await
+    pub(super) async fn find_by_participants(&self, participants: Vec<String>) -> Result<Vec<Message>> {
+        self.repository.find_by_participants(participants).await
     }
 }
 

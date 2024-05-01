@@ -20,8 +20,8 @@ Content-Type: application/json
 GET {{apiUrl}}/messages
 
 
-### Get messages for 'user2'
-GET {{apiUrl}}/messages?recipient=user2
+### Get messages for 'user1' and 'user2'
+GET {{apiUrl}}/messages?sender=user1&sender=user2&recipient=user1&recipient=user2
 
 
 ### Get all chats

@@ -1,10 +1,11 @@
-use crate::error::ApiError;
-use futures::TryStreamExt;
-use mongodb::bson::doc;
-use mongodb::options::FindOptions;
-use mongodb::Database;
 use std::sync::Arc;
 
+use futures::TryStreamExt;
+use mongodb::bson::{doc, Document};
+use mongodb::options::FindOptions;
+use mongodb::Database;
+
+use crate::error::ApiError;
 use crate::message::model::Message;
 use crate::result::Result;
 
@@ -30,13 +31,22 @@ impl MessageRepository {
         cursor.try_collect().await.map_err(ApiError::from)
     }
 
-    pub(super) async fn find_by_recipient(&self, recipient: &str) -> Result<Vec<Message>> {
+    pub(super) async fn find_by_participants(
+        &self,
+        participants: Vec<String>,
+    ) -> Result<Vec<Message>> {
+        let document = doc! {
+            "sender": {"$in": participants.clone()},
+            "recipient": {"$in": participants.clone()}
+        };
+        self.find_by(document).await
+    }
+
+    async fn find_by(&self, document: Document) -> Result<Vec<Message>> {
         let cursor = self
             .collection
             .find(
-                Some(doc! {
-                    "recipient": recipient
-                }),
+                Some(document),
                 FindOptions::builder().sort(doc! {"timestamp": 1}).build(),
             )
             .await?;
