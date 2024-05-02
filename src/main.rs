@@ -1,17 +1,11 @@
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::Router;
+use log::error;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::chat::repository::ChatRepository;
-use crate::chat::service::ChatService;
-use crate::integration::client;
-use crate::message::repository::MessageRepository;
-use crate::message::service::MessageService;
 use crate::state::AppState;
-use crate::user::repository::UserRepository;
-use crate::user::service::UserService;
 
 mod chat;
 mod error;
@@ -25,24 +19,15 @@ mod user;
 async fn main() {
     env_logger::init();
 
-    let database = client::init_mongodb().await;
-    let _ = client::init_redis().await;
-
-    let state = AppState {
-        message_service: MessageService::new(
-            MessageRepository::new(&database),
-            client::init_rabbitmq().await,
-        ),
-        chat_service: ChatService::new(ChatRepository::new(&database)),
-        user_service: UserService::new(UserRepository::new(&database)),
+    let state = match AppState::init().await {
+        Ok(state) => state,
+        Err(e) => {
+            error!("Failed to initialize application: {:?}", e);
+            return;
+        }
     };
 
     state.clone().message_service.start_purging();
-
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
 
     let resources_router = Router::new()
         .merge(chat::api::resources(state.clone()))
@@ -54,7 +39,12 @@ async fn main() {
         .merge(user::api::auth_router(state.clone()))
         .merge(message::api::ws_router(state.clone()))
         .fallback(|| async { (StatusCode::NOT_FOUND, "Why are you here?") })
-        .layer(cors);
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any),
+        );
 
     let listener = TcpListener::bind("127.0.0.1:8000").await.unwrap();
     axum::serve(listener, router).await.unwrap();

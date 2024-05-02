@@ -17,6 +17,7 @@ pub(crate) enum ApiError {
 
     RabbitMQError(lapin::Error),
     MongoDBError(mongodb::error::Error),
+    RedisError(redis::RedisError)
 }
 
 impl From<lapin::Error> for ApiError {
@@ -28,6 +29,12 @@ impl From<lapin::Error> for ApiError {
 impl From<mongodb::error::Error> for ApiError {
     fn from(error: mongodb::error::Error) -> Self {
         Self::MongoDBError(error)
+    }
+}
+
+impl From<redis::RedisError> for ApiError {
+    fn from(error: redis::RedisError) -> Self {
+        Self::RedisError(error)
     }
 }
 
@@ -60,6 +67,14 @@ impl IntoResponse for ApiError {
 
             Self::MongoDBError(e) => {
                 debug!("MongoDB error: {}", e);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Something went wrong".to_owned(),
+                )
+            }
+
+            Self::RedisError(e) => {
+                debug!("Redis error: {}", e);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Something went wrong".to_owned(),

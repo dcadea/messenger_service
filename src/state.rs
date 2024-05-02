@@ -1,7 +1,12 @@
-use crate::chat::service::ChatService;
 use std::sync::Arc;
 
+use crate::chat::repository::ChatRepository;
+use crate::chat::service::ChatService;
+use crate::integration::client;
+use crate::message::repository::MessageRepository;
 use crate::message::service::MessageService;
+use crate::result::Result;
+use crate::user::repository::UserRepository;
 use crate::user::service::UserService;
 
 #[derive(Clone)]
@@ -9,6 +14,25 @@ pub(crate) struct AppState {
     pub message_service: Arc<MessageService>,
     pub chat_service: Arc<ChatService>,
     pub user_service: Arc<UserService>,
+}
+
+impl AppState {
+    pub async fn init() -> Result<Self> {
+        let database = client::init_mongodb().await?;
+        let _ = client::init_redis().await?;
+        let rabbitmq_con = client::init_rabbitmq().await?;
+
+        Ok(
+            Self {
+                message_service: MessageService::new(
+                    MessageRepository::new(&database),
+                    rabbitmq_con,
+                ),
+                chat_service: ChatService::new(ChatRepository::new(&database)),
+                user_service: UserService::new(UserRepository::new(&database)),
+            }
+        )
+    }
 }
 
 // TODO: investigate
