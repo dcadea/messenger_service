@@ -8,3 +8,8 @@ pub(super) struct User {
     pub username: String,
     pub password: String,
 }
+
+#[derive(Deserialize)]
+pub(super) struct CallbackParams {
+    pub code: String,
+}

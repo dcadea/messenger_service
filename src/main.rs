@@ -1,6 +1,7 @@
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::Router;
+use dotenv::dotenv;
 use log::error;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
@@ -17,6 +18,7 @@ mod user;
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
     env_logger::init();
 
     let state = match AppState::init().await {

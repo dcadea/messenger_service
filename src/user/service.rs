@@ -1,17 +1,24 @@
+use openid::Bearer;
 use std::sync::Arc;
 
 use crate::error::ApiError;
+use crate::integration::client::OpenIDClient;
 use crate::result::Result;
 use crate::user::model::User;
 use crate::user::repository::UserRepository;
 
 pub struct UserService {
     repository: Arc<UserRepository>,
+    oidc_client: Arc<OpenIDClient>,
 }
 
 impl UserService {
-    pub fn new(repository: Arc<UserRepository>) -> Arc<Self> {
-        Self { repository }.into()
+    pub fn new(repository: Arc<UserRepository>, oidc_client: Arc<OpenIDClient>) -> Arc<Self> {
+        Self {
+            repository,
+            oidc_client,
+        }
+        .into()
     }
 }
 
@@ -35,5 +42,12 @@ impl UserService {
 
     pub async fn exists(&self, username: &str) -> bool {
         self.repository.find_one(username).await.is_some()
+    }
+}
+
+impl UserService {
+    pub(super) async fn request_token(&self, code: &str) -> Result<Bearer> {
+        let bearer = self.oidc_client.request_token(code).await?;
+        Ok(bearer)
     }
 }

@@ -35,7 +35,7 @@ impl MessageRepository {
         &self,
         participants: Vec<String>,
     ) -> Result<Vec<Message>> {
-        let document = doc! {
+        let document = doc! { // FIXME
             "sender": {"$in": participants.clone()},
             "recipient": {"$in": participants.clone()}
         };
