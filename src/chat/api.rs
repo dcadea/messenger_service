@@ -18,8 +18,8 @@ async fn find_handler(
     Query(params): Query<ChatParams>,
     state: State<AppState>,
 ) -> Result<Json<Vec<Chat>>> {
-    match params.username {
-        Some(username) => state.chat_service.find_by_username(&username).await,
+    match params.nickname {
+        Some(nickname) => state.chat_service.find_by_nickname(&nickname).await,
         None => state.chat_service.find_all().await,
     }
     .map(Json)

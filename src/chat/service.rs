@@ -22,7 +22,7 @@ impl ChatService {
         self.repository.find_all().await
     }
 
-    pub(super) async fn find_by_username(&self, username: &str) -> Result<Vec<Chat>> {
-        self.repository.find_by_username(username).await
+    pub(super) async fn find_by_nickname(&self, nickname: &str) -> Result<Vec<Chat>> {
+        self.repository.find_by_nickname(nickname).await
     }
 }

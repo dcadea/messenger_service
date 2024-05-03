@@ -29,12 +29,12 @@ impl ChatRepository {
         cursor.try_collect().await.map_err(ApiError::from)
     }
 
-    pub(super) async fn find_by_username(&self, username: &str) -> Result<Vec<Chat>> {
+    pub(super) async fn find_by_nickname(&self, nickname: &str) -> Result<Vec<Chat>> {
         let cursor = self
             .collection
             .find(
                 Some(doc! {
-                    "username": username
+                    "nickname": nickname
                 }),
                 None,
             )

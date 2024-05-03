@@ -12,14 +12,14 @@
 //             .unwrap()
 //             .database("messenger");
 //
-//         let username = "user1";
+//         let nickname = "user1";
 //         let repository = UserRepository::new(&database);
 //
-//         let result = repository.find_one(username).await;
+//         let result = repository.find_one(nickname).await;
 //
 //         match result {
-//             Some(user) => assert_eq!(user.username, username),
-//             None => panic!("Failed to fetch user: {}", username),
+//             Some(user) => assert_eq!(user.nickname, nickname),
+//             None => panic!("Failed to fetch user: {}", nickname),
 //         }
 //     }
 //
@@ -31,25 +31,25 @@
 //     //         .database("test");
 //
 //     //     let user: User =
-//     //         serde_json::from_str(r#"{ "username": "user2", "password": "password2" }"#).unwrap();
+//     //         serde_json::from_str(r#"{ "nickname": "user2", "password": "password2" }"#).unwrap();
 //     //     let repository = UserRepository::new(&database);
 //
 //     //     let result = repository.insert(&user).await;
 //
-//     //     let username = "user2";
+//     //     let nickname = "user2";
 //     //     match result {
 //     //         Ok(_) => {
-//     //             let user = repository.find_one(username).await;
+//     //             let user = repository.find_one(nickname).await;
 //     //             assert!(
 //     //                 user.is_some(),
-//     //                 "Expected to find a user with username {}",
-//     //                 username
+//     //                 "Expected to find a user with nickname {}",
+//     //                 nickname
 //     //             );
 //     //         }
 //     //         Err(err) => panic!("Failed to insert user: {}", err),
 //     //     }
 //
-//     //     repository.delete(username).await.unwrap();
+//     //     repository.delete(nickname).await.unwrap();
 //     // }
 //
 //     // #[tokio::test]
@@ -60,25 +60,25 @@
 //     //         .database("test");
 //
 //     //     let user: User =
-//     //         serde_json::from_str(r#"{ "username": "user3", "password": "password3" }"#).unwrap();
+//     //         serde_json::from_str(r#"{ "nickname": "user3", "password": "password3" }"#).unwrap();
 //
 //     //     let repository = UserRepository::new(&database);
 //     //     repository.insert(&user).await.unwrap();
 //
 //     //     let user: User =
-//     //         serde_json::from_str(r#"{ "username": "user3", "password": "new_password3" }"#)
+//     //         serde_json::from_str(r#"{ "nickname": "user3", "password": "new_password3" }"#)
 //     //             .unwrap();
 //
 //     //     let result = repository.update(user).await;
 //
-//     //     let username = "user3";
+//     //     let nickname = "user3";
 //     //     match result {
 //     //         Ok(_) => {
-//     //             let user = repository.find_one(username).await;
+//     //             let user = repository.find_one(nickname).await;
 //     //             assert!(
 //     //                 user.is_some(),
 //     //                 "Expected to find a user with id {}",
-//     //                 username
+//     //                 nickname
 //     //             );
 //     //             if let Some(user) = user {
 //     //                 assert_eq!(user.password(), "new_password3");
@@ -87,7 +87,7 @@
 //     //         Err(err) => panic!("Failed to update user: {}", err),
 //     //     }
 //
-//     //     repository.delete(username).await.unwrap();
+//     //     repository.delete(nickname).await.unwrap();
 //     // }
 //
 //     // #[tokio::test]
@@ -98,20 +98,20 @@
 //     //         .database("test");
 //
 //     //     let user: User =
-//     //         serde_json::from_str(r#"{ "username": "user4", "password": "password4" }"#).unwrap();
+//     //         serde_json::from_str(r#"{ "nickname": "user4", "password": "password4" }"#).unwrap();
 //     //     let repository = UserRepository::new(&database);
 //     //     repository.insert(&user).await.unwrap();
 //
-//     //     let username = "user4";
-//     //     let result = repository.delete(username).await;
+//     //     let nickname = "user4";
+//     //     let result = repository.delete(nickname).await;
 //
 //     //     match result {
 //     //         Ok(_) => {
-//     //             let user = repository.find_one(username).await;
+//     //             let user = repository.find_one(nickname).await;
 //     //             assert!(
 //     //                 user.is_none(),
 //     //                 "Expected to not find a user with id {}",
-//     //                 username
+//     //                 nickname
 //     //             );
 //     //         }
 //     //         Err(err) => panic!("Failed to delete user: {}", err),

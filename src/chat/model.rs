@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 pub(super) struct Chat {
     #[serde(skip)]
     _id: Option<bson::oid::ObjectId>,
-    username: String,
+    nickname: String,
     recipient: String,
     last_message: String,
 }
 
 #[derive(Deserialize)]
 pub(super) struct ChatParams {
-    pub username: Option<String>,
+    pub nickname: Option<String>,
 }
