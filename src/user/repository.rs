@@ -4,6 +4,7 @@ use mongodb::bson::doc;
 use mongodb::Database;
 
 use crate::user::model::User;
+use crate::result::Result;
 
 pub struct UserRepository {
     collection: mongodb::Collection<User>,
@@ -17,8 +18,8 @@ impl UserRepository {
 }
 
 impl UserRepository {
-    pub(super) async fn find_one(&self, username: &str) -> Option<User> {
-        let filter = doc! { "username": username };
+    pub(super) async fn find_one(&self, nickname: &str) -> Option<User> {
+        let filter = doc! { "nickname": nickname };
 
         if let Ok(u) = self.collection.find_one(filter, None).await {
             return u;
@@ -27,8 +28,8 @@ impl UserRepository {
         None
     }
 
-    // pub(super) async fn insert(&self, user: &User) -> Result<()> {
-    //     self.collection.insert_one(user, None).await?;
-    //     Ok(())
-    // }
+    pub(super) async fn insert(&self, user: &User) -> Result<()> {
+        self.collection.insert_one(user, None).await?;
+        Ok(())
+    }
 }
