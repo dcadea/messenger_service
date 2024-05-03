@@ -65,3 +65,12 @@ pub async fn init_oidc_client() -> Result<Arc<OpenIDClient>> {
     .map(Arc::new)
     .map(Ok)?
 }
+
+pub async fn init_http_client() -> Result<Arc<reqwest::Client>> {
+    reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(5))
+        .build()
+        .map(Arc::new)
+        .map(Ok)?
+}

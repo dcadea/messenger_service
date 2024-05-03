@@ -8,15 +8,12 @@ use serde::Serialize;
 pub(crate) enum ApiError {
     BadRequest(String),
 
-    UserAlreadyExists,
-    UserNotFound,
-    InvalidCredentials,
-
     OpenIDError(openid::error::Error),
     OpenIDClientError(openid::error::ClientError),
 
     ParseError(url::ParseError),
     WebSocketConnectionRejected,
+    ReqwestError(reqwest::Error),
 
     RabbitMQError(lapin::Error),
     MongoDBError(mongodb::error::Error),
@@ -38,6 +35,12 @@ impl From<openid::error::ClientError> for ApiError {
 impl From<url::ParseError> for ApiError {
     fn from(error: url::ParseError) -> Self {
         Self::ParseError(error)
+    }
+}
+
+impl From<reqwest::Error> for ApiError {
+    fn from(error: reqwest::Error) -> Self {
+        Self::ReqwestError(error)
     }
 }
 
@@ -69,16 +72,13 @@ impl IntoResponse for ApiError {
         let (status, message) = match self {
             Self::BadRequest(message) => (StatusCode::BAD_REQUEST, message),
 
-            Self::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists".to_owned()),
-            Self::UserNotFound => (StatusCode::NOT_FOUND, "User not found".to_owned()),
-            Self::InvalidCredentials => (StatusCode::FORBIDDEN, "Invalid credentials".to_owned()),
-
             internal => {
                 match internal {
                     Self::OpenIDError(error) => error!("OpenID error: {:?}", error),
                     Self::OpenIDClientError(error) => error!("OpenID client error: {:?}", error),
                     Self::ParseError(error) => error!("Parse error: {:?}", error),
                     Self::WebSocketConnectionRejected => error!("WebSocket connection rejected"),
+                    Self::ReqwestError(error) => error!("Reqwest error: {:?}", error),
                     Self::RabbitMQError(error) => error!("RabbitMQ error: {:?}", error),
                     Self::MongoDBError(error) => error!("MongoDB error: {:?}", error),
                     Self::RedisError(error) => error!("Redis error: {:?}", error),

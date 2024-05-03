@@ -3,7 +3,6 @@ use std::sync::Arc;
 use mongodb::bson::doc;
 use mongodb::Database;
 
-use crate::result::Result;
 use crate::user::model::User;
 
 pub struct UserRepository {
@@ -28,8 +27,8 @@ impl UserRepository {
         None
     }
 
-    pub(super) async fn insert(&self, user: &User) -> Result<()> {
-        self.collection.insert_one(user, None).await?;
-        Ok(())
-    }
+    // pub(super) async fn insert(&self, user: &User) -> Result<()> {
+    //     self.collection.insert_one(user, None).await?;
+    //     Ok(())
+    // }
 }

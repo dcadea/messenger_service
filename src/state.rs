@@ -21,6 +21,7 @@ impl AppState {
         let database = client::init_mongodb().await?;
         let _ = client::init_redis()?;
         let rabbitmq_con = client::init_rabbitmq().await?;
+        let _ = client::init_http_client().await?;
         let oidc_client = client::init_oidc_client().await?;
 
         Ok(Self {
