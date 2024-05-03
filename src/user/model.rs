@@ -5,8 +5,10 @@ use serde::{Deserialize, Serialize};
 pub(super) struct User {
     #[serde(skip)]
     _id: Option<bson::oid::ObjectId>,
-    pub username: String,
-    pub password: String,
+    pub nickname: String,
+    pub name: String,
+    pub picture: String,
+    pub email: String,
 }
 
 #[derive(Deserialize)]
