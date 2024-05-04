@@ -1,5 +1,3 @@
-use openid::DiscoveredClient;
-use reqwest::Url;
 use std::env;
 use std::sync::Arc;
 use std::time::Duration;
@@ -7,8 +5,6 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 
 use crate::result::Result;
-
-pub type OpenIDClient = openid::Client<openid::Discovered, openid::StandardClaims>;
 
 pub fn init_redis() -> Result<redis::Connection> {
     let host = env::var("REDIS_HOST").unwrap_or_else(|_| "127.0.0.1".into());
@@ -49,24 +45,7 @@ pub async fn init_rabbitmq() -> Result<Arc<Mutex<lapin::Connection>>> {
     Ok(map)
 }
 
-pub async fn init_oidc_client() -> Result<Arc<OpenIDClient>> {
-    let client_id = env::var("CLIENT_ID").expect("CLIENT_ID must be set");
-    let client_secret = env::var("CLIENT_SECRET").expect("CLIENT_SECRET must be set");
-    let redirect_url = env::var("REDIRECT_URL").expect("REDIRECT_URL must be set");
-    let issuer_url = env::var("ISSUER_URL").expect("ISSUER_URL must be set");
-
-    DiscoveredClient::discover(
-        client_id,
-        client_secret,
-        redirect_url,
-        Url::parse(&issuer_url)?,
-    )
-    .await
-    .map(Arc::new)
-    .map(Ok)?
-}
-
-pub async fn init_http_client() -> Result<Arc<reqwest::Client>> {
+pub fn init_http_client() -> Result<Arc<reqwest::Client>> {
     reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(2))
         .timeout(Duration::from_secs(5))

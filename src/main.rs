@@ -3,8 +3,10 @@ use axum::routing::get;
 use axum::Router;
 use dotenv::dotenv;
 use log::error;
+use axum::middleware::from_fn_with_state;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
+use crate::auth::validate_token;
 
 use crate::state::AppState;
 
@@ -15,6 +17,7 @@ mod message;
 mod result;
 mod state;
 mod user;
+mod auth;
 
 #[tokio::main]
 async fn main() {
@@ -33,7 +36,8 @@ async fn main() {
 
     let resources_router = Router::new()
         .merge(chat::api::resources(state.clone()))
-        .merge(message::api::resources(state.clone()));
+        .merge(message::api::resources(state.clone()))
+        .route_layer(from_fn_with_state(state.clone(), validate_token));
 
     let router = Router::new()
         .route("/health", get(|| async { () }))
