@@ -19,10 +19,10 @@ pub(crate) struct AppState {
 }
 
 impl AppState {
-    pub async fn init() -> Result<Self> {
-        let database = integration::init_mongodb().await?;
-        let _ = integration::init_redis()?;
-        let rabbitmq_con = integration::init_rabbitmq().await?;
+    pub async fn init(config: &integration::Config) -> Result<Self> {
+        let database = integration::init_mongodb(config).await?;
+        let _ = integration::init_redis(config)?;
+        let rabbitmq_con = integration::init_rabbitmq(config).await?;
         let http = integration::init_http_client()?;
 
         Ok(Self {
