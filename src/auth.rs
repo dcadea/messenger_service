@@ -28,24 +28,15 @@ pub async fn validate_token(
     }
 }
 
+// TODO: return Result<(&str, Header), ApiError>
 fn get_token(headers: &HeaderMap) -> Option<(&str, Header)> {
-    match headers.get("Authorization") {
-        None => return None,
-        Some(authorization) => match authorization.to_str() {
-            Ok(token) => {
-                if let Some(token) = token.split_whitespace().last() {
-                    if let Ok(decoded_header) = decode_header(token) {
-                        return Some((token, decoded_header));
-                    }
-                }
-                None
-            }
-            Err(_) => None,
-        },
-    }
+    let auth_header = headers.get("Authorization")?.to_str().ok()?;
+    let token = auth_header.split_whitespace().last()?;
+    let decoded_header = decode_header(token).ok()?;
+    Some((token, decoded_header))
 }
 
-// TODO: refactor
+// TODO: get rid of unwraps
 async fn token_is_valid(token_header: (&str, &Header), state: &AppState, config: &Config) -> bool {
     let http = state.http.clone();
     let jwk_response = http.get(config.jwks_url.clone()).send().await.unwrap();
