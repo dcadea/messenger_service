@@ -1,3 +1,5 @@
+use jsonwebtoken;
+use jsonwebtoken::jwk::JwkSet;
 use std::sync::Arc;
 
 use crate::chat::repository::ChatRepository;
@@ -15,7 +17,10 @@ pub(crate) struct AppState {
     pub chat_service: Arc<ChatService>,
     pub user_service: Arc<UserService>,
 
-    pub http: Arc<reqwest::Client>,
+    // uncomment when needed
+    // pub http: Arc<reqwest::Client>,
+    pub jwk_set: Arc<JwkSet>,
+    pub jwt_validator: Arc<jsonwebtoken::Validation>,
 }
 
 impl AppState {
@@ -23,13 +28,23 @@ impl AppState {
         let database = integration::init_mongodb(config).await?;
         let _ = integration::init_redis(config)?;
         let rabbitmq_con = integration::init_rabbitmq(config).await?;
+
+        // TODO: find a better place for this
         let http = integration::init_http_client()?;
+        let jwk_response = http.get(config.jwks_url.clone()).send().await?;
+        let jwk_json = jwk_response.json().await?;
+        let jwk_set: JwkSet = serde_json::from_value(jwk_json)?;
+
+        let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
+        validation.set_issuer(&[&config.issuer]);
+        validation.set_audience(&config.audience);
 
         Ok(Self {
             message_service: MessageService::new(MessageRepository::new(&database), rabbitmq_con),
             chat_service: ChatService::new(ChatRepository::new(&database)),
             user_service: UserService::new(UserRepository::new(&database)),
-            http
+            jwk_set: Arc::new(jwk_set),
+            jwt_validator: Arc::new(validation),
         })
     }
 }

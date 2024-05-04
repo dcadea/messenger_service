@@ -8,10 +8,7 @@ pub struct UserService {
 
 impl UserService {
     pub fn new(repository: Arc<UserRepository>) -> Arc<Self> {
-        Self {
-            repository,
-        }
-        .into()
+        Self { repository }.into()
     }
 }
 

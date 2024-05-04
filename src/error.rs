@@ -6,9 +6,14 @@ use serde::Serialize;
 
 #[derive(Debug)]
 pub(crate) enum ApiError {
+    InternalServerError(String),
     BadRequest(String),
 
-    ParseError(url::ParseError),
+    Unauthorized,
+    Forbidden,
+    TokenMalformed(String),
+
+    ParseError(serde_json::Error),
     WebSocketConnectionRejected,
     ReqwestError(reqwest::Error),
 
@@ -17,8 +22,8 @@ pub(crate) enum ApiError {
     RedisError(redis::RedisError),
 }
 
-impl From<url::ParseError> for ApiError {
-    fn from(error: url::ParseError) -> Self {
+impl From<serde_json::Error> for ApiError {
+    fn from(error: serde_json::Error) -> Self {
         Self::ParseError(error)
     }
 }
@@ -56,9 +61,16 @@ impl IntoResponse for ApiError {
 
         let (status, message) = match self {
             Self::BadRequest(message) => (StatusCode::BAD_REQUEST, message),
+            Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()),
+            Self::Forbidden => (StatusCode::FORBIDDEN, "Forbidden".to_owned()),
+            Self::TokenMalformed(message) => {
+                error!("Token malformed: {:?}", message);
+                (StatusCode::BAD_REQUEST, "Token malformed".to_owned())
+            }
 
             internal => {
                 match internal {
+                    Self::InternalServerError(message) => error!("Internal server error: {:?}", message),
                     Self::ParseError(error) => error!("Parse error: {:?}", error),
                     Self::WebSocketConnectionRejected => error!("WebSocket connection rejected"),
                     Self::ReqwestError(error) => error!("Reqwest error: {:?}", error),

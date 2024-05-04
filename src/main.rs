@@ -1,14 +1,15 @@
+use crate::auth::validate_token;
 use axum::http::StatusCode;
+use axum::middleware::from_fn_with_state;
 use axum::routing::get;
 use axum::{Extension, Router};
 use log::error;
-use axum::middleware::from_fn_with_state;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
-use crate::auth::validate_token;
 
 use crate::state::AppState;
 
+mod auth;
 mod chat;
 mod error;
 mod integration;
@@ -16,7 +17,6 @@ mod message;
 mod result;
 mod state;
 mod user;
-mod auth;
 
 #[tokio::main]
 async fn main() {

@@ -20,6 +20,7 @@ pub struct Config {
 
     pub amqp_addr: String,
 
+    pub issuer: String,
     pub jwks_url: String,
     pub userinfo_url: String,
     pub audience: Vec<String>,
@@ -41,9 +42,12 @@ impl Default for Config {
 
             amqp_addr: env::var("AMQP_ADDR").unwrap_or_else(|_| "amqp://127.0.0.1:5672/%2f".into()),
 
-            jwks_url: env::var("ISSUER").map(|iss| format!("{}/.well-known/jwks.json", iss))
+            issuer: env::var("ISSUER").expect("ISSUER must be set"),
+            jwks_url: env::var("ISSUER")
+                .map(|iss| format!("{}.well-known/jwks.json", iss))
                 .expect("ISSUER must be set"),
-            userinfo_url: env::var("ISSUER").map(|iss| format!("{}/userinfo", iss))
+            userinfo_url: env::var("ISSUER")
+                .map(|iss| format!("{}userinfo", iss))
                 .expect("ISSUER must be set"),
             audience: env::var("AUDIENCE")
                 .expect("AUDIENCE must be set")
