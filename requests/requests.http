@@ -2,10 +2,6 @@
 GET {{baseUrl}}/health
 
 
-### Login
-GET {{baseUrl}}/login
-
-
 ### Get all messages
 GET {{apiUrl}}/messages
 
