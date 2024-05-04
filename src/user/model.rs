@@ -24,8 +24,3 @@ impl From<Userinfo> for User {
         }
     }
 }
-
-#[derive(Deserialize)]
-pub(super) struct CallbackParams {
-    pub code: String,
-}

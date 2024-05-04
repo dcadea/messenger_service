@@ -38,7 +38,6 @@ async fn main() {
     let router = Router::new()
         .route("/health", get(|| async { () }))
         .nest("/api/v1", resources_router)
-        .merge(user::api::auth_router(state.clone()))
         .merge(message::api::ws_router(state.clone()))
         .fallback(|| async { (StatusCode::NOT_FOUND, "Why are you here?") })
         .layer(
