@@ -7,7 +7,7 @@ use log::error;
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::state::AppState;
+use crate::state::{AppState, AuthState};
 
 mod auth;
 mod chat;
@@ -23,25 +23,33 @@ async fn main() {
     env_logger::init();
     let config = integration::Config::default();
 
-    let state = match AppState::init(&config).await {
+    let auth_state = match AuthState::init(&config).await {
         Ok(state) => state,
         Err(e) => {
-            error!("Failed to initialize application: {:?}", e);
+            error!("Failed to initialize auth state: {:?}", e);
             return;
         }
     };
 
-    state.clone().message_service.start_purging();
+    let app_state = match AppState::init(&config).await {
+        Ok(state) => state,
+        Err(e) => {
+            error!("Failed to initialize app state: {:?}", e);
+            return;
+        }
+    };
+
+    app_state.clone().message_service.start_purging();
 
     let resources_router = Router::new()
-        .merge(chat::api::resources(state.clone()))
-        .merge(message::api::resources(state.clone()))
-        .route_layer(from_fn_with_state(state.clone(), validate_token));
+        .merge(chat::api::resources(app_state.clone()))
+        .merge(message::api::resources(app_state.clone()))
+        .route_layer(from_fn_with_state(auth_state.clone(), validate_token));
 
     let router = Router::new()
         .route("/health", get(|| async { () }))
         .nest("/api/v1", resources_router)
-        .merge(message::api::ws_router(state.clone()))
+        .merge(message::api::ws_router(app_state.clone()))
         .fallback(|| async { (StatusCode::NOT_FOUND, "Why are you here?") })
         .layer(Extension(config))
         .layer(
