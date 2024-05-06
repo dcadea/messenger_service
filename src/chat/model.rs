@@ -10,7 +10,19 @@ pub(super) struct Chat {
     last_message: String,
 }
 
-#[derive(Deserialize)]
-pub(super) struct ChatParams {
-    pub nickname: Option<String>,
+impl Chat {
+    pub fn from_request(nickname: &str, chat_request: ChatRequest) -> Self {
+        Self {
+            _id: None,
+            nickname: nickname.to_string(),
+            recipient: chat_request.recipient,
+            last_message: chat_request.last_message,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub(super) struct ChatRequest {
+    recipient: String,
+    last_message: String,
 }

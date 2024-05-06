@@ -14,38 +14,25 @@ pub(super) struct Message {
 }
 
 impl Message {
-    fn new(sender: &str, recipient: &str, text: &str, timestamp: i64) -> Self {
+    pub fn from_request(sender: &str, request: MessageRequest) -> Self {
         Self {
             _id: None,
             sender: sender.to_string(),
-            recipient: recipient.to_string(),
-            text: text.to_string(),
-            timestamp,
+            recipient: request.recipient,
+            text: request.text,
+            timestamp: Utc::now().timestamp(),
             seen: false,
         }
     }
 }
 
-impl From<MessageRequest> for Message {
-    fn from(request: MessageRequest) -> Self {
-        Self::new(
-            &request.sender,
-            &request.recipient,
-            &request.text,
-            Utc::now().timestamp(),
-        )
-    }
-}
-
 #[derive(Deserialize, Clone)]
 pub(super) struct MessageRequest {
-    sender: String,
     pub recipient: String,
     text: String,
 }
 
 #[derive(Deserialize)]
 pub(super) struct MessageParams {
-    pub sender: Option<Vec<String>>,
     pub recipient: Option<Vec<String>>,
 }

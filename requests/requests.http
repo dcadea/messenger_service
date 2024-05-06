@@ -2,28 +2,22 @@
 GET {{baseUrl}}/health
 
 
-### Get all messages
-GET {{apiUrl}}/messages
-
-
-### Get messages for 'user1' and 'user2'
-GET {{apiUrl}}/messages?sender=user1&sender=user2&recipient=user1&recipient=user2
+### Get messages for recipients 'user1' and 'user2'
+GET {{apiUrl}}/messages?recipient=user1&recipient=user2
+Authorization: Bearer {{token}}
 
 
 ### Get all chats
 GET {{apiUrl}}/chats
-
-
-### Get chats for 'user1'
-GET {{apiUrl}}/chats?nickname=user1
+Authorization: Bearer {{token}}
 
 
 ### Create chat for 'user1'
 POST {{apiUrl}}/chats
+Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "nickname": "user1",
   "recipient": "user2",
   "last_message": "hey there"
 }

@@ -42,13 +42,9 @@ impl MessageService {
 }
 
 impl MessageService {
-    pub(super) async fn find_all(&self) -> Result<Vec<Message>> {
-        self.repository.find_all().await
-    }
-
     pub(super) async fn find_by_participants(
         &self,
-        participants: Vec<String>,
+        participants: &Vec<String>,
     ) -> Result<Vec<Message>> {
         self.repository.find_by_participants(participants).await
     }
@@ -58,26 +54,33 @@ impl MessageService {
     /**
      * Publishes a message to a recipient's dedicated queue.
      */
-    pub(super) async fn publish_for_recipient(&self, request: MessageRequest) -> Result<()> {
-        let message: Message = request.clone().into();
-        self.publish(&request.recipient, message).await?;
+    pub(super) async fn publish_for_recipient(
+        &self,
+        sender: &str,
+        request: MessageRequest,
+    ) -> Result<()> {
+        self.publish(
+            &request.recipient,
+            &Message::from_request(sender, request.clone()),
+        )
+        .await?;
         Ok(())
     }
 
     /**
      * Publishes a message to a storage queue.
      */
-    pub(super) async fn publish_for_storage(&self, data: String) -> Result<()> {
-        let message = serde_json::from_str::<Message>(&data).unwrap();
-        self.publish(DB_MESSAGES_QUEUE, message).await?;
+    pub(super) async fn publish_for_storage(&self, data: &str) -> Result<()> {
+        let message = serde_json::from_str::<Message>(data).unwrap();
+        self.publish(DB_MESSAGES_QUEUE, &message).await?;
         Ok(())
     }
 
     /**
-     * Reads messages from a recipient's dedicated queue.
+     * Reads messages from a queue where queue_name is the user's nickname.
      */
-    pub(super) async fn read(&self, recipient: &str) -> Result<(String, Channel, MessageStream)> {
-        let (queue_name, channel) = self.split_queue(recipient).await?;
+    pub(super) async fn read(&self, queue_name: &str) -> Result<(String, Channel, MessageStream)> {
+        let (queue_name, channel) = self.split_queue(queue_name).await?;
 
         let consumer = channel
             .basic_consume(
@@ -108,13 +111,9 @@ impl MessageService {
     /**
      * Closes a consumer by its tag.
      */
-    pub(super) async fn close_consumer(
-        &self,
-        consumer_tag: String,
-        channel: Channel,
-    ) -> Result<()> {
+    pub(super) async fn close_consumer(&self, consumer_tag: &str, channel: &Channel) -> Result<()> {
         channel
-            .basic_cancel(&consumer_tag, BasicCancelOptions::default())
+            .basic_cancel(consumer_tag, BasicCancelOptions::default())
             .await?;
 
         Ok(())
@@ -156,7 +155,10 @@ impl MessageService {
                 })
                 .await;
 
-            if let Err(e) = message_service.close_consumer(consumer_tag, channel).await {
+            if let Err(e) = message_service
+                .close_consumer(&consumer_tag, &channel)
+                .await
+            {
                 error!("Failed to close consumer: {:?}", e);
             };
         });
@@ -165,7 +167,7 @@ impl MessageService {
 
 // Private methods
 impl MessageService {
-    async fn publish(&self, queue_name: &str, payload: Message) -> Result<()> {
+    async fn publish(&self, queue_name: &str, payload: &Message) -> Result<()> {
         let (queue_name, channel) = self.split_queue(queue_name).await?;
         let message_json = json!(payload).to_string();
 

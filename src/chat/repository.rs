@@ -1,7 +1,7 @@
 use futures::stream::TryStreamExt;
 use std::sync::Arc;
 
-use mongodb::bson::doc;
+use mongodb::bson::{doc, Document};
 
 use crate::chat::model::Chat;
 use crate::error::ApiError;
@@ -24,22 +24,12 @@ impl ChatRepository {
         Ok(())
     }
 
-    pub(super) async fn find_all(&self) -> Result<Vec<Chat>> {
-        let cursor = self.collection.find(None, None).await?;
-        cursor.try_collect().await.map_err(ApiError::from)
+    pub(super) async fn find_by_nickname(&self, nickname: &str) -> Result<Vec<Chat>> {
+        self.find(doc! { "nickname": nickname }).await
     }
 
-    pub(super) async fn find_by_nickname(&self, nickname: &str) -> Result<Vec<Chat>> {
-        let cursor = self
-            .collection
-            .find(
-                Some(doc! {
-                    "nickname": nickname
-                }),
-                None,
-            )
-            .await?;
-
+    async fn find(&self, filter: Document) -> Result<Vec<Chat>> {
+        let cursor = self.collection.find(Some(filter), None).await?;
         cursor.try_collect().await.map_err(ApiError::from)
     }
 }

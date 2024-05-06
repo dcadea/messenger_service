@@ -1,11 +1,12 @@
-use axum::extract::{Query, State};
+use axum::extract::State;
 use axum::http::StatusCode;
 use axum::routing::{get, post};
-use axum::{Json, Router};
+use axum::{Extension, Json, Router};
 
-use crate::chat::model::{Chat, ChatParams};
+use crate::chat::model::{Chat, ChatRequest};
 use crate::result::Result;
 use crate::state::AppState;
+use crate::user::model::User;
 
 pub fn resources<S>(state: AppState) -> Router<S> {
     Router::new()
@@ -14,18 +15,22 @@ pub fn resources<S>(state: AppState) -> Router<S> {
         .with_state(state)
 }
 
-async fn find_handler(
-    Query(params): Query<ChatParams>,
-    state: State<AppState>,
-) -> Result<Json<Vec<Chat>>> {
-    match params.nickname {
-        Some(nickname) => state.chat_service.find_by_nickname(&nickname).await,
-        None => state.chat_service.find_all().await,
-    }
-    .map(Json)
+async fn find_handler(user: Extension<User>, state: State<AppState>) -> Result<Json<Vec<Chat>>> {
+    state
+        .chat_service
+        .find_by_nickname(&user.nickname)
+        .await
+        .map(Json)
 }
 
-async fn create_handler(state: State<AppState>, chat: Json<Chat>) -> Result<StatusCode> {
-    state.chat_service.create(&chat).await?;
+async fn create_handler(
+    state: State<AppState>,
+    Extension(user): Extension<User>,
+    Json(chat_request): Json<ChatRequest>,
+) -> Result<StatusCode> {
+    state
+        .chat_service
+        .create(&Chat::from_request(&user.nickname, chat_request))
+        .await?;
     Ok(StatusCode::CREATED)
 }

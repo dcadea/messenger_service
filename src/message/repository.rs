@@ -26,27 +26,22 @@ impl MessageRepository {
         Ok(())
     }
 
-    pub(super) async fn find_all(&self) -> Result<Vec<Message>> {
-        let cursor = self.collection.find(None, None).await?;
-        cursor.try_collect().await.map_err(ApiError::from)
-    }
-
     pub(super) async fn find_by_participants(
         &self,
-        participants: Vec<String>,
+        participants: &Vec<String>,
     ) -> Result<Vec<Message>> {
         let document = doc! { // FIXME
-            "sender": {"$in": participants.clone()},
-            "recipient": {"$in": participants.clone()}
+            "sender": {"$in": participants},
+            "recipient": {"$in": participants}
         };
-        self.find_by(document).await
+        self.find(document).await
     }
 
-    async fn find_by(&self, document: Document) -> Result<Vec<Message>> {
+    async fn find(&self, filter: Document) -> Result<Vec<Message>> {
         let cursor = self
             .collection
             .find(
-                Some(document),
+                Some(filter),
                 FindOptions::builder().sort(doc! {"timestamp": 1}).build(),
             )
             .await?;

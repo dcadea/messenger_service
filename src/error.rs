@@ -7,7 +7,8 @@ use serde::Serialize;
 #[derive(Debug)]
 pub(crate) enum ApiError {
     InternalServerError(String),
-    BadRequest(String),
+
+    QueryParamRequired(String),
 
     Unauthorized,
     Forbidden,
@@ -59,7 +60,11 @@ impl IntoResponse for ApiError {
         }
 
         let (status, message) = match self {
-            Self::BadRequest(message) => (StatusCode::BAD_REQUEST, message),
+            Self::QueryParamRequired(param) => (
+                StatusCode::BAD_REQUEST,
+                format!("Query parameter '{}' is required", param),
+            ),
+
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()),
             Self::Forbidden => (StatusCode::FORBIDDEN, "Forbidden".to_owned()),
             Self::TokenMalformed(message) => {
@@ -69,7 +74,9 @@ impl IntoResponse for ApiError {
 
             internal => {
                 match internal {
-                    Self::InternalServerError(message) => error!("Internal server error: {:?}", message),
+                    Self::InternalServerError(message) => {
+                        error!("Internal server error: {:?}", message)
+                    }
                     Self::ParseError(error) => error!("Parse error: {:?}", error),
                     Self::ReqwestError(error) => error!("Reqwest error: {:?}", error),
                     Self::RabbitMQError(error) => error!("RabbitMQ error: {:?}", error),
