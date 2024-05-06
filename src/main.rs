@@ -1,7 +1,7 @@
 use axum::http::StatusCode;
 use axum::middleware::from_fn_with_state;
-use axum::Router;
 use axum::routing::get;
+use axum::Router;
 use log::error;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
@@ -43,14 +43,16 @@ async fn main() {
 
     let protected_router = Router::new()
         .merge(message::api::ws_router(app_state.clone()))
-        .nest("/api/v1", Router::new()
-            .merge(chat::api::resources(app_state.clone()))
-            .merge(message::api::resources(app_state.clone())),
+        .nest(
+            "/api/v1",
+            Router::new()
+                .merge(chat::api::resources(app_state.clone()))
+                .merge(message::api::resources(app_state.clone())),
         )
         .route_layer(
             ServiceBuilder::new()
                 .layer(from_fn_with_state(auth_state.clone(), validate_token))
-                .layer(from_fn_with_state(app_state.clone(), set_user_context))
+                .layer(from_fn_with_state(app_state.clone(), set_user_context)),
         );
 
     let router = Router::new()

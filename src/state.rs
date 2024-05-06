@@ -3,8 +3,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use jsonwebtoken;
-use jsonwebtoken::DecodingKey;
 use jsonwebtoken::jwk::JwkSet;
+use jsonwebtoken::DecodingKey;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 
@@ -79,7 +79,7 @@ impl AuthState {
             loop {
                 match fetch_jwk_decoding_keys(&config_clone).await {
                     Ok(keys) => *jwk_decoding_keys.lock().await = keys,
-                    Err(e) => eprintln!("Failed to update JWK decoding keys: {:?}", e)
+                    Err(e) => eprintln!("Failed to update JWK decoding keys: {:?}", e),
                 }
                 sleep(Duration::from_secs(24 * 60 * 60)).await;
             }
@@ -90,7 +90,7 @@ impl AuthState {
 }
 
 async fn fetch_jwk_decoding_keys(
-    config: &integration::Config
+    config: &integration::Config,
 ) -> Result<HashMap<String, DecodingKey>> {
     let http = integration::init_http_client()?;
     let jwk_response = http.get(config.jwks_url.clone()).send().await?;

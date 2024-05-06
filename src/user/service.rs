@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use crate::user::model::User;
+use std::sync::Arc;
 
 use crate::result::Result;
 use crate::user::repository::UserRepository;
@@ -22,5 +22,4 @@ impl UserService {
     pub async fn find_by_sub(&self, sub: &str) -> Option<User> {
         self.repository.find_by_sub(sub).await
     }
-
 }

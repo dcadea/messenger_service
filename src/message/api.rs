@@ -60,7 +60,9 @@ async fn ws_handler(
     Extension(user): Extension<User>,
     state: State<AppState>,
 ) -> Result<Response> {
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, user.nickname, state.message_service.clone())))
+    Ok(ws.on_upgrade(move |socket| {
+        handle_socket(socket, user.nickname, state.message_service.clone())
+    }))
 }
 
 async fn handle_socket(ws: WebSocket, topic: String, ms: Arc<MessageService>) {

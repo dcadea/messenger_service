@@ -33,16 +33,25 @@ pub async fn set_user_context(
     mut request: Request,
     next: Next,
 ) -> Result<Response> {
-    let claims = request.extensions().get::<TokenClaims>()
+    let claims = request
+        .extensions()
+        .get::<TokenClaims>()
         .ok_or(ApiError::Unauthorized)?;
 
     let user = match app_state.user_service.find_by_sub(&claims.sub).await {
         Some(user) => user,
         None => {
-            let user = app_state.http.get(&app_state.config.userinfo_url)
-                .header(AUTHORIZATION, headers.get(AUTHORIZATION).ok_or(ApiError::Unauthorized)?)
-                .send().await?
-                .json::<User>().await?;
+            let user = app_state
+                .http
+                .get(&app_state.config.userinfo_url)
+                .header(
+                    AUTHORIZATION,
+                    headers.get(AUTHORIZATION).ok_or(ApiError::Unauthorized)?,
+                )
+                .send()
+                .await?
+                .json::<User>()
+                .await?;
             app_state.user_service.create(&user).await?;
             user
         }
@@ -56,8 +65,12 @@ pub async fn set_user_context(
 
 fn get_token(headers: &HeaderMap) -> Result<&str> {
     let auth_header = headers.get(AUTHORIZATION).ok_or(ApiError::Unauthorized)?;
-    let bearer_token = auth_header.to_str().map_err(|e| ApiError::TokenMalformed(e.to_string()))?;
-    let token = bearer_token.strip_prefix("Bearer ").ok_or(ApiError::Unauthorized)?;
+    let bearer_token = auth_header
+        .to_str()
+        .map_err(|e| ApiError::TokenMalformed(e.to_string()))?;
+    let token = bearer_token
+        .strip_prefix("Bearer ")
+        .ok_or(ApiError::Unauthorized)?;
     Ok(token)
 }
 
@@ -69,8 +82,7 @@ fn get_jwt_header(token: &str) -> Result<Header> {
 async fn validate(token: &str, jwt_header: &Header, auth_state: &AuthState) -> Result<TokenClaims> {
     let kid = jwt_header.kid.as_ref().ok_or(ApiError::Forbidden)?;
     let decoding_keys_guard = auth_state.jwk_decoding_keys.lock().await;
-    let decoding_key = decoding_keys_guard.get(kid)
-        .ok_or(ApiError::Forbidden)?;
+    let decoding_key = decoding_keys_guard.get(kid).ok_or(ApiError::Forbidden)?;
 
     decode::<TokenClaims>(token, &decoding_key, &auth_state.jwt_validator)
         .map(|data| data.claims)
