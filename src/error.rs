@@ -14,7 +14,6 @@ pub(crate) enum ApiError {
     TokenMalformed(String),
 
     ParseError(serde_json::Error),
-    WebSocketConnectionRejected,
     ReqwestError(reqwest::Error),
 
     RabbitMQError(lapin::Error),
@@ -72,7 +71,6 @@ impl IntoResponse for ApiError {
                 match internal {
                     Self::InternalServerError(message) => error!("Internal server error: {:?}", message),
                     Self::ParseError(error) => error!("Parse error: {:?}", error),
-                    Self::WebSocketConnectionRejected => error!("WebSocket connection rejected"),
                     Self::ReqwestError(error) => error!("Reqwest error: {:?}", error),
                     Self::RabbitMQError(error) => error!("RabbitMQ error: {:?}", error),
                     Self::MongoDBError(error) => error!("MongoDB error: {:?}", error),

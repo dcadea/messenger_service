@@ -1,12 +1,13 @@
-use crate::auth::validate_token;
 use axum::http::StatusCode;
 use axum::middleware::from_fn_with_state;
+use axum::Router;
 use axum::routing::get;
-use axum::{Extension, Router};
 use log::error;
 use tokio::net::TcpListener;
+use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 
+use crate::auth::{set_user_context, validate_token};
 use crate::state::{AppState, AuthState};
 
 mod auth;
@@ -21,9 +22,8 @@ mod user;
 #[tokio::main]
 async fn main() {
     env_logger::init();
-    let config = integration::Config::default();
 
-    let auth_state = match AuthState::init(&config).await {
+    let auth_state = match AuthState::init().await {
         Ok(state) => state,
         Err(e) => {
             error!("Failed to initialize auth state: {:?}", e);
@@ -31,7 +31,7 @@ async fn main() {
         }
     };
 
-    let app_state = match AppState::init(&config).await {
+    let app_state = match AppState::init().await {
         Ok(state) => state,
         Err(e) => {
             error!("Failed to initialize app state: {:?}", e);
@@ -41,17 +41,22 @@ async fn main() {
 
     app_state.clone().message_service.start_purging();
 
-    let resources_router = Router::new()
-        .merge(chat::api::resources(app_state.clone()))
-        .merge(message::api::resources(app_state.clone()))
-        .route_layer(from_fn_with_state(auth_state.clone(), validate_token));
+    let protected_router = Router::new()
+        .merge(message::api::ws_router(app_state.clone()))
+        .nest("/api/v1", Router::new()
+            .merge(chat::api::resources(app_state.clone()))
+            .merge(message::api::resources(app_state.clone())),
+        )
+        .route_layer(
+            ServiceBuilder::new()
+                .layer(from_fn_with_state(auth_state.clone(), validate_token))
+                .layer(from_fn_with_state(app_state.clone(), set_user_context))
+        );
 
     let router = Router::new()
         .route("/health", get(|| async { () }))
-        .nest("/api/v1", resources_router)
-        .merge(message::api::ws_router(app_state.clone()))
+        .merge(protected_router)
         .fallback(|| async { (StatusCode::NOT_FOUND, "Why are you here?") })
-        .layer(Extension(config))
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)

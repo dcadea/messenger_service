@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use mongodb::bson::doc;
+use mongodb::bson::{doc, Document};
 use mongodb::Database;
 
+use crate::result::Result;
 use crate::user::model::User;
 
 pub struct UserRepository {
@@ -17,18 +18,16 @@ impl UserRepository {
 }
 
 impl UserRepository {
-    pub(super) async fn find_one(&self, nickname: &str) -> Option<User> {
-        let filter = doc! { "nickname": nickname };
-
-        if let Ok(u) = self.collection.find_one(filter, None).await {
-            return u;
-        }
-
-        None
+    pub(super) async fn insert(&self, user: &User) -> Result<()> {
+        self.collection.insert_one(user, None).await?;
+        Ok(())
     }
 
-    // pub(super) async fn insert(&self, user: &User) -> Result<()> {
-    //     self.collection.insert_one(user, None).await?;
-    //     Ok(())
-    // }
+    pub(super) async fn find_by_sub(&self, sub: &str) -> Option<User> {
+        self.find(doc! { "sub": sub }).await
+    }
+
+    async fn find(&self, filter: Document) -> Option<User> {
+        self.collection.find_one(filter, None).await.ok().flatten()
+    }
 }

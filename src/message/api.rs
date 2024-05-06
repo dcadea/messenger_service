@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use axum::extract::ws::{Message as WsMessage, WebSocket};
-use axum::extract::{Path, State, WebSocketUpgrade};
+use axum::extract::{State, WebSocketUpgrade};
 use axum::response::Response;
 use axum::routing::get;
-use axum::{Json, Router};
+use axum::{Extension, Json, Router};
 use axum_extra::extract::Query;
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, StreamExt};
@@ -17,6 +17,7 @@ use crate::message::model::{Message, MessageParams, MessageRequest};
 use crate::message::service::MessageService;
 use crate::result::Result;
 use crate::state::AppState;
+use crate::user::model::User;
 
 pub fn resources<S>(state: AppState) -> Router<S> {
     Router::new()
@@ -26,7 +27,7 @@ pub fn resources<S>(state: AppState) -> Router<S> {
 
 pub fn ws_router<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route("/ws/:topic", get(ws_handler))
+        .route("/ws", get(ws_handler))
         .with_state(state)
 }
 
@@ -56,14 +57,10 @@ async fn find_handler(
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    Path(topic): Path<String>,
+    Extension(user): Extension<User>,
     state: State<AppState>,
 ) -> Result<Response> {
-    if !state.user_service.exists(topic.as_str()).await {
-        return Err(ApiError::WebSocketConnectionRejected);
-    }
-
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, topic, state.message_service.clone())))
+    Ok(ws.on_upgrade(move |socket| handle_socket(socket, user.nickname, state.message_service.clone())))
 }
 
 async fn handle_socket(ws: WebSocket, topic: String, ms: Arc<MessageService>) {

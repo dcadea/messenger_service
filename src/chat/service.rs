@@ -15,7 +15,7 @@ impl ChatService {
 
 impl ChatService {
     pub(super) async fn create(&self, chat: &Chat) -> Result<()> {
-        self.repository.insert(&chat).await
+        self.repository.insert(chat).await
     }
 
     pub(super) async fn find_all(&self) -> Result<Vec<Chat>> {

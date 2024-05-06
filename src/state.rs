@@ -20,21 +20,29 @@ use crate::user::service::UserService;
 
 #[derive(Clone)]
 pub(crate) struct AppState {
+    pub config: Arc<integration::Config>,
+
     pub message_service: Arc<MessageService>,
     pub chat_service: Arc<ChatService>,
     pub user_service: Arc<UserService>,
+
+    pub http: Arc<reqwest::Client>,
 }
 
 impl AppState {
-    pub async fn init(config: &integration::Config) -> Result<Self> {
-        let database = integration::init_mongodb(config).await?;
-        let _ = integration::init_redis(config)?;
-        let rabbitmq_con = integration::init_rabbitmq(config).await?;
+    pub async fn init() -> Result<Self> {
+        let config = integration::Config::default();
+
+        let database = integration::init_mongodb(&config).await?;
+        let _ = integration::init_redis(&config)?;
+        let rabbitmq_con = integration::init_rabbitmq(&config).await?;
 
         Ok(Self {
+            config: Arc::new(config),
             message_service: MessageService::new(MessageRepository::new(&database), rabbitmq_con),
             chat_service: ChatService::new(ChatRepository::new(&database)),
             user_service: UserService::new(UserRepository::new(&database)),
+            http: integration::init_http_client()?,
         })
     }
 }
@@ -53,7 +61,9 @@ pub(crate) struct AuthState {
 }
 
 impl AuthState {
-    pub async fn init(config: &integration::Config) -> Result<Self> {
+    pub async fn init() -> Result<Self> {
+        let config = integration::Config::default(); // TODO: refactor to use common config
+
         let mut jwk_validator = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
         jwk_validator.set_issuer(&[&config.issuer]);
         jwk_validator.set_audience(&config.audience);

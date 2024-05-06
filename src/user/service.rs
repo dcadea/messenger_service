@@ -1,5 +1,7 @@
 use std::sync::Arc;
+use crate::user::model::User;
 
+use crate::result::Result;
 use crate::user::repository::UserRepository;
 
 pub struct UserService {
@@ -13,7 +15,12 @@ impl UserService {
 }
 
 impl UserService {
-    pub async fn exists(&self, nickname: &str) -> bool {
-        self.repository.find_one(nickname).await.is_some()
+    pub async fn create(&self, user: &User) -> Result<()> {
+        self.repository.insert(user).await
     }
+
+    pub async fn find_by_sub(&self, sub: &str) -> Option<User> {
+        self.repository.find_by_sub(sub).await
+    }
+
 }

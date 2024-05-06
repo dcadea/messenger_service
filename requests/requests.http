@@ -36,8 +36,9 @@ Content-Type: application/json
 #  "recipient": "user1",
 #  "text": "finally a cat message"
 #}
-WEBSOCKET {{wsUrl}}/ws/user1
-
+WEBSOCKET {{wsUrl}}/ws/
+Authorization: Bearer {{token}}
 
 ### WS for 'user2'
-WEBSOCKET {{wsUrl}}/ws/user2
+WEBSOCKET {{wsUrl}}/ws/
+Authorization: Bearer {{token}}
