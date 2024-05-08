@@ -1,5 +1,6 @@
 use mongodb::bson;
 use serde::{Deserialize, Serialize};
+use crate::auth::model::UserInfo;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct User {
@@ -10,4 +11,17 @@ pub struct User {
     pub name: String,
     pub picture: String,
     pub email: String,
+}
+
+impl From<UserInfo> for User {
+    fn from(info: UserInfo) -> Self {
+        Self {
+            _id: None,
+            sub: info.sub,
+            nickname: info.nickname,
+            name: info.name,
+            picture: info.picture,
+            email: info.email,
+        }
+    }
 }

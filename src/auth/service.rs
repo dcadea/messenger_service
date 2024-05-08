@@ -12,7 +12,7 @@ use crate::auth::model::TokenClaims;
 use crate::error::ApiError;
 use crate::integration;
 use crate::result::Result;
-use crate::user::model::User;
+use crate::auth::model::UserInfo;
 
 #[derive(Clone)]
 pub struct AuthService {
@@ -65,17 +65,17 @@ impl AuthService {
             .map_err(|e| ApiError::Forbidden(e.to_string()))
     }
 
-    pub(super) async fn get_user_info(&self, token: &str) -> Result<User> {
-        let user = self
+    pub(super) async fn get_user_info(&self, token: &str) -> Result<UserInfo> {
+        let user_info = self
             .http
             .get(&self.config.userinfo_url)
             .header(AUTHORIZATION, token)
             .send()
             .await?
-            .json::<User>()
+            .json::<UserInfo>()
             .await?;
 
-        Ok(user)
+        Ok(user_info)
     }
 
     fn get_kid(&self, token: &str) -> Result<String> {

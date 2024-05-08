@@ -9,7 +9,7 @@ use crate::error::ApiError;
 use crate::result::Result;
 use crate::user::service::UserService;
 
-mod model;
+pub(crate) mod model;
 pub(crate) mod service;
 
 const AUTHORIZATION: &str = "Authorization";
@@ -45,7 +45,8 @@ pub(crate) async fn set_user_context(
         Some(user) => user,
         None => {
             let token = get_token(&headers)?;
-            let user = auth_service.get_user_info(token).await?;
+            let user_info = auth_service.get_user_info(token).await?;
+            let user = user_info.into();
             user_service.create(&user).await?;
             user
         }
