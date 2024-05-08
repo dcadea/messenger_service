@@ -2,17 +2,17 @@
 GET {{baseUrl}}/health
 
 
-### Get messages for recipients 'user1' and 'user2'
-GET {{apiUrl}}/messages?recipient=user1&recipient=user2
+### Get messages for recipients 'user1' and logged in user
+GET {{apiUrl}}/messages?recipient=user1
 Authorization: Bearer {{token}}
 
 
-### Get all chats
+### Get all chats for logged in user
 GET {{apiUrl}}/chats
 Authorization: Bearer {{token}}
 
 
-### Create chat for 'user1'
+### Create chat for for logged in user
 POST {{apiUrl}}/chats
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -23,16 +23,11 @@ Content-Type: application/json
 }
 
 
-### WS for 'user1'
+### WS for 'TODO'
 # Acceptable body:
 #{
 #  "sender": "user2",
 #  "recipient": "user1",
 #  "text": "finally a cat message"
 #}
-WEBSOCKET {{wsUrl}}/ws/
-Authorization: Bearer {{token}}
-
-### WS for 'user2'
-WEBSOCKET {{wsUrl}}/ws/
-Authorization: Bearer {{token}}
+WEBSOCKET {{wsUrl}}

@@ -69,7 +69,7 @@ impl IntoResponse for ApiError {
             Self::Forbidden(message) => {
                 error!("Forbidden: {:?}", message);
                 (StatusCode::FORBIDDEN, "Forbidden".to_owned())
-            },
+            }
             Self::TokenMalformed(message) => {
                 error!("Token malformed: {:?}", message);
                 (StatusCode::BAD_REQUEST, "Token malformed".to_owned())

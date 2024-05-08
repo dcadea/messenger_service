@@ -33,14 +33,9 @@ async fn main() {
 
     app_state.clone().message_service.start_purging();
 
-    let protected_router = Router::new()
-        .merge(message::api::ws_router(app_state.clone()))
-        .nest(
-            "/api/v1",
-            Router::new()
-                .merge(chat::api::resources(app_state.clone()))
-                .merge(message::api::resources(app_state.clone())),
-        )
+    let api_router = Router::new()
+        .merge(chat::api::resources(app_state.clone()))
+        .merge(message::api::resources(app_state.clone()))
         .route_layer(
             ServiceBuilder::new()
                 .layer(from_fn_with_state(app_state.clone(), validate_token))
@@ -49,7 +44,8 @@ async fn main() {
 
     let router = Router::new()
         .route("/health", get(|| async { () }))
-        .merge(protected_router)
+        .merge(message::api::ws_router(app_state.clone()))
+        .nest("/api/v1", api_router)
         .fallback(|| async { (StatusCode::NOT_FOUND, "Why are you here?") })
         .layer(
             CorsLayer::new()
