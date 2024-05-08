@@ -80,11 +80,11 @@ fn get_jwt_header(token: &str) -> Result<Header> {
 }
 
 async fn validate(token: &str, jwt_header: &Header, auth_state: &AuthState) -> Result<TokenClaims> {
-    let kid = jwt_header.kid.as_ref().ok_or(ApiError::Forbidden)?;
+    let kid = jwt_header.kid.as_ref().ok_or(ApiError::Forbidden("Missing kid".to_owned()))?;
     let decoding_keys_guard = auth_state.jwk_decoding_keys.lock().await;
-    let decoding_key = decoding_keys_guard.get(kid).ok_or(ApiError::Forbidden)?;
+    let decoding_key = decoding_keys_guard.get(kid).ok_or(ApiError::Forbidden("Unknown kid".to_owned()))?;
 
     decode::<TokenClaims>(token, &decoding_key, &auth_state.jwt_validator)
         .map(|data| data.claims)
-        .map_err(|_| ApiError::Forbidden)
+        .map_err(|e| ApiError::Forbidden(e.to_string()))
 }

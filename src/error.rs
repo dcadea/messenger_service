@@ -11,7 +11,7 @@ pub(crate) enum ApiError {
     QueryParamRequired(String),
 
     Unauthorized,
-    Forbidden,
+    Forbidden(String),
     TokenMalformed(String),
 
     ParseError(serde_json::Error),
@@ -66,7 +66,10 @@ impl IntoResponse for ApiError {
             ),
 
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()),
-            Self::Forbidden => (StatusCode::FORBIDDEN, "Forbidden".to_owned()),
+            Self::Forbidden(message) => {
+                error!("Forbidden: {:?}", message);
+                (StatusCode::FORBIDDEN, "Forbidden".to_owned())
+            },
             Self::TokenMalformed(message) => {
                 error!("Token malformed: {:?}", message);
                 (StatusCode::BAD_REQUEST, "Token malformed".to_owned())

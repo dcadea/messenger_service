@@ -65,6 +65,7 @@ impl AuthState {
         let config = integration::Config::default(); // TODO: refactor to use common config
 
         let mut jwk_validator = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::RS256);
+        jwk_validator.set_required_spec_claims(&vec!["iss", "sub", "aud", "exp", "privileges"]);
         jwk_validator.set_issuer(&[&config.issuer]);
         jwk_validator.set_audience(&config.audience);
 
