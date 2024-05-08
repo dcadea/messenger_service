@@ -47,13 +47,6 @@ impl AppState {
     }
 }
 
-// TODO: investigate
-// impl FromRef<AppState> for MessageService {
-//     fn from_ref(state: &AppState) -> Arc<Self> {
-//         state.message_service.clone()
-//     }
-// }
-
 #[derive(Clone)]
 pub(crate) struct AuthState {
     pub jwt_validator: Arc<jsonwebtoken::Validation>,

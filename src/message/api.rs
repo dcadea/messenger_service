@@ -96,6 +96,10 @@ async fn read(
         match frame {
             Ok(WsMessage::Text(content)) => {
                 debug!("received ws frame: {:?}", content);
+                if content.trim() == "ping" {
+                    continue;
+                }
+
                 if let Ok(msg) = serde_json::from_str::<MessageRequest>(content.as_str()) {
                     if let Err(e) = message_service.publish_for_recipient(&nickname, msg).await {
                         error!("failed to publish message to queue: {}, {:?}", content, e);
