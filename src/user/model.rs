@@ -1,6 +1,6 @@
+use crate::auth::model::UserInfo;
 use mongodb::bson;
 use serde::{Deserialize, Serialize};
-use crate::auth::model::UserInfo;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct User {

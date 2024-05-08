@@ -141,10 +141,10 @@ async fn write(
             item = messages_stream.next() => {
                 match item {
                     Some(Ok(item)) => {
-                        let message = WsMessage::Text(item.clone());
+                        let message = WsMessage::Binary(item.clone());
                         let mut sender = sender.lock().await;
                         let _ = sender.send(message).await;
-                        if let Err(e) = message_service.publish_for_storage(&item).await {
+                        if let Err(e) = message_service.publish_for_storage(item.as_slice()).await {
                             error!("Failed to store message: {:?}", e);
                         }
                     },

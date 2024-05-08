@@ -9,10 +9,10 @@ use tokio::sync::Mutex;
 use tokio::time::sleep;
 
 use crate::auth::model::TokenClaims;
+use crate::auth::model::UserInfo;
 use crate::error::ApiError;
 use crate::integration;
 use crate::result::Result;
-use crate::auth::model::UserInfo;
 
 #[derive(Clone)]
 pub struct AuthService {

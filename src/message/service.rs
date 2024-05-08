@@ -1,5 +1,4 @@
 use std::pin::Pin;
-use std::str::from_utf8;
 use std::sync::Arc;
 
 use futures::{StreamExt, TryStreamExt};
@@ -19,7 +18,7 @@ use crate::message::model::{Message, MessageRequest};
 use crate::message::repository::MessageRepository;
 use crate::result::Result;
 
-type MessageStream = Pin<Box<dyn Stream<Item = Result<String>> + Send>>;
+type MessageStream = Pin<Box<dyn Stream<Item = Result<Vec<u8>>> + Send>>;
 
 const DB_MESSAGES_QUEUE: &str = "db.messages";
 
@@ -67,8 +66,8 @@ impl MessageService {
     /**
      * Publishes a message to a storage queue.
      */
-    pub(super) async fn publish_for_storage(&self, data: &str) -> Result<()> {
-        let message = serde_json::from_str::<Message>(data).unwrap();
+    pub(super) async fn publish_for_storage(&self, data: &[u8]) -> Result<()> {
+        let message = serde_json::from_slice::<Message>(data).unwrap();
         self.publish(DB_MESSAGES_QUEUE, &message).await?;
         Ok(())
     }
@@ -92,9 +91,7 @@ impl MessageService {
 
         let stream = consumer
             .and_then(|delivery| {
-                let data = from_utf8(&delivery.data)
-                    .expect("not a utf8 string")
-                    .to_string();
+                let data = delivery.data.clone();
                 async move {
                     delivery.ack(BasicAckOptions::default()).await?;
                     Ok(data)
@@ -138,7 +135,7 @@ impl MessageService {
                     async move {
                         match data {
                             Ok(data) => {
-                                let message = serde_json::from_str::<Message>(&data)
+                                let message = serde_json::from_slice::<Message>(&*data)
                                     .expect("Failed to deserialize message");
                                 if let Err(e) = message_repository.insert(&message).await {
                                     error!("Failed to store message: {:?}", e);
