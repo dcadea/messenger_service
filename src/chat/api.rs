@@ -2,7 +2,6 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
-use std::sync::Arc;
 
 use crate::chat::model::{Chat, ChatRequest};
 use crate::chat::service::ChatService;
@@ -19,7 +18,7 @@ pub fn resources<S>(state: AppState) -> Router<S> {
 
 async fn find_handler(
     user: Extension<User>,
-    chat_service: State<Arc<ChatService>>,
+    chat_service: State<ChatService>,
 ) -> Result<Json<Vec<Chat>>> {
     chat_service
         .find_by_nickname(&user.nickname)
@@ -28,7 +27,7 @@ async fn find_handler(
 }
 
 async fn create_handler(
-    chat_service: State<Arc<ChatService>>,
+    chat_service: State<ChatService>,
     Extension(user): Extension<User>,
     Json(chat_request): Json<ChatRequest>,
 ) -> Result<StatusCode> {

@@ -34,7 +34,7 @@ pub fn ws_router<S>(state: AppState) -> Router<S> {
 async fn find_handler(
     Query(params): Query<MessageParams>,
     Extension(user): Extension<User>,
-    message_service: State<Arc<MessageService>>,
+    message_service: State<MessageService>,
 ) -> Result<Json<Vec<Message>>> {
     match params.recipient {
         None => Err(ApiError::QueryParamRequired("recipient".to_owned())),
@@ -53,12 +53,12 @@ async fn find_handler(
 async fn ws_handler(
     ws: WebSocketUpgrade,
     Extension(user): Extension<User>, // FIXME: user is not present in the ws context
-    State(message_service): State<Arc<MessageService>>,
+    State(message_service): State<MessageService>,
 ) -> Result<Response> {
     Ok(ws.on_upgrade(move |socket| handle_socket(socket, user, message_service.clone())))
 }
 
-async fn handle_socket(ws: WebSocket, user: User, message_service: Arc<MessageService>) {
+async fn handle_socket(ws: WebSocket, user: User, message_service: MessageService) {
     let nickname = user.nickname.clone(); // also a topic name
     let (sender, receiver) = ws.split();
     let notify = Arc::new(Notify::new());
@@ -88,7 +88,7 @@ async fn handle_socket(ws: WebSocket, user: User, message_service: Arc<MessageSe
 async fn read(
     nickname: String,
     mut receiver: SplitStream<WebSocket>,
-    message_service: Arc<MessageService>,
+    message_service: MessageService,
     notify: Arc<Notify>,
 ) {
     while let Some(frame) = receiver.next().await {
@@ -123,7 +123,7 @@ async fn read(
 async fn write(
     nickname: String,
     sender: SplitSink<WebSocket, WsMessage>,
-    message_service: Arc<MessageService>,
+    message_service: MessageService,
     notify: Arc<Notify>,
 ) {
     let sender = Arc::new(Mutex::new(sender));

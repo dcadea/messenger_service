@@ -2,7 +2,6 @@ use axum::extract::{Request, State};
 use axum::http::HeaderMap;
 use axum::middleware::Next;
 use axum::response::Response;
-use std::sync::Arc;
 
 use crate::auth::model::TokenClaims;
 use crate::auth::service::AuthService;
@@ -31,7 +30,7 @@ pub(super) async fn validate_token(
 }
 
 pub(crate) async fn set_user_context(
-    user_service: State<Arc<UserService>>,
+    user_service: State<UserService>,
     auth_service: State<AuthService>,
     headers: HeaderMap,
     mut request: Request,

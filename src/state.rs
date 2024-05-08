@@ -1,5 +1,4 @@
 use axum::extract::FromRef;
-use std::sync::Arc;
 
 use crate::auth::service::AuthService;
 
@@ -15,11 +14,11 @@ use crate::user::service::UserService;
 #[derive(Clone)]
 pub(crate) struct AppState {
     pub config: integration::Config,
-    pub auth_service: AuthService,
 
-    pub message_service: Arc<MessageService>,
-    pub chat_service: Arc<ChatService>,
-    pub user_service: Arc<UserService>,
+    pub auth_service: AuthService,
+    pub user_service: UserService,
+    pub chat_service: ChatService,
+    pub message_service: MessageService,
 }
 
 impl AppState {
@@ -33,9 +32,9 @@ impl AppState {
         Ok(Self {
             config,
             auth_service,
-            message_service: MessageService::new(MessageRepository::new(&database), rabbitmq_con),
-            chat_service: ChatService::new(ChatRepository::new(&database)),
             user_service: UserService::new(UserRepository::new(&database)),
+            chat_service: ChatService::new(ChatRepository::new(&database)),
+            message_service: MessageService::new(MessageRepository::new(&database), rabbitmq_con),
         })
     }
 }
@@ -52,20 +51,20 @@ impl FromRef<AppState> for AuthService {
     }
 }
 
-impl FromRef<AppState> for Arc<MessageService> {
+impl FromRef<AppState> for UserService {
     fn from_ref(app_state: &AppState) -> Self {
-        app_state.message_service.clone()
+        app_state.user_service.clone()
     }
 }
 
-impl FromRef<AppState> for Arc<ChatService> {
+impl FromRef<AppState> for ChatService {
     fn from_ref(app_state: &AppState) -> Self {
         app_state.chat_service.clone()
     }
 }
 
-impl FromRef<AppState> for Arc<UserService> {
+impl FromRef<AppState> for MessageService {
     fn from_ref(app_state: &AppState) -> Self {
-        app_state.user_service.clone()
+        app_state.message_service.clone()
     }
 }

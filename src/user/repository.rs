@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use mongodb::bson::{doc, Document};
 use mongodb::Database;
 
@@ -11,9 +9,10 @@ pub struct UserRepository {
 }
 
 impl UserRepository {
-    pub fn new(database: &Database) -> Arc<Self> {
-        let collection = database.collection("users");
-        Self { collection }.into()
+    pub fn new(database: &Database) -> Self {
+        Self {
+            collection: database.collection("users"),
+        }
     }
 }
 

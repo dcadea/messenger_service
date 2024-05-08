@@ -23,21 +23,18 @@ type MessageStream = Pin<Box<dyn Stream<Item = Result<String>> + Send>>;
 
 const DB_MESSAGES_QUEUE: &str = "db.messages";
 
+#[derive(Clone)]
 pub struct MessageService {
     repository: Arc<MessageRepository>,
     rabbitmq_con: Arc<Mutex<Connection>>,
 }
 
 impl MessageService {
-    pub fn new(
-        repository: Arc<MessageRepository>,
-        rabbitmq_con: Arc<Mutex<Connection>>,
-    ) -> Arc<Self> {
+    pub fn new(repository: MessageRepository, rabbitmq_con: Mutex<Connection>) -> Self {
         Self {
-            repository,
-            rabbitmq_con,
+            repository: Arc::new(repository),
+            rabbitmq_con: Arc::new(rabbitmq_con),
         }
-        .into()
     }
 }
 
@@ -122,20 +119,18 @@ impl MessageService {
     /**
      * Starts a purging process for the storage queue.
      */
-    pub fn start_purging(self: Arc<Self>) {
-        let self_clone = self.clone();
+    pub fn start_purging(self) {
+        let self_clone = Arc::new(self);
         tokio::spawn(async move {
             let message_service = self_clone.clone();
-            let (consumer_tag, channel, messages_stream) = match self.read(DB_MESSAGES_QUEUE).await
-            {
-                Ok(binding) => binding,
-                Err(e) => {
-                    error!("Failed to read messages: {:?}", e);
-                    return;
-                }
-            };
-
-            // messages_stream.for_each_concurrent(None, move |data| data);
+            let (consumer_tag, channel, messages_stream) =
+                match message_service.read(DB_MESSAGES_QUEUE).await {
+                    Ok(binding) => binding,
+                    Err(e) => {
+                        error!("Failed to read messages: {:?}", e);
+                        return;
+                    }
+                };
 
             messages_stream
                 .for_each(move |data| {

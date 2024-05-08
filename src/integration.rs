@@ -1,5 +1,4 @@
 use std::env;
-use std::sync::Arc;
 use std::time::Duration;
 
 use dotenv::dotenv;
@@ -87,12 +86,12 @@ pub async fn init_mongodb(config: &Config) -> Result<mongodb::Database> {
     Ok(client.database(&*database))
 }
 
-pub async fn init_rabbitmq(config: &Config) -> Result<Arc<Mutex<lapin::Connection>>> {
+pub async fn init_rabbitmq(config: &Config) -> Result<Mutex<lapin::Connection>> {
     let addr = config.amqp_addr.clone();
 
     let map = lapin::Connection::connect(&addr, lapin::ConnectionProperties::default())
         .await
-        .map(|con| Arc::new(Mutex::new(con)))?;
+        .map(|con| Mutex::new(con))?;
 
     Ok(map)
 }

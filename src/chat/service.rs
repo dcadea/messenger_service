@@ -3,13 +3,16 @@ use crate::chat::repository::ChatRepository;
 use crate::result::Result;
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct ChatService {
     repository: Arc<ChatRepository>,
 }
 
 impl ChatService {
-    pub fn new(repository: Arc<ChatRepository>) -> Arc<Self> {
-        Self { repository }.into()
+    pub fn new(repository: ChatRepository) -> Self {
+        Self {
+            repository: Arc::new(repository),
+        }
     }
 }
 

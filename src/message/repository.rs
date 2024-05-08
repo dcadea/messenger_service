@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use futures::TryStreamExt;
 use mongodb::bson::{doc, Document};
 use mongodb::options::FindOptions;
@@ -14,9 +12,10 @@ pub struct MessageRepository {
 }
 
 impl MessageRepository {
-    pub fn new(database: &Database) -> Arc<Self> {
-        let collection = database.collection("messages");
-        Self { collection }.into()
+    pub fn new(database: &Database) -> Self {
+        Self {
+            collection: database.collection("messages"),
+        }
     }
 }
 

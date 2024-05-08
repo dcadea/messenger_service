@@ -4,13 +4,16 @@ use std::sync::Arc;
 use crate::result::Result;
 use crate::user::repository::UserRepository;
 
+#[derive(Clone)]
 pub struct UserService {
     repository: Arc<UserRepository>,
 }
 
 impl UserService {
-    pub fn new(repository: Arc<UserRepository>) -> Arc<Self> {
-        Self { repository }.into()
+    pub fn new(repository: UserRepository) -> Self {
+        Self {
+            repository: Arc::new(repository),
+        }
     }
 }
 

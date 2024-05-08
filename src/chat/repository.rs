@@ -1,5 +1,4 @@
 use futures::stream::TryStreamExt;
-use std::sync::Arc;
 
 use mongodb::bson::{doc, Document};
 
@@ -12,9 +11,10 @@ pub struct ChatRepository {
 }
 
 impl ChatRepository {
-    pub fn new(database: &mongodb::Database) -> Arc<Self> {
-        let collection = database.collection("chats");
-        Self { collection }.into()
+    pub fn new(database: &mongodb::Database) -> Self {
+        Self {
+            collection: database.collection("chats"),
+        }
     }
 }
 
