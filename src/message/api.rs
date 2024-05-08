@@ -34,7 +34,7 @@ pub fn ws_router<S>(state: AppState) -> Router<S> {
 async fn find_handler(
     Query(params): Query<MessageParams>,
     Extension(user): Extension<User>,
-    state: State<AppState>,
+    message_service: State<Arc<MessageService>>,
 ) -> Result<Json<Vec<Message>>> {
     match params.recipient {
         None => Err(ApiError::QueryParamRequired("recipient".to_owned())),
@@ -42,8 +42,7 @@ async fn find_handler(
             let mut participants = recipient.clone();
             participants.push(user.nickname);
 
-            state
-                .message_service
+            message_service
                 .find_by_participants(&participants)
                 .await
                 .map(Json)
@@ -53,10 +52,10 @@ async fn find_handler(
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    Extension(user): Extension<User>,
-    state: State<AppState>,
+    Extension(user): Extension<User>, // FIXME: user is not present in the ws context
+    State(message_service): State<Arc<MessageService>>,
 ) -> Result<Response> {
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, user, state.message_service.clone())))
+    Ok(ws.on_upgrade(move |socket| handle_socket(socket, user, message_service.clone())))
 }
 
 async fn handle_socket(ws: WebSocket, user: User, message_service: Arc<MessageService>) {

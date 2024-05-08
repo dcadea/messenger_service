@@ -11,7 +11,7 @@ use crate::user::model::{TokenClaims, User};
 
 const AUTHORIZATION: &str = "Authorization";
 
-pub async fn validate_token(
+pub(crate) async fn validate_token(
     auth_state: State<AuthState>,
     headers: HeaderMap,
     mut request: Request,
@@ -27,7 +27,7 @@ pub async fn validate_token(
     Ok(response)
 }
 
-pub async fn set_user_context(
+pub(crate) async fn set_user_context(
     app_state: State<AppState>,
     headers: HeaderMap,
     mut request: Request,

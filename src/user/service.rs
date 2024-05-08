@@ -15,11 +15,11 @@ impl UserService {
 }
 
 impl UserService {
-    pub async fn create(&self, user: &User) -> Result<()> {
+    pub(crate) async fn create(&self, user: &User) -> Result<()> {
         self.repository.insert(user).await
     }
 
-    pub async fn find_by_sub(&self, sub: &str) -> Option<User> {
+    pub(crate) async fn find_by_sub(&self, sub: &str) -> Option<User> {
         self.repository.find_by_sub(sub).await
     }
 }

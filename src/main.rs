@@ -8,7 +8,7 @@ use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 
 use crate::auth::{set_user_context, validate_token};
-use crate::state::{AppState, AuthState};
+use crate::state::AppState;
 
 mod auth;
 mod chat;
@@ -22,14 +22,6 @@ mod user;
 #[tokio::main]
 async fn main() {
     env_logger::init();
-
-    let auth_state = match AuthState::init().await {
-        Ok(state) => state,
-        Err(e) => {
-            error!("Failed to initialize auth state: {:?}", e);
-            return;
-        }
-    };
 
     let app_state = match AppState::init().await {
         Ok(state) => state,
@@ -51,7 +43,7 @@ async fn main() {
         )
         .route_layer(
             ServiceBuilder::new()
-                .layer(from_fn_with_state(auth_state.clone(), validate_token))
+                .layer(from_fn_with_state(app_state.clone(), validate_token))
                 .layer(from_fn_with_state(app_state.clone(), set_user_context)),
         );
 
