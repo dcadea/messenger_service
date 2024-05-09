@@ -13,9 +13,8 @@ use tokio::sync::{Mutex, Notify};
 use tokio::try_join;
 
 use crate::error::ApiError;
-use crate::event::model::Event;
 use crate::event::service::EventService;
-use crate::message::model::{Message, MessageParams};
+use crate::message::model::{Message, MessageParams, MessageRequest};
 use crate::message::service::MessageService;
 use crate::result::Result;
 use crate::state::AppState;
@@ -98,8 +97,13 @@ async fn read(
             Ok(WsMessage::Text(content)) => {
                 debug!("received ws frame: {:?}", content);
 
-                if let Ok(event) = serde_json::from_str::<Event>(content.as_str()) {
-                    if let Err(e) = event_service.publish_for_recipient(&nickname, &event).await {
+                if let Ok(message_request) =
+                    serde_json::from_str::<MessageRequest>(content.as_str())
+                {
+                    if let Err(e) = event_service
+                        .publish_for_recipient(&nickname, &message_request)
+                        .await
+                    {
                         error!("failed to publish message to queue: {}, {:?}", content, e);
                     };
                 } else {

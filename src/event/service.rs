@@ -9,13 +9,11 @@ use lapin::options::{
 use lapin::types::FieldTable;
 use lapin::{BasicProperties, Channel, Connection};
 use log::error;
-use serde_json::json;
 use tokio::sync::Mutex;
 use tokio_stream::Stream;
 
 use crate::error::ApiError;
-use crate::event::model::Event;
-use crate::message::model::Message;
+use crate::message::model::{Message, MessageRequest};
 use crate::message::service::MessageService;
 use crate::result::Result;
 
@@ -26,21 +24,15 @@ const DB_MESSAGES_QUEUE: &str = "db.messages";
 #[derive(Clone)]
 pub struct EventService {
     rabbitmq_con: Arc<Mutex<Connection>>,
-    service: Arc<MessageService>,
+    message_service: Arc<MessageService>,
 }
 
 impl EventService {
-    pub fn new(rabbitmq_con: Mutex<Connection>, service: MessageService) -> Self {
+    pub fn new(rabbitmq_con: Mutex<Connection>, message_service: MessageService) -> Self {
         Self {
             rabbitmq_con: Arc::new(rabbitmq_con),
-            service: Arc::new(service),
+            message_service: Arc::new(message_service),
         }
-    }
-}
-
-impl EventService {
-    pub fn handle(&self, _: Event) -> Result<()> {
-        todo!()
     }
 }
 
@@ -48,16 +40,14 @@ impl EventService {
     /**
      * Publishes a message to a recipient's dedicated queue.
      */
-    pub async fn publish_for_recipient(&self, sender: &str, event: &Event) -> Result<()> {
-        if let Event::CreateMessage {
-            recipient,
-            text: _text,
-        } = event
-        {
-            if let Some(message) = Message::from_event(sender, event) {
-                self.publish(recipient, &message).await?;
-            }
-        }
+    pub async fn publish_for_recipient(
+        &self,
+        sender: &str,
+        request: &MessageRequest,
+    ) -> Result<()> {
+        let message = Message::from_request(sender, request);
+        self.publish(&request.recipient, serde_json::to_vec(&message)?.as_slice())
+            .await?;
         Ok(())
     }
 
@@ -65,8 +55,7 @@ impl EventService {
      * Publishes a message to a storage queue.
      */
     pub async fn publish_for_storage(&self, data: &[u8]) -> Result<()> {
-        let message = serde_json::from_slice::<Message>(data).unwrap();
-        self.publish(DB_MESSAGES_QUEUE, &message).await?;
+        self.publish(DB_MESSAGES_QUEUE, data).await?;
         Ok(())
     }
 
@@ -129,7 +118,7 @@ impl EventService {
 
             messages_stream
                 .for_each(move |data| {
-                    let message_service = self_clone.service.clone();
+                    let message_service = self_clone.message_service.clone();
                     async move {
                         match data {
                             Ok(data) => {
@@ -156,16 +145,15 @@ impl EventService {
 }
 
 impl EventService {
-    async fn publish(&self, queue_name: &str, message: &Message) -> Result<()> {
+    async fn publish(&self, queue_name: &str, payload: &[u8]) -> Result<()> {
         let (queue_name, channel) = self.split_queue(queue_name).await?;
-        let message_json = json!(message).to_string();
 
         channel
             .basic_publish(
                 "",
                 &queue_name,
                 BasicPublishOptions::default(),
-                message_json.as_bytes(),
+                payload,
                 BasicProperties::default(),
             )
             .await?;

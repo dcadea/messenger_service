@@ -1,4 +1,3 @@
-use crate::event::model::Event;
 use bson::oid::ObjectId;
 use chrono::Utc;
 use mongodb::bson;
@@ -15,19 +14,21 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn from_event(sender: &str, event: &Event) -> Option<Self> {
-        if let Event::CreateMessage { recipient, text } = event {
-            return Some(Self {
-                _id: None,
-                sender: sender.to_string(),
-                recipient: recipient.to_string(),
-                text: text.to_string(),
-                timestamp: Utc::now().timestamp(),
-            });
+    pub fn from_request(sender: &str, request: &MessageRequest) -> Self {
+        Self {
+            _id: None,
+            sender: sender.to_string(),
+            recipient: request.clone().recipient,
+            text: request.clone().text,
+            timestamp: Utc::now().timestamp(),
         }
-
-        None
     }
+}
+
+#[derive(Deserialize, Clone)]
+pub struct MessageRequest {
+    pub recipient: String,
+    text: String,
 }
 
 #[derive(Deserialize)]
