@@ -17,12 +17,12 @@ impl UserRepository {
 }
 
 impl UserRepository {
-    pub(super) async fn insert(&self, user: &User) -> Result<()> {
+    pub async fn insert(&self, user: &User) -> Result<()> {
         self.collection.insert_one(user, None).await?;
         Ok(())
     }
 
-    pub(super) async fn find_by_sub(&self, sub: &str) -> Option<User> {
+    pub async fn find_by_sub(&self, sub: &str) -> Option<User> {
         self.find(doc! { "sub": sub }).await
     }
 

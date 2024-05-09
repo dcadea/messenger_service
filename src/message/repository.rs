@@ -20,15 +20,12 @@ impl MessageRepository {
 }
 
 impl MessageRepository {
-    pub(super) async fn insert(&self, message: &Message) -> Result<()> {
+    pub async fn insert(&self, message: &Message) -> Result<()> {
         self.collection.insert_one(message, None).await?;
         Ok(())
     }
 
-    pub(super) async fn find_by_participants(
-        &self,
-        participants: &Vec<String>,
-    ) -> Result<Vec<Message>> {
+    pub async fn find_by_participants(&self, participants: &Vec<String>) -> Result<Vec<Message>> {
         let document = doc! { // FIXME
             "sender": {"$in": participants},
             "recipient": {"$in": participants}

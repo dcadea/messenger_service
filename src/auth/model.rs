@@ -10,6 +10,6 @@ pub struct UserInfo {
 }
 
 #[derive(Deserialize, Clone)]
-pub(super) struct TokenClaims {
+pub struct TokenClaims {
     pub sub: String,
 }

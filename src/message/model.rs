@@ -1,38 +1,36 @@
+use crate::event::model::Event;
+use bson::oid::ObjectId;
 use chrono::Utc;
 use mongodb::bson;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Clone)]
-pub(super) struct Message {
+pub struct Message {
     #[serde(skip)]
-    _id: Option<bson::oid::ObjectId>,
+    _id: Option<ObjectId>,
     sender: String,
-    recipient: String,
+    pub recipient: String,
     text: String,
     timestamp: i64,
-    seen: bool,
 }
 
 impl Message {
-    pub fn from_request(sender: &str, request: MessageRequest) -> Self {
-        Self {
-            _id: None,
-            sender: sender.to_string(),
-            recipient: request.recipient,
-            text: request.text,
-            timestamp: Utc::now().timestamp(),
-            seen: false,
+    pub fn from_event(sender: &str, event: &Event) -> Option<Self> {
+        if let Event::CreateMessage { recipient, text } = event {
+            return Some(Self {
+                _id: None,
+                sender: sender.to_string(),
+                recipient: recipient.to_string(),
+                text: text.to_string(),
+                timestamp: Utc::now().timestamp(),
+            });
         }
+
+        None
     }
 }
 
-#[derive(Deserialize, Clone)]
-pub(super) struct MessageRequest {
-    pub recipient: String,
-    text: String,
-}
-
 #[derive(Deserialize)]
-pub(super) struct MessageParams {
+pub struct MessageParams {
     pub recipient: Option<Vec<String>>,
 }

@@ -23,7 +23,7 @@ pub struct AuthService {
 }
 
 impl AuthService {
-    pub(crate) fn try_new(config: &integration::Config) -> Result<Self> {
+    pub fn try_new(config: &integration::Config) -> Result<Self> {
         let mut jwk_validator = Validation::new(jsonwebtoken::Algorithm::RS256);
         jwk_validator.set_required_spec_claims(&vec!["iss", "sub", "aud", "exp", "privileges"]);
         jwk_validator.set_issuer(&[&config.issuer]);
@@ -53,7 +53,7 @@ impl AuthService {
 }
 
 impl AuthService {
-    pub(super) async fn validate(&self, token: &str) -> Result<TokenClaims> {
+    pub async fn validate(&self, token: &str) -> Result<TokenClaims> {
         let kid = self.get_kid(token)?;
         let decoding_keys_guard = self.jwk_decoding_keys.lock().await;
         let decoding_key = decoding_keys_guard
@@ -65,7 +65,7 @@ impl AuthService {
             .map_err(|e| ApiError::Forbidden(e.to_string()))
     }
 
-    pub(super) async fn get_user_info(&self, token: &str) -> Result<UserInfo> {
+    pub async fn get_user_info(&self, token: &str) -> Result<UserInfo> {
         let user_info = self
             .http
             .get(&self.config.userinfo_url)

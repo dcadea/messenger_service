@@ -5,7 +5,7 @@ use log::error;
 use serde::Serialize;
 
 #[derive(Debug)]
-pub(crate) enum ApiError {
+pub enum ApiError {
     InternalServerError(String),
 
     QueryParamRequired(String),

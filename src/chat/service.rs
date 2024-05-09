@@ -17,11 +17,11 @@ impl ChatService {
 }
 
 impl ChatService {
-    pub(super) async fn create(&self, chat: &Chat) -> Result<()> {
+    pub async fn create(&self, chat: &Chat) -> Result<()> {
         self.repository.insert(chat).await
     }
 
-    pub(super) async fn find_by_nickname(&self, nickname: &str) -> Result<Vec<Chat>> {
+    pub async fn find_by_nickname(&self, nickname: &str) -> Result<Vec<Chat>> {
         self.repository.find_by_nickname(nickname).await
     }
 }

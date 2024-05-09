@@ -13,7 +13,9 @@ use tokio::sync::{Mutex, Notify};
 use tokio::try_join;
 
 use crate::error::ApiError;
-use crate::message::model::{Message, MessageParams, MessageRequest};
+use crate::event::model::Event;
+use crate::event::service::EventService;
+use crate::message::model::{Message, MessageParams};
 use crate::message::service::MessageService;
 use crate::result::Result;
 use crate::state::AppState;
@@ -53,12 +55,12 @@ async fn find_handler(
 async fn ws_handler(
     ws: WebSocketUpgrade,
     Extension(user): Extension<User>, // FIXME: user is not present in the ws context
-    State(message_service): State<MessageService>,
+    State(event_service): State<EventService>,
 ) -> Result<Response> {
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, user, message_service.clone())))
+    Ok(ws.on_upgrade(move |socket| handle_socket(socket, user, event_service.clone())))
 }
 
-async fn handle_socket(ws: WebSocket, user: User, message_service: MessageService) {
+async fn handle_socket(ws: WebSocket, user: User, event_service: EventService) {
     let nickname = user.nickname.clone(); // also a topic name
     let (sender, receiver) = ws.split();
     let notify = Arc::new(Notify::new());
@@ -66,14 +68,14 @@ async fn handle_socket(ws: WebSocket, user: User, message_service: MessageServic
     let read_task = tokio::spawn(read(
         nickname.clone(),
         receiver,
-        message_service.clone(),
+        event_service.clone(),
         notify.clone(),
     ));
 
     let write_task = tokio::spawn(write(
         nickname.clone(),
         sender,
-        message_service.clone(),
+        event_service.clone(),
         notify.clone(),
     ));
 
@@ -88,19 +90,16 @@ async fn handle_socket(ws: WebSocket, user: User, message_service: MessageServic
 async fn read(
     nickname: String,
     mut receiver: SplitStream<WebSocket>,
-    message_service: MessageService,
+    event_service: EventService,
     notify: Arc<Notify>,
 ) {
     while let Some(frame) = receiver.next().await {
         match frame {
             Ok(WsMessage::Text(content)) => {
                 debug!("received ws frame: {:?}", content);
-                if content.trim() == "ping" {
-                    continue;
-                }
 
-                if let Ok(msg) = serde_json::from_str::<MessageRequest>(content.as_str()) {
-                    if let Err(e) = message_service.publish_for_recipient(&nickname, msg).await {
+                if let Ok(event) = serde_json::from_str::<Event>(content.as_str()) {
+                    if let Err(e) = event_service.publish_for_recipient(&nickname, &event).await {
                         error!("failed to publish message to queue: {}, {:?}", content, e);
                     };
                 } else {
@@ -123,12 +122,12 @@ async fn read(
 async fn write(
     nickname: String,
     sender: SplitSink<WebSocket, WsMessage>,
-    message_service: MessageService,
+    event_service: EventService,
     notify: Arc<Notify>,
 ) {
     let sender = Arc::new(Mutex::new(sender));
 
-    let (consumer_tag, channel, mut messages_stream) = match message_service.read(&nickname).await {
+    let (consumer_tag, channel, mut messages_stream) = match event_service.read(&nickname).await {
         Ok(binding) => binding,
         Err(e) => {
             error!("Failed to read messages: {:?}", e);
@@ -144,7 +143,7 @@ async fn write(
                         let message = WsMessage::Binary(item.clone());
                         let mut sender = sender.lock().await;
                         let _ = sender.send(message).await;
-                        if let Err(e) = message_service.publish_for_storage(item.as_slice()).await {
+                        if let Err(e) = event_service.publish_for_storage(item.as_slice()).await {
                             error!("Failed to store message: {:?}", e);
                         }
                     },
@@ -156,10 +155,7 @@ async fn write(
         }
     }
 
-    match message_service
-        .close_consumer(&consumer_tag, &channel)
-        .await
-    {
+    match event_service.close_consumer(&consumer_tag, &channel).await {
         Ok(_) => debug!("Consumer '{:?}' closed", consumer_tag),
         Err(e) => error!("Failed to close consumer: {:?}", e),
     };

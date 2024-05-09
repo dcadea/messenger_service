@@ -1,9 +1,9 @@
 use axum::extract::FromRef;
 
 use crate::auth::service::AuthService;
-
 use crate::chat::repository::ChatRepository;
 use crate::chat::service::ChatService;
+use crate::event::service::EventService;
 use crate::integration;
 use crate::message::repository::MessageRepository;
 use crate::message::service::MessageService;
@@ -12,13 +12,14 @@ use crate::user::repository::UserRepository;
 use crate::user::service::UserService;
 
 #[derive(Clone)]
-pub(crate) struct AppState {
+pub struct AppState {
     pub config: integration::Config,
 
     pub auth_service: AuthService,
     pub user_service: UserService,
     pub chat_service: ChatService,
     pub message_service: MessageService,
+    pub event_service: EventService,
 }
 
 impl AppState {
@@ -29,12 +30,17 @@ impl AppState {
         let _ = integration::init_redis(&config)?;
         let rabbitmq_con = integration::init_rabbitmq(&config).await?;
 
+        let user_service = UserService::new(UserRepository::new(&database));
+        let chat_service = ChatService::new(ChatRepository::new(&database));
+        let message_service = MessageService::new(MessageRepository::new(&database));
+        let event_service = EventService::new(rabbitmq_con, message_service.clone());
         Ok(Self {
             config,
             auth_service,
-            user_service: UserService::new(UserRepository::new(&database)),
-            chat_service: ChatService::new(ChatRepository::new(&database)),
-            message_service: MessageService::new(MessageRepository::new(&database), rabbitmq_con),
+            user_service,
+            chat_service,
+            message_service,
+            event_service,
         })
     }
 }
@@ -66,5 +72,11 @@ impl FromRef<AppState> for ChatService {
 impl FromRef<AppState> for MessageService {
     fn from_ref(app_state: &AppState) -> Self {
         app_state.message_service.clone()
+    }
+}
+
+impl FromRef<AppState> for EventService {
+    fn from_ref(app_state: &AppState) -> Self {
+        app_state.event_service.clone()
     }
 }

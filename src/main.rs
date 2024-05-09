@@ -13,6 +13,7 @@ use crate::state::AppState;
 mod auth;
 mod chat;
 mod error;
+mod event;
 mod integration;
 mod message;
 mod result;
@@ -31,7 +32,7 @@ async fn main() {
         }
     };
 
-    app_state.clone().message_service.start_purging();
+    app_state.clone().event_service.start_purging();
 
     let api_router = Router::new()
         .merge(chat::api::resources(app_state.clone()))

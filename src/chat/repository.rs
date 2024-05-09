@@ -19,12 +19,12 @@ impl ChatRepository {
 }
 
 impl ChatRepository {
-    pub(super) async fn insert(&self, chat: &Chat) -> Result<()> {
+    pub async fn insert(&self, chat: &Chat) -> Result<()> {
         self.collection.insert_one(chat, None).await?;
         Ok(())
     }
 
-    pub(super) async fn find_by_nickname(&self, nickname: &str) -> Result<Vec<Chat>> {
+    pub async fn find_by_nickname(&self, nickname: &str) -> Result<Vec<Chat>> {
         self.find(doc! { "nickname": nickname }).await
     }
 

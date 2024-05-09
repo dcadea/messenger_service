@@ -2,7 +2,7 @@ use mongodb::bson;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
-pub(super) struct Chat {
+pub struct Chat {
     #[serde(skip)]
     _id: Option<bson::oid::ObjectId>,
     nickname: String,
@@ -22,7 +22,7 @@ impl Chat {
 }
 
 #[derive(Serialize, Deserialize)]
-pub(super) struct ChatRequest {
+pub struct ChatRequest {
     recipient: String,
     last_message: String,
 }

@@ -9,12 +9,12 @@ use crate::error::ApiError;
 use crate::result::Result;
 use crate::user::service::UserService;
 
-pub(crate) mod model;
-pub(crate) mod service;
+pub mod model;
+pub mod service;
 
 const AUTHORIZATION: &str = "Authorization";
 
-pub(super) async fn validate_token(
+pub async fn validate_token(
     auth_service: State<AuthService>,
     headers: HeaderMap,
     mut request: Request,
@@ -29,7 +29,7 @@ pub(super) async fn validate_token(
     Ok(response)
 }
 
-pub(crate) async fn set_user_context(
+pub async fn set_user_context(
     user_service: State<UserService>,
     auth_service: State<AuthService>,
     headers: HeaderMap,
