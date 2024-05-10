@@ -106,9 +106,9 @@ impl EventService {
     pub fn start_purging(self) {
         let self_clone = Arc::new(self);
         tokio::spawn(async move {
-            let message_service = self_clone.clone();
+            let event_service = self_clone.clone();
             let (consumer_tag, channel, messages_stream) =
-                match message_service.read(DB_MESSAGES_QUEUE).await {
+                match event_service.read(DB_MESSAGES_QUEUE).await {
                     Ok(binding) => binding,
                     Err(e) => {
                         error!("Failed to read messages: {:?}", e);
@@ -134,7 +134,7 @@ impl EventService {
                 })
                 .await;
 
-            if let Err(e) = message_service
+            if let Err(e) = event_service
                 .close_consumer(&consumer_tag, &channel)
                 .await
             {

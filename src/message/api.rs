@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::extract::ws::{Message as WsMessage, WebSocket};
-use axum::extract::{State, WebSocketUpgrade};
+use axum::extract::{Path, State, WebSocketUpgrade};
 use axum::response::Response;
 use axum::routing::get;
 use axum::{Extension, Json, Router};
@@ -28,7 +28,7 @@ pub fn resources<S>(state: AppState) -> Router<S> {
 
 pub fn ws_router<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route("/ws", get(ws_handler))
+        .route("/ws/:topic", get(ws_handler)) // FIXME: remove topic from path
         .with_state(state)
 }
 
@@ -53,14 +53,14 @@ async fn find_handler(
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    Extension(user): Extension<User>, // FIXME: user is not present in the ws context
+    Path(topic): Path<String>, // FIXME: define a ws session context and store user info there
     State(event_service): State<EventService>,
 ) -> Result<Response> {
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, user, event_service.clone())))
+    Ok(ws.on_upgrade(move |socket| handle_socket(socket, topic, event_service.clone())))
 }
 
-async fn handle_socket(ws: WebSocket, user: User, event_service: EventService) {
-    let nickname = user.nickname.clone(); // also a topic name
+async fn handle_socket(ws: WebSocket, topic: String, event_service: EventService) {
+    let nickname = topic.clone(); // also a topic name
     let (sender, receiver) = ws.split();
     let notify = Arc::new(Notify::new());
 
