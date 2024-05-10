@@ -134,10 +134,7 @@ impl EventService {
                 })
                 .await;
 
-            if let Err(e) = event_service
-                .close_consumer(&consumer_tag, &channel)
-                .await
-            {
+            if let Err(e) = event_service.close_consumer(&consumer_tag, &channel).await {
                 error!("Failed to close consumer: {:?}", e);
             };
         });
