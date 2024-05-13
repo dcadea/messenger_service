@@ -1,3 +1,4 @@
+use crate::auth::model::UserInfo;
 use axum::extract::State;
 use axum::routing::get;
 use axum::{Extension, Json, Router};
@@ -8,7 +9,6 @@ use crate::message::model::{Message, MessageParams};
 use crate::message::service::MessageService;
 use crate::result::Result;
 use crate::state::AppState;
-use crate::user::model::User;
 
 pub fn resources<S>(state: AppState) -> Router<S> {
     Router::new()
@@ -18,14 +18,14 @@ pub fn resources<S>(state: AppState) -> Router<S> {
 
 async fn find_handler(
     Query(params): Query<MessageParams>,
-    Extension(user): Extension<User>,
+    Extension(user_info): Extension<UserInfo>,
     message_service: State<MessageService>,
 ) -> Result<Json<Vec<Message>>> {
     match params.recipient {
         None => Err(ApiError::QueryParamRequired("recipient".to_owned())),
         Some(recipient) => {
             let mut participants = recipient.clone();
-            participants.push(user.nickname);
+            participants.push(user_info.nickname);
 
             message_service
                 .find_by_participants(&participants)

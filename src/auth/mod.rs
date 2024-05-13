@@ -1,7 +1,9 @@
 use axum::extract::{Request, State};
-use axum::http::HeaderMap;
 use axum::middleware::Next;
 use axum::response::Response;
+use axum_extra::headers::authorization::Bearer;
+use axum_extra::headers::Authorization;
+use axum_extra::TypedHeader;
 
 use crate::auth::model::TokenClaims;
 use crate::auth::service::AuthService;
@@ -12,17 +14,13 @@ use crate::user::service::UserService;
 pub mod model;
 pub mod service;
 
-const AUTHORIZATION: &str = "Authorization";
-
 pub async fn validate_token(
     auth_service: State<AuthService>,
-    headers: HeaderMap,
+    auth_header: TypedHeader<Authorization<Bearer>>,
     mut request: Request,
     next: Next,
 ) -> Result<Response> {
-    let token = get_token(&headers)?;
-
-    let claims = auth_service.validate(token).await?;
+    let claims = auth_service.validate(auth_header.token()).await?;
     request.extensions_mut().insert(claims);
 
     let response = next.run(request).await;
@@ -32,7 +30,7 @@ pub async fn validate_token(
 pub async fn set_user_context(
     user_service: State<UserService>,
     auth_service: State<AuthService>,
-    headers: HeaderMap,
+    auth_header: TypedHeader<Authorization<Bearer>>,
     mut request: Request,
     next: Next,
 ) -> Result<Response> {
@@ -41,30 +39,18 @@ pub async fn set_user_context(
         .get::<TokenClaims>()
         .ok_or(ApiError::Unauthorized)?;
 
-    let user = match user_service.find_by_sub(&claims.sub).await {
-        Some(user) => user,
+    let user_info = match user_service.find_by_sub(&claims.sub).await {
+        Some(user) => user.into(),
         None => {
-            let token = get_token(&headers)?;
-            let user_info = auth_service.get_user_info(token).await?;
-            let user = user_info.into();
+            let user_info = auth_service.get_user_info(auth_header.token()).await?;
+            let user = user_info.clone().into();
             user_service.create(&user).await?;
-            user
+            user_info
         }
     };
 
-    request.extensions_mut().insert(user);
+    request.extensions_mut().insert(user_info);
 
     let response = next.run(request).await;
     Ok(response)
-}
-
-fn get_token(headers: &HeaderMap) -> Result<&str> {
-    let auth_header = headers.get(AUTHORIZATION).ok_or(ApiError::Unauthorized)?;
-    let bearer_token = auth_header
-        .to_str()
-        .map_err(|e| ApiError::TokenMalformed(e.to_string()))?;
-    let token = bearer_token
-        .strip_prefix("Bearer ")
-        .ok_or(ApiError::Unauthorized)?;
-    Ok(token)
 }

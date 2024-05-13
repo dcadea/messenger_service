@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::auth::AUTHORIZATION;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use tokio::sync::Mutex;
@@ -69,7 +68,7 @@ impl AuthService {
         let user_info = self
             .http
             .get(&self.config.userinfo_url)
-            .header(AUTHORIZATION, token)
+            .bearer_auth(token)
             .send()
             .await?
             .json::<UserInfo>()

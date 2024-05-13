@@ -25,10 +25,10 @@ impl Message {
     }
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Clone)]
 pub struct MessageRequest {
     pub recipient: String,
-    text: String,
+    pub text: String,
 }
 
 #[derive(Deserialize)]
