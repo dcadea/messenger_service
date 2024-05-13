@@ -1,5 +1,4 @@
 use bson::oid::ObjectId;
-use chrono::Utc;
 use mongodb::bson;
 use serde::{Deserialize, Serialize};
 
@@ -7,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub struct Message {
     #[serde(skip)]
     _id: Option<ObjectId>,
+    // TODO: create an id field
     sender: String,
     pub recipient: String,
     text: String,
@@ -14,24 +14,18 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn from_request(sender: &str, request: &MessageRequest) -> Self {
+    pub fn new(sender: &str, recipient: &str, text: &str) -> Self {
         Self {
             _id: None,
             sender: sender.to_string(),
-            recipient: request.clone().recipient,
-            text: request.clone().text,
-            timestamp: Utc::now().timestamp(),
+            recipient: recipient.to_string(),
+            text: text.to_string(),
+            timestamp: chrono::Utc::now().timestamp(),
         }
     }
 }
 
-#[derive(Clone)]
-pub struct MessageRequest {
-    pub recipient: String,
-    pub text: String,
-}
-
 #[derive(Deserialize)]
-pub struct MessageParams {
+pub(super) struct MessageParams {
     pub recipient: Option<Vec<String>>,
 }

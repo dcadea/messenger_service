@@ -18,7 +18,6 @@ use tokio::try_join;
 use crate::auth::service::AuthService;
 use crate::event::model::{EventRequest, WsRequestContext};
 use crate::event::service::EventService;
-use crate::message::model::MessageRequest;
 use crate::result::Result;
 use crate::state::AppState;
 
@@ -106,9 +105,8 @@ async fn read(
                                         if let EventRequest::CreateMessage { recipient, text } = event_request {
                                             debug!("received message request: {:?} -> {}", recipient, text);
                                             let nickname = user_info.nickname.clone();
-                                            let message_request = MessageRequest { recipient, text };
                                             if let Err(e) = event_service
-                                                .publish_for_recipient(&nickname, &message_request)
+                                                .publish_for_recipient(&nickname, &recipient, &text)
                                                 .await {
                                                 error!("failed to publish message: {:?}", e);
                                             }

@@ -13,7 +13,7 @@ use tokio::sync::Mutex;
 use tokio_stream::Stream;
 
 use crate::error::ApiError;
-use crate::message::model::{Message, MessageRequest};
+use crate::message::model::Message;
 use crate::message::service::MessageService;
 use crate::result::Result;
 
@@ -43,10 +43,11 @@ impl EventService {
     pub async fn publish_for_recipient(
         &self,
         sender: &str,
-        request: &MessageRequest,
+        recipient: &str,
+        text: &str,
     ) -> Result<()> {
-        let message = Message::from_request(sender, request);
-        self.publish(&request.recipient, serde_json::to_vec(&message)?.as_slice())
+        let message = Message::new(sender, recipient, text);
+        self.publish(recipient, serde_json::to_vec(&message)?.as_slice())
             .await?;
         Ok(())
     }
