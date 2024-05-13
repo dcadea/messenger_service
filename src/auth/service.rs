@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use tokio::time::sleep;
 
 use crate::auth::model::TokenClaims;
@@ -18,7 +18,7 @@ pub struct AuthService {
     config: Arc<integration::Config>,
     http: Arc<reqwest::Client>,
     jwt_validator: Arc<Validation>,
-    jwk_decoding_keys: Arc<Mutex<HashMap<String, DecodingKey>>>,
+    jwk_decoding_keys: Arc<RwLock<HashMap<String, DecodingKey>>>,
 }
 
 impl AuthService {
@@ -28,7 +28,7 @@ impl AuthService {
         jwk_validator.set_issuer(&[&config.issuer]);
         jwk_validator.set_audience(&config.audience);
 
-        let jwk_decoding_keys = Arc::new(Mutex::new(HashMap::new()));
+        let jwk_decoding_keys = Arc::new(RwLock::new(HashMap::new()));
         let service = Self {
             config: Arc::new(config.clone()),
             http: Arc::new(integration::init_http_client()?),
@@ -40,7 +40,7 @@ impl AuthService {
         tokio::spawn(async move {
             loop {
                 match fetch_jwk_decoding_keys(&config_clone).await {
-                    Ok(keys) => *jwk_decoding_keys.lock().await = keys,
+                    Ok(keys) => *jwk_decoding_keys.write().await = keys,
                     Err(e) => eprintln!("Failed to update JWK decoding keys: {:?}", e),
                 }
                 sleep(Duration::from_secs(24 * 60 * 60)).await;
@@ -54,7 +54,7 @@ impl AuthService {
 impl AuthService {
     pub async fn validate(&self, token: &str) -> Result<TokenClaims> {
         let kid = self.get_kid(token)?;
-        let decoding_keys_guard = self.jwk_decoding_keys.lock().await;
+        let decoding_keys_guard = self.jwk_decoding_keys.read().await;
         let decoding_key = decoding_keys_guard
             .get(&kid)
             .ok_or(ApiError::Forbidden("Unknown kid".to_owned()))?;

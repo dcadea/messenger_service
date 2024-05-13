@@ -9,7 +9,7 @@ use lapin::options::{
 use lapin::types::FieldTable;
 use lapin::{BasicProperties, Channel, Connection};
 use log::{debug, error};
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use tokio_stream::Stream;
 
 use crate::auth::service::AuthService;
@@ -25,14 +25,14 @@ const DB_MESSAGES_QUEUE: &str = "db.messages";
 
 #[derive(Clone)]
 pub struct EventService {
-    rabbitmq_con: Arc<Mutex<Connection>>,
+    rabbitmq_con: Arc<RwLock<Connection>>,
     message_service: Arc<MessageService>,
     auth_service: Arc<AuthService>,
 }
 
 impl EventService {
     pub fn new(
-        rabbitmq_con: Mutex<Connection>,
+        rabbitmq_con: RwLock<Connection>,
         message_service: MessageService,
         auth_service: AuthService,
     ) -> Self {
@@ -200,7 +200,7 @@ impl EventService {
     }
 
     async fn split_queue(&self, queue_name: &str) -> Result<(String, Channel)> {
-        let conn = self.rabbitmq_con.lock().await;
+        let conn = self.rabbitmq_con.read().await;
         let channel = conn.create_channel().await?;
 
         let queue_name = channel

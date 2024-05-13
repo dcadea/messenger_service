@@ -139,7 +139,7 @@ async fn write(
     }
 
     match event_service.close_consumer(&consumer_tag, &channel).await {
-        Ok(_) => debug!("Consumer '{:?}' closed", consumer_tag),
+        Ok(_) => debug!("Consumer {:?} closed", consumer_tag),
         Err(e) => error!("Failed to close consumer: {:?}", e),
     };
 }
