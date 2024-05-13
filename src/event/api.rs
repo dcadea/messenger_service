@@ -73,6 +73,7 @@ async fn read(
                             break;
                         },
                         Ok(Close(_)) => {
+                            debug!("ws connection closed by client");
                             context.close.notify_one();
                             break;
                         },
@@ -80,25 +81,37 @@ async fn read(
                             if let Ok(event_request) = from_str::<EventRequest>(content.as_str()) {
                                 match context.get_user_info().await {
                                     None => {
+                                        debug!("no user info, expecting auth request");
                                         if let EventRequest::Auth { token } = event_request {
-                                            if let Ok(_) = auth_service.validate(&token).await {
-                                                if let Ok(user_info) = auth_service.get_user_info(&token).await {
-                                                    context.set_user_info(user_info).await;
-                                                    context.login.notify_one();
-                                                    continue;
-                                                }
+                                            debug!("received auth request: {}", token);
+                                            match auth_service.validate(&token).await {
+                                                Ok(_) => {
+                                                    match auth_service.get_user_info(&token).await {
+                                                        Ok(user_info) => {
+                                                            context.set_user_info(user_info).await;
+                                                            context.login.notify_one();
+                                                            continue;
+                                                        },
+                                                        Err(e) => error!("failed to get user info: {:?}", e),
+                                                    }
+                                                },
+                                                Err(e) => error!("failed to validate token: {:?}", e),
                                             }
                                         }
+                                        error!("initial request is not auth, closing connection");
                                         context.close.notify_one();
                                         break;
                                     }
                                     Some(user_info) => {
                                         if let EventRequest::CreateMessage { recipient, text } = event_request {
+                                            debug!("received message request: {:?} -> {}", recipient, text);
                                             let nickname = user_info.nickname.clone();
                                             let message_request = MessageRequest { recipient, text };
-                                            let _ = event_service
+                                            if let Err(e) = event_service
                                                 .publish_for_recipient(&nickname, &message_request)
-                                                .await;
+                                                .await {
+                                                error!("failed to publish message: {:?}", e);
+                                            }
                                         }
                                     }
                                 }
@@ -154,7 +167,9 @@ async fn write(
                         let message = Binary(item.clone());
                         let mut sender = sender.write().await;
                         let _ = sender.send(message).await;
-                        let _ = event_service.publish_for_storage(item.as_slice()).await;
+                        if let Err(e) = event_service.publish_for_storage(item.as_slice()).await {
+                            error!("Failed to publish message for storage: {:?}", e);
+                        }
                     },
                     Some(Err(e)) => error!("Failed to read message: {:?}", e),
                     None => break,
