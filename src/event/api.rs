@@ -15,8 +15,7 @@ use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::try_join;
 
-use crate::auth::service::AuthService;
-use crate::event::model::{EventRequest, WsRequestContext};
+use crate::event::model::{Event, WsContext};
 use crate::event::service::EventService;
 use crate::result::Result;
 use crate::state::AppState;
@@ -30,22 +29,15 @@ pub fn ws_router<S>(state: AppState) -> Router<S> {
 async fn ws_handler(
     ws: WebSocketUpgrade,
     State(event_service): State<EventService>,
-    State(auth_service): State<AuthService>,
 ) -> Result<Response> {
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, event_service, auth_service)))
+    Ok(ws.on_upgrade(move |socket| handle_socket(socket, event_service)))
 }
 
-async fn handle_socket(ws: WebSocket, event_service: EventService, auth_service: AuthService) {
+async fn handle_socket(ws: WebSocket, event_service: EventService) {
     let (sender, receiver) = ws.split();
-    let context = WsRequestContext::new();
+    let context = WsContext::new();
 
-    let read_task = tokio::spawn(read(
-        receiver,
-        event_service.clone(),
-        auth_service.clone(),
-        context.clone(),
-    ));
-
+    let read_task = tokio::spawn(read(receiver, event_service.clone(), context.clone()));
     let write_task = tokio::spawn(write(sender, event_service.clone(), context.clone()));
 
     match try_join!(read_task, write_task) {
@@ -57,8 +49,7 @@ async fn handle_socket(ws: WebSocket, event_service: EventService, auth_service:
 async fn read(
     mut receiver: SplitStream<WebSocket>,
     event_service: EventService,
-    auth_service: AuthService,
-    context: WsRequestContext,
+    context: WsContext,
 ) {
     loop {
         tokio::select! {
@@ -77,41 +68,11 @@ async fn read(
                             break;
                         },
                         Ok(Text(content)) => {
-                            if let Ok(event_request) = from_str::<EventRequest>(content.as_str()) {
-                                match context.get_user_info().await {
-                                    None => {
-                                        debug!("no user info, expecting auth request");
-                                        if let EventRequest::Auth { token } = event_request {
-                                            debug!("received auth request: {}", token);
-                                            match auth_service.validate(&token).await {
-                                                Ok(_) => {
-                                                    match auth_service.get_user_info(&token).await {
-                                                        Ok(user_info) => {
-                                                            context.set_user_info(user_info).await;
-                                                            context.login.notify_one();
-                                                            continue;
-                                                        },
-                                                        Err(e) => error!("failed to get user info: {:?}", e),
-                                                    }
-                                                },
-                                                Err(e) => error!("failed to validate token: {:?}", e),
-                                            }
-                                        }
-                                        error!("initial request is not auth, closing connection");
-                                        context.close.notify_one();
-                                        break;
-                                    }
-                                    Some(user_info) => {
-                                        if let EventRequest::CreateMessage { recipient, text } = event_request {
-                                            debug!("received message request: {:?} -> {}", recipient, text);
-                                            let nickname = user_info.nickname.clone();
-                                            if let Err(e) = event_service
-                                                .publish_for_recipient(&nickname, &recipient, &text)
-                                                .await {
-                                                error!("failed to publish message: {:?}", e);
-                                            }
-                                        }
-                                    }
+                            if let Ok(event) = from_str::<Event>(content.as_str()) {
+                                if let Err(e) = event_service.handle_event(context.clone(), event).await {
+                                    error!("failed to handle event: {:?}", e);
+                                    context.close.notify_one();
+                                    break;
                                 }
                             } else {
                                 warn!("skipping frame, content is malformed: {}", content);
@@ -128,7 +89,7 @@ async fn read(
 async fn write(
     sender: SplitSink<WebSocket, ws::Message>,
     event_service: EventService,
-    context: WsRequestContext,
+    context: WsContext,
 ) {
     loop {
         tokio::select! {

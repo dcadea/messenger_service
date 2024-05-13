@@ -33,7 +33,9 @@ impl AppState {
         let user_service = UserService::new(UserRepository::new(&database));
         let chat_service = ChatService::new(ChatRepository::new(&database));
         let message_service = MessageService::new(MessageRepository::new(&database));
-        let event_service = EventService::new(rabbitmq_con, message_service.clone());
+        let event_service =
+            EventService::new(rabbitmq_con, message_service.clone(), auth_service.clone());
+
         Ok(Self {
             config,
             auth_service,

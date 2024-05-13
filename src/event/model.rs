@@ -7,19 +7,19 @@ use crate::auth::model::UserInfo;
 
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum EventRequest {
+pub enum Event {
     Auth { token: String },
     CreateMessage { recipient: String, text: String },
 }
 
 #[derive(Clone)]
-pub struct WsRequestContext {
+pub struct WsContext {
     user_info: Arc<RwLock<Option<UserInfo>>>,
     pub login: Arc<Notify>,
     pub close: Arc<Notify>,
 }
 
-impl WsRequestContext {
+impl WsContext {
     pub fn new() -> Self {
         Self {
             user_info: Arc::new(RwLock::new(None)),
@@ -29,7 +29,7 @@ impl WsRequestContext {
     }
 }
 
-impl WsRequestContext {
+impl WsContext {
     pub async fn set_user_info(&self, user_info: UserInfo) {
         *self.user_info.write().await = Some(user_info);
     }

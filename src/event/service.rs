@@ -8,11 +8,13 @@ use lapin::options::{
 };
 use lapin::types::FieldTable;
 use lapin::{BasicProperties, Channel, Connection};
-use log::error;
+use log::{debug, error};
 use tokio::sync::Mutex;
 use tokio_stream::Stream;
 
+use crate::auth::service::AuthService;
 use crate::error::ApiError;
+use crate::event::model::{Event, WsContext};
 use crate::message::model::Message;
 use crate::message::service::MessageService;
 use crate::result::Result;
@@ -25,13 +27,51 @@ const DB_MESSAGES_QUEUE: &str = "db.messages";
 pub struct EventService {
     rabbitmq_con: Arc<Mutex<Connection>>,
     message_service: Arc<MessageService>,
+    auth_service: Arc<AuthService>,
 }
 
 impl EventService {
-    pub fn new(rabbitmq_con: Mutex<Connection>, message_service: MessageService) -> Self {
+    pub fn new(
+        rabbitmq_con: Mutex<Connection>,
+        message_service: MessageService,
+        auth_service: AuthService,
+    ) -> Self {
         Self {
             rabbitmq_con: Arc::new(rabbitmq_con),
             message_service: Arc::new(message_service),
+            auth_service: Arc::new(auth_service),
+        }
+    }
+}
+
+impl EventService {
+    pub async fn handle_event(&self, context: WsContext, event: Event) -> Result<()> {
+        match context.get_user_info().await {
+            None => {
+                if let Event::Auth { token } = event {
+                    debug!("received auth request: {}", token);
+                    let _ = self.auth_service.validate(&token).await?;
+                    let user_info = self.auth_service.get_user_info(&token).await?;
+                    context.set_user_info(user_info).await;
+                    context.login.notify_one();
+                    return Ok(());
+                }
+
+                error!("user info is not set");
+                Err(ApiError::Unauthorized)
+            }
+            Some(user_info) => match event {
+                Event::Auth { .. } => {
+                    debug!("received auth request with user info already set, ignoring");
+                    Ok(())
+                }
+                Event::CreateMessage { recipient, text } => {
+                    debug!("received message request: {:?} -> {}", recipient, text);
+                    let nickname = user_info.nickname.clone();
+                    self.publish_for_recipient(&nickname, &recipient, &text)
+                        .await
+                }
+            },
         }
     }
 }
