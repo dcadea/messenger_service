@@ -17,6 +17,7 @@ use tokio::try_join;
 
 use crate::event::model::{Event, WsContext};
 use crate::event::service::EventService;
+use crate::message::service::MessageService;
 use crate::result::Result;
 use crate::state::AppState;
 
@@ -29,16 +30,26 @@ pub fn ws_router<S>(state: AppState) -> Router<S> {
 async fn ws_handler(
     ws: WebSocketUpgrade,
     State(event_service): State<EventService>,
+    State(message_service): State<MessageService>,
 ) -> Result<Response> {
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, event_service)))
+    Ok(ws.on_upgrade(move |socket| handle_socket(socket, event_service, message_service)))
 }
 
-async fn handle_socket(ws: WebSocket, event_service: EventService) {
+async fn handle_socket(
+    ws: WebSocket,
+    event_service: EventService,
+    message_service: MessageService,
+) {
     let (sender, receiver) = ws.split();
     let context = WsContext::new();
 
-    let read_task = tokio::spawn(read(receiver, event_service.clone(), context.clone()));
-    let write_task = tokio::spawn(write(sender, event_service.clone(), context.clone()));
+    let read_task = tokio::spawn(read(context.clone(), receiver, event_service.clone()));
+    let write_task = tokio::spawn(write(
+        context.clone(),
+        sender,
+        event_service.clone(),
+        message_service.clone(),
+    ));
 
     match try_join!(read_task, write_task) {
         Ok(_) => debug!("ws disconnected gracefully"),
@@ -47,9 +58,9 @@ async fn handle_socket(ws: WebSocket, event_service: EventService) {
 }
 
 async fn read(
+    context: WsContext,
     mut receiver: SplitStream<WebSocket>,
     event_service: EventService,
-    context: WsContext,
 ) {
     loop {
         tokio::select! {
@@ -87,9 +98,10 @@ async fn read(
 }
 
 async fn write(
+    context: WsContext,
     sender: SplitSink<WebSocket, ws::Message>,
     event_service: EventService,
-    context: WsContext,
+    message_service: MessageService,
 ) {
     loop {
         tokio::select! {
@@ -122,12 +134,16 @@ async fn write(
         tokio::select! {
             item = messages_stream.next() => {
                 match item {
-                    Some(Ok(item)) => {
-                        let message = Binary(item.clone());
+                    Some(Ok(message_id)) => {
                         let mut sender = sender.write().await;
-                        let _ = sender.send(message).await;
-                        if let Err(e) = event_service.publish_for_storage(item.as_slice()).await {
-                            error!("Failed to publish message for storage: {:?}", e);
+                        match message_service.find_by_id(&message_id).await {
+                            Some(message) => {
+                                let message = serde_json::to_vec(&message).expect("failed to serialize message");
+                                if let Err(e) = sender.send(Binary(message)).await {
+                                    error!("Failed to send message: {:?}", e);
+                                }
+                            },
+                            None => warn!("Message not found: {:?}", message_id),
                         }
                     },
                     Some(Err(e)) => error!("Failed to read message: {:?}", e),

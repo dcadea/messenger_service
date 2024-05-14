@@ -1,7 +1,7 @@
 use std::pin::Pin;
 use std::sync::Arc;
 
-use futures::{StreamExt, TryStreamExt};
+use futures::TryStreamExt;
 use lapin::options::{
     BasicAckOptions, BasicCancelOptions, BasicConsumeOptions, BasicPublishOptions,
     QueueDeclareOptions,
@@ -9,19 +9,18 @@ use lapin::options::{
 use lapin::types::FieldTable;
 use lapin::{BasicProperties, Channel, Connection};
 use log::{debug, error};
+use mongodb::bson::oid::ObjectId;
 use tokio::sync::RwLock;
 use tokio_stream::Stream;
 
 use crate::auth::service::AuthService;
 use crate::error::ApiError;
 use crate::event::model::{Event, WsContext};
-use crate::message::model::Message;
+use crate::message::model::{Message, MessageId};
 use crate::message::service::MessageService;
 use crate::result::Result;
 
-type MessageStream = Pin<Box<dyn Stream<Item = Result<Vec<u8>>> + Send>>;
-
-const DB_MESSAGES_QUEUE: &str = "db.messages";
+type MessageIdStream = Pin<Box<dyn Stream<Item = Result<MessageId>> + Send>>;
 
 #[derive(Clone)]
 pub struct EventService {
@@ -68,8 +67,11 @@ impl EventService {
                 Event::CreateMessage { recipient, text } => {
                     debug!("received message request: {:?} -> {}", recipient, text);
                     let nickname = user_info.nickname.clone();
-                    self.publish_for_recipient(&nickname, &recipient, &text)
-                        .await
+                    let message_id = self
+                        .message_service
+                        .create(&Message::new(&nickname, &recipient, &text))
+                        .await?;
+                    self.publish_message_id(&recipient, message_id).await
                 }
             },
         }
@@ -78,32 +80,16 @@ impl EventService {
 
 impl EventService {
     /**
-     * Publishes a message to a recipient's dedicated queue.
+     * Publishes a message id to a recipient's dedicated queue.
      */
-    pub async fn publish_for_recipient(
-        &self,
-        sender: &str,
-        recipient: &str,
-        text: &str,
-    ) -> Result<()> {
-        let message = Message::new(sender, recipient, text);
-        self.publish(recipient, serde_json::to_vec(&message)?.as_slice())
-            .await?;
-        Ok(())
+    pub async fn publish_message_id(&self, recipient: &str, message_id: MessageId) -> Result<()> {
+        self.publish(recipient, &message_id.bytes()).await
     }
 
     /**
-     * Publishes a message to a storage queue.
+     * Reads message ids from a queue where queue_name is the user's nickname.
      */
-    pub async fn publish_for_storage(&self, data: &[u8]) -> Result<()> {
-        self.publish(DB_MESSAGES_QUEUE, data).await?;
-        Ok(())
-    }
-
-    /**
-     * Reads messages from a queue where queue_name is the user's nickname.
-     */
-    pub async fn read(&self, queue_name: &str) -> Result<(String, Channel, MessageStream)> {
+    pub async fn read(&self, queue_name: &str) -> Result<(String, Channel, MessageIdStream)> {
         let (queue_name, channel) = self.split_queue(queue_name).await?;
 
         let consumer = channel
@@ -122,7 +108,8 @@ impl EventService {
                 let data = delivery.data.clone();
                 async move {
                     delivery.ack(BasicAckOptions::default()).await?;
-                    Ok(data)
+                    let vec: [u8; 12] = data.try_into().expect("Wrong length for ObjectId");
+                    Ok(ObjectId::from_bytes(vec))
                 }
             })
             .map_err(ApiError::from);
@@ -139,46 +126,6 @@ impl EventService {
             .await?;
 
         Ok(())
-    }
-
-    /**
-     * Starts a purging process for the storage queue.
-     */
-    pub fn start_purging(self) {
-        let self_clone = Arc::new(self);
-        tokio::spawn(async move {
-            let event_service = self_clone.clone();
-            let (consumer_tag, channel, messages_stream) =
-                match event_service.read(DB_MESSAGES_QUEUE).await {
-                    Ok(binding) => binding,
-                    Err(e) => {
-                        error!("Failed to read messages: {:?}", e);
-                        return;
-                    }
-                };
-
-            messages_stream
-                .for_each(move |data| {
-                    let message_service = self_clone.message_service.clone();
-                    async move {
-                        match data {
-                            Ok(data) => {
-                                let message = serde_json::from_slice::<Message>(&*data)
-                                    .expect("Failed to deserialize message");
-                                if let Err(e) = message_service.create(&message).await {
-                                    error!("Failed to store message: {:?}", e);
-                                }
-                            }
-                            Err(e) => error!("Failed to read message: {:?}", e),
-                        }
-                    }
-                })
-                .await;
-
-            if let Err(e) = event_service.close_consumer(&consumer_tag, &channel).await {
-                error!("Failed to close consumer: {:?}", e);
-            };
-        });
     }
 }
 

@@ -32,8 +32,6 @@ async fn main() {
         }
     };
 
-    app_state.clone().event_service.start_purging();
-
     let api_router = Router::new()
         .merge(chat::api::resources(app_state.clone()))
         .merge(message::api::resources(app_state.clone()))

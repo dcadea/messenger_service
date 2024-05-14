@@ -2,15 +2,16 @@ use bson::oid::ObjectId;
 use mongodb::bson;
 use serde::{Deserialize, Serialize};
 
+pub type MessageId = ObjectId;
+
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Message {
-    #[serde(skip)]
-    _id: Option<ObjectId>,
-    // TODO: create an id field
+    _id: Option<MessageId>,
     sender: String,
     pub recipient: String,
     text: String,
     timestamp: i64,
+    seen: bool,
 }
 
 impl Message {
@@ -21,6 +22,7 @@ impl Message {
             recipient: recipient.to_string(),
             text: text.to_string(),
             timestamp: chrono::Utc::now().timestamp(),
+            seen: false,
         }
     }
 }

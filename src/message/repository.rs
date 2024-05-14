@@ -4,7 +4,7 @@ use mongodb::options::FindOptions;
 use mongodb::Database;
 
 use crate::error::ApiError;
-use crate::message::model::Message;
+use crate::message::model::{Message, MessageId};
 use crate::result::Result;
 
 pub struct MessageRepository {
@@ -20,9 +20,24 @@ impl MessageRepository {
 }
 
 impl MessageRepository {
-    pub async fn insert(&self, message: &Message) -> Result<()> {
-        self.collection.insert_one(message, None).await?;
-        Ok(())
+    pub async fn insert(&self, message: &Message) -> Result<MessageId> {
+        let result = self.collection.insert_one(message, None).await?;
+        if let Some(id) = result.inserted_id.as_object_id() {
+            return Ok(id.to_owned());
+        }
+
+        Err(ApiError::InternalServerError(
+            "Failed to insert message".to_owned(),
+        ))
+    }
+
+    pub async fn find_by_id(&self, id: &MessageId) -> Option<Message> {
+        let filter = doc! {"_id": id};
+        self.collection
+            .find_one(Some(filter), None)
+            .await
+            .ok()
+            .flatten()
     }
 
     pub async fn find_by_participants(&self, participants: &Vec<String>) -> Result<Vec<Message>> {

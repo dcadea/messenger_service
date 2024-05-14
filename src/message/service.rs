@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::message::model::Message;
+use crate::message::model::{Message, MessageId};
 use crate::message::repository::MessageRepository;
 use crate::result::Result;
 
@@ -18,8 +18,12 @@ impl MessageService {
 }
 
 impl MessageService {
-    pub async fn create(&self, message: &Message) -> Result<()> {
+    pub async fn create(&self, message: &Message) -> Result<MessageId> {
         self.repository.insert(message).await
+    }
+
+    pub async fn find_by_id(&self, id: &MessageId) -> Option<Message> {
+        self.repository.find_by_id(id).await
     }
 
     pub async fn find_by_participants(&self, participants: &Vec<String>) -> Result<Vec<Message>> {
