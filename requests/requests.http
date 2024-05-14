@@ -23,11 +23,30 @@ Content-Type: application/json
 }
 
 
-### WS for 'TODO'
-# Acceptable body:
+### WS connection and events
+# Auth event:
+# {
+#   "type": "auth",
+#   "token": "{{token}}"
+# }
+#
+# Create message event:
 #{
-#  "sender": "user2",
+#  "type": "create_message",
 #  "recipient": "user1",
 #  "text": "finally a cat message"
+#}
+#
+# Update message event:
+#{
+#  "type": "update_message",
+#  "id": "5f7b7b7b7b7b7b7b7b7b7b7b",
+#  "text": "updated message"
+#}
+#
+# Delete message event:
+#{
+#  "type": "delete_message",
+#  "id": "5f7b7b7b7b7b7b7b7b7b7b7b"
 #}
 WEBSOCKET {{wsUrl}}

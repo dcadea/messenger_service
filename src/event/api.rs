@@ -137,13 +137,13 @@ async fn write(
                     Some(Ok(message_id)) => {
                         let mut sender = sender.write().await;
                         match message_service.find_by_id(&message_id).await {
-                            Some(message) => {
+                            Ok(message) => {
                                 let message = serde_json::to_vec(&message).expect("failed to serialize message");
                                 if let Err(e) = sender.send(Binary(message)).await {
                                     error!("Failed to send message: {:?}", e);
                                 }
                             },
-                            None => warn!("Message not found: {:?}", message_id),
+                            Err(e) => error!("Message not found: {:?}", e),
                         }
                     },
                     Some(Err(e)) => error!("Failed to read message: {:?}", e),

@@ -8,6 +8,7 @@ use serde::Serialize;
 pub enum ApiError {
     InternalServerError(String),
 
+    NotFound(String),
     QueryParamRequired(String),
 
     Unauthorized,
@@ -60,6 +61,7 @@ impl IntoResponse for ApiError {
         }
 
         let (status, message) = match self {
+            Self::NotFound(message) => (StatusCode::NOT_FOUND, message),
             Self::QueryParamRequired(param) => (
                 StatusCode::BAD_REQUEST,
                 format!("Query parameter '{}' is required", param),

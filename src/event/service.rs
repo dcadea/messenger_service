@@ -65,13 +65,32 @@ impl EventService {
                     Ok(())
                 }
                 Event::CreateMessage { recipient, text } => {
-                    debug!("received message request: {:?} -> {}", recipient, text);
+                    debug!(
+                        "received create message request: {:?} -> {}",
+                        recipient, text
+                    );
                     let nickname = user_info.nickname.clone();
                     let message_id = self
                         .message_service
                         .create(&Message::new(&nickname, &recipient, &text))
                         .await?;
                     self.publish_message_id(&recipient, message_id).await
+                }
+                Event::UpdateMessage { id, text } => {
+                    debug!("received update message request: {:?} -> {}", id, text);
+                    let message = self.message_service.find_by_id(&id).await?;
+                    if message.sender != user_info.nickname {
+                        return Err(ApiError::Forbidden("You are not the sender".to_owned()));
+                    }
+                    self.message_service.update(&id, &text).await
+                }
+                Event::DeleteMessage { id } => {
+                    debug!("received delete message request: {:?}", id);
+                    let message = self.message_service.find_by_id(&id).await?;
+                    if message.sender != user_info.nickname {
+                        return Err(ApiError::Forbidden("You are not the sender".to_owned()));
+                    }
+                    self.message_service.delete(&id).await
                 }
             },
         }

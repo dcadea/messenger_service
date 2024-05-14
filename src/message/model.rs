@@ -7,8 +7,8 @@ pub type MessageId = ObjectId;
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Message {
     _id: Option<MessageId>,
-    sender: String,
-    pub recipient: String,
+    pub sender: String,
+    recipient: String,
     text: String,
     timestamp: i64,
     seen: bool,

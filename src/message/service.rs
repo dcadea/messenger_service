@@ -22,11 +22,19 @@ impl MessageService {
         self.repository.insert(message).await
     }
 
-    pub async fn find_by_id(&self, id: &MessageId) -> Option<Message> {
+    pub async fn find_by_id(&self, id: &MessageId) -> Result<Message> {
         self.repository.find_by_id(id).await
     }
 
     pub async fn find_by_participants(&self, participants: &Vec<String>) -> Result<Vec<Message>> {
         self.repository.find_by_participants(participants).await
+    }
+
+    pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {
+        self.repository.update(id, text).await
+    }
+
+    pub async fn delete(&self, id: &MessageId) -> Result<()> {
+        self.repository.delete(id).await
     }
 }

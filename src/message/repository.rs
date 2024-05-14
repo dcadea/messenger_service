@@ -31,13 +31,14 @@ impl MessageRepository {
         ))
     }
 
-    pub async fn find_by_id(&self, id: &MessageId) -> Option<Message> {
+    pub async fn find_by_id(&self, id: &MessageId) -> Result<Message> {
         let filter = doc! {"_id": id};
-        self.collection
-            .find_one(Some(filter), None)
-            .await
-            .ok()
-            .flatten()
+        let message = self.collection.find_one(Some(filter), None).await?;
+
+        match message {
+            Some(message) => Ok(message),
+            None => Err(ApiError::NotFound("Message not found".to_owned())),
+        }
     }
 
     pub async fn find_by_participants(&self, participants: &Vec<String>) -> Result<Vec<Message>> {
@@ -48,6 +49,23 @@ impl MessageRepository {
         self.find(document).await
     }
 
+    pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {
+        let filter = doc! {"_id": id};
+        let update = doc! {"$set": {"text": text}};
+        self.collection.update_one(filter, update, None).await?;
+
+        Ok(())
+    }
+
+    pub async fn delete(&self, id: &MessageId) -> Result<()> {
+        let filter = doc! {"_id": id};
+        self.collection.delete_one(filter, None).await?;
+
+        Ok(())
+    }
+}
+
+impl MessageRepository {
     async fn find(&self, filter: Document) -> Result<Vec<Message>> {
         let cursor = self
             .collection
