@@ -66,7 +66,7 @@ impl EventService {
                 }
                 Event::CreateMessage { recipient, text } => {
                     debug!(
-                        "received create message request: {:?} -> {}",
+                        "received create message request: {:?} -> {:?}",
                         recipient, text
                     );
                     let nickname = user_info.nickname.clone();
@@ -77,7 +77,7 @@ impl EventService {
                     self.publish_message_id(&recipient, message_id).await
                 }
                 Event::UpdateMessage { id, text } => {
-                    debug!("received update message request: {:?} -> {}", id, text);
+                    debug!("received update message request: {:?} -> {:?}", id, text);
                     let message = self.message_service.find_by_id(&id).await?;
                     if message.sender != user_info.nickname {
                         return Err(ApiError::Forbidden("You are not the sender".to_owned()));
