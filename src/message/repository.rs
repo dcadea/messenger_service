@@ -1,5 +1,5 @@
 use futures::TryStreamExt;
-use mongodb::bson::{doc, Document};
+use mongodb::bson::doc;
 use mongodb::options::FindOptions;
 use mongodb::Database;
 
@@ -42,11 +42,20 @@ impl MessageRepository {
     }
 
     pub async fn find_by_participants(&self, participants: &Vec<String>) -> Result<Vec<Message>> {
-        let document = doc! { // FIXME
+        let filter = doc! {
             "sender": {"$in": participants},
             "recipient": {"$in": participants}
         };
-        self.find(document).await
+
+        let cursor = self
+            .collection
+            .find(
+                Some(filter),
+                FindOptions::builder().sort(doc! {"timestamp": 1}).build(),
+            )
+            .await?;
+
+        cursor.try_collect().await.map_err(ApiError::from)
     }
 
     pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {
@@ -63,18 +72,12 @@ impl MessageRepository {
 
         Ok(())
     }
-}
 
-impl MessageRepository {
-    async fn find(&self, filter: Document) -> Result<Vec<Message>> {
-        let cursor = self
-            .collection
-            .find(
-                Some(filter),
-                FindOptions::builder().sort(doc! {"timestamp": 1}).build(),
-            )
-            .await?;
+    pub async fn mark_as_seen(&self, id: &MessageId) -> Result<()> {
+        let filter = doc! {"_id": id};
+        let update = doc! {"$set": {"seen": true}};
+        self.collection.update_one(filter, update, None).await?;
 
-        cursor.try_collect().await.map_err(ApiError::from)
+        Ok(())
     }
 }

@@ -19,6 +19,7 @@ mod message;
 mod result;
 mod state;
 mod user;
+mod util;
 
 #[tokio::main]
 async fn main() {

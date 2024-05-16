@@ -23,7 +23,7 @@ impl MessageService {
     }
 
     pub async fn find_by_id(&self, id: &MessageId) -> Result<Message> {
-        self.repository.find_by_id(id).await
+        self.repository.find_by_id(&id).await
     }
 
     pub async fn find_by_participants(&self, participants: &Vec<String>) -> Result<Vec<Message>> {
@@ -31,10 +31,14 @@ impl MessageService {
     }
 
     pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {
-        self.repository.update(id, text).await
+        self.repository.update(&id, text).await
     }
 
     pub async fn delete(&self, id: &MessageId) -> Result<()> {
-        self.repository.delete(id).await
+        self.repository.delete(&id).await
+    }
+
+    pub async fn mark_as_seen(&self, id: &MessageId) -> Result<()> {
+        self.repository.mark_as_seen(&id).await
     }
 }

@@ -21,7 +21,7 @@ async fn find_handler(
     chat_service: State<ChatService>,
 ) -> Result<Json<Vec<Chat>>> {
     chat_service
-        .find_by_nickname(&user_info.nickname)
+        .find_by_sender(&user_info.nickname)
         .await
         .map(Json)
 }

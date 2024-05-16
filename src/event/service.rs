@@ -45,10 +45,10 @@ impl EventService {
 
 impl EventService {
     pub async fn handle_event(&self, context: WsContext, event: Event) -> Result<()> {
+        debug!("handling event: {:?}", event);
         match context.get_user_info().await {
             None => {
                 if let Event::Auth { token } = event {
-                    debug!("received auth request: {}", token);
                     let _ = self.auth_service.validate(&token).await?;
                     let user_info = self.auth_service.get_user_info(&token).await?;
                     context.set_user_info(user_info).await;
@@ -65,19 +65,15 @@ impl EventService {
                     Ok(())
                 }
                 Event::CreateMessage { recipient, text } => {
-                    debug!(
-                        "received create message request: {:?} -> {:?}",
-                        recipient, text
-                    );
-                    let nickname = user_info.nickname.clone();
+                    let sender = user_info.nickname.clone();
                     let message_id = self
                         .message_service
-                        .create(&Message::new(&nickname, &recipient, &text))
+                        .create(&Message::new(&sender, &recipient, &text))
                         .await?;
-                    self.publish_message_id(&recipient, message_id).await
+                    self.publish_all(vec![&sender, &recipient], &message_id)
+                        .await
                 }
                 Event::UpdateMessage { id, text } => {
-                    debug!("received update message request: {:?} -> {:?}", id, text);
                     let message = self.message_service.find_by_id(&id).await?;
                     if message.sender != user_info.nickname {
                         return Err(ApiError::Forbidden("You are not the sender".to_owned()));
@@ -85,12 +81,19 @@ impl EventService {
                     self.message_service.update(&id, &text).await
                 }
                 Event::DeleteMessage { id } => {
-                    debug!("received delete message request: {:?}", id);
                     let message = self.message_service.find_by_id(&id).await?;
                     if message.sender != user_info.nickname {
                         return Err(ApiError::Forbidden("You are not the sender".to_owned()));
                     }
                     self.message_service.delete(&id).await
+                }
+                Event::SeenMessage { id } => {
+                    let message = self.message_service.find_by_id(&id).await?;
+                    if message.recipient != user_info.nickname {
+                        return Err(ApiError::Forbidden("You are not the recipient".to_owned()));
+                    }
+                    self.message_service.mark_as_seen(&id).await?;
+                    self.publish_all(vec![&message.sender], &id).await
                 }
             },
         }
@@ -99,10 +102,13 @@ impl EventService {
 
 impl EventService {
     /**
-     * Publishes a message id to a recipient's dedicated queue.
+     * Publishes a message id to listed queues.
      */
-    pub async fn publish_message_id(&self, recipient: &str, message_id: MessageId) -> Result<()> {
-        self.publish(recipient, &message_id.bytes()).await
+    pub async fn publish_all(&self, nicknames: Vec<&str>, id: &MessageId) -> Result<()> {
+        for nickname in nicknames {
+            self.publish(nickname, &id.bytes()).await?;
+        }
+        Ok(())
     }
 
     /**

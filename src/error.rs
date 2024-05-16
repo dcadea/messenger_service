@@ -15,7 +15,8 @@ pub enum ApiError {
     Forbidden(String),
     TokenMalformed(String),
 
-    ParseError(serde_json::Error),
+    ParseJsonError(serde_json::Error),
+    ParseBsonError(mongodb::bson::oid::Error),
     ReqwestError(reqwest::Error),
 
     RabbitMQError(lapin::Error),
@@ -25,7 +26,13 @@ pub enum ApiError {
 
 impl From<serde_json::Error> for ApiError {
     fn from(error: serde_json::Error) -> Self {
-        Self::ParseError(error)
+        Self::ParseJsonError(error)
+    }
+}
+
+impl From<mongodb::bson::oid::Error> for ApiError {
+    fn from(error: mongodb::bson::oid::Error) -> Self {
+        Self::ParseBsonError(error)
     }
 }
 
@@ -82,7 +89,8 @@ impl IntoResponse for ApiError {
                     Self::InternalServerError(message) => {
                         error!("Internal server error: {:?}", message)
                     }
-                    Self::ParseError(error) => error!("Parse error: {:?}", error),
+                    Self::ParseJsonError(error) => error!("Parse json error: {:?}", error),
+                    Self::ParseBsonError(error) => error!("Parse bson error: {:?}", error),
                     Self::ReqwestError(error) => error!("Reqwest error: {:?}", error),
                     Self::RabbitMQError(error) => error!("RabbitMQ error: {:?}", error),
                     Self::MongoDBError(error) => error!("MongoDB error: {:?}", error),

@@ -24,8 +24,8 @@ impl ChatRepository {
         Ok(())
     }
 
-    pub async fn find_by_nickname(&self, nickname: &str) -> Result<Vec<Chat>> {
-        self.find(doc! { "nickname": nickname }).await
+    pub async fn find_by_sender(&self, sender: &str) -> Result<Vec<Chat>> {
+        self.find(doc! { "sender": sender }).await
     }
 
     async fn find(&self, filter: Document) -> Result<Vec<Chat>> {

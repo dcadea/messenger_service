@@ -1,20 +1,21 @@
-use mongodb::bson;
 use serde::{Deserialize, Serialize};
+
+pub type ChatId = mongodb::bson::oid::ObjectId;
 
 #[derive(Serialize, Deserialize)]
 pub struct Chat {
     #[serde(skip)]
-    _id: Option<bson::oid::ObjectId>,
-    nickname: String,
+    _id: Option<ChatId>,
+    sender: String,
     recipient: String,
     last_message: String,
 }
 
 impl Chat {
-    pub fn from_request(nickname: &str, chat_request: ChatRequest) -> Self {
+    pub fn from_request(sender: &str, chat_request: ChatRequest) -> Self {
         Self {
             _id: None,
-            nickname: nickname.to_string(),
+            sender: sender.to_string(),
             recipient: chat_request.recipient,
             last_message: chat_request.last_message,
         }

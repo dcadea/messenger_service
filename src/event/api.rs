@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use axum::extract::ws::Message::{Binary, Close, Text};
+use axum::extract::ws::Message::{Close, Text};
 use axum::extract::ws::WebSocket;
 use axum::extract::{ws, State, WebSocketUpgrade};
 use axum::response::Response;
@@ -138,8 +138,8 @@ async fn write(
                         let mut sender = sender.write().await;
                         match message_service.find_by_id(&message_id).await {
                             Ok(message) => {
-                                let message = serde_json::to_vec(&message).expect("failed to serialize message");
-                                if let Err(e) = sender.send(Binary(message)).await {
+                                let message = serde_json::to_string(&message).expect("failed to serialize message");
+                                if let Err(e) = sender.send(Text(message)).await {
                                     error!("Failed to send message: {:?}", e);
                                 }
                             },

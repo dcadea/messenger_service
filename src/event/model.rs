@@ -6,13 +6,14 @@ use tokio::sync::{Notify, RwLock};
 use crate::auth::model::UserInfo;
 use crate::message::model::MessageId;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Event {
     Auth { token: String },
     CreateMessage { recipient: String, text: String },
     UpdateMessage { id: MessageId, text: String },
     DeleteMessage { id: MessageId },
+    SeenMessage { id: MessageId },
 }
 
 #[derive(Clone)]

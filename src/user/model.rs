@@ -1,11 +1,12 @@
 use crate::auth::model::UserInfo;
-use mongodb::bson;
 use serde::{Deserialize, Serialize};
+
+pub type UserId = mongodb::bson::oid::ObjectId;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct User {
     #[serde(skip)]
-    _id: Option<bson::oid::ObjectId>,
+    _id: Option<UserId>,
     pub sub: String,
     pub nickname: String,
     pub name: String,

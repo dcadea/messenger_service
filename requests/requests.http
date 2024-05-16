@@ -2,8 +2,8 @@
 GET {{baseUrl}}/health
 
 
-### Get messages for recipients 'user1' and logged in user
-GET {{apiUrl}}/messages?recipient=user1
+### Get messages for 'user1' and logged in user
+GET {{apiUrl}}/messages?companion=user1
 Authorization: Bearer {{token}}
 
 

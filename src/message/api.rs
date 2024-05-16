@@ -21,10 +21,10 @@ async fn find_handler(
     Extension(user_info): Extension<UserInfo>,
     message_service: State<MessageService>,
 ) -> Result<Json<Vec<Message>>> {
-    match params.recipient {
-        None => Err(ApiError::QueryParamRequired("recipient".to_owned())),
-        Some(recipient) => {
-            let mut participants = recipient.clone();
+    match params.companion {
+        None => Err(ApiError::QueryParamRequired("companion".to_owned())),
+        Some(companion) => {
+            let mut participants = companion.clone();
             participants.push(user_info.nickname);
 
             message_service
