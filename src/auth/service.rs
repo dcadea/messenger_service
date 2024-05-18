@@ -23,16 +23,16 @@ pub struct AuthService {
 
 impl AuthService {
     pub fn try_new(config: &integration::Config) -> Result<Self> {
-        let mut jwk_validator = Validation::new(jsonwebtoken::Algorithm::RS256);
-        jwk_validator.set_required_spec_claims(&vec!["iss", "sub", "aud", "exp", "privileges"]);
-        jwk_validator.set_issuer(&[&config.issuer]);
-        jwk_validator.set_audience(&config.audience);
+        let mut jwt_validator = Validation::new(jsonwebtoken::Algorithm::RS256);
+        jwt_validator.set_required_spec_claims(&config.required_claims);
+        jwt_validator.set_issuer(&[&config.issuer]);
+        jwt_validator.set_audience(&config.audience);
 
         let jwk_decoding_keys = Arc::new(RwLock::new(HashMap::new()));
         let service = Self {
             config: Arc::new(config.clone()),
             http: Arc::new(integration::init_http_client()?),
-            jwt_validator: Arc::new(jwk_validator),
+            jwt_validator: Arc::new(jwt_validator),
             jwk_decoding_keys: jwk_decoding_keys.clone(),
         };
 

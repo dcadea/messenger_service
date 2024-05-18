@@ -23,6 +23,7 @@ pub struct Config {
     pub jwks_url: String,
     pub userinfo_url: String,
     pub audience: Vec<String>,
+    pub required_claims: Vec<String>,
 }
 
 impl Default for Config {
@@ -50,6 +51,11 @@ impl Default for Config {
                 .expect("ISSUER must be set"),
             audience: env::var("AUDIENCE")
                 .expect("AUDIENCE must be set")
+                .split(',')
+                .map(String::from)
+                .collect::<Vec<String>>(),
+            required_claims: env::var("REQUIRED_CLAIMS")
+                .expect("REQUIRED_CLAIMS must be set")
                 .split(',')
                 .map(String::from)
                 .collect::<Vec<String>>(),
