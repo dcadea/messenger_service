@@ -13,7 +13,7 @@ use mongodb::bson::oid::ObjectId;
 use tokio::sync::RwLock;
 use tokio_stream::Stream;
 
-use super::model::{Event, WsContext};
+use super::model::{Event, MessageQueue, QueueName, WsCtx};
 use crate::auth::service::AuthService;
 use crate::error::ApiError;
 use crate::message::model::{Message, MessageId};
@@ -44,15 +44,15 @@ impl EventService {
 }
 
 impl EventService {
-    pub async fn handle_event(&self, context: WsContext, event: Event) -> Result<()> {
+    pub async fn handle_event(&self, ctx: WsCtx, event: Event) -> Result<()> {
         debug!("handling event: {:?}", event);
-        match context.get_user_info().await {
+        match ctx.get_user_info().await {
             None => {
                 if let Event::Auth { token } = event {
                     let _ = self.auth_service.validate(&token).await?;
                     let user_info = self.auth_service.get_user_info(&token).await?;
-                    context.set_user_info(user_info).await;
-                    context.login.notify_one();
+                    ctx.set_user_info(user_info).await;
+                    ctx.login.notify_one();
                     return Ok(());
                 }
 
@@ -65,36 +65,39 @@ impl EventService {
                     Ok(())
                 }
                 Event::CreateMessage { recipient, text } => {
-                    let sender = user_info.nickname.clone();
+                    let sender = user_info.sub.as_str();
                     let message_id = self
                         .message_service
                         .create(&Message::new(&sender, &recipient, &text))
                         .await?;
 
-                    self.publish_message_id(&sender, &message_id).await?;
-                    self.publish_message_id(&recipient, &message_id).await
+                    self.publish_message_id(&MessageQueue::new(sender), &message_id)
+                        .await?;
+                    self.publish_message_id(&MessageQueue::new(&recipient), &message_id)
+                        .await
                 }
                 Event::UpdateMessage { id, text } => {
                     let message = self.message_service.find_by_id(&id).await?;
-                    if message.sender != user_info.nickname {
+                    if message.sender != user_info.sub {
                         return Err(ApiError::Forbidden("You are not the sender".to_owned()));
                     }
                     self.message_service.update(&id, &text).await
                 }
                 Event::DeleteMessage { id } => {
                     let message = self.message_service.find_by_id(&id).await?;
-                    if message.sender != user_info.nickname {
+                    if message.sender != user_info.sub {
                         return Err(ApiError::Forbidden("You are not the sender".to_owned()));
                     }
                     self.message_service.delete(&id).await
                 }
                 Event::SeenMessage { id } => {
                     let message = self.message_service.find_by_id(&id).await?;
-                    if message.recipient != user_info.nickname {
+                    if message.recipient != user_info.sub {
                         return Err(ApiError::Forbidden("You are not the recipient".to_owned()));
                     }
                     self.message_service.mark_as_seen(&id).await?;
-                    self.publish_message_id(&message.sender, &id).await
+                    self.publish_message_id(&MessageQueue::new(&message.sender), &id)
+                        .await
                 }
             },
         }
@@ -102,18 +105,12 @@ impl EventService {
 }
 
 impl EventService {
-    /**
-     * Publishes a message id to listed queues.
-     */
-    pub async fn publish_message_id(&self, nickname: &str, id: &MessageId) -> Result<()> {
-        self.publish(nickname, &id.bytes()).await
+    pub async fn publish_message_id(&self, q: &impl QueueName, id: &MessageId) -> Result<()> {
+        self.publish(&q.to_string(), &id.bytes()).await
     }
 
-    /**
-     * Reads message ids from a queue where queue_name is the user's nickname.
-     */
-    pub async fn read(&self, queue_name: &str) -> Result<(String, Channel, MessageIdStream)> {
-        let (queue_name, channel) = self.split_queue(queue_name).await?;
+    pub async fn read(&self, q: &impl QueueName) -> Result<(String, Channel, MessageIdStream)> {
+        let (queue_name, channel) = self.split_queue(&q.to_string()).await?;
 
         let consumer = channel
             .basic_consume(

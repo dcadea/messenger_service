@@ -20,10 +20,7 @@ async fn find_handler(
     user_info: Extension<UserInfo>,
     chat_service: State<ChatService>,
 ) -> Result<Json<Vec<Chat>>> {
-    chat_service
-        .find_by_sender(&user_info.nickname)
-        .await
-        .map(Json)
+    chat_service.find_by_sender(&user_info.sub).await.map(Json)
 }
 
 async fn create_handler(
@@ -32,7 +29,7 @@ async fn create_handler(
     Json(chat_request): Json<ChatRequest>,
 ) -> Result<StatusCode> {
     chat_service
-        .create(&Chat::from_request(&user_info.nickname, chat_request))
+        .create(&Chat::from_request(&user_info.sub, chat_request))
         .await?;
     Ok(StatusCode::CREATED)
 }

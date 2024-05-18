@@ -25,7 +25,7 @@ async fn find_handler(
         None => Err(ApiError::QueryParamRequired("companion".to_owned())),
         Some(companion) => {
             let mut participants = companion.clone();
-            participants.push(user_info.nickname);
+            participants.push(user_info.sub);
 
             message_service
                 .find_by_participants(&participants)

@@ -15,7 +15,7 @@ use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::try_join;
 
-use super::model::{Event, WsContext};
+use super::model::{Event, MessageQueue, WsCtx};
 use super::service::EventService;
 use crate::message::service::MessageService;
 use crate::result::Result;
@@ -41,11 +41,11 @@ async fn handle_socket(
     message_service: MessageService,
 ) {
     let (sender, receiver) = ws.split();
-    let context = WsContext::new();
+    let ctx = WsCtx::new();
 
-    let read_task = tokio::spawn(read(context.clone(), receiver, event_service.clone()));
+    let read_task = tokio::spawn(read(ctx.clone(), receiver, event_service.clone()));
     let write_task = tokio::spawn(write(
-        context.clone(),
+        ctx.clone(),
         sender,
         event_service.clone(),
         message_service.clone(),
@@ -57,32 +57,28 @@ async fn handle_socket(
     }
 }
 
-async fn read(
-    context: WsContext,
-    mut receiver: SplitStream<WebSocket>,
-    event_service: EventService,
-) {
+async fn read(ctx: WsCtx, mut receiver: SplitStream<WebSocket>, event_service: EventService) {
     loop {
         tokio::select! {
-            _ = context.close.notified() => break,
+            _ = ctx.close.notified() => break,
             frame = receiver.next() => {
                 if let Some(message) = frame {
                     match message {
                         Err(e) => {
                             error!("failed to read ws frame: {:?}", e);
-                            context.close.notify_one();
+                            ctx.close.notify_one();
                             break;
                         },
                         Ok(Close(_)) => {
                             debug!("ws connection closed by client");
-                            context.close.notify_one();
+                            ctx.close.notify_one();
                             break;
                         },
                         Ok(Text(content)) => {
                             if let Ok(event) = from_str::<Event>(content.as_str()) {
-                                if let Err(e) = event_service.handle_event(context.clone(), event).await {
+                                if let Err(e) = event_service.handle_event(ctx.clone(), event).await {
                                     error!("failed to handle event: {:?}", e);
-                                    context.close.notify_one();
+                                    ctx.close.notify_one();
                                     break;
                                 }
                             } else {
@@ -98,36 +94,33 @@ async fn read(
 }
 
 async fn write(
-    context: WsContext,
+    ctx: WsCtx,
     sender: SplitSink<WebSocket, ws::Message>,
     event_service: EventService,
     message_service: MessageService,
 ) {
     loop {
         tokio::select! {
-            _ = context.login.notified() => break,
-            _ = context.close.notified() => return,
+            _ = ctx.login.notified() => break,
+            _ = ctx.close.notified() => return,
             _ = sleep(Duration::from_secs(5)) => {
-                context.close.notify_one();
+                ctx.close.notify_one();
                 return;
             },
         }
     }
 
-    let nickname = &context
-        .get_user_info()
-        .await
-        .expect("not authorized user")
-        .nickname;
+    let sub = &ctx.get_user_info().await.expect("not authorized user").sub;
 
-    let (consumer_tag, channel, mut messages_stream) = match event_service.read(nickname).await {
-        Ok(binding) => binding,
-        Err(e) => {
-            error!("Failed to read messages: {:?}", e);
-            context.close.notify_one();
-            return;
-        }
-    };
+    let (consumer_tag, channel, mut messages_stream) =
+        match event_service.read(&MessageQueue::new(sub)).await {
+            Ok(binding) => binding,
+            Err(e) => {
+                error!("Failed to read messages: {:?}", e);
+                ctx.close.notify_one();
+                return;
+            }
+        };
 
     let sender = Arc::new(RwLock::new(sender));
     loop {
@@ -150,7 +143,7 @@ async fn write(
                     None => break,
                 }
             },
-            _ = context.close.notified() => break,
+            _ = ctx.close.notified() => break,
         }
     }
 

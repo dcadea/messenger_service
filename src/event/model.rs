@@ -6,6 +6,28 @@ use tokio::sync::{Notify, RwLock};
 use crate::auth::model::UserInfo;
 use crate::message::model::MessageId;
 
+pub trait QueueName {
+    fn to_string(&self) -> String;
+}
+
+pub struct MessageQueue {
+    name: String,
+}
+
+impl MessageQueue {
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+        }
+    }
+}
+
+impl QueueName for MessageQueue {
+    fn to_string(&self) -> String {
+        format!("messages:{}", self.name)
+    }
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Event {
@@ -17,13 +39,13 @@ pub enum Event {
 }
 
 #[derive(Clone)]
-pub struct WsContext {
+pub struct WsCtx {
     user_info: Arc<RwLock<Option<UserInfo>>>,
     pub login: Arc<Notify>,
     pub close: Arc<Notify>,
 }
 
-impl WsContext {
+impl WsCtx {
     pub fn new() -> Self {
         Self {
             user_info: Arc::new(RwLock::new(None)),
@@ -33,7 +55,7 @@ impl WsContext {
     }
 }
 
-impl WsContext {
+impl WsCtx {
     pub async fn set_user_info(&self, user_info: UserInfo) {
         *self.user_info.write().await = Some(user_info);
     }
