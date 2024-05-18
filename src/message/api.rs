@@ -4,9 +4,9 @@ use axum::routing::get;
 use axum::{Extension, Json, Router};
 use axum_extra::extract::Query;
 
+use super::model::{Message, MessageParams};
+use super::service::MessageService;
 use crate::error::ApiError;
-use crate::message::model::{Message, MessageParams};
-use crate::message::service::MessageService;
 use crate::result::Result;
 use crate::state::AppState;
 

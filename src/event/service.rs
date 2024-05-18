@@ -13,9 +13,9 @@ use mongodb::bson::oid::ObjectId;
 use tokio::sync::RwLock;
 use tokio_stream::Stream;
 
+use super::model::{Event, WsContext};
 use crate::auth::service::AuthService;
 use crate::error::ApiError;
-use crate::event::model::{Event, WsContext};
 use crate::message::model::{Message, MessageId};
 use crate::message::service::MessageService;
 use crate::result::Result;
@@ -70,8 +70,9 @@ impl EventService {
                         .message_service
                         .create(&Message::new(&sender, &recipient, &text))
                         .await?;
-                    self.publish_all(vec![&sender, &recipient], &message_id)
-                        .await
+
+                    self.publish_message_id(&sender, &message_id).await?;
+                    self.publish_message_id(&recipient, &message_id).await
                 }
                 Event::UpdateMessage { id, text } => {
                     let message = self.message_service.find_by_id(&id).await?;
@@ -93,7 +94,7 @@ impl EventService {
                         return Err(ApiError::Forbidden("You are not the recipient".to_owned()));
                     }
                     self.message_service.mark_as_seen(&id).await?;
-                    self.publish_all(vec![&message.sender], &id).await
+                    self.publish_message_id(&message.sender, &id).await
                 }
             },
         }
@@ -104,11 +105,8 @@ impl EventService {
     /**
      * Publishes a message id to listed queues.
      */
-    pub async fn publish_all(&self, nicknames: Vec<&str>, id: &MessageId) -> Result<()> {
-        for nickname in nicknames {
-            self.publish(nickname, &id.bytes()).await?;
-        }
-        Ok(())
+    pub async fn publish_message_id(&self, nickname: &str, id: &MessageId) -> Result<()> {
+        self.publish(nickname, &id.bytes()).await
     }
 
     /**

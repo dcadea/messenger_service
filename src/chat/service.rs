@@ -1,7 +1,9 @@
-use crate::chat::model::Chat;
-use crate::chat::repository::ChatRepository;
+use super::model::Chat;
+use super::repository::ChatRepository;
 use crate::result::Result;
 use std::sync::Arc;
+
+use super::model::ChatId;
 
 #[derive(Clone)]
 pub struct ChatService {
@@ -17,7 +19,7 @@ impl ChatService {
 }
 
 impl ChatService {
-    pub async fn create(&self, chat: &Chat) -> Result<()> {
+    pub async fn create(&self, chat: &Chat) -> Result<ChatId> {
         self.repository.insert(chat).await
     }
 

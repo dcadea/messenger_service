@@ -1,15 +1,15 @@
 use axum::extract::FromRef;
 
-use crate::auth::service::AuthService;
-use crate::chat::repository::ChatRepository;
-use crate::chat::service::ChatService;
-use crate::event::service::EventService;
-use crate::integration;
-use crate::message::repository::MessageRepository;
-use crate::message::service::MessageService;
-use crate::result::Result;
-use crate::user::repository::UserRepository;
-use crate::user::service::UserService;
+use super::auth::service::AuthService;
+use super::chat::repository::ChatRepository;
+use super::chat::service::ChatService;
+use super::event::service::EventService;
+use super::integration;
+use super::message::repository::MessageRepository;
+use super::message::service::MessageService;
+use super::result::Result;
+use super::user::repository::UserRepository;
+use super::user::service::UserService;
 
 #[derive(Clone)]
 pub struct AppState {

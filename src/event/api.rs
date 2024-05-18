@@ -15,8 +15,8 @@ use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::try_join;
 
-use crate::event::model::{Event, WsContext};
-use crate::event::service::EventService;
+use super::model::{Event, WsContext};
+use super::service::EventService;
 use crate::message::service::MessageService;
 use crate::result::Result;
 use crate::state::AppState;

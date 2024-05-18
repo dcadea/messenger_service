@@ -4,7 +4,7 @@ use std::time::Duration;
 use dotenv::dotenv;
 use tokio::sync::RwLock;
 
-use crate::result::Result;
+use super::result::Result;
 
 #[derive(Clone)]
 pub struct Config {

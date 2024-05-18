@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use crate::message::model::{Message, MessageId};
-use crate::message::repository::MessageRepository;
+use super::model::{Message, MessageId};
+use super::repository::MessageRepository;
 use crate::result::Result;
 
 #[derive(Clone)]

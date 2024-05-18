@@ -4,8 +4,8 @@ use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
 
-use crate::chat::model::{Chat, ChatRequest};
-use crate::chat::service::ChatService;
+use super::model::{Chat, ChatRequest};
+use super::service::ChatService;
 use crate::result::Result;
 use crate::state::AppState;
 

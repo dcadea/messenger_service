@@ -3,8 +3,8 @@ use mongodb::bson::doc;
 use mongodb::options::FindOptions;
 use mongodb::Database;
 
+use super::model::{Message, MessageId};
 use crate::error::ApiError;
-use crate::message::model::{Message, MessageId};
 use crate::result::Result;
 
 pub struct MessageRepository {

@@ -7,8 +7,8 @@ use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 
-use crate::auth::model::TokenClaims;
-use crate::auth::model::UserInfo;
+use super::model::TokenClaims;
+use super::model::UserInfo;
 use crate::error::ApiError;
 use crate::integration;
 use crate::result::Result;
@@ -36,10 +36,11 @@ impl AuthService {
             jwk_decoding_keys: jwk_decoding_keys.clone(),
         };
 
+        let http = integration::init_http_client()?;
         let config_clone = config.clone();
         tokio::spawn(async move {
             loop {
-                match fetch_jwk_decoding_keys(&config_clone).await {
+                match fetch_jwk_decoding_keys(&config_clone, &http).await {
                     Ok(keys) => *jwk_decoding_keys.write().await = keys,
                     Err(e) => eprintln!("Failed to update JWK decoding keys: {:?}", e),
                 }
@@ -90,8 +91,8 @@ impl AuthService {
 
 async fn fetch_jwk_decoding_keys(
     config: &integration::Config,
+    http: &reqwest::Client,
 ) -> Result<HashMap<String, DecodingKey>> {
-    let http = integration::init_http_client()?;
     let jwk_response = http.get(config.jwks_url.clone()).send().await?;
     let jwk_json = jwk_response.json().await?;
     let jwk_set: JwkSet = serde_json::from_value(jwk_json)?;

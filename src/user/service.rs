@@ -1,8 +1,8 @@
 use crate::user::model::User;
 use std::sync::Arc;
 
+use super::repository::UserRepository;
 use crate::result::Result;
-use crate::user::repository::UserRepository;
 
 #[derive(Clone)]
 pub struct UserService {

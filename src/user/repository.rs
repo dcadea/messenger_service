@@ -1,8 +1,8 @@
 use mongodb::bson::{doc, Document};
 use mongodb::Database;
 
+use super::model::User;
 use crate::result::Result;
-use crate::user::model::User;
 
 pub struct UserRepository {
     collection: mongodb::Collection<User>,
