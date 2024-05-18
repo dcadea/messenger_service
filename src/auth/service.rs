@@ -66,6 +66,7 @@ impl AuthService {
     }
 
     pub async fn get_user_info(&self, token: &str) -> Result<UserInfo> {
+        // TODO: Cache user info
         let user_info = self
             .http
             .get(&self.config.userinfo_url)

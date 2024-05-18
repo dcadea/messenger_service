@@ -1,6 +1,6 @@
 use futures::stream::TryStreamExt;
 
-use mongodb::bson::{doc, Document};
+use mongodb::bson::doc;
 
 use crate::error::ApiError;
 use crate::result::Result;
@@ -32,12 +32,32 @@ impl ChatRepository {
         ))
     }
 
-    pub async fn find_by_sender(&self, sender: &str) -> Result<Vec<Chat>> {
-        self.find(doc! { "sender": sender }).await
+    pub async fn update_last_message(&self, id: &ChatId, text: &str) -> Result<()> {
+        let filter = doc! { "_id": id };
+        let update = doc! { "$set": { "last_message": text } };
+        self.collection.update_one(filter, update, None).await?;
+        Ok(())
     }
 
-    async fn find(&self, filter: Document) -> Result<Vec<Chat>> {
+    pub async fn find_by_sender(&self, sender: &str) -> Result<Vec<Chat>> {
+        let filter = doc! { "sender": sender };
         let cursor = self.collection.find(Some(filter), None).await?;
         cursor.try_collect().await.map_err(ApiError::from)
+    }
+
+    pub async fn find_by_sender_and_recipient(
+        &self,
+        sender: &str,
+        recipient: &str,
+    ) -> Result<ChatId> {
+        let filter = doc! { "sender": sender, "recipient": recipient };
+        let result = self.collection.find_one(Some(filter), None).await?;
+        if let Some(chat) = result {
+            if let Some(id) = chat.id {
+                return Ok(id);
+            }
+        }
+
+        Err(ApiError::NotFound("Chat not found".to_owned()))
     }
 }

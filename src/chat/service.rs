@@ -1,9 +1,8 @@
 use super::model::Chat;
 use super::repository::ChatRepository;
+use crate::error::ApiError;
 use crate::result::Result;
 use std::sync::Arc;
-
-use super::model::ChatId;
 
 #[derive(Clone)]
 pub struct ChatService {
@@ -19,8 +18,25 @@ impl ChatService {
 }
 
 impl ChatService {
-    pub async fn create(&self, chat: &Chat) -> Result<ChatId> {
-        self.repository.insert(chat).await
+    pub async fn update_last_message(
+        &self,
+        sender: &str,
+        recipient: &str,
+        text: &str,
+    ) -> Result<()> {
+        match self
+            .repository
+            .find_by_sender_and_recipient(sender, recipient)
+            .await
+        {
+            Ok(chat_id) => self.repository.update_last_message(&chat_id, text).await,
+            Err(ApiError::NotFound(..)) => self
+                .repository
+                .insert(&Chat::new(sender, recipient, text))
+                .await
+                .map(|_| ()),
+            Err(e) => Err(e),
+        }
     }
 
     pub async fn find_by_sender(&self, sender: &str) -> Result<Vec<Chat>> {

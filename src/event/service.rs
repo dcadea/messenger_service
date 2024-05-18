@@ -15,6 +15,7 @@ use tokio_stream::Stream;
 
 use super::model::{Event, MessageQueue, QueueName, WsCtx};
 use crate::auth::service::AuthService;
+use crate::chat::service::ChatService;
 use crate::error::ApiError;
 use crate::message::model::{Message, MessageId};
 use crate::message::service::MessageService;
@@ -25,6 +26,7 @@ type MessageIdStream = Pin<Box<dyn Stream<Item = Result<MessageId>> + Send>>;
 #[derive(Clone)]
 pub struct EventService {
     rabbitmq_con: Arc<RwLock<Connection>>,
+    chat_service: Arc<ChatService>,
     message_service: Arc<MessageService>,
     auth_service: Arc<AuthService>,
 }
@@ -32,11 +34,13 @@ pub struct EventService {
 impl EventService {
     pub fn new(
         rabbitmq_con: RwLock<Connection>,
+        chat_service: ChatService,
         message_service: MessageService,
         auth_service: AuthService,
     ) -> Self {
         Self {
             rabbitmq_con: Arc::new(rabbitmq_con),
+            chat_service: Arc::new(chat_service),
             message_service: Arc::new(message_service),
             auth_service: Arc::new(auth_service),
         }
@@ -74,6 +78,9 @@ impl EventService {
                     self.publish_message_id(&MessageQueue::new(sender), &message_id)
                         .await?;
                     self.publish_message_id(&MessageQueue::new(&recipient), &message_id)
+                        .await?;
+                    self.chat_service
+                        .update_last_message(&sender, &recipient, &text)
                         .await
                 }
                 Event::UpdateMessage { id, text } => {
