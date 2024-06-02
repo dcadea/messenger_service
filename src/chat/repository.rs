@@ -38,6 +38,12 @@ impl ChatRepository {
         Ok(())
     }
 
+    pub async fn find_by_id(&self, id: &ChatId) -> Result<Chat> {
+        let filter = doc! { "_id": id };
+        let result = self.collection.find_one(Some(filter), None).await?;
+        result.ok_or(ApiError::NotFound(format!("Chat with id '{:?}' not found", id)))
+    }
+
     pub async fn find_by_sub(&self, sub: &UserSub) -> Result<Vec<Chat>> {
         let filter = doc! {
             "$or": [

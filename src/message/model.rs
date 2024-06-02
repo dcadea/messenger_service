@@ -1,7 +1,7 @@
-use crate::chat::model::ChatId;
-use crate::user::model::UserSub;
 use serde::{Deserialize, Serialize};
 
+use crate::chat::model::ChatId;
+use crate::user::model::UserSub;
 use crate::util::serialize_object_id;
 
 pub type MessageId = mongodb::bson::oid::ObjectId;
@@ -14,6 +14,8 @@ pub struct Message {
         skip_serializing_if = "Option::is_none"
     )]
     id: Option<MessageId>,
+    // TODO: create custom deserializer
+    // #[serde(deserialize_with = "deserialize_object_id_as_hex_string")]
     chat_id: ChatId,
     pub owner: UserSub,
     pub recipient: UserSub,

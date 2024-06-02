@@ -1,3 +1,4 @@
+use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde::{Deserialize, Serialize};
 
 use crate::user::model::UserSub;
@@ -26,8 +27,8 @@ pub struct Chat {
         skip_serializing_if = "Option::is_none"
     )]
     pub id: Option<ChatId>,
-    members: Members,
-    last_message: String,
+    pub members: Members,
+    pub last_message: String,
 }
 
 impl Chat {
@@ -38,4 +39,12 @@ impl Chat {
             last_message: last_message.to_string(),
         }
     }
+}
+
+#[derive(Serialize)]
+pub struct ChatTO {
+    #[serde(serialize_with = "serialize_object_id_as_hex_string")]
+    pub id: ChatId,
+    pub recipient: UserSub,
+    pub last_message: String,
 }

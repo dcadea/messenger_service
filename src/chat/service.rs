@@ -3,9 +3,9 @@ use std::sync::Arc;
 use crate::error::ApiError;
 use crate::message::model::Message;
 use crate::result::Result;
-use crate::user::model::UserSub;
+use crate::user::model::{UserInfo};
 
-use super::model::{Chat, ChatId, Members};
+use super::model::{Chat, ChatId, ChatTO, Members};
 use super::repository::ChatRepository;
 
 #[derive(Clone)]
@@ -44,7 +44,37 @@ impl ChatService {
         }
     }
 
-    pub async fn find_by_sub(&self, sub: &UserSub) -> Result<Vec<Chat>> {
-        self.repository.find_by_sub(sub).await
+    pub async fn find_by_id(&self, id: &ChatId, user_info: &UserInfo) -> Result<ChatTO> {
+        self.repository.find_by_id(id).await
+            .map(|chat| Self::map_to_transfer_object(chat, &user_info))
+    }
+
+    pub async fn find_for_logged_user(&self, user_info: &UserInfo) -> Result<Vec<ChatTO>> {
+        self.repository.find_by_sub(&user_info.sub).await
+            .map(|chats| {
+                chats.into_iter()
+                    .map(|chat| Self::map_to_transfer_object(chat, &user_info))
+                    .collect()
+            })
+    }
+}
+
+impl ChatService {
+    fn map_to_transfer_object(chat: Chat, user_info: &UserInfo) -> ChatTO {
+        let recipient;
+
+        if chat.members.me == user_info.sub {
+            recipient = chat.members.you;
+        } else if chat.members.you == user_info.sub {
+            recipient = chat.members.me;
+        } else {
+            panic!("You are not a participant of this chat");
+        }
+
+        ChatTO {
+            id: chat.id.expect("No way chat id is missing!?"),
+            recipient,
+            last_message: chat.last_message,
+        }
     }
 }
