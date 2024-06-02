@@ -1,3 +1,4 @@
+use crate::chat::model::ChatId;
 use futures::TryStreamExt;
 use mongodb::bson::doc;
 use mongodb::options::FindOptions;
@@ -41,12 +42,8 @@ impl MessageRepository {
         }
     }
 
-    pub async fn find_by_participants(&self, participants: &Vec<String>) -> Result<Vec<Message>> {
-        let filter = doc! {
-            "sender": {"$in": participants},
-            "recipient": {"$in": participants}
-        };
-
+    pub async fn find_by_chat_id(&self, chat_id: &ChatId) -> Result<Vec<Message>> {
+        let filter = doc! {"chat_id": chat_id};
         let cursor = self
             .collection
             .find(

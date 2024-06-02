@@ -1,3 +1,4 @@
+use crate::chat::model::ChatId;
 use std::sync::Arc;
 
 use super::model::{Message, MessageId};
@@ -18,16 +19,19 @@ impl MessageService {
 }
 
 impl MessageService {
-    pub async fn create(&self, message: &Message) -> Result<MessageId> {
-        self.repository.insert(message).await
+    pub async fn create(&self, message: &Message) -> Result<Message> {
+        self.repository
+            .insert(message)
+            .await
+            .map(|id| message.with_id(id))
     }
 
     pub async fn find_by_id(&self, id: &MessageId) -> Result<Message> {
         self.repository.find_by_id(&id).await
     }
 
-    pub async fn find_by_participants(&self, participants: &Vec<String>) -> Result<Vec<Message>> {
-        self.repository.find_by_participants(participants).await
+    pub async fn find_by_chat_id(&self, chat_id: &ChatId) -> Result<Vec<Message>> {
+        self.repository.find_by_chat_id(&chat_id).await
     }
 
     pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {

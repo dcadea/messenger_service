@@ -1,28 +1,28 @@
 use std::sync::Arc;
 
-use serde::Deserialize;
+use crate::chat::model::ChatId;
+use serde::{Deserialize, Serialize};
 use tokio::sync::{Notify, RwLock};
 
-use crate::auth::model::UserInfo;
-use crate::message::model::MessageId;
+use crate::message::model::{Message, MessageId};
+use crate::user::model::{UserInfo, UserSub};
 
 pub trait QueueName {
     fn to_string(&self) -> String;
 }
-
-pub struct MessageQueue {
+pub struct MessagesQueue {
     name: String,
 }
 
-impl MessageQueue {
-    pub fn new(name: &str) -> Self {
+impl From<UserSub> for MessagesQueue {
+    fn from(user: UserSub) -> Self {
         Self {
-            name: name.to_string(),
+            name: user.to_string(),
         }
     }
 }
 
-impl QueueName for MessageQueue {
+impl QueueName for MessagesQueue {
     fn to_string(&self) -> String {
         format!("messages:{}", self.name)
     }
@@ -32,10 +32,19 @@ impl QueueName for MessageQueue {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Event {
     Auth { token: String },
-    CreateMessage { recipient: String, text: String },
+    CreateMessage { chat_id: ChatId, recipient: UserSub, text: String },
     UpdateMessage { id: MessageId, text: String },
     DeleteMessage { id: MessageId },
     SeenMessage { id: MessageId },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Notification {
+    MessageCreated { message: Message },
+    MessageUpdated { id: MessageId, text: String },
+    MessageDeleted { id: MessageId },
+    MessageSeen { id: MessageId },
 }
 
 #[derive(Clone)]

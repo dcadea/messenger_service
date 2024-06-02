@@ -1,7 +1,6 @@
-use crate::auth::model::UserInfo;
 use axum::extract::State;
 use axum::routing::get;
-use axum::{Extension, Json, Router};
+use axum::{Json, Router};
 use axum_extra::extract::Query;
 
 use super::model::{Message, MessageParams};
@@ -17,20 +16,13 @@ pub fn resources<S>(state: AppState) -> Router<S> {
 }
 
 async fn find_handler(
-    Query(params): Query<MessageParams>,
-    Extension(user_info): Extension<UserInfo>,
+    params: Query<MessageParams>,
     message_service: State<MessageService>,
 ) -> Result<Json<Vec<Message>>> {
-    match params.companion {
-        None => Err(ApiError::QueryParamRequired("companion".to_owned())),
-        Some(companion) => {
-            let mut participants = companion.clone();
-            participants.push(user_info.sub);
+    // TODO: check if logged in user is a participant of the chat
 
-            message_service
-                .find_by_participants(&participants)
-                .await
-                .map(Json)
-        }
+    match &params.chat_id {
+        None => Err(ApiError::QueryParamRequired("chat_id".to_owned())),
+        Some(chat_id) => message_service.find_by_chat_id(chat_id).await.map(Json),
     }
 }

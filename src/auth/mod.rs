@@ -11,7 +11,7 @@ use crate::user::service::UserService;
 use model::TokenClaims;
 use service::AuthService;
 
-pub mod model;
+mod model;
 pub mod service;
 
 pub async fn validate_token(

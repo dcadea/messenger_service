@@ -1,12 +1,11 @@
 use futures::stream::TryStreamExt;
-
 use mongodb::bson::doc;
 
 use crate::error::ApiError;
 use crate::result::Result;
+use crate::user::model::UserSub;
 
-use super::model::Chat;
-use super::model::ChatId;
+use super::model::{Chat, ChatId, Members};
 
 pub struct ChatRepository {
     collection: mongodb::Collection<Chat>,
@@ -34,23 +33,33 @@ impl ChatRepository {
 
     pub async fn update_last_message(&self, id: &ChatId, text: &str) -> Result<()> {
         let filter = doc! { "_id": id };
-        let update = doc! { "$set": { "last_message": text } };
+        let update = doc! {"$set": { "last_message": text }};
         self.collection.update_one(filter, update, None).await?;
         Ok(())
     }
 
-    pub async fn find_by_sender(&self, sender: &str) -> Result<Vec<Chat>> {
-        let filter = doc! { "sender": sender };
+    pub async fn find_by_sub(&self, sub: &UserSub) -> Result<Vec<Chat>> {
+        let filter = doc! {
+            "$or": [
+                { "members.me": sub },
+                { "members.you": sub },
+            ]
+        };
         let cursor = self.collection.find(Some(filter), None).await?;
         cursor.try_collect().await.map_err(ApiError::from)
     }
 
-    pub async fn find_by_sender_and_recipient(
-        &self,
-        sender: &str,
-        recipient: &str,
-    ) -> Result<ChatId> {
-        let filter = doc! { "sender": sender, "recipient": recipient };
+    pub async fn find_id_by_members(&self, members: &Members) -> Result<ChatId> {
+        let me = &members.me;
+        let you = &members.you;
+
+        let filter = doc! {
+            "$or": [
+                { "members.me": me, "members.you": you },
+                { "members.me": you, "members.you": me },
+            ]
+        };
+
         let result = self.collection.find_one(Some(filter), None).await?;
         if let Some(chat) = result {
             if let Some(id) = chat.id {

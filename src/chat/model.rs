@@ -1,8 +1,22 @@
 use serde::{Deserialize, Serialize};
 
+use crate::user::model::UserSub;
 use crate::util::serialize_object_id;
 
 pub type ChatId = mongodb::bson::oid::ObjectId;
+
+// TODO: revise the necessity of this struct
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Members {
+    pub me: UserSub,
+    pub you: UserSub,
+}
+
+impl Members {
+    pub fn new(me: UserSub, you: UserSub) -> Self {
+        Self { me, you }
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct Chat {
@@ -12,17 +26,15 @@ pub struct Chat {
         skip_serializing_if = "Option::is_none"
     )]
     pub id: Option<ChatId>,
-    pub sender: String,
-    pub recipient: String,
+    members: Members,
     last_message: String,
 }
 
 impl Chat {
-    pub fn new(sender: &str, recipient: &str, last_message: &str) -> Self {
+    pub fn new(members: Members, last_message: &str) -> Self {
         Self {
             id: None,
-            sender: sender.to_string(),
-            recipient: recipient.to_string(),
+            members,
             last_message: last_message.to_string(),
         }
     }

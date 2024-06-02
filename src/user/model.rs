@@ -1,17 +1,38 @@
-use crate::auth::model::UserInfo;
 use serde::{Deserialize, Serialize};
 
-pub type UserId = mongodb::bson::oid::ObjectId;
+type UserId = mongodb::bson::oid::ObjectId;
+pub type UserSub = String;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct User {
     #[serde(skip)]
     _id: Option<UserId>,
-    pub sub: String,
-    pub nickname: String,
-    pub name: String,
-    pub picture: String,
-    pub email: String,
+    sub: UserSub,
+    nickname: String,
+    name: String,
+    picture: String,
+    email: String,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct UserInfo {
+    pub sub: UserSub,
+    nickname: String,
+    name: String,
+    picture: String,
+    email: String,
+}
+
+impl From<User> for UserInfo {
+    fn from(user: User) -> Self {
+        UserInfo {
+            sub: user.sub,
+            nickname: user.nickname,
+            name: user.name,
+            picture: user.picture,
+            email: user.email,
+        }
+    }
 }
 
 impl From<UserInfo> for User {

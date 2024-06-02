@@ -1,23 +1,10 @@
-use std::sync::Arc;
-use std::time::Duration;
-
-use axum::extract::ws::Message::{Close, Text};
-use axum::extract::ws::WebSocket;
-use axum::extract::{ws, State, WebSocketUpgrade};
+use axum::extract::{State, WebSocketUpgrade};
 use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
-use futures::stream::{SplitSink, SplitStream};
-use futures::{SinkExt, StreamExt};
-use log::{debug, error, warn};
-use serde_json::from_str;
-use tokio::sync::RwLock;
-use tokio::time::sleep;
-use tokio::try_join;
 
-use super::model::{Event, MessageQueue, WsCtx};
+use super::handle_socket;
 use super::service::EventService;
-use crate::message::service::MessageService;
 use crate::result::Result;
 use crate::state::AppState;
 
@@ -30,125 +17,6 @@ pub fn ws_router<S>(state: AppState) -> Router<S> {
 async fn ws_handler(
     ws: WebSocketUpgrade,
     State(event_service): State<EventService>,
-    State(message_service): State<MessageService>,
 ) -> Result<Response> {
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, event_service, message_service)))
-}
-
-async fn handle_socket(
-    ws: WebSocket,
-    event_service: EventService,
-    message_service: MessageService,
-) {
-    let (sender, receiver) = ws.split();
-    let ctx = WsCtx::new();
-
-    let read_task = tokio::spawn(read(ctx.clone(), receiver, event_service.clone()));
-    let write_task = tokio::spawn(write(
-        ctx.clone(),
-        sender,
-        event_service.clone(),
-        message_service.clone(),
-    ));
-
-    match try_join!(read_task, write_task) {
-        Ok(_) => debug!("ws disconnected gracefully"),
-        Err(e) => error!("ws disconnected with error: {}", e),
-    }
-}
-
-async fn read(ctx: WsCtx, mut receiver: SplitStream<WebSocket>, event_service: EventService) {
-    loop {
-        tokio::select! {
-            _ = ctx.close.notified() => break,
-            frame = receiver.next() => {
-                if let Some(message) = frame {
-                    match message {
-                        Err(e) => {
-                            error!("failed to read ws frame: {:?}", e);
-                            ctx.close.notify_one();
-                            break;
-                        },
-                        Ok(Close(_)) => {
-                            debug!("ws connection closed by client");
-                            ctx.close.notify_one();
-                            break;
-                        },
-                        Ok(Text(content)) => {
-                            if let Ok(event) = from_str::<Event>(content.as_str()) {
-                                if let Err(e) = event_service.handle_event(ctx.clone(), event).await {
-                                    error!("failed to handle event: {:?}", e);
-                                    ctx.close.notify_one();
-                                    break;
-                                }
-                            } else {
-                                warn!("skipping frame, content is malformed: {}", content);
-                            }
-                        },
-                        Ok(wtf) => warn!("received non-text ws frame: {:?}", wtf)
-                    }
-                }
-            }
-        }
-    }
-}
-
-async fn write(
-    ctx: WsCtx,
-    sender: SplitSink<WebSocket, ws::Message>,
-    event_service: EventService,
-    message_service: MessageService,
-) {
-    loop {
-        tokio::select! {
-            _ = ctx.login.notified() => break,
-            _ = ctx.close.notified() => return,
-            _ = sleep(Duration::from_secs(5)) => {
-                ctx.close.notify_one();
-                return;
-            },
-        }
-    }
-
-    let sub = &ctx.get_user_info().await.expect("not authorized user").sub;
-
-    let (consumer_tag, channel, mut messages_stream) =
-        match event_service.read(&MessageQueue::new(sub)).await {
-            Ok(binding) => binding,
-            Err(e) => {
-                error!("Failed to read messages: {:?}", e);
-                ctx.close.notify_one();
-                return;
-            }
-        };
-
-    let sender = Arc::new(RwLock::new(sender));
-    loop {
-        tokio::select! {
-            item = messages_stream.next() => {
-                match item {
-                    Some(Ok(message_id)) => {
-                        let mut sender = sender.write().await;
-                        match message_service.find_by_id(&message_id).await {
-                            Ok(message) => {
-                                let message = serde_json::to_string(&message).expect("failed to serialize message");
-                                if let Err(e) = sender.send(Text(message)).await {
-                                    error!("Failed to send message: {:?}", e);
-                                }
-                            },
-                            Err(e) => error!("Message not found: {:?}", e),
-                        }
-                    },
-                    Some(Err(e)) => error!("Failed to read message: {:?}", e),
-                    None => break,
-                }
-            },
-            _ = ctx.close.notified() => break,
-        }
-    }
-
-    match event_service.close_consumer(&consumer_tag, &channel).await {
-        Ok(_) => debug!("Consumer {:?} closed", consumer_tag),
-        Err(e) => error!("Failed to close consumer: {:?}", e),
-    };
+    Ok(ws.on_upgrade(move |socket| handle_socket(socket, event_service)))
 }

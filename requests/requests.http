@@ -2,8 +2,8 @@
 GET {{baseUrl}}/health
 
 
-### Get messages for 'user1' and logged in user
-GET {{apiUrl}}/messages?companion=user1
+### Get messages for chat '9f7b7b7b7b7b7b7b7b7b7b7b' and logged in user
+GET {{apiUrl}}/messages?chat_id=9f7b7b7b7b7b7b7b7b7b7b7b
 Authorization: Bearer {{token}}
 
 
@@ -12,13 +12,16 @@ GET {{apiUrl}}/chats
 Authorization: Bearer {{token}}
 
 
-### Create chat for for logged in user
+### Create chat for logged in user
 POST {{apiUrl}}/chats
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "recipient": "user2",
+  "members": {
+    "me": "github|10639696",
+    "you": "auth0|6635f0689e77547a6e2930eb"
+  },
   "last_message": "hey there"
 }
 
@@ -33,6 +36,7 @@ Content-Type: application/json
 # Create message event:
 #{
 #  "type": "create_message",
+#  "chat_id": "9f7b7b7b7b7b7b7b7b7b7b7b",
 #  "recipient": "user1",
 #  "text": "finally a cat message"
 #}

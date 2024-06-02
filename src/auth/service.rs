@@ -8,10 +8,10 @@ use tokio::sync::RwLock;
 use tokio::time::sleep;
 
 use super::model::TokenClaims;
-use super::model::UserInfo;
 use crate::error::ApiError;
 use crate::integration;
 use crate::result::Result;
+use crate::user::model::UserInfo;
 
 #[derive(Clone)]
 pub struct AuthService {

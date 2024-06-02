@@ -1,4 +1,4 @@
-use mongodb::bson::{doc, Document};
+use mongodb::bson::doc;
 use mongodb::Database;
 
 use super::model::User;
@@ -23,10 +23,7 @@ impl UserRepository {
     }
 
     pub async fn find_by_sub(&self, sub: &str) -> Option<User> {
-        self.find(doc! { "sub": sub }).await
-    }
-
-    async fn find(&self, filter: Document) -> Option<User> {
+        let filter = doc! { "sub": sub };
         self.collection.find_one(filter, None).await.ok().flatten()
     }
 }
