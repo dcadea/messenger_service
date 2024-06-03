@@ -3,7 +3,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use axum_extra::extract::Query;
 
-use super::model::{Message, MessageParams};
+use super::model::{MessageDto, MessageParams};
 use super::service::MessageService;
 use crate::error::ApiError;
 use crate::result::Result;
@@ -18,7 +18,7 @@ pub fn resources<S>(state: AppState) -> Router<S> {
 async fn find_handler(
     params: Query<MessageParams>,
     message_service: State<MessageService>,
-) -> Result<Json<Vec<Message>>> {
+) -> Result<Json<Vec<MessageDto>>> {
     // TODO: check if logged in user is a participant of the chat
 
     match &params.chat_id {

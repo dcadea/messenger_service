@@ -1,5 +1,6 @@
 use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde::{Deserialize, Serialize};
+use serde;
 
 use crate::user::model::UserSub;
 use crate::util::serialize_object_id;
@@ -41,10 +42,22 @@ impl Chat {
     }
 }
 
+impl From<&ChatRequest> for Chat {
+    fn from(chat_request: &ChatRequest) -> Self {
+        Self::new(chat_request.clone().members, &chat_request.last_message)
+    }
+}
+
 #[derive(Serialize)]
-pub struct ChatTO {
+pub struct ChatDto {
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     pub id: ChatId,
     pub recipient: UserSub,
     pub last_message: String,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct ChatRequest {
+    members: Members,
+    last_message: String,
 }

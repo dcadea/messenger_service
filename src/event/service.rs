@@ -16,7 +16,7 @@ use tokio_stream::Stream;
 use crate::auth::service::AuthService;
 use crate::chat::service::ChatService;
 use crate::error::ApiError;
-use crate::message::model::Message;
+use crate::message::model::{Message, MessageDto};
 use crate::message::service::MessageService;
 use crate::result::Result;
 
@@ -90,7 +90,7 @@ impl EventService {
                     let owner_queue: MessagesQueue = owner.into();
                     let recipient_queue: MessagesQueue = recipient.into();
                     let notification = Notification::MessageCreated {
-                        message: message.clone(),
+                        message: MessageDto::from(&message),
                     };
 
                     tokio::try_join!(

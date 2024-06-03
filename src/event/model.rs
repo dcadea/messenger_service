@@ -1,15 +1,18 @@
+use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
+
 use std::sync::Arc;
 
-use crate::chat::model::ChatId;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Notify, RwLock};
 
-use crate::message::model::{Message, MessageId};
+use crate::chat::model::ChatId;
+use crate::message::model::{MessageDto, MessageId};
 use crate::user::model::{UserInfo, UserSub};
 
 pub trait QueueName {
     fn to_string(&self) -> String;
 }
+
 pub struct MessagesQueue {
     name: String,
 }
@@ -41,10 +44,20 @@ pub enum Event {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Notification {
-    MessageCreated { message: Message },
-    MessageUpdated { id: MessageId, text: String },
-    MessageDeleted { id: MessageId },
-    MessageSeen { id: MessageId },
+    MessageCreated { message: MessageDto },
+    MessageUpdated {
+        #[serde(serialize_with = "serialize_object_id_as_hex_string")]
+        id: MessageId,
+        text: String,
+    },
+    MessageDeleted {
+        #[serde(serialize_with = "serialize_object_id_as_hex_string")]
+        id: MessageId
+    },
+    MessageSeen {
+        #[serde(serialize_with = "serialize_object_id_as_hex_string")]
+        id: MessageId
+    },
 }
 
 #[derive(Clone)]

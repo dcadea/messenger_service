@@ -5,7 +5,7 @@ use crate::message::model::Message;
 use crate::result::Result;
 use crate::user::model::{UserInfo};
 
-use super::model::{Chat, ChatId, ChatTO, Members};
+use super::model::{Chat, ChatId, ChatDto, Members, ChatRequest};
 use super::repository::ChatRepository;
 
 #[derive(Clone)]
@@ -22,8 +22,8 @@ impl ChatService {
 }
 
 impl ChatService {
-    pub async fn create(&self, chat: &Chat) -> Result<ChatId> {
-        self.repository.insert(chat).await
+    pub async fn create(&self, chat_request: &ChatRequest) -> Result<ChatId> {
+        self.repository.insert(&chat_request.into()).await
     }
 
     pub async fn update_last_message(&self, message: &Message) -> Result<()> {
@@ -44,12 +44,12 @@ impl ChatService {
         }
     }
 
-    pub async fn find_by_id(&self, id: &ChatId, user_info: &UserInfo) -> Result<ChatTO> {
+    pub async fn find_by_id(&self, id: &ChatId, user_info: &UserInfo) -> Result<ChatDto> {
         self.repository.find_by_id(id).await
             .map(|chat| Self::map_to_transfer_object(chat, &user_info))
     }
 
-    pub async fn find_for_logged_user(&self, user_info: &UserInfo) -> Result<Vec<ChatTO>> {
+    pub async fn find_for_logged_user(&self, user_info: &UserInfo) -> Result<Vec<ChatDto>> {
         self.repository.find_by_sub(&user_info.sub).await
             .map(|chats| {
                 chats.into_iter()
@@ -60,7 +60,7 @@ impl ChatService {
 }
 
 impl ChatService {
-    fn map_to_transfer_object(chat: Chat, user_info: &UserInfo) -> ChatTO {
+    fn map_to_transfer_object(chat: Chat, user_info: &UserInfo) -> ChatDto {
         let recipient;
 
         if chat.members.me == user_info.sub {
@@ -71,7 +71,7 @@ impl ChatService {
             panic!("You are not a participant of this chat");
         }
 
-        ChatTO {
+        ChatDto {
             id: chat.id.expect("No way chat id is missing!?"),
             recipient,
             last_message: chat.last_message,
