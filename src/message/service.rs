@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use super::model::{Message, MessageDto, MessageId};
 use super::repository::MessageRepository;
-use crate::result::Result;
+use super::Result;
 
 #[derive(Clone)]
 pub struct MessageService {
@@ -26,8 +26,8 @@ impl MessageService {
             .map(|id| message.with_id(id))
     }
 
-    pub async fn find_by_id(&self, id: &MessageId) -> Result<Message> {
-        self.repository.find_by_id(&id).await
+    pub async fn find_by_id(&self, id: MessageId) -> Result<Message> {
+        self.repository.find_by_id(id).await
     }
 
     pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {
@@ -43,11 +43,14 @@ impl MessageService {
     }
 }
 
-
 impl MessageService {
     pub async fn find_by_chat_id(&self, chat_id: &ChatId) -> Result<Vec<MessageDto>> {
-        let result = self.repository.find_by_chat_id(&chat_id).await
-            .iter().flatten()
+        let result = self
+            .repository
+            .find_by_chat_id(&chat_id)
+            .await
+            .iter()
+            .flatten()
             .map(|m| MessageDto::from(m))
             .collect::<Vec<_>>();
 

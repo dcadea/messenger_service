@@ -12,13 +12,18 @@ use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::try_join;
 
+use crate::event::error::EventError;
+
 use crate::event::model::MessagesQueue;
 use model::{Event, WsCtx};
 use service::EventService;
 
 pub mod api;
+pub mod error;
 mod model;
 pub mod service;
+
+pub type Result<T> = std::result::Result<T, EventError>;
 
 pub(super) async fn handle_socket(ws: WebSocket, event_service: EventService) {
     let (sender, receiver) = ws.split();

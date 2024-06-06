@@ -1,8 +1,8 @@
+use super::error::ChatError;
 use futures::stream::TryStreamExt;
 use mongodb::bson::doc;
 
-use crate::error::ApiError;
-use crate::result::Result;
+use super::Result;
 use crate::user::model::UserSub;
 
 use super::model::{Chat, ChatId, Members};
@@ -26,9 +26,7 @@ impl ChatRepository {
             return Ok(id.to_owned());
         }
 
-        Err(ApiError::InternalServerError(
-            "Failed to insert chat".to_owned(),
-        ))
+        Err(ChatError::Unexpected("Failed to insert chat".to_owned()))
     }
 
     pub async fn update_last_message(&self, id: &ChatId, text: &str) -> Result<()> {
@@ -38,10 +36,10 @@ impl ChatRepository {
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: &ChatId) -> Result<Chat> {
+    pub async fn find_by_id(&self, id: ChatId) -> Result<Chat> {
         let filter = doc! { "_id": id };
         let result = self.collection.find_one(Some(filter), None).await?;
-        result.ok_or(ApiError::NotFound(format!("Chat with id '{:?}' not found", id)))
+        result.ok_or(ChatError::NotFound(Some(id)))
     }
 
     pub async fn find_by_sub(&self, sub: &UserSub) -> Result<Vec<Chat>> {
@@ -52,7 +50,7 @@ impl ChatRepository {
             ]
         };
         let cursor = self.collection.find(Some(filter), None).await?;
-        cursor.try_collect().await.map_err(ApiError::from)
+        cursor.try_collect().await.map_err(ChatError::from)
     }
 
     pub async fn find_id_by_members(&self, members: &Members) -> Result<ChatId> {
@@ -73,6 +71,6 @@ impl ChatRepository {
             }
         }
 
-        Err(ApiError::NotFound("Chat not found".to_owned()))
+        Err(ChatError::NotFound(None))
     }
 }

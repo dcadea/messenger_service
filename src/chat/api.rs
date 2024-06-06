@@ -8,7 +8,7 @@ use crate::result::Result;
 use crate::state::AppState;
 use crate::user::model::UserInfo;
 
-use super::model::{ChatId, ChatDto, ChatRequest};
+use super::model::{ChatDto, ChatId, ChatRequest};
 use super::service::ChatService;
 
 pub fn resources<S>(state: AppState) -> Router<S> {
@@ -23,15 +23,17 @@ async fn find_handler(
     user_info: Extension<UserInfo>,
     chat_service: State<ChatService>,
 ) -> Result<Json<Vec<ChatDto>>> {
-    chat_service.find_for_logged_user(&user_info).await.map(Json)
+    let result = chat_service.find_for_logged_user(&user_info).await?;
+    Ok(Json(result))
 }
 
 async fn find_by_id_handler(
     user_info: Extension<UserInfo>,
     chat_service: State<ChatService>,
-    id: Path<ChatId>,
+    Path(id): Path<ChatId>,
 ) -> Result<Json<ChatDto>> {
-    chat_service.find_by_id(&id, &user_info).await.map(Json)
+    let result = chat_service.find_by_id(id, &user_info).await?;
+    Ok(Json(result))
 }
 
 async fn create_handler(

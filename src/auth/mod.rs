@@ -5,21 +5,23 @@ use axum_extra::headers::authorization::Bearer;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
 
-use crate::error::ApiError;
-use crate::result::Result;
+use crate::auth::error::AuthError;
 use crate::user::service::UserService;
 use model::TokenClaims;
 use service::AuthService;
 
+pub mod error;
 mod model;
 pub mod service;
+
+type Result<T> = std::result::Result<T, AuthError>;
 
 pub async fn validate_token(
     auth_service: State<AuthService>,
     auth_header: TypedHeader<Authorization<Bearer>>,
     mut request: Request,
     next: Next,
-) -> Result<Response> {
+) -> super::result::Result<Response> {
     let claims = auth_service.validate(auth_header.token()).await?;
     request.extensions_mut().insert(claims);
 
@@ -33,11 +35,11 @@ pub async fn set_user_context(
     auth_header: TypedHeader<Authorization<Bearer>>,
     mut request: Request,
     next: Next,
-) -> Result<Response> {
+) -> super::result::Result<Response> {
     let claims = request
         .extensions()
         .get::<TokenClaims>()
-        .ok_or(ApiError::Unauthorized)?;
+        .ok_or(AuthError::Unauthorized)?;
 
     let user_info = match user_service.find_by_sub(&claims.sub).await {
         Some(user) => user.into(),

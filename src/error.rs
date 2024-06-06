@@ -3,61 +3,27 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use log::error;
 use serde::Serialize;
+use thiserror::Error;
 
-#[derive(Debug)]
+use super::auth::error::AuthError;
+use super::chat::error::ChatError;
+use super::event::error::EventError;
+use super::integration::error::IntegrationError;
+use super::message::error::MessageError;
+use super::user::error::UserError;
+
+#[derive(Error, Debug)]
+#[error(transparent)]
 pub enum ApiError {
-    InternalServerError(String),
+    AuthError(#[from] AuthError),
+    ChatError(#[from] ChatError),
+    EventError(#[from] EventError),
+    IntegrationError(#[from] IntegrationError),
+    MessageError(#[from] MessageError),
+    UserError(#[from] UserError),
 
-    NotFound(String),
+    #[error("Query parameter '{0}' is required")]
     QueryParamRequired(String),
-
-    Unauthorized,
-    Forbidden(String),
-    TokenMalformed(String),
-
-    ParseJsonError(serde_json::Error),
-    ParseBsonError(mongodb::bson::oid::Error),
-    ReqwestError(reqwest::Error),
-
-    RabbitMQError(lapin::Error),
-    MongoDBError(mongodb::error::Error),
-    RedisError(redis::RedisError),
-}
-
-impl From<serde_json::Error> for ApiError {
-    fn from(error: serde_json::Error) -> Self {
-        Self::ParseJsonError(error)
-    }
-}
-
-impl From<mongodb::bson::oid::Error> for ApiError {
-    fn from(error: mongodb::bson::oid::Error) -> Self {
-        Self::ParseBsonError(error)
-    }
-}
-
-impl From<reqwest::Error> for ApiError {
-    fn from(error: reqwest::Error) -> Self {
-        Self::ReqwestError(error)
-    }
-}
-
-impl From<lapin::Error> for ApiError {
-    fn from(error: lapin::Error) -> Self {
-        Self::RabbitMQError(error)
-    }
-}
-
-impl From<mongodb::error::Error> for ApiError {
-    fn from(error: mongodb::error::Error) -> Self {
-        Self::MongoDBError(error)
-    }
-}
-
-impl From<redis::RedisError> for ApiError {
-    fn from(error: redis::RedisError) -> Self {
-        Self::RedisError(error)
-    }
 }
 
 impl IntoResponse for ApiError {
@@ -68,39 +34,67 @@ impl IntoResponse for ApiError {
         }
 
         let (status, message) = match self {
-            Self::NotFound(message) => (StatusCode::NOT_FOUND, message),
-            Self::QueryParamRequired(param) => (
-                StatusCode::BAD_REQUEST,
-                format!("Query parameter '{}' is required", param),
-            ),
-
-            Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()),
-            Self::Forbidden(message) => {
-                error!("Forbidden: {:?}", message);
-                (StatusCode::FORBIDDEN, "Forbidden".to_owned())
-            }
-            Self::TokenMalformed(message) => {
-                error!("Token malformed: {:?}", message);
-                (StatusCode::BAD_REQUEST, "Token malformed".to_owned())
-            }
-
-            internal => {
-                match internal {
-                    Self::InternalServerError(message) => {
-                        error!("Internal server error: {:?}", message)
+            Self::AuthError(auth_error) => {
+                error!("Auth error: {:?}", auth_error);
+                match auth_error {
+                    AuthError::Unauthorized => {
+                        (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned())
                     }
-                    Self::ParseJsonError(error) => error!("Parse json error: {:?}", error),
-                    Self::ParseBsonError(error) => error!("Parse bson error: {:?}", error),
-                    Self::ReqwestError(error) => error!("Reqwest error: {:?}", error),
-                    Self::RabbitMQError(error) => error!("RabbitMQ error: {:?}", error),
-                    Self::MongoDBError(error) => error!("MongoDB error: {:?}", error),
-                    Self::RedisError(error) => error!("Redis error: {:?}", error),
-                    _ => {}
+                    AuthError::Forbidden(_) => (StatusCode::FORBIDDEN, "Forbidden".to_owned()),
+                    AuthError::TokenMalformed(_) => {
+                        (StatusCode::BAD_REQUEST, "Token malformed".to_owned())
+                    }
+                    _ => (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Something went wrong".to_owned(),
+                    ),
                 }
+            }
+            Self::ChatError(chat_error) => {
+                error!("Chat error: {:?}", chat_error);
+                match chat_error {
+                    ChatError::NotFound(_) => (StatusCode::NOT_FOUND, chat_error.to_string()),
+                    _ => (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Something went wrong".to_owned(),
+                    ),
+                }
+            }
+            Self::EventError(event_error) => {
+                error!("Event error: {:?}", event_error);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Something went wrong".to_owned(),
                 )
+            }
+            Self::IntegrationError(integration_error) => {
+                error!("Integration error: {:?}", integration_error);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Something went wrong".to_owned(),
+                )
+            }
+            Self::MessageError(message_error) => {
+                error!("Message error: {:?}", message_error);
+                match message_error {
+                    MessageError::NotFound(_) => (StatusCode::NOT_FOUND, message_error.to_string()),
+                    _ => (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Something went wrong".to_owned(),
+                    ),
+                }
+            }
+            Self::UserError(user_error) => {
+                error!("User error: {:?}", user_error);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Something went wrong".to_owned(),
+                )
+            }
+            Self::QueryParamRequired(param) => {
+                let message = Self::QueryParamRequired(param).to_string();
+                error!("{}", message);
+                (StatusCode::BAD_REQUEST, message)
             }
         };
 

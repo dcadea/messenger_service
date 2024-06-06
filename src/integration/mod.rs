@@ -1,10 +1,13 @@
+pub mod error;
+
 use std::env;
 use std::time::Duration;
 
+use crate::integration::error::IntegrationError;
 use dotenv::dotenv;
 use tokio::sync::RwLock;
 
-use super::result::Result;
+type Result<T> = std::result::Result<T, IntegrationError>;
 
 #[derive(Clone)]
 pub struct Config {

@@ -2,6 +2,7 @@ use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
 
+use crate::auth::error::AuthError;
 use futures::TryStreamExt;
 use lapin::options::{
     BasicAckOptions, BasicCancelOptions, BasicConsumeOptions, BasicPublishOptions,
@@ -9,16 +10,16 @@ use lapin::options::{
 };
 use lapin::types::FieldTable;
 use lapin::{BasicProperties, Channel, Connection};
-use log::{debug, error};
+use log::debug;
 use tokio::sync::RwLock;
 use tokio_stream::Stream;
 
+use super::error::EventError;
+use super::Result;
 use crate::auth::service::AuthService;
 use crate::chat::service::ChatService;
-use crate::error::ApiError;
 use crate::message::model::{Message, MessageDto};
 use crate::message::service::MessageService;
-use crate::result::Result;
 
 use super::model::{Event, MessagesQueue, Notification, QueueName, WsCtx};
 
@@ -61,8 +62,7 @@ impl EventService {
                     return Ok(());
                 }
 
-                error!("user info is not set");
-                Err(ApiError::Unauthorized)
+                Err(EventError::MissingUserInfo)
             }
             Some(user_info) => match event {
                 Event::Auth { .. } => {
@@ -93,17 +93,21 @@ impl EventService {
                         message: MessageDto::from(&message),
                     };
 
+                    use futures::TryFutureExt;
+
                     tokio::try_join!(
                         self.publish_notification(&owner_queue, &notification),
                         self.publish_notification(&recipient_queue, &notification),
-                        self.chat_service.update_last_message(&message)
+                        self.chat_service
+                            .update_last_message(&message)
+                            .map_err(EventError::from)
                     )
                     .map(|_| ())
                 }
                 Event::UpdateMessage { id, text } => {
-                    let message = self.message_service.find_by_id(&id).await?;
+                    let message = self.message_service.find_by_id(id).await?;
                     if message.owner != user_info.sub {
-                        return Err(ApiError::Forbidden("You are not the owner".to_owned()));
+                        return Err(AuthError::Forbidden("You are not the owner".to_owned()).into());
                     }
 
                     self.message_service.update(&id, &text).await?;
@@ -119,9 +123,9 @@ impl EventService {
                     .map(|_| ())
                 }
                 Event::DeleteMessage { id } => {
-                    let message = self.message_service.find_by_id(&id).await?;
+                    let message = self.message_service.find_by_id(id).await?;
                     if message.owner != user_info.sub {
-                        return Err(ApiError::Forbidden("You are not the owner".to_owned()));
+                        return Err(AuthError::Forbidden("You are not the owner".to_owned()).into());
                     }
                     self.message_service.delete(&id).await?;
 
@@ -136,9 +140,11 @@ impl EventService {
                     .map(|_| ())
                 }
                 Event::SeenMessage { id } => {
-                    let message = self.message_service.find_by_id(&id).await?;
+                    let message = self.message_service.find_by_id(id).await?;
                     if message.recipient != user_info.sub {
-                        return Err(ApiError::Forbidden("You are not the recipient".to_owned()));
+                        return Err(
+                            AuthError::Forbidden("You are not the recipient".to_owned()).into()
+                        );
                     }
                     self.message_service.mark_as_seen(&id).await?;
 
@@ -176,7 +182,7 @@ impl EventService {
                     Ok(notification)
                 }
             })
-            .map_err(ApiError::from);
+            .map_err(EventError::from);
 
         Ok((consumer_tag.to_string(), channel, Box::pin(stream)))
     }

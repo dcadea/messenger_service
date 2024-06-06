@@ -34,17 +34,32 @@ impl QueueName for MessagesQueue {
 #[derive(Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Event {
-    Auth { token: String },
-    CreateMessage { chat_id: ChatId, recipient: UserSub, text: String },
-    UpdateMessage { id: MessageId, text: String },
-    DeleteMessage { id: MessageId },
-    SeenMessage { id: MessageId },
+    Auth {
+        token: String,
+    },
+    CreateMessage {
+        chat_id: ChatId,
+        recipient: UserSub,
+        text: String,
+    },
+    UpdateMessage {
+        id: MessageId,
+        text: String,
+    },
+    DeleteMessage {
+        id: MessageId,
+    },
+    SeenMessage {
+        id: MessageId,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Notification {
-    MessageCreated { message: MessageDto },
+    MessageCreated {
+        message: MessageDto,
+    },
     MessageUpdated {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
         id: MessageId,
@@ -52,11 +67,11 @@ pub enum Notification {
     },
     MessageDeleted {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-        id: MessageId
+        id: MessageId,
     },
     MessageSeen {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-        id: MessageId
+        id: MessageId,
     },
 }
 

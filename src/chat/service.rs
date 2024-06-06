@@ -1,11 +1,11 @@
+use super::error::ChatError;
 use std::sync::Arc;
 
-use crate::error::ApiError;
+use super::Result;
 use crate::message::model::Message;
-use crate::result::Result;
-use crate::user::model::{UserInfo};
+use crate::user::model::UserInfo;
 
-use super::model::{Chat, ChatId, ChatDto, Members, ChatRequest};
+use super::model::{Chat, ChatDto, ChatId, ChatRequest, Members};
 use super::repository::ChatRepository;
 
 #[derive(Clone)]
@@ -35,7 +35,7 @@ impl ChatService {
                     .update_last_message(&chat_id, &message.text)
                     .await
             }
-            Err(ApiError::NotFound(..)) => self
+            Err(ChatError::NotFound(..)) => self
                 .repository
                 .insert(&Chat::new(members, &message.text))
                 .await
@@ -44,15 +44,20 @@ impl ChatService {
         }
     }
 
-    pub async fn find_by_id(&self, id: &ChatId, user_info: &UserInfo) -> Result<ChatDto> {
-        self.repository.find_by_id(id).await
+    pub async fn find_by_id(&self, id: ChatId, user_info: &UserInfo) -> Result<ChatDto> {
+        self.repository
+            .find_by_id(id)
+            .await
             .map(|chat| Self::map_to_transfer_object(chat, &user_info))
     }
 
     pub async fn find_for_logged_user(&self, user_info: &UserInfo) -> Result<Vec<ChatDto>> {
-        self.repository.find_by_sub(&user_info.sub).await
+        self.repository
+            .find_by_sub(&user_info.sub)
+            .await
             .map(|chats| {
-                chats.into_iter()
+                chats
+                    .into_iter()
                     .map(|chat| Self::map_to_transfer_object(chat, &user_info))
                     .collect()
             })

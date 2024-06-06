@@ -2,15 +2,15 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
+use super::error::AuthError;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 
 use super::model::TokenClaims;
-use crate::error::ApiError;
+use super::Result;
 use crate::integration;
-use crate::result::Result;
 use crate::user::model::UserInfo;
 
 #[derive(Clone)]
@@ -58,11 +58,11 @@ impl AuthService {
         let decoding_keys_guard = self.jwk_decoding_keys.read().await;
         let decoding_key = decoding_keys_guard
             .get(&kid)
-            .ok_or(ApiError::Forbidden("Unknown kid".to_owned()))?;
+            .ok_or(AuthError::Forbidden("Unknown kid".to_owned()))?;
 
         decode::<TokenClaims>(token, &decoding_key, &self.jwt_validator)
             .map(|data| data.claims)
-            .map_err(|e| ApiError::Forbidden(e.to_string()))
+            .map_err(|e| AuthError::Forbidden(e.to_string()))
     }
 
     pub async fn get_user_info(&self, token: &str) -> Result<UserInfo> {
@@ -81,11 +81,11 @@ impl AuthService {
 
     fn get_kid(&self, token: &str) -> Result<String> {
         let jwt_header =
-            decode_header(token).map_err(|e| ApiError::TokenMalformed(e.to_string()))?;
+            decode_header(token).map_err(|e| AuthError::TokenMalformed(e.to_string()))?;
         let kid = jwt_header
             .kid
             .as_ref()
-            .ok_or(ApiError::Forbidden("Missing kid".to_owned()))?;
+            .ok_or(AuthError::Forbidden("Missing kid".to_owned()))?;
         Ok(kid.to_string())
     }
 }
@@ -100,8 +100,8 @@ async fn fetch_jwk_decoding_keys(
     let mut jwk_decoding_keys = HashMap::new();
     for jwk in jwk_set.keys.iter() {
         if let Some(kid) = jwk.clone().common.key_id {
-            let key = DecodingKey::from_jwk(jwk)
-                .map_err(|e| ApiError::InternalServerError(e.to_string()))?;
+            let key =
+                DecodingKey::from_jwk(jwk).map_err(|e| AuthError::Unexpected(e.to_string()))?;
             jwk_decoding_keys.insert(kid, key);
         }
     }

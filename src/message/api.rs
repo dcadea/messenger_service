@@ -23,6 +23,9 @@ async fn find_handler(
 
     match &params.chat_id {
         None => Err(ApiError::QueryParamRequired("chat_id".to_owned())),
-        Some(chat_id) => message_service.find_by_chat_id(chat_id).await.map(Json),
+        Some(chat_id) => {
+            let result = message_service.find_by_chat_id(chat_id).await?;
+            Ok(Json(result))
+        }
     }
 }

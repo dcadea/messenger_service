@@ -4,9 +4,9 @@ use mongodb::bson::doc;
 use mongodb::options::FindOptions;
 use mongodb::Database;
 
+use super::error::MessageError;
 use super::model::{Message, MessageId};
-use crate::error::ApiError;
-use crate::result::Result;
+use super::Result;
 
 pub struct MessageRepository {
     collection: mongodb::Collection<Message>,
@@ -27,19 +27,15 @@ impl MessageRepository {
             return Ok(id.to_owned());
         }
 
-        Err(ApiError::InternalServerError(
+        Err(MessageError::Unexpected(
             "Failed to insert message".to_owned(),
         ))
     }
 
-    pub async fn find_by_id(&self, id: &MessageId) -> Result<Message> {
+    pub async fn find_by_id(&self, id: MessageId) -> Result<Message> {
         let filter = doc! {"_id": id};
-        let message = self.collection.find_one(Some(filter), None).await?;
-
-        match message {
-            Some(message) => Ok(message),
-            None => Err(ApiError::NotFound("Message not found".to_owned())),
-        }
+        let result = self.collection.find_one(Some(filter), None).await?;
+        result.ok_or(MessageError::NotFound(Some(id)))
     }
 
     pub async fn find_by_chat_id(&self, chat_id: &ChatId) -> Result<Vec<Message>> {
@@ -52,7 +48,7 @@ impl MessageRepository {
             )
             .await?;
 
-        cursor.try_collect().await.map_err(ApiError::from)
+        cursor.try_collect().await.map_err(MessageError::from)
     }
 
     pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {

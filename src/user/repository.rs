@@ -2,7 +2,7 @@ use mongodb::bson::doc;
 use mongodb::Database;
 
 use super::model::User;
-use crate::result::Result;
+use super::Result;
 
 pub struct UserRepository {
     collection: mongodb::Collection<User>,
