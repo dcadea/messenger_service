@@ -14,7 +14,7 @@ pub struct User {
     email: String,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UserInfo {
     pub sub: UserSub,
     nickname: String,
@@ -46,4 +46,9 @@ impl From<UserInfo> for User {
             email: info.email,
         }
     }
+}
+
+#[derive(Deserialize)]
+pub(super) struct UserParams {
+    pub sub: Option<UserSub>,
 }

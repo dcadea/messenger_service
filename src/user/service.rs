@@ -1,4 +1,4 @@
-use crate::user::model::User;
+use crate::user::model::{User, UserInfo};
 use std::sync::Arc;
 
 use super::repository::UserRepository;
@@ -22,7 +22,7 @@ impl UserService {
         self.repository.insert(user).await
     }
 
-    pub async fn find_by_sub(&self, sub: &str) -> Option<User> {
-        self.repository.find_by_sub(sub).await
+    pub async fn find_user_info(&self, sub: &str) -> Result<UserInfo> {
+        self.repository.find_by_sub(sub).await.map(|u| u.into())
     }
 }

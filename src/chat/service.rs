@@ -76,10 +76,10 @@ impl ChatService {
             panic!("You are not a participant of this chat");
         }
 
-        ChatDto {
-            id: chat.id.expect("No way chat id is missing!?"),
+        ChatDto::new(
+            chat.id.expect("No way chat id is missing!?"),
             recipient,
-            last_message: chat.last_message,
-        }
+            &chat.last_message,
+        )
     }
 }

@@ -1,3 +1,4 @@
+use crate::user::error::UserError;
 use mongodb::bson::doc;
 use mongodb::Database;
 
@@ -22,8 +23,9 @@ impl UserRepository {
         Ok(())
     }
 
-    pub async fn find_by_sub(&self, sub: &str) -> Option<User> {
+    pub async fn find_by_sub(&self, sub: &str) -> Result<User> {
         let filter = doc! { "sub": sub };
-        self.collection.find_one(filter, None).await.ok().flatten()
+        let result = self.collection.find_one(filter, None).await?;
+        result.ok_or(UserError::NotFound(sub.to_owned()))
     }
 }

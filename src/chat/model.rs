@@ -51,13 +51,45 @@ impl From<&ChatRequest> for Chat {
 #[derive(Serialize)]
 pub struct ChatDto {
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-    pub id: ChatId,
-    pub recipient: UserSub,
-    pub last_message: String,
+    id: ChatId,
+    recipient: UserSub,
+    last_message: String,
+    links: Vec<Link>,
+}
+
+impl ChatDto {
+    pub fn new(id: ChatId, recipient: UserSub, last_message: &str) -> Self {
+        Self {
+            id,
+            recipient: recipient.clone(),
+            last_message: last_message.to_string(),
+            links: vec![
+                Link::new("self", &format!("/chats/{}", id)),
+                Link::new("recipient", &format!("/users?sub={}", recipient)),
+            ],
+        }
+    }
 }
 
 #[derive(Deserialize, Clone)]
 pub struct ChatRequest {
     members: Members,
     last_message: String,
+}
+
+// TODO: extract into common module
+#[derive(Serialize)]
+struct Link {
+    rel: String, // TODO: create a enum for this field
+    href: String,
+}
+
+impl Link {
+    pub fn new(rel: &str, path: &str) -> Self {
+        Self {
+            rel: rel.to_string(),
+            // TODO: get the base url from configuration
+            href: format!("http://127.0.0.1:8000/api/v1{}", path),
+        }
+    }
 }

@@ -37,6 +37,7 @@ async fn main() {
     let api_router = Router::new()
         .merge(chat::api::resources(app_state.clone()))
         .merge(message::api::resources(app_state.clone()))
+        .merge(user::api::resources(app_state.clone()))
         .route_layer(
             ServiceBuilder::new()
                 .layer(from_fn_with_state(app_state.clone(), validate_token))
