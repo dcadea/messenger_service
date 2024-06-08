@@ -22,6 +22,13 @@ cd messenger_api    # Navigate to the project directory
 cargo build         # Build the project
 ```
 
+### With Docker
+```bash
+cd messenger_api
+docker build -t messenger_api:latest .
+docker run -d -p 8000:8000 messenger_api:latest
+```
+
 ### Running and testing
 ```bash
 cargo run   # Run the project

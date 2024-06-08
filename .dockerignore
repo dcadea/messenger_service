@@ -1,0 +1,10 @@
+/.idea
+/.zed
+/requests
+/target
+
+.DS_Store
+.env
+.gitignore
+
+README.md
