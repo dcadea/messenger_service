@@ -1,5 +1,6 @@
-use super::model::MessageId;
 use thiserror::Error;
+
+use super::model::MessageId;
 
 #[derive(Error, Debug)]
 #[error(transparent)]

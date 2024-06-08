@@ -3,10 +3,11 @@ use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
 
-use super::handle_socket;
-use super::service::EventService;
 use crate::result::Result;
 use crate::state::AppState;
+
+use super::handle_socket;
+use super::service::EventService;
 
 pub fn ws_router<S>(state: AppState) -> Router<S> {
     Router::new()

@@ -1,7 +1,6 @@
-use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
-
 use std::sync::Arc;
 
+use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{Notify, RwLock};
 

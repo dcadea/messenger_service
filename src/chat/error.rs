@@ -1,5 +1,6 @@
-use super::model::ChatId;
 use thiserror::Error;
+
+use super::model::ChatId;
 
 #[derive(Error, Debug)]
 #[error(transparent)]

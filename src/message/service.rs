@@ -1,5 +1,6 @@
-use crate::chat::model::ChatId;
 use std::sync::Arc;
+
+use crate::chat::model::ChatId;
 
 use super::model::{Message, MessageDto, MessageId};
 use super::repository::MessageRepository;

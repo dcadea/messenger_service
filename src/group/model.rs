@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 use crate::user::model::UserSub;
 use crate::util::serialize_object_id;
-use serde::{Deserialize, Serialize};
 
 type GroupId = mongodb::bson::oid::ObjectId;
 type Participants = Vec<UserSub>;

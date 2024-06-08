@@ -2,7 +2,6 @@ use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use crate::auth::error::AuthError;
 use futures::TryStreamExt;
 use lapin::options::{
     BasicAckOptions, BasicCancelOptions, BasicConsumeOptions, BasicPublishOptions,
@@ -14,14 +13,15 @@ use log::debug;
 use tokio::sync::RwLock;
 use tokio_stream::Stream;
 
-use super::error::EventError;
-use super::Result;
+use crate::auth::error::AuthError;
 use crate::auth::service::AuthService;
 use crate::chat::service::ChatService;
 use crate::message::model::{Message, MessageDto};
 use crate::message::service::MessageService;
 
+use super::error::EventError;
 use super::model::{Event, MessagesQueue, Notification, QueueName, WsCtx};
+use super::Result;
 
 type NotificationStream = Pin<Box<dyn Stream<Item = Result<Notification>> + Send>>;
 

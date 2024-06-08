@@ -1,6 +1,7 @@
-use crate::user::error::UserError;
 use mongodb::bson::doc;
 use mongodb::Database;
+
+use crate::user::error::UserError;
 
 use super::model::User;
 use super::Result;

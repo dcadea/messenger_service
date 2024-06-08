@@ -1,8 +1,9 @@
-use crate::chat::model::ChatId;
 use futures::TryStreamExt;
 use mongodb::bson::doc;
 use mongodb::options::FindOptions;
 use mongodb::Database;
+
+use crate::chat::model::ChatId;
 
 use super::error::MessageError;
 use super::model::{Message, MessageId};

@@ -2,16 +2,17 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use super::error::AuthError;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 
-use super::model::TokenClaims;
-use super::Result;
 use crate::integration;
 use crate::user::model::UserInfo;
+
+use super::error::AuthError;
+use super::model::TokenClaims;
+use super::Result;
 
 #[derive(Clone)]
 pub struct AuthService {

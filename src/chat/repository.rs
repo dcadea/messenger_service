@@ -1,11 +1,11 @@
-use super::error::ChatError;
 use futures::stream::TryStreamExt;
 use mongodb::bson::doc;
 
-use super::Result;
 use crate::user::model::UserSub;
 
+use super::error::ChatError;
 use super::model::{Chat, ChatId, Members};
+use super::Result;
 
 pub struct ChatRepository {
     collection: mongodb::Collection<Chat>,

@@ -1,7 +1,8 @@
+use thiserror::Error;
+
 use crate::auth::error::AuthError;
 use crate::chat::error::ChatError;
 use crate::message::error::MessageError;
-use thiserror::Error;
 
 #[derive(Error, Debug)]
 #[error(transparent)]

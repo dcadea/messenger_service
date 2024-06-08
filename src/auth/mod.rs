@@ -5,11 +5,12 @@ use axum_extra::headers::authorization::Bearer;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
 
+use model::TokenClaims;
+use service::AuthService;
+
 use crate::auth::error::AuthError;
 use crate::user::error::UserError;
 use crate::user::service::UserService;
-use model::TokenClaims;
-use service::AuthService;
 
 pub mod error;
 mod model;

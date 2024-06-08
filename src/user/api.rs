@@ -3,11 +3,12 @@ use axum::routing::get;
 use axum::{Json, Router};
 use axum_extra::extract::Query;
 
-use super::model::{UserInfo, UserParams};
-use super::service::UserService;
 use crate::error::ApiError;
 use crate::result::Result;
 use crate::state::AppState;
+
+use super::model::{UserInfo, UserParams};
+use super::service::UserService;
 
 pub fn resources<S>(state: AppState) -> Router<S> {
     Router::new()

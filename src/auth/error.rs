@@ -1,6 +1,7 @@
+use thiserror::Error;
+
 use crate::integration::error::IntegrationError;
 use crate::user::error::UserError;
-use thiserror::Error;
 
 #[derive(Error, Debug)]
 #[error(transparent)]

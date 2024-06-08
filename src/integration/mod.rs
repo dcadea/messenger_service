@@ -1,11 +1,12 @@
-pub mod error;
-
 use std::env;
 use std::time::Duration;
 
-use crate::integration::error::IntegrationError;
 use dotenv::dotenv;
 use tokio::sync::RwLock;
+
+use crate::integration::error::IntegrationError;
+
+pub mod error;
 
 type Result<T> = std::result::Result<T, IntegrationError>;
 

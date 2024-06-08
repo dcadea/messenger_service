@@ -1,12 +1,12 @@
-use super::error::ChatError;
 use std::sync::Arc;
 
-use super::Result;
 use crate::message::model::Message;
 use crate::user::model::UserInfo;
 
+use super::error::ChatError;
 use super::model::{Chat, ChatDto, ChatId, ChatRequest, Members};
 use super::repository::ChatRepository;
+use super::Result;
 
 #[derive(Clone)]
 pub struct ChatService {

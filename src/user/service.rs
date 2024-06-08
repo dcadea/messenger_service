@@ -1,5 +1,6 @@
-use crate::user::model::{User, UserInfo};
 use std::sync::Arc;
+
+use crate::user::model::{User, UserInfo};
 
 use super::repository::UserRepository;
 use super::Result;

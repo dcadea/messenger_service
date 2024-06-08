@@ -12,11 +12,11 @@ use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::try_join;
 
-use crate::event::error::EventError;
-
-use crate::event::model::MessagesQueue;
 use model::{Event, WsCtx};
 use service::EventService;
+
+use crate::event::error::EventError;
+use crate::event::model::MessagesQueue;
 
 pub mod api;
 pub mod error;
