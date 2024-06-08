@@ -26,6 +26,11 @@ Content-Type: application/json
 }
 
 
+### Get user by sub
+GET {{apiUrl}}/users?sub=github|106
+Authorization: Bearer {{token}}
+
+
 ### WS connection and events
 # Auth event:
 # {

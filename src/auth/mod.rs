@@ -20,10 +20,11 @@ type Result<T> = std::result::Result<T, AuthError>;
 
 pub async fn validate_token(
     auth_service: State<AuthService>,
-    auth_header: TypedHeader<Authorization<Bearer>>,
+    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
     mut request: Request,
     next: Next,
 ) -> super::result::Result<Response> {
+    let auth_header = auth_header.ok_or(AuthError::Unauthorized)?;
     let claims = auth_service.validate(auth_header.token()).await?;
     request.extensions_mut().insert(claims);
 

@@ -3,6 +3,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use log::error;
 use serde::Serialize;
+use std::borrow::ToOwned;
 use thiserror::Error;
 
 use super::auth::error::AuthError;
@@ -33,69 +34,31 @@ impl IntoResponse for ApiError {
             message: String,
         }
 
+        let message = format!("{}", self);
+        error!("{}", message);
+
         let (status, message) = match self {
-            Self::AuthError(auth_error) => {
-                error!("Auth error: {:?}", auth_error);
-                match auth_error {
-                    AuthError::Unauthorized => {
-                        (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned())
-                    }
-                    AuthError::Forbidden(_) => (StatusCode::FORBIDDEN, "Forbidden".to_owned()),
-                    AuthError::TokenMalformed(_) => {
-                        (StatusCode::BAD_REQUEST, "Token malformed".to_owned())
-                    }
-                    _ => (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "Something went wrong".to_owned(),
-                    ),
-                }
+            Self::AuthError(AuthError::Unauthorized) => (StatusCode::UNAUTHORIZED, message),
+            Self::AuthError(AuthError::Forbidden(_)) => {
+                (StatusCode::FORBIDDEN, "Forbidden".to_owned())
             }
-            Self::ChatError(chat_error) => {
-                error!("Chat error: {:?}", chat_error);
-                match chat_error {
-                    ChatError::NotFound(_) => (StatusCode::NOT_FOUND, chat_error.to_string()),
-                    _ => (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "Something went wrong".to_owned(),
-                    ),
-                }
+            Self::AuthError(AuthError::TokenMalformed(_)) => {
+                (StatusCode::BAD_REQUEST, "Token malformed".to_owned())
             }
-            Self::EventError(event_error) => {
-                error!("Event error: {:?}", event_error);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Something went wrong".to_owned(),
-                )
-            }
-            Self::IntegrationError(integration_error) => {
-                error!("Integration error: {:?}", integration_error);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Something went wrong".to_owned(),
-                )
-            }
-            Self::MessageError(message_error) => {
-                error!("Message error: {:?}", message_error);
-                match message_error {
-                    MessageError::NotFound(_) => (StatusCode::NOT_FOUND, message_error.to_string()),
-                    _ => (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "Something went wrong".to_owned(),
-                    ),
-                }
-            }
-            Self::UserError(user_error) => {
-                error!("User error: {:?}", user_error);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Something went wrong".to_owned(),
-                )
-            }
-            Self::QueryParamRequired(param) => {
-                let message = Self::QueryParamRequired(param).to_string();
-                error!("{}", message);
-                (StatusCode::BAD_REQUEST, message)
-            }
+
+            Self::EventError(EventError::MissingUserInfo) => (StatusCode::UNAUTHORIZED, message),
+
+            Self::ChatError(ChatError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
+
+            Self::MessageError(MessageError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
+
+            Self::UserError(UserError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
+
+            Self::QueryParamRequired(_) => (StatusCode::BAD_REQUEST, message),
+            _ => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_owned(),
+            ),
         };
 
         (status, Json(ErrorResponse { message })).into_response()
