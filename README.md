@@ -22,13 +22,6 @@ cd messenger_api    # Navigate to the project directory
 cargo build         # Build the project
 ```
 
-### With Docker
-```bash
-cd messenger_api
-docker build -t messenger_api:latest .
-docker run -d -p 8000:8000 messenger_api:latest
-```
-
 ### Running and testing
 ```bash
 cargo run   # Run the project
@@ -37,6 +30,13 @@ cargo test  # Run the tests
 Optionally you can run the project with `cargo run --release` to enable optimizations.<br>
 To run the project in **debug mode**, you can use `RUST_LOG=debug cargo run`.<br>
 Or you could just use an IDE like RustRover or Zed :rocket:.
+
+### With Docker
+```bash
+cd messenger_api
+docker build -t messenger_api:latest .
+docker run -d -p 8000:8000 messenger_api:latest
+```
 
 ### Configuration
 Application will not start without the **required** environment configuration. <br>
@@ -50,6 +50,11 @@ REQUIRED_CLAIMS=iss,sub,aud,exp,permissions
 ```
 - Optional environment variables:
 ```dotenv
+RUST_LOG=info
+
+APP_ADDR=127.0.0.1
+APP_PORT=8000
+
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 
@@ -59,7 +64,8 @@ MONGO_HOST=127.0.0.1
 MONGO_PORT=27017
 MONGO_DB=messenger
 
-AMQP_URI=amqp://127.0.0.1:5672/%2f
+AMQP_HOST=127.0.0.1
+AMQP_PORT=5672
 ```
 
 ## Built With

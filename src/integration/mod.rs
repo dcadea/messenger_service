@@ -1,7 +1,11 @@
 use std::env;
+use std::fs::File;
+use std::str::FromStr;
 use std::time::Duration;
 
 use dotenv::dotenv;
+use log::LevelFilter;
+use simplelog::{ColorChoice, CombinedLogger, TerminalMode, TermLogger, WriteLogger};
 use tokio::sync::RwLock;
 
 use crate::integration::error::IntegrationError;
@@ -12,6 +16,7 @@ type Result<T> = std::result::Result<T, IntegrationError>;
 
 #[derive(Clone)]
 pub struct Config {
+    pub socket: String,
     pub redis_host: String,
     pub redis_port: String,
 
@@ -21,7 +26,8 @@ pub struct Config {
     pub mongo_port: String,
     pub mongo_db: String,
 
-    pub amqp_addr: String,
+    pub amqp_host: String,
+    pub amqp_port: String,
 
     pub issuer: String,
     pub jwks_url: String,
@@ -34,7 +40,20 @@ impl Default for Config {
     fn default() -> Self {
         dotenv().ok();
 
+        let rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "info".into());
+        let level = LevelFilter::from_str(&rust_log).unwrap_or_else(|_| LevelFilter::Info);
+        CombinedLogger::init(
+            vec![
+                TermLogger::new(level, simplelog::Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
+                WriteLogger::new(level, simplelog::Config::default(), File::create("api.log").unwrap()),
+            ]
+        ).unwrap();
+
+        let app_addr = env::var("APP_ADDR").unwrap_or_else(|_| "127.0.0.1".into());
+        let app_port = env::var("APP_PORT").unwrap_or_else(|_| "8000".into());
+
         Self {
+            socket: format!("{}:{}", app_addr, app_port),
             redis_host: env::var("REDIS_HOST").unwrap_or_else(|_| "127.0.0.1".into()),
             redis_port: env::var("REDIS_PORT").unwrap_or_else(|_| "6379".into()),
 
@@ -44,7 +63,8 @@ impl Default for Config {
             mongo_port: env::var("MONGO_PORT").unwrap_or_else(|_| "27017".into()),
             mongo_db: env::var("MONGO_DB").unwrap_or_else(|_| "messenger".into()),
 
-            amqp_addr: env::var("AMQP_ADDR").unwrap_or_else(|_| "amqp://127.0.0.1:5672/%2f".into()),
+            amqp_host: env::var("AMQP_HOST").unwrap_or_else(|_| "127.0.0.1".into()),
+            amqp_port: env::var("AMQP_PORT").unwrap_or_else(|_| "5672".into()),
 
             issuer: env::var("ISSUER").expect("ISSUER must be set"),
             jwks_url: env::var("ISSUER")
@@ -97,7 +117,9 @@ pub async fn init_mongodb(config: &Config) -> Result<mongodb::Database> {
 }
 
 pub async fn init_rabbitmq(config: &Config) -> Result<RwLock<lapin::Connection>> {
-    let addr = config.amqp_addr.clone();
+    let host = config.amqp_host.clone();
+    let port = config.amqp_port.clone();
+    let addr = format!("amqp://{}:{}/%2f", host, port);
 
     let map = lapin::Connection::connect(&addr, lapin::ConnectionProperties::default())
         .await

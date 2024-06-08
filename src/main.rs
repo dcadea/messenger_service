@@ -24,8 +24,6 @@ mod util;
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
-
     let app_state = match AppState::init().await {
         Ok(state) => state,
         Err(e) => {
@@ -56,6 +54,7 @@ async fn main() {
                 .allow_headers(Any),
         );
 
-    let listener = TcpListener::bind("127.0.0.1:8000").await.unwrap();
+    let socket = app_state.clone().config.socket;
+    let listener = TcpListener::bind(socket).await.unwrap();
     axum::serve(listener, router).await.unwrap();
 }
