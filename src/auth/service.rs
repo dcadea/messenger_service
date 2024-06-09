@@ -57,9 +57,7 @@ impl AuthService {
     pub async fn validate(&self, token: &str) -> Result<TokenClaims> {
         let kid = self.get_kid(token)?;
         let decoding_keys_guard = self.jwk_decoding_keys.read().await;
-        let decoding_key = decoding_keys_guard
-            .get(&kid)
-            .ok_or(AuthError::Forbidden("Unknown kid".to_owned()))?;
+        let decoding_key = decoding_keys_guard.get(&kid).ok_or(AuthError::UnknownKid)?;
 
         decode::<TokenClaims>(token, &decoding_key, &self.jwt_validator)
             .map(|data| data.claims)
@@ -67,7 +65,6 @@ impl AuthService {
     }
 
     pub async fn get_user_info(&self, token: &str) -> Result<UserInfo> {
-        // TODO: Cache user info
         let user_info = self
             .http
             .get(&self.config.userinfo_url)
@@ -79,15 +76,18 @@ impl AuthService {
 
         Ok(user_info)
     }
+}
 
+impl AuthService {
     fn get_kid(&self, token: &str) -> Result<String> {
         let jwt_header =
             decode_header(token).map_err(|e| AuthError::TokenMalformed(e.to_string()))?;
-        let kid = jwt_header
+
+        jwt_header
             .kid
             .as_ref()
-            .ok_or(AuthError::Forbidden("Missing kid".to_owned()))?;
-        Ok(kid.to_string())
+            .map(|kid| kid.to_string())
+            .ok_or(AuthError::UnknownKid)
     }
 }
 

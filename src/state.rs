@@ -25,19 +25,20 @@ pub struct AppState {
 impl AppState {
     pub async fn init() -> Result<Self> {
         let config = integration::Config::default();
-        let auth_service = AuthService::try_new(&config)?;
         let database = integration::init_mongodb(&config).await?;
-        let _ = integration::init_redis(&config)?;
+        let redis_con = integration::init_redis(&config)?;
         let rabbitmq_con = integration::init_rabbitmq(&config).await?;
 
-        let user_service = UserService::new(UserRepository::new(&database));
+        let auth_service = AuthService::try_new(&config)?;
+        let user_service = UserService::new(redis_con, UserRepository::new(&database));
         let chat_service = ChatService::new(ChatRepository::new(&database));
         let message_service = MessageService::new(MessageRepository::new(&database));
         let event_service = EventService::new(
             rabbitmq_con,
+            auth_service.clone(),
             chat_service.clone(),
             message_service.clone(),
-            auth_service.clone(),
+            user_service.clone(),
         );
 
         Ok(Self {

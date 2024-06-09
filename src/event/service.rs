@@ -18,6 +18,7 @@ use crate::auth::service::AuthService;
 use crate::chat::service::ChatService;
 use crate::message::model::{Message, MessageDto};
 use crate::message::service::MessageService;
+use crate::user::service::UserService;
 
 use super::error::EventError;
 use super::model::{Event, MessagesQueue, Notification, QueueName, WsCtx};
@@ -28,23 +29,26 @@ type NotificationStream = Pin<Box<dyn Stream<Item = Result<Notification>> + Send
 #[derive(Clone)]
 pub struct EventService {
     rabbitmq_con: Arc<RwLock<Connection>>,
+    auth_service: Arc<AuthService>,
     chat_service: Arc<ChatService>,
     message_service: Arc<MessageService>,
-    auth_service: Arc<AuthService>,
+    user_service: Arc<UserService>,
 }
 
 impl EventService {
     pub fn new(
         rabbitmq_con: RwLock<Connection>,
+        auth_service: AuthService,
         chat_service: ChatService,
         message_service: MessageService,
-        auth_service: AuthService,
+        user_service: UserService,
     ) -> Self {
         Self {
             rabbitmq_con: Arc::new(rabbitmq_con),
+            auth_service: Arc::new(auth_service),
             chat_service: Arc::new(chat_service),
             message_service: Arc::new(message_service),
-            auth_service: Arc::new(auth_service),
+            user_service: Arc::new(user_service),
         }
     }
 }
@@ -55,8 +59,8 @@ impl EventService {
         match ctx.get_user_info().await {
             None => {
                 if let Event::Auth { token } = event {
-                    self.auth_service.validate(&token).await?;
-                    let user_info = self.auth_service.get_user_info(&token).await?;
+                    let claims = self.auth_service.validate(&token).await?;
+                    let user_info = self.user_service.find_user_info(&claims.sub).await?;
                     ctx.set_user_info(user_info).await;
                     ctx.login.notify_one();
                     return Ok(());

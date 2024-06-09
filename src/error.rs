@@ -16,15 +16,15 @@ use super::user::error::UserError;
 #[derive(Error, Debug)]
 #[error(transparent)]
 pub enum ApiError {
-    AuthError(#[from] AuthError),
-    ChatError(#[from] ChatError),
-    EventError(#[from] EventError),
-    IntegrationError(#[from] IntegrationError),
-    MessageError(#[from] MessageError),
-    UserError(#[from] UserError),
-
     #[error("Query parameter '{0}' is required")]
     QueryParamRequired(String),
+
+    _AuthError(#[from] AuthError),
+    _ChatError(#[from] ChatError),
+    _EventError(#[from] EventError),
+    _IntegrationError(#[from] IntegrationError),
+    _MessageError(#[from] MessageError),
+    _UserError(#[from] UserError),
 }
 
 impl IntoResponse for ApiError {
@@ -38,21 +38,24 @@ impl IntoResponse for ApiError {
         error!("{}", message);
 
         let (status, message) = match self {
-            Self::AuthError(AuthError::Unauthorized) => (StatusCode::UNAUTHORIZED, message),
-            Self::AuthError(AuthError::Forbidden(_)) => {
+            Self::_AuthError(AuthError::Unauthorized) => (StatusCode::UNAUTHORIZED, message),
+            Self::_AuthError(AuthError::Forbidden(_)) => {
                 (StatusCode::FORBIDDEN, "Forbidden".to_owned())
             }
-            Self::AuthError(AuthError::TokenMalformed(_)) => {
+            Self::_AuthError(AuthError::UnknownKid) => {
+                (StatusCode::FORBIDDEN, "Forbidden".to_owned())
+            }
+            Self::_AuthError(AuthError::TokenMalformed(_)) => {
                 (StatusCode::BAD_REQUEST, "Token malformed".to_owned())
             }
 
-            Self::EventError(EventError::MissingUserInfo) => (StatusCode::UNAUTHORIZED, message),
+            Self::_EventError(EventError::MissingUserInfo) => (StatusCode::UNAUTHORIZED, message),
 
-            Self::ChatError(ChatError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
+            Self::_ChatError(ChatError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
 
-            Self::MessageError(MessageError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
+            Self::_MessageError(MessageError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
 
-            Self::UserError(UserError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
+            Self::_UserError(UserError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
 
             Self::QueryParamRequired(_) => (StatusCode::BAD_REQUEST, message),
             _ => (

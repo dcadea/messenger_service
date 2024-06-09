@@ -6,5 +6,7 @@ pub enum UserError {
     #[error("user not found: {0}")]
     NotFound(String),
 
-    MongoDBError(#[from] mongodb::error::Error),
+    _MongoDBError(#[from] mongodb::error::Error),
+    _RedisError(#[from] redis::RedisError),
+    _ParseJsonError(#[from] serde_json::Error),
 }

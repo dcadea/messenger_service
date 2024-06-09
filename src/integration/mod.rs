@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use dotenv::dotenv;
 use log::LevelFilter;
-use simplelog::{ColorChoice, CombinedLogger, TerminalMode, TermLogger, WriteLogger};
+use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, WriteLogger};
 use tokio::sync::RwLock;
 
 use crate::integration::error::IntegrationError;
@@ -42,12 +42,20 @@ impl Default for Config {
 
         let rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "info".into());
         let level = LevelFilter::from_str(&rust_log).unwrap_or_else(|_| LevelFilter::Info);
-        CombinedLogger::init(
-            vec![
-                TermLogger::new(level, simplelog::Config::default(), TerminalMode::Mixed, ColorChoice::Auto),
-                WriteLogger::new(level, simplelog::Config::default(), File::create("api.log").unwrap()),
-            ]
-        ).unwrap();
+        CombinedLogger::init(vec![
+            TermLogger::new(
+                level,
+                simplelog::Config::default(),
+                TerminalMode::Mixed,
+                ColorChoice::Auto,
+            ),
+            WriteLogger::new(
+                level,
+                simplelog::Config::default(),
+                File::create("api.log").expect("Failed to create log file"),
+            ),
+        ])
+        .expect("Failed to initialize logger");
 
         let app_addr = env::var("APP_ADDR").unwrap_or_else(|_| "127.0.0.1".into());
         let app_port = env::var("APP_PORT").unwrap_or_else(|_| "8000".into());
@@ -87,14 +95,14 @@ impl Default for Config {
     }
 }
 
-pub fn init_redis(config: &Config) -> Result<redis::Connection> {
+pub fn init_redis(config: &Config) -> Result<RwLock<redis::Connection>> {
     let host = config.redis_host.clone();
     let port = config.redis_port.clone();
 
     let con = redis::Client::open(format!("redis://{}:{}", host, port))?
         .get_connection_with_timeout(Duration::from_secs(2))?;
 
-    Ok(con)
+    Ok(RwLock::new(con))
 }
 
 pub async fn init_mongodb(config: &Config) -> Result<mongodb::Database> {

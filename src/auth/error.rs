@@ -10,13 +10,15 @@ pub enum AuthError {
     Unauthorized,
     #[error("forbidden: {0}")]
     Forbidden(String),
+    #[error("missing or unknown kid")]
+    UnknownKid,
     #[error("token is malformed: {0}")]
     TokenMalformed(String),
     #[error("unexpected auth error: {0}")]
     Unexpected(String),
 
-    UserError(#[from] UserError),
-    IntegrationError(#[from] IntegrationError),
-    ReqwestError(#[from] reqwest::Error),
-    ParseJsonError(#[from] serde_json::Error),
+    _UserError(#[from] UserError),
+    _IntegrationError(#[from] IntegrationError),
+    _ReqwestError(#[from] reqwest::Error),
+    _ParseJsonError(#[from] serde_json::Error),
 }

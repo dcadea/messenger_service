@@ -10,5 +10,5 @@ pub enum MessageError {
     #[error("unexpected message error: {0}")]
     Unexpected(String),
 
-    MongoDBError(#[from] mongodb::error::Error),
+    _MongoDBError(#[from] mongodb::error::Error),
 }
