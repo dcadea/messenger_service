@@ -1,6 +1,7 @@
 use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
 use crate::user::model::UserSub;
 use crate::util::serialize_object_id;
@@ -20,6 +21,12 @@ impl Members {
     }
 }
 
+impl Debug for Members {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{} : {}]", self.me, self.you)
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Chat {
     #[serde(
@@ -29,22 +36,16 @@ pub struct Chat {
     )]
     pub id: Option<ChatId>,
     pub members: Members,
-    pub last_message: String,
+    pub last_message: Option<String>,
 }
 
 impl Chat {
-    pub fn new(members: Members, last_message: &str) -> Self {
+    pub fn new(members: Members) -> Self {
         Self {
             id: None,
             members,
-            last_message: last_message.to_string(),
+            last_message: None,
         }
-    }
-}
-
-impl From<&ChatRequest> for Chat {
-    fn from(chat_request: &ChatRequest) -> Self {
-        Self::new(chat_request.clone().members, &chat_request.last_message)
     }
 }
 
@@ -53,16 +54,16 @@ pub struct ChatDto {
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     id: ChatId,
     recipient: UserSub,
-    last_message: String,
+    last_message: Option<String>,
     links: Vec<Link>,
 }
 
 impl ChatDto {
-    pub fn new(id: ChatId, recipient: UserSub, last_message: &str) -> Self {
+    pub fn new(id: ChatId, recipient: UserSub, last_message: Option<String>) -> Self {
         Self {
             id,
             recipient: recipient.clone(),
-            last_message: last_message.to_string(),
+            last_message,
             links: vec![
                 Link::new("self", &format!("/chats/{}", id)),
                 Link::new("recipient", &format!("/users?sub={}", recipient)),
@@ -73,8 +74,7 @@ impl ChatDto {
 
 #[derive(Deserialize, Clone)]
 pub struct ChatRequest {
-    members: Members,
-    last_message: String,
+    pub recipient: UserSub,
 }
 
 // TODO: extract into common module

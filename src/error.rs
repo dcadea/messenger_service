@@ -52,6 +52,7 @@ impl IntoResponse for ApiError {
             Self::_EventError(EventError::MissingUserInfo) => (StatusCode::UNAUTHORIZED, message),
 
             Self::_ChatError(ChatError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
+            Self::_ChatError(ChatError::AlreadyExists(_)) => (StatusCode::CONFLICT, message),
 
             Self::_MessageError(MessageError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
 

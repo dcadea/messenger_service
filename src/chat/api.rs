@@ -23,7 +23,7 @@ async fn find_handler(
     user_info: Extension<UserInfo>,
     chat_service: State<ChatService>,
 ) -> Result<Json<Vec<ChatDto>>> {
-    let result = chat_service.find_for_logged_user(&user_info).await?;
+    let result = chat_service.find_all(&user_info).await?;
     Ok(Json(result))
 }
 
@@ -37,12 +37,12 @@ async fn find_by_id_handler(
 }
 
 async fn create_handler(
+    user_info: Extension<UserInfo>,
     chat_service: State<ChatService>,
     Json(chat_request): Json<ChatRequest>,
 ) -> Result<(StatusCode, impl IntoResponse)> {
-    // TODO: check if the user is a participant of the chat
     let location = chat_service
-        .create(&chat_request)
+        .create(&chat_request, &user_info)
         .await
         .map(|chat_id| format!("/api/v1/chats/{}", chat_id))?;
 

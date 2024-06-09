@@ -18,11 +18,7 @@ Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "members": {
-    "me": "github|10639696",
-    "you": "auth0|6635f0689e77547a6e2930eb"
-  },
-  "last_message": "hey there"
+  "recipient": "user1"
 }
 
 
