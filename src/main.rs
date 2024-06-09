@@ -17,6 +17,7 @@ mod event;
 mod group;
 mod integration;
 mod message;
+mod model;
 mod result;
 mod state;
 mod user;
@@ -43,7 +44,10 @@ async fn main() {
         );
 
     let router = Router::new()
-        .route("/health", get(|| async { () }))
+        .route(
+            "/health",
+            get(|| async { (StatusCode::OK, "I'm good! Hbu?") }),
+        )
         .merge(event::api::ws_router(app_state.clone()))
         .nest("/api/v1", api_router)
         .fallback(|| async { (StatusCode::NOT_FOUND, "Why are you here?") })
@@ -55,6 +59,10 @@ async fn main() {
         );
 
     let socket = app_state.clone().config.socket;
-    let listener = TcpListener::bind(socket).await.unwrap();
-    axum::serve(listener, router).await.unwrap();
+    let listener = TcpListener::bind(socket)
+        .await
+        .expect("Failed to bind to socket");
+    axum::serve(listener, router)
+        .await
+        .expect("Failed to start server");
 }

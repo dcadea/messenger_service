@@ -13,7 +13,6 @@ use log::debug;
 use tokio::sync::RwLock;
 use tokio_stream::Stream;
 
-use crate::auth::error::AuthError;
 use crate::auth::service::AuthService;
 use crate::chat::service::ChatService;
 use crate::message::model::{Message, MessageDto};
@@ -111,7 +110,7 @@ impl EventService {
                 Event::UpdateMessage { id, text } => {
                     let message = self.message_service.find_by_id(id).await?;
                     if message.owner != user_info.sub {
-                        return Err(AuthError::Forbidden("You are not the owner".to_owned()).into());
+                        return Err(EventError::NotOwner);
                     }
 
                     self.message_service.update(&id, &text).await?;
@@ -129,7 +128,7 @@ impl EventService {
                 Event::DeleteMessage { id } => {
                     let message = self.message_service.find_by_id(id).await?;
                     if message.owner != user_info.sub {
-                        return Err(AuthError::Forbidden("You are not the owner".to_owned()).into());
+                        return Err(EventError::NotOwner);
                     }
                     self.message_service.delete(&id).await?;
 
@@ -146,9 +145,7 @@ impl EventService {
                 Event::SeenMessage { id } => {
                     let message = self.message_service.find_by_id(id).await?;
                     if message.recipient != user_info.sub {
-                        return Err(
-                            AuthError::Forbidden("You are not the recipient".to_owned()).into()
-                        );
+                        return Err(EventError::NotRecipient);
                     }
                     self.message_service.mark_as_seen(&id).await?;
 

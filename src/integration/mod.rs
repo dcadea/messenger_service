@@ -1,5 +1,6 @@
 use std::env;
 use std::fs::File;
+use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -16,7 +17,7 @@ type Result<T> = std::result::Result<T, IntegrationError>;
 
 #[derive(Clone)]
 pub struct Config {
-    pub socket: String,
+    pub socket: SocketAddr,
     pub redis_host: String,
     pub redis_port: String,
 
@@ -60,8 +61,12 @@ impl Default for Config {
         let app_addr = env::var("APP_ADDR").unwrap_or_else(|_| "127.0.0.1".into());
         let app_port = env::var("APP_PORT").unwrap_or_else(|_| "8000".into());
 
+        let socket = format!("{}:{}", app_addr, app_port)
+            .parse()
+            .expect("Failed to parse socket address");
+
         Self {
-            socket: format!("{}:{}", app_addr, app_port),
+            socket,
             redis_host: env::var("REDIS_HOST").unwrap_or_else(|_| "127.0.0.1".into()),
             redis_port: env::var("REDIS_PORT").unwrap_or_else(|_| "6379".into()),
 
@@ -99,10 +104,10 @@ pub fn init_redis(config: &Config) -> Result<RwLock<redis::Connection>> {
     let host = config.redis_host.clone();
     let port = config.redis_port.clone();
 
-    let con = redis::Client::open(format!("redis://{}:{}", host, port))?
-        .get_connection_with_timeout(Duration::from_secs(2))?;
-
-    Ok(RwLock::new(con))
+    redis::Client::open(format!("redis://{}:{}", host, port))?
+        .get_connection_with_timeout(Duration::from_secs(2))
+        .map(|con| RwLock::new(con))
+        .map_err(IntegrationError::from)
 }
 
 pub async fn init_mongodb(config: &Config) -> Result<mongodb::Database> {
@@ -114,14 +119,14 @@ pub async fn init_mongodb(config: &Config) -> Result<mongodb::Database> {
 
     let connection_url = format!("mongodb://{}:{}@{}:{}", username, password, host, port);
 
-    let mut mongo_client_options = mongodb::options::ClientOptions::parse(connection_url).await?;
+    let mut options = mongodb::options::ClientOptions::parse(connection_url).await?;
 
-    mongo_client_options.connect_timeout = Some(Duration::from_secs(5));
-    mongo_client_options.server_selection_timeout = Some(Duration::from_secs(2));
+    options.connect_timeout = Some(Duration::from_secs(5));
+    options.server_selection_timeout = Some(Duration::from_secs(2));
 
-    let client = mongodb::Client::with_options(mongo_client_options)?;
-
-    Ok(client.database(&*database))
+    mongodb::Client::with_options(options)
+        .map(|client| client.database(&*database))
+        .map_err(IntegrationError::from)
 }
 
 pub async fn init_rabbitmq(config: &Config) -> Result<RwLock<lapin::Connection>> {
@@ -129,11 +134,10 @@ pub async fn init_rabbitmq(config: &Config) -> Result<RwLock<lapin::Connection>>
     let port = config.amqp_port.clone();
     let addr = format!("amqp://{}:{}/%2f", host, port);
 
-    let map = lapin::Connection::connect(&addr, lapin::ConnectionProperties::default())
+    lapin::Connection::connect(&addr, lapin::ConnectionProperties::default())
         .await
-        .map(|con| RwLock::new(con))?;
-
-    Ok(map)
+        .map(|con| RwLock::new(con))
+        .map_err(IntegrationError::from)
 }
 
 pub fn init_http_client() -> Result<reqwest::Client> {
@@ -141,5 +145,5 @@ pub fn init_http_client() -> Result<reqwest::Client> {
         .connect_timeout(Duration::from_secs(2))
         .timeout(Duration::from_secs(5))
         .build()
-        .map(Ok)?
+        .map_err(IntegrationError::from)
 }

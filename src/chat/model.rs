@@ -1,3 +1,4 @@
+use crate::model::Link;
 use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde;
 use serde::{Deserialize, Serialize};
@@ -65,8 +66,8 @@ impl ChatDto {
             recipient: recipient.clone(),
             last_message,
             links: vec![
-                Link::new("self", &format!("/chats/{}", id)),
-                Link::new("recipient", &format!("/users?sub={}", recipient)),
+                Link::_self(&format!("/chats/{id}")),
+                Link::recipient(&format!("/users?sub={recipient}")),
             ],
         }
     }
@@ -75,21 +76,4 @@ impl ChatDto {
 #[derive(Deserialize, Clone)]
 pub struct ChatRequest {
     pub recipient: UserSub,
-}
-
-// TODO: extract into common module
-#[derive(Serialize)]
-struct Link {
-    rel: String, // TODO: create a enum for this field
-    href: String,
-}
-
-impl Link {
-    pub fn new(rel: &str, path: &str) -> Self {
-        Self {
-            rel: rel.to_string(),
-            // TODO: get the base url from configuration
-            href: format!("http://127.0.0.1:8000/api/v1{}", path),
-        }
-    }
 }

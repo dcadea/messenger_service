@@ -9,6 +9,8 @@ pub enum ChatError {
     NotFound(Option<ChatId>),
     #[error("chat already exists for members: {0:?}")]
     AlreadyExists(Members),
+    #[error("user is not a member of the chat")]
+    NotMember,
     #[error("unexpected chat error: {0}")]
     Unexpected(String),
 

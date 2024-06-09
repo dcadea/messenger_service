@@ -1,6 +1,6 @@
-use crate::chat::error::ChatError;
 use std::sync::Arc;
 
+use crate::chat::error::ChatError;
 use crate::message::model::Message;
 use crate::user::model::UserInfo;
 
@@ -45,10 +45,9 @@ impl ChatService {
     }
 
     pub async fn find_by_id(&self, id: ChatId, user_info: &UserInfo) -> Result<ChatDto> {
-        self.repository
-            .find_by_id(id)
-            .await
-            .map(|chat| Self::chat_to_dto(chat, &user_info))
+        let chat = self.repository.find_by_id(id).await?;
+
+        Self::chat_to_dto(chat, &user_info)
     }
 
     pub async fn find_all(&self, user_info: &UserInfo) -> Result<Vec<ChatDto>> {
@@ -59,13 +58,14 @@ impl ChatService {
                 chats
                     .into_iter()
                     .map(|chat| Self::chat_to_dto(chat, &user_info))
+                    .flatten()
                     .collect()
             })
     }
 }
 
 impl ChatService {
-    fn chat_to_dto(chat: Chat, user_info: &UserInfo) -> ChatDto {
+    fn chat_to_dto(chat: Chat, user_info: &UserInfo) -> Result<ChatDto> {
         let recipient;
 
         if chat.members.me == user_info.sub {
@@ -73,14 +73,13 @@ impl ChatService {
         } else if chat.members.you == user_info.sub {
             recipient = chat.members.me;
         } else {
-            // TODO: return result with proper error
-            panic!("You are not a participant of this chat");
+            return Err(ChatError::NotMember);
         }
 
-        ChatDto::new(
+        Ok(ChatDto::new(
             chat.id.expect("No way chat id is missing!?"),
             recipient,
             chat.last_message,
-        )
+        ))
     }
 }

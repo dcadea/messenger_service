@@ -1,3 +1,4 @@
+use crate::model::AppEndpoints;
 use axum::extract::FromRef;
 
 use super::auth::service::AuthService;
@@ -85,5 +86,14 @@ impl FromRef<AppState> for MessageService {
 impl FromRef<AppState> for EventService {
     fn from_ref(app_state: &AppState) -> Self {
         app_state.event_service.clone()
+    }
+}
+
+impl FromRef<AppState> for AppEndpoints {
+    fn from_ref(app_state: &AppState) -> AppEndpoints {
+        let socket = app_state.config.socket;
+        let address = socket.ip().to_string();
+        let port = socket.port().to_string();
+        AppEndpoints::new(&address, &port, "api/v1")
     }
 }

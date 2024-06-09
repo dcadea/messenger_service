@@ -1,3 +1,4 @@
+use crate::model::AppEndpoints;
 use axum::extract::{Path, State};
 use axum::http::{header, StatusCode};
 use axum::response::IntoResponse;
@@ -39,12 +40,14 @@ async fn find_by_id_handler(
 async fn create_handler(
     user_info: Extension<UserInfo>,
     chat_service: State<ChatService>,
+    app_endpoints: State<AppEndpoints>,
     Json(chat_request): Json<ChatRequest>,
 ) -> Result<(StatusCode, impl IntoResponse)> {
+    let base_url = app_endpoints.api();
     let location = chat_service
         .create(&chat_request, &user_info)
         .await
-        .map(|chat_id| format!("/api/v1/chats/{}", chat_id))?;
+        .map(|chat_id| format!("{base_url}/chats/{chat_id}"))?;
 
     Ok((StatusCode::CREATED, [(header::LOCATION, location)]))
 }
