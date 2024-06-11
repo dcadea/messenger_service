@@ -44,7 +44,7 @@ pub async fn set_user_context(
         .get::<TokenClaims>()
         .ok_or(AuthError::Unauthorized)?;
 
-    let user_info = match user_service.find_user_info(&claims.sub).await {
+    let user_info = match user_service.find_user_info(claims.sub.clone()).await {
         Ok(user_info) => user_info,
         Err(UserError::NotFound(_)) => {
             let user_info = auth_service.get_user_info(auth_header.token()).await?;

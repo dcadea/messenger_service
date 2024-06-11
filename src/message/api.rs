@@ -21,12 +21,9 @@ async fn find_handler(
     message_service: State<MessageService>,
 ) -> Result<Json<Vec<MessageDto>>> {
     // TODO: check if logged in user is a participant of the chat
-
-    match &params.chat_id {
-        None => Err(ApiError::QueryParamRequired("chat_id".to_owned())),
-        Some(chat_id) => {
-            let result = message_service.find_by_chat_id(chat_id).await?;
-            Ok(Json(result))
-        }
-    }
+    let chat_id = params
+        .chat_id
+        .ok_or(ApiError::QueryParamRequired("chat_id".to_owned()))?;
+    let result = message_service.find_by_chat_id(&chat_id).await?;
+    Ok(Json(result))
 }

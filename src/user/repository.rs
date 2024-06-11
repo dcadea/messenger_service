@@ -1,3 +1,4 @@
+use futures::TryStreamExt;
 use mongodb::bson::doc;
 use mongodb::Database;
 
@@ -28,5 +29,16 @@ impl UserRepository {
         let filter = doc! { "sub": sub };
         let result = self.collection.find_one(filter, None).await?;
         result.ok_or(UserError::NotFound(sub.to_owned()))
+    }
+
+    pub async fn find_by_nickname(&self, nickname: &str) -> Result<Vec<User>> {
+        let filter = doc! { "nickname":{
+            "$regex": nickname,
+            "$options": "i"
+        }};
+
+        let cursor = self.collection.find(filter, None).await?;
+
+        cursor.try_collect().await.map_err(UserError::from)
     }
 }

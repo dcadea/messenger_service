@@ -59,7 +59,7 @@ impl EventService {
             None => {
                 if let Event::Auth { token } = event {
                     let claims = self.auth_service.validate(&token).await?;
-                    let user_info = self.user_service.find_user_info(&claims.sub).await?;
+                    let user_info = self.user_service.find_user_info(claims.sub).await?;
                     ctx.set_user_info(user_info).await;
                     ctx.login.notify_one();
                     return Ok(());

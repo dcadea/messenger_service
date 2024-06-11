@@ -3,7 +3,7 @@ use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::user::model::{User, UserInfo};
+use crate::user::model::{User, UserInfo, UserSub};
 
 use super::repository::UserRepository;
 use super::Result;
@@ -30,7 +30,7 @@ impl UserService {
         self.repository.insert(user).await
     }
 
-    pub async fn find_user_info(&self, sub: &str) -> Result<UserInfo> {
+    pub async fn find_user_info(&self, sub: UserSub) -> Result<UserInfo> {
         let mut con = self.redis_con.write().await;
         let key = format!("userinfo:{}", sub);
 
@@ -42,10 +42,15 @@ impl UserService {
                 Ok(user_info)
             }
             None => {
-                let user_info = self.repository.find_by_sub(sub).await?.into();
+                let user_info = self.repository.find_by_sub(&sub).await?.into();
                 let _: () = con.set_ex(&key, json!(user_info).to_string(), USER_INFO_TTL)?;
                 Ok(user_info)
             }
         }
+    }
+
+    pub async fn search_user_info(&self, nickname: &str) -> Result<Vec<UserInfo>> {
+        let users = self.repository.find_by_nickname(nickname).await?;
+        Ok(users.into_iter().map(|user| user.into()).collect())
     }
 }

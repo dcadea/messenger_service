@@ -51,4 +51,5 @@ impl From<UserInfo> for User {
 #[derive(Deserialize)]
 pub(super) struct UserParams {
     pub sub: Option<UserSub>,
+    pub nickname: Option<String>,
 }
