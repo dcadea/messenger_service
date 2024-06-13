@@ -19,7 +19,7 @@ pub struct Message {
     pub owner: UserSub,
     pub recipient: UserSub,
     pub text: String,
-    pub timestamp: i64,
+    timestamp: i64,
     seen: bool,
 }
 

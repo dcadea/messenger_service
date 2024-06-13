@@ -40,7 +40,7 @@ impl ChatService {
 
         let chat_id = self.repository.find_id_by_members(&members).await?;
         self.repository
-            .update_last_message(&chat_id, &message.text, message.timestamp)
+            .update_last_message(&chat_id, &message.text)
             .await
     }
 

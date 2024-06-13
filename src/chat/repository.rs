@@ -21,6 +21,10 @@ impl ChatRepository {
 }
 
 impl ChatRepository {
+    /**
+     * Insert a new chat into the database
+     * @param chat: The chat to insert
+     */
     pub async fn insert(&self, chat: &Chat) -> Result<ChatId> {
         let result = self.collection.insert_one(chat, None).await?;
         if let Some(id) = result.inserted_id.as_object_id() {
@@ -30,27 +34,40 @@ impl ChatRepository {
         Err(ChatError::Unexpected("Failed to insert chat".to_owned()))
     }
 
+    /**
+     * Update the last message of a chat
+     * @param id: The id of the chat
+     * @param text: The text of the last message
+     * @param updated_at: The timestamp of the last message
+     */
     pub async fn update_last_message(
         &self,
         id: &ChatId,
         text: &str,
-        updated_at: i64,
     ) -> Result<()> {
         let filter = doc! { "_id": id };
         let update = doc! {"$set": {
             "last_message": text,
-            "updated_at": updated_at,
+            "updated_at": chrono::Utc::now().timestamp(),
         }};
         self.collection.update_one(filter, update, None).await?;
         Ok(())
     }
 
+    /**
+     * Find a chat by its id
+     * @param id: The id of the chat
+     */
     pub async fn find_by_id(&self, id: ChatId) -> Result<Chat> {
         let filter = doc! { "_id": id };
         let result = self.collection.find_one(Some(filter), None).await?;
         result.ok_or(ChatError::NotFound(Some(id)))
     }
 
+    /**
+     * Find a chat where the user sub is a member
+     * @param sub: The user sub
+     */
     pub async fn find_by_sub(&self, sub: &UserSub) -> Result<Vec<Chat>> {
         let filter = doc! {
             "$or": [
@@ -65,6 +82,10 @@ impl ChatRepository {
         cursor.try_collect().await.map_err(ChatError::from)
     }
 
+    /**
+     * Find a chat id by its members
+     * @param members: The members of the chat
+     */
     pub async fn find_id_by_members(&self, members: &Members) -> Result<ChatId> {
         let me = &members.me;
         let you = &members.you;
