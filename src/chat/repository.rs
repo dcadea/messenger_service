@@ -1,5 +1,6 @@
 use futures::stream::TryStreamExt;
 use mongodb::bson::doc;
+use mongodb::options::FindOptions;
 
 use crate::user::model::UserSub;
 
@@ -29,9 +30,17 @@ impl ChatRepository {
         Err(ChatError::Unexpected("Failed to insert chat".to_owned()))
     }
 
-    pub async fn update_last_message(&self, id: &ChatId, text: &str) -> Result<()> {
+    pub async fn update_last_message(
+        &self,
+        id: &ChatId,
+        text: &str,
+        updated_at: i64,
+    ) -> Result<()> {
         let filter = doc! { "_id": id };
-        let update = doc! {"$set": { "last_message": text }};
+        let update = doc! {"$set": {
+            "last_message": text,
+            "updated_at": updated_at,
+        }};
         self.collection.update_one(filter, update, None).await?;
         Ok(())
     }
@@ -49,7 +58,10 @@ impl ChatRepository {
                 { "members.you": sub },
             ]
         };
-        let cursor = self.collection.find(Some(filter), None).await?;
+
+        let find_options = FindOptions::builder().sort(doc! {"updated_at": -1}).build();
+
+        let cursor = self.collection.find(Some(filter), find_options).await?;
         cursor.try_collect().await.map_err(ChatError::from)
     }
 

@@ -40,7 +40,7 @@ impl ChatService {
 
         let chat_id = self.repository.find_id_by_members(&members).await?;
         self.repository
-            .update_last_message(&chat_id, &message.text)
+            .update_last_message(&chat_id, &message.text, message.timestamp)
             .await
     }
 
@@ -69,17 +69,13 @@ impl ChatService {
         let recipient;
 
         if chat.members.me == user_info.sub {
-            recipient = chat.members.you;
+            recipient = chat.members.clone().you;
         } else if chat.members.you == user_info.sub {
-            recipient = chat.members.me;
+            recipient = chat.members.clone().me;
         } else {
             return Err(ChatError::NotMember);
         }
 
-        Ok(ChatDto::new(
-            chat.id.expect("No way chat id is missing!?"),
-            recipient,
-            chat.last_message,
-        ))
+        Ok(ChatDto::from_chat(chat, recipient))
     }
 }

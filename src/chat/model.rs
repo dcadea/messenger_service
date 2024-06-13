@@ -37,7 +37,9 @@ pub struct Chat {
     )]
     pub id: Option<ChatId>,
     pub members: Members,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub last_message: Option<String>,
+    updated_at: i64,
 }
 
 impl Chat {
@@ -46,6 +48,7 @@ impl Chat {
             id: None,
             members,
             last_message: None,
+            updated_at: 0,
         }
     }
 }
@@ -55,18 +58,22 @@ pub struct ChatDto {
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     id: ChatId,
     recipient: UserSub,
+    #[serde(skip_serializing_if = "Option::is_none")]
     last_message: Option<String>,
+    updated_at: i64,
     links: Vec<Link>,
 }
 
 impl ChatDto {
-    pub fn new(id: ChatId, recipient: UserSub, last_message: Option<String>) -> Self {
+    pub fn from_chat(chat: Chat, recipient: UserSub) -> Self {
+        let chat_id = chat.id.clone().expect("No way chat id is missing!?");
         Self {
-            id,
+            id: chat_id,
             recipient: recipient.clone(),
-            last_message,
+            last_message: chat.last_message.clone(),
+            updated_at: chat.updated_at,
             links: vec![
-                Link::_self(&format!("/chats/{id}")),
+                Link::_self(&format!("/chats/{chat_id}")),
                 Link::recipient(&format!("/users?sub={recipient}")),
             ],
         }
