@@ -45,9 +45,11 @@ impl ChatService {
     }
 
     pub async fn find_by_id(&self, id: ChatId, user_info: &UserInfo) -> Result<ChatDto> {
-        let chat = self.repository.find_by_id(id).await?;
-
-        Self::chat_to_dto(chat, &user_info)
+        match self.repository.find_by_id_and_sub(id, &user_info.sub).await {
+            Ok(chat) => Ok(Self::chat_to_dto(chat, &user_info)?),
+            Err(ChatError::NotFound(_)) => Err(ChatError::NotMember),
+            Err(err) => Err(err),
+        }
     }
 
     pub async fn find_all(&self, user_info: &UserInfo) -> Result<Vec<ChatDto>> {
@@ -61,6 +63,17 @@ impl ChatService {
                     .flatten()
                     .collect()
             })
+    }
+
+    pub async fn check_member_is_participant(
+        &self,
+        chat_id: ChatId,
+        user_info: &UserInfo,
+    ) -> Result<()> {
+        self.repository
+            .find_by_id_and_sub(chat_id, &user_info.sub)
+            .await
+            .map(|_| ())
     }
 }
 

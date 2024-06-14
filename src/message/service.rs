@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::chat::model::ChatId;
 
-use super::model::{Message, MessageDto, MessageId};
+use super::model::{Message, MessageDto, MessageId, MessageParams};
 use super::repository::MessageRepository;
 use super::Result;
 
@@ -45,13 +45,35 @@ impl MessageService {
 }
 
 impl MessageService {
-    pub async fn find_by_chat_id(&self, chat_id: &ChatId) -> Result<Vec<MessageDto>> {
-        let result = self
-            .repository
-            .find_by_chat_id(&chat_id)
-            .await
+    pub async fn find_by_chat_id_and_params(
+        &self,
+        chat_id: &ChatId,
+        params: &MessageParams,
+    ) -> Result<Vec<MessageDto>> {
+        let limit = params.limit;
+        let end_time = params.end_time;
+
+        let result = match (limit, end_time) {
+            (None, None) => self.repository.find_by_chat_id(chat_id).await?,
+            (Some(limit), None) => {
+                self.repository
+                    .find_by_chat_id_limited(chat_id, limit)
+                    .await?
+            }
+            (None, Some(end_time)) => {
+                self.repository
+                    .find_by_chat_id_before(chat_id, end_time)
+                    .await?
+            }
+            (Some(limit), Some(end_time)) => {
+                self.repository
+                    .find_by_chat_id_limited_before(chat_id, limit, end_time)
+                    .await?
+            }
+        };
+
+        let result = result
             .iter()
-            .flatten()
             .map(|m| MessageDto::from(m))
             .collect::<Vec<_>>();
 

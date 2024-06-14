@@ -40,11 +40,7 @@ impl ChatRepository {
      * @param text: The text of the last message
      * @param updated_at: The timestamp of the last message
      */
-    pub async fn update_last_message(
-        &self,
-        id: &ChatId,
-        text: &str,
-    ) -> Result<()> {
+    pub async fn update_last_message(&self, id: &ChatId, text: &str) -> Result<()> {
         let filter = doc! { "_id": id };
         let update = doc! {"$set": {
             "last_message": text,
@@ -52,16 +48,6 @@ impl ChatRepository {
         }};
         self.collection.update_one(filter, update, None).await?;
         Ok(())
-    }
-
-    /**
-     * Find a chat by its id
-     * @param id: The id of the chat
-     */
-    pub async fn find_by_id(&self, id: ChatId) -> Result<Chat> {
-        let filter = doc! { "_id": id };
-        let result = self.collection.find_one(Some(filter), None).await?;
-        result.ok_or(ChatError::NotFound(Some(id)))
     }
 
     /**
@@ -80,6 +66,24 @@ impl ChatRepository {
 
         let cursor = self.collection.find(Some(filter), find_options).await?;
         cursor.try_collect().await.map_err(ChatError::from)
+    }
+
+    /**
+     * Find a chat by its id and the user sub
+     * @param id: The id of the chat
+     * @param sub: The user sub
+     */
+    pub async fn find_by_id_and_sub(&self, id: ChatId, sub: &UserSub) -> Result<Chat> {
+        let filter = doc! {
+            "_id": id,
+            "$or": [
+                { "members.me": sub },
+                { "members.you": sub },
+            ]
+        };
+
+        let result = self.collection.find_one(Some(filter), None).await?;
+        result.ok_or(ChatError::NotFound(Some(id)))
     }
 
     /**

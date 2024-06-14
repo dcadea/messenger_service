@@ -1,5 +1,5 @@
 use futures::TryStreamExt;
-use mongodb::bson::doc;
+use mongodb::bson::{doc, Document};
 use mongodb::options::FindOptions;
 use mongodb::Database;
 
@@ -41,15 +41,59 @@ impl MessageRepository {
 
     pub async fn find_by_chat_id(&self, chat_id: &ChatId) -> Result<Vec<Message>> {
         let filter = doc! {"chat_id": chat_id};
-        let cursor = self
-            .collection
-            .find(
-                Some(filter),
-                FindOptions::builder().sort(doc! {"timestamp": 1}).build(),
-            )
-            .await?;
 
-        cursor.try_collect().await.map_err(MessageError::from)
+        let find_options = FindOptions::builder().sort(doc! {"timestamp": 1}).build();
+
+        self.find_messages_filtered(filter, find_options).await
+    }
+
+    pub async fn find_by_chat_id_limited(
+        &self,
+        chat_id: &ChatId,
+        limit: usize,
+    ) -> Result<Vec<Message>> {
+        let filter = doc! {"chat_id": chat_id};
+
+        let find_options = FindOptions::builder()
+            .sort(doc! {"timestamp": 1})
+            .limit(limit as i64)
+            .build();
+
+        self.find_messages_filtered(filter, find_options).await
+    }
+
+    pub async fn find_by_chat_id_before(
+        &self,
+        chat_id: &ChatId,
+        before: i64,
+    ) -> Result<Vec<Message>> {
+        let filter = doc! {
+            "chat_id": chat_id,
+            "timestamp": {"$lt": before}
+        };
+
+        let find_options = FindOptions::builder().sort(doc! {"timestamp": 1}).build();
+
+        self.find_messages_filtered(filter, find_options).await
+    }
+
+    pub async fn find_by_chat_id_limited_before(
+        &self,
+        chat_id: &ChatId,
+        limit: usize,
+        before: i64,
+    ) -> Result<Vec<Message>> {
+        let filter = doc! {
+            "chat_id": chat_id,
+            "timestamp": {"$lt": before}
+        };
+
+        let find_options = FindOptions::builder()
+            .sort(doc! {"timestamp": 1})
+            .limit(limit as i64)
+            .build();
+
+        self.find_messages_filtered(filter, find_options).await
     }
 
     pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {
@@ -73,5 +117,16 @@ impl MessageRepository {
         self.collection.update_one(filter, update, None).await?;
 
         Ok(())
+    }
+}
+
+impl MessageRepository {
+    async fn find_messages_filtered(
+        &self,
+        filter: Document,
+        find_options: FindOptions,
+    ) -> Result<Vec<Message>> {
+        let cursor = self.collection.find(Some(filter), find_options).await?;
+        cursor.try_collect().await.map_err(MessageError::from)
     }
 }

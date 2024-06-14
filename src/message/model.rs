@@ -77,6 +77,8 @@ impl From<&Message> for MessageDto {
 }
 
 #[derive(Deserialize)]
-pub(super) struct MessageParams {
+pub struct MessageParams {
     pub chat_id: Option<ChatId>,
+    pub end_time: Option<i64>,
+    pub limit: Option<usize>,
 }
