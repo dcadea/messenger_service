@@ -1,3 +1,4 @@
+use axum::http::header::InvalidHeaderValue;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -18,6 +19,8 @@ use super::user::error::UserError;
 pub enum ApiError {
     #[error("Query parameter '{0}' is required")]
     QueryParamRequired(String),
+    #[error("unexpected api error {0}")]
+    Unexpected(String),
 
     _AuthError(#[from] AuthError),
     _ChatError(#[from] ChatError),
@@ -25,6 +28,12 @@ pub enum ApiError {
     _IntegrationError(#[from] IntegrationError),
     _MessageError(#[from] MessageError),
     _UserError(#[from] UserError),
+}
+
+impl From<InvalidHeaderValue> for ApiError {
+    fn from(err: InvalidHeaderValue) -> Self {
+        Self::Unexpected(err.to_string())
+    }
 }
 
 impl IntoResponse for ApiError {

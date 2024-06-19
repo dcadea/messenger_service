@@ -25,10 +25,10 @@ impl ChatRepository {
      * Insert a new chat into the database
      * @param chat: The chat to insert
      */
-    pub async fn insert(&self, chat: &Chat) -> Result<ChatId> {
+    pub async fn insert(&self, chat: &Chat) -> Result<Chat> {
         let result = self.collection.insert_one(chat, None).await?;
         if let Some(id) = result.inserted_id.as_object_id() {
-            return Ok(id.to_owned());
+            return self.find_by_id(&id).await;
         }
 
         Err(ChatError::Unexpected("Failed to insert chat".to_owned()))
@@ -48,6 +48,12 @@ impl ChatRepository {
         }};
         self.collection.update_one(filter, update, None).await?;
         Ok(())
+    }
+
+    pub async fn find_by_id(&self, id: &ChatId) -> Result<Chat> {
+        let filter = doc! { "_id": id };
+        let result = self.collection.find_one(Some(filter), None).await?;
+        result.ok_or(ChatError::NotFound(Some(*id)))
     }
 
     /**

@@ -22,14 +22,18 @@ impl ChatService {
 }
 
 impl ChatService {
-    pub async fn create(&self, chat_request: &ChatRequest, user_info: &UserInfo) -> Result<ChatId> {
+    pub async fn create(
+        &self,
+        chat_request: &ChatRequest,
+        user_info: &UserInfo,
+    ) -> Result<ChatDto> {
         let members = Members::new(user_info.sub.clone(), chat_request.recipient.clone());
 
         match self.repository.find_id_by_members(&members).await {
             Ok(_) => Err(ChatError::AlreadyExists(members)),
             Err(ChatError::NotFound(_)) => {
-                let chat = Chat::new(members);
-                self.repository.insert(&chat).await
+                let chat = self.repository.insert(&Chat::new(members)).await?;
+                Self::chat_to_dto(chat, user_info)
             }
             Err(err) => Err(err),
         }

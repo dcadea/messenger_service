@@ -1,10 +1,10 @@
-use crate::model::AppEndpoints;
 use axum::extract::{Path, State};
-use axum::http::{header, StatusCode};
+use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
 
+use crate::model::AppEndpoints;
 use crate::result::Result;
 use crate::state::AppState;
 use crate::user::model::UserInfo;
@@ -42,12 +42,16 @@ async fn create_handler(
     chat_service: State<ChatService>,
     app_endpoints: State<AppEndpoints>,
     Json(chat_request): Json<ChatRequest>,
-) -> Result<(StatusCode, impl IntoResponse)> {
+) -> Result<impl IntoResponse> {
     let base_url = app_endpoints.api();
-    let location = chat_service
-        .create(&chat_request, &user_info)
-        .await
-        .map(|chat_id| format!("{base_url}/chats/{chat_id}"))?;
+    let result = chat_service.create(&chat_request, &user_info).await?;
+    let location = format!("{base_url}/chats/{}", result.id);
 
-    Ok((StatusCode::CREATED, [(header::LOCATION, location)]))
+    let mut response = Json(result).into_response();
+    *response.status_mut() = StatusCode::CREATED;
+    response
+        .headers_mut()
+        .insert(header::LOCATION, HeaderValue::from_str(&location)?);
+
+    Ok(response)
 }
