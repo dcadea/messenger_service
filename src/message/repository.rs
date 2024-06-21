@@ -55,11 +55,15 @@ impl MessageRepository {
         let filter = doc! {"chat_id": chat_id};
 
         let find_options = FindOptions::builder()
-            .sort(doc! {"timestamp": 1})
+            .sort(doc! {"timestamp": -1})
             .limit(limit as i64)
             .build();
 
         self.find_messages_filtered(filter, find_options).await
+            .map(|mut messages| {
+                messages.reverse();
+                messages
+            })
     }
 
     pub async fn find_by_chat_id_before(
@@ -89,11 +93,15 @@ impl MessageRepository {
         };
 
         let find_options = FindOptions::builder()
-            .sort(doc! {"timestamp": 1})
+            .sort(doc! {"timestamp": -1})
             .limit(limit as i64)
             .build();
 
         self.find_messages_filtered(filter, find_options).await
+            .map(|mut messages| {
+                messages.reverse();
+                messages
+            })
     }
 
     pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {
