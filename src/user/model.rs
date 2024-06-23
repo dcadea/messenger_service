@@ -48,6 +48,22 @@ impl From<UserInfo> for User {
     }
 }
 
+impl redis::FromRedisValue for UserInfo {
+    fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
+        let user_info: UserInfo = serde_json::from_str(&String::from_redis_value(value)?)?;
+        Ok(user_info)
+    }
+}
+
+impl redis::ToRedisArgs for UserInfo {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite
+    {
+        serde_json::json!(self).to_string().write_redis_args(out);
+    }
+}
+
 #[derive(Deserialize)]
 pub(super) struct UserParams {
     pub sub: Option<UserSub>,

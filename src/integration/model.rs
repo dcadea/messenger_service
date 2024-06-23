@@ -1,22 +1,24 @@
 use crate::user::model::UserSub;
 
 pub enum CacheKey {
-    UserInfo { sub: UserSub, ttl: u64 },
+    UserInfo(UserSub),
     UsersOnline,
 }
 
 impl CacheKey {
     pub fn to_string(&self) -> String {
         match self {
-            CacheKey::UserInfo { sub, .. } => format!("userinfo:{}", sub),
+            CacheKey::UserInfo(sub) => format!("userinfo:{}", sub),
             CacheKey::UsersOnline => "users:online".to_string(),
         }
     }
+}
 
-    pub fn ttl(&self) -> u64 {
-        match self {
-            CacheKey::UserInfo { ttl, .. } => *ttl,
-            CacheKey::UsersOnline => 0,
-        }
+impl redis::ToRedisArgs for CacheKey {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite
+    {
+        self.to_string().write_redis_args(out);
     }
 }

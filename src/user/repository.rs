@@ -31,7 +31,7 @@ impl UserRepository {
         result.ok_or(UserError::NotFound(sub.to_owned()))
     }
 
-    pub async fn find_by_nickname(&self, nickname: &str) -> Result<Vec<User>> {
+    pub async fn search_by_nickname(&self, nickname: &str) -> Result<Vec<User>> {
         let filter = doc! { "nickname":{
             "$regex": nickname,
             "$options": "i"
