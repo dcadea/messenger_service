@@ -72,6 +72,9 @@ pub enum Notification {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
         id: MessageId,
     },
+    UsersOnline {
+        users: Vec<UserSub>,
+    },
 }
 
 #[derive(Clone)]

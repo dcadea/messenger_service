@@ -17,6 +17,7 @@ use service::EventService;
 
 use crate::event::error::EventError;
 use crate::event::model::MessagesQueue;
+use crate::user::service::UserService;
 
 pub mod api;
 pub mod error;
@@ -25,12 +26,26 @@ pub mod service;
 
 pub type Result<T> = std::result::Result<T, EventError>;
 
-pub(super) async fn handle_socket(ws: WebSocket, event_service: EventService) {
+pub(super) async fn handle_socket(
+    ws: WebSocket,
+    event_service: EventService,
+    user_service: UserService,
+) {
     let (sender, receiver) = ws.split();
     let ctx = WsCtx::new();
 
-    let read_task = tokio::spawn(read(ctx.clone(), receiver, event_service.clone()));
-    let write_task = tokio::spawn(write(ctx.clone(), sender, event_service.clone()));
+    let read_task = tokio::spawn(read(
+        ctx.clone(),
+        receiver,
+        event_service.clone(),
+        user_service.clone(),
+    ));
+    let write_task = tokio::spawn(write(
+        ctx.clone(),
+        sender,
+        event_service.clone(),
+        user_service.clone(),
+    ));
 
     match try_join!(read_task, write_task) {
         Ok(_) => debug!("ws disconnected gracefully"),
@@ -42,10 +57,14 @@ pub(super) async fn read(
     ctx: WsCtx,
     mut receiver: SplitStream<WebSocket>,
     event_service: EventService,
+    user_service: UserService,
 ) {
     loop {
         tokio::select! {
-            _ = ctx.close.notified() => break,
+            _ = ctx.close.notified() => {
+                remove_online_user(ctx.clone(), user_service).await;
+                break
+            },
             frame = receiver.next() => {
                 if let Some(message) = frame {
                     match message {
@@ -82,11 +101,18 @@ pub(super) async fn write(
     ctx: WsCtx,
     sender: SplitSink<WebSocket, ws::Message>,
     event_service: EventService,
+    user_service: UserService,
 ) {
     loop {
         tokio::select! {
-            _ = ctx.login.notified() => break,
-            _ = ctx.close.notified() => return,
+            _ = ctx.login.notified() => {
+                add_online_user(ctx.clone(), user_service.clone()).await;
+                break
+            },
+            _ = ctx.close.notified() => {
+                remove_online_user(ctx.clone(), user_service.clone()).await;
+                return
+            },
             _ = sleep(Duration::from_secs(5)) => {
                 ctx.close.notify_one();
                 return;
@@ -142,6 +168,22 @@ pub(super) async fn write(
                 Ok(_) => debug!("Consumer {:?} closed", consumer_tag),
                 Err(e) => error!("Failed to close consumer: {:?}", e),
             }
+        }
+    }
+}
+
+async fn add_online_user(ctx: WsCtx, user_service: UserService) {
+    if let Some(user_info) = ctx.get_user_info().await {
+        if let Err(e) = user_service.add_online_user(user_info.sub).await {
+            error!("Failed to add user to online users: {:?}", e);
+        }
+    }
+}
+
+async fn remove_online_user(ctx: WsCtx, user_service: UserService) {
+    if let Some(user_info) = ctx.get_user_info().await {
+        if let Err(e) = user_service.remove_online_user(user_info.sub).await {
+            error!("Failed to remove user from online users: {:?}", e);
         }
     }
 }

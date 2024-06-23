@@ -12,6 +12,7 @@ use tokio::sync::RwLock;
 use crate::integration::error::IntegrationError;
 
 pub mod error;
+pub mod model;
 
 type Result<T> = std::result::Result<T, IntegrationError>;
 

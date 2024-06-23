@@ -59,10 +59,22 @@ impl EventService {
             None => {
                 if let Event::Auth { token } = event {
                     let claims = self.auth_service.validate(&token).await?;
-                    let user_info = self.user_service.find_user_info(claims.sub).await?;
+                    let user_info = self.user_service.find_user_info(claims.sub.clone()).await?;
                     ctx.set_user_info(user_info).await;
                     ctx.login.notify_one();
-                    return Ok(());
+
+                    // TODO: find a better way of pushing online users
+                    //       should be done in intervals or when a 'friend' logs in/out
+                    //       currently data will be reflecting the state at the time of login
+                    let online_users = self.user_service.get_online_users().await?;
+                    let logged_user_queue: MessagesQueue = claims.sub.into();
+                    let notification = Notification::UsersOnline {
+                        users: online_users,
+                    };
+                    return self
+                        .publish_notification(&logged_user_queue, &notification)
+                        .await
+                        .map(|_| ());
                 }
 
                 Err(EventError::MissingUserInfo)
