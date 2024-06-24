@@ -62,19 +62,7 @@ impl EventService {
                     let user_info = self.user_service.find_user_info(claims.sub.clone()).await?;
                     ctx.set_user_info(user_info).await;
                     ctx.login.notify_one();
-
-                    // TODO: find a better way of pushing online users
-                    //       should be done in intervals or when a 'friend' logs in/out
-                    //       currently data will be reflecting the state at the time of login
-                    let online_users = self.user_service.get_online_users().await?;
-                    let logged_user_queue: MessagesQueue = claims.sub.into();
-                    let notification = Notification::UsersOnline {
-                        users: online_users,
-                    };
-                    return self
-                        .publish_notification(&logged_user_queue, &notification)
-                        .await
-                        .map(|_| ());
+                    return Ok(());
                 }
 
                 Err(EventError::MissingUserInfo)
@@ -207,10 +195,8 @@ impl EventService {
 
         Ok(())
     }
-}
 
-impl EventService {
-    async fn publish_notification(
+    pub async fn publish_notification(
         &self,
         q: &impl QueueName,
         notification: &Notification,
@@ -218,7 +204,9 @@ impl EventService {
         let payload = serde_json::to_vec(notification)?;
         self.publish(q, payload.as_slice()).await
     }
+}
 
+impl EventService {
     async fn publish(&self, q: &impl QueueName, payload: &[u8]) -> Result<()> {
         let (queue_name, channel) = self.split_queue(q).await?;
 

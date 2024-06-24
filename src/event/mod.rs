@@ -16,7 +16,8 @@ use model::{Event, WsCtx};
 use service::EventService;
 
 use crate::event::error::EventError;
-use crate::event::model::MessagesQueue;
+use crate::event::model::{MessagesQueue, Notification};
+use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 
 pub mod api;
@@ -34,12 +35,7 @@ pub(super) async fn handle_socket(
     let (sender, receiver) = ws.split();
     let ctx = WsCtx::new();
 
-    let read_task = tokio::spawn(read(
-        ctx.clone(),
-        receiver,
-        event_service.clone(),
-        user_service.clone(),
-    ));
+    let read_task = tokio::spawn(read(ctx.clone(), receiver, event_service.clone()));
     let write_task = tokio::spawn(write(
         ctx.clone(),
         sender,
@@ -51,43 +47,39 @@ pub(super) async fn handle_socket(
         Ok(_) => debug!("ws disconnected gracefully"),
         Err(e) => error!("ws disconnected with error: {}", e),
     }
+
+    remove_online_user(ctx.clone(), user_service).await;
 }
 
 pub(super) async fn read(
     ctx: WsCtx,
     mut receiver: SplitStream<WebSocket>,
     event_service: EventService,
-    user_service: UserService,
 ) {
     loop {
         tokio::select! {
-            _ = ctx.close.notified() => {
-                remove_online_user(ctx.clone(), user_service).await;
-                break
-            },
+            // close is notified => stop 'read' task
+            _ = ctx.close.notified() => break,
+
+            // read next frame from ws connection
             frame = receiver.next() => {
                 if let Some(message) = frame {
                     match message {
                         Err(e) => {
                             error!("failed to read ws frame: {:?}", e);
-                            ctx.close.notify_one();
+                            ctx.close.notify_one(); // notify 'write' task to stop
                             break;
                         },
                         Ok(Close(_)) => {
                             debug!("ws connection closed by client");
-                            // TODO: this might be a good spot to remove user from online users
-                            ctx.close.notify_one();
+                            ctx.close.notify_one(); // notify 'write' task to stop
                             break;
                         },
                         Ok(Text(content)) => {
-                            if let Ok(event) = from_str::<Event>(content.as_str()) {
-                                if let Err(e) = event_service.handle_event(ctx.clone(), event).await {
-                                    error!("failed to handle event: {:?}", e);
-                                    ctx.close.notify_one();
-                                    break;
-                                }
-                            } else {
-                                warn!("skipping frame, content is malformed: {}", content);
+                            if let Err(e) = handle_text_frame(ctx.clone(), content, event_service.clone()).await {
+                                error!("failed to handle text frame: {:?}", e);
+                                ctx.close.notify_one(); // notify 'write' task to stop
+                                break;
                             }
                         },
                         Ok(wtf) => warn!("received non-text ws frame: {:?}", wtf)
@@ -105,70 +97,107 @@ pub(super) async fn write(
     user_service: UserService,
 ) {
     loop {
+        // wait for login notification or close
         tokio::select! {
+            // close is notified => stop 'write' task
+            _ = ctx.close.notified() => return,
+
+            // didn't receive login notification within 5 seconds => stop 'write' task
+            _ = sleep(Duration::from_secs(5)) => {
+                ctx.close.notify_one(); // notify 'read' task to stop
+                return;
+            },
+
+            // logged in => break the wait loop and start writing
             _ = ctx.login.notified() => {
                 add_online_user(ctx.clone(), user_service.clone()).await;
                 break
             },
-            _ = ctx.close.notified() => {
-                remove_online_user(ctx.clone(), user_service.clone()).await;
-                return
-            },
-            _ = sleep(Duration::from_secs(5)) => {
+        }
+    }
+
+    let user_info = ctx
+        .get_user_info()
+        .await
+        .expect("user info has to be set when logged in");
+
+    let sub_queue = MessagesQueue::from(user_info.clone().sub);
+
+    let (consumer_tag, channel, mut notifications_stream) =
+        match event_service.read(&sub_queue).await {
+            Ok(binding) => binding,
+            Err(e) => {
+                error!("Failed to create consumer of notifications: {:?}", e);
                 ctx.close.notify_one();
                 return;
+            }
+        };
+
+    let sender = Arc::new(RwLock::new(sender));
+    loop {
+        tokio::select! {
+            // close is notified => stop 'write' task
+            _ = ctx.close.notified() => break,
+
+            // push new list of online users every 5 seconds
+            _ = sleep(Duration::from_secs(5)) =>
+                notify_about_online_users(&user_info, user_service.clone(), event_service.clone()).await,
+
+            // new notification is received from queue => send it to the client
+            item = notifications_stream.next() => {
+                match item {
+                    None => break,
+                    Some(Err(e)) => error!("Failed to read notification from queue: {:?}", e),
+                    Some(Ok(notification)) => send_notification(sender.clone(), &notification).await,
+                }
             },
         }
     }
 
-    match ctx.get_user_info().await {
-        None => {
-            error!("not authorized user");
-            ctx.close.notify_one();
-            return;
+    match event_service.close_consumer(&consumer_tag, &channel).await {
+        Ok(_) => debug!("Consumer {:?} closed", consumer_tag),
+        Err(e) => error!("Failed to close consumer: {:?}", e),
+    }
+}
+
+async fn handle_text_frame(ctx: WsCtx, content: String, event_service: EventService) -> Result<()> {
+    if let Ok(event) = from_str::<Event>(content.as_str()) {
+        return event_service.handle_event(ctx.clone(), event).await;
+    }
+    warn!("skipping frame, content is malformed: {}", content);
+    Ok(())
+}
+
+async fn send_notification(
+    sender: Arc<RwLock<SplitSink<WebSocket, ws::Message>>>,
+    notification: &Notification,
+) {
+    debug!("sending notification: {:?}", notification);
+    match serde_json::to_string(&notification) {
+        Ok(notification) => {
+            let mut sender = sender.write().await;
+            if let Err(e) = sender.send(Text(notification)).await {
+                error!("Failed to send notification to client: {:?}", e);
+            }
         }
-        Some(user_info) => {
-            let sub_queue: MessagesQueue = user_info.sub.into();
+        Err(e) => error!("Failed to serialize notification: {:?}", e),
+    }
+}
 
-            let (consumer_tag, channel, mut notifications_stream) =
-                match event_service.read(&sub_queue).await {
-                    Ok(binding) => binding,
-                    Err(e) => {
-                        error!("Failed to create consumer of notifications: {:?}", e);
-                        ctx.close.notify_one();
-                        return;
-                    }
-                };
-
-            let sender = Arc::new(RwLock::new(sender));
-            loop {
-                tokio::select! {
-                    item = notifications_stream.next() => {
-                        match item {
-                            None => break,
-                            Some(Err(e)) => error!("Failed to read notification from queue: {:?}", e),
-                            Some(Ok(notification)) => {
-                                debug!("sending notification: {:?}", notification);
-                                let mut sender = sender.write().await;
-                                match serde_json::to_string(&notification) {
-                                    Ok(notification) => {
-                                        if let Err(e) = sender.send(Text(notification)).await {
-                                            error!("Failed to send notification to client: {:?}", e);
-                                        }
-                                    }
-                                    Err(e) => error!("Failed to serialize notification: {:?}", e),
-                                }
-                            },
-                        }
-                    },
-                    _ = ctx.close.notified() => break,
-                }
-            }
-
-            match event_service.close_consumer(&consumer_tag, &channel).await {
-                Ok(_) => debug!("Consumer {:?} closed", consumer_tag),
-                Err(e) => error!("Failed to close consumer: {:?}", e),
-            }
+async fn notify_about_online_users(
+    user_info: &UserInfo,
+    user_service: UserService,
+    event_service: EventService,
+) {
+    if let Ok(users) = user_service.get_online_users().await {
+        if let Err(e) = event_service
+            .publish_notification(
+                &MessagesQueue::from(user_info.sub.clone()),
+                &Notification::UsersOnline { users },
+            )
+            .await
+        {
+            error!("failed to publish online users notification: {:?}", e);
         }
     }
 }
