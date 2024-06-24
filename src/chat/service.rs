@@ -50,7 +50,7 @@ impl ChatService {
 
     pub async fn find_by_id(&self, id: ChatId, user_info: &UserInfo) -> Result<ChatDto> {
         match self.repository.find_by_id_and_sub(id, &user_info.sub).await {
-            Ok(chat) => Ok(Self::chat_to_dto(chat, &user_info)?),
+            Ok(chat) => Ok(Self::chat_to_dto(chat, user_info)?),
             Err(ChatError::NotFound(_)) => Err(ChatError::NotMember),
             Err(err) => Err(err),
         }
@@ -63,8 +63,7 @@ impl ChatService {
             .map(|chats| {
                 chats
                     .into_iter()
-                    .map(|chat| Self::chat_to_dto(chat, &user_info))
-                    .flatten()
+                    .flat_map(|chat| Self::chat_to_dto(chat, user_info))
                     .collect()
             })
     }

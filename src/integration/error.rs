@@ -3,8 +3,8 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 #[error(transparent)]
 pub enum IntegrationError {
-    MongoDBError(#[from] mongodb::error::Error),
-    RabbitMQError(#[from] lapin::Error),
-    RedisError(#[from] redis::RedisError),
-    ReqwestError(#[from] reqwest::Error),
+    MongoDB(#[from] mongodb::error::Error),
+    RabbitMQ(#[from] lapin::Error),
+    Redis(#[from] redis::RedisError),
+    Reqwest(#[from] reqwest::Error),
 }

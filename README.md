@@ -24,8 +24,10 @@ cargo build         # Build the project
 
 ### Running and testing
 ```bash
-cargo run   # Run the project
-cargo test  # Run the tests
+cargo run           # Run the project
+cargo watch -x run  # Run the project with hot-reload
+                    # (req: `cargo install cargo-watch`)
+cargo test          # Run the tests
 ```
 Optionally you can run the project with `cargo run --release` to enable optimizations.<br>
 To run the project in **debug mode**, you can use `RUST_LOG=debug cargo run`.<br>

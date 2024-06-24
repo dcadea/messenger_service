@@ -59,7 +59,7 @@ impl AuthService {
         let decoding_keys_guard = self.jwk_decoding_keys.read().await;
         let decoding_key = decoding_keys_guard.get(&kid).ok_or(AuthError::UnknownKid)?;
 
-        decode::<TokenClaims>(token, &decoding_key, &self.jwt_validator)
+        decode::<TokenClaims>(token, decoding_key, &self.jwt_validator)
             .map(|data| data.claims)
             .map_err(|e| AuthError::Forbidden(e.to_string()))
     }

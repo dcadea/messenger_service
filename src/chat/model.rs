@@ -66,7 +66,7 @@ pub struct ChatDto {
 
 impl ChatDto {
     pub fn from_chat(chat: Chat, recipient: UserSub) -> Self {
-        let chat_id = chat.id.clone().expect("No way chat id is missing!?");
+        let chat_id = chat.id.expect("No way chat id is missing!?");
         Self {
             id: chat_id,
             recipient: recipient.clone(),

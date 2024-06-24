@@ -32,15 +32,15 @@ impl MessageService {
     }
 
     pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {
-        self.repository.update(&id, text).await
+        self.repository.update(id, text).await
     }
 
     pub async fn delete(&self, id: &MessageId) -> Result<()> {
-        self.repository.delete(&id).await
+        self.repository.delete(id).await
     }
 
     pub async fn mark_as_seen(&self, id: &MessageId) -> Result<()> {
-        self.repository.mark_as_seen(&id).await
+        self.repository.mark_as_seen(id).await
     }
 }
 
@@ -74,7 +74,7 @@ impl MessageService {
 
         let result = result
             .iter()
-            .map(|m| MessageDto::from(m))
+            .map(MessageDto::from)
             .collect::<Vec<_>>();
 
         Ok(result)
