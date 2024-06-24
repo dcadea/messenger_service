@@ -3,6 +3,7 @@ use crate::user::model::UserSub;
 pub enum CacheKey {
     UserInfo(UserSub),
     UsersOnline,
+    Friends(UserSub),
 }
 
 impl CacheKey {
@@ -10,6 +11,7 @@ impl CacheKey {
         match self {
             CacheKey::UserInfo(sub) => format!("userinfo:{}", sub),
             CacheKey::UsersOnline => "users:online".to_string(),
+            CacheKey::Friends(sub) => format!("friends:{}", sub),
         }
     }
 }

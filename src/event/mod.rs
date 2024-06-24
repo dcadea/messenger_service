@@ -189,7 +189,7 @@ async fn notify_about_online_users(
     user_service: UserService,
     event_service: EventService,
 ) {
-    if let Ok(users) = user_service.get_online_users().await {
+    if let Ok(users) = user_service.get_online_users(user_info.sub.clone()).await {
         if let Err(e) = event_service
             .publish_notification(
                 &MessagesQueue::from(user_info.sub.clone()),

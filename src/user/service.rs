@@ -58,10 +58,11 @@ impl UserService {
         Ok(())
     }
 
-    pub async fn get_online_users(&self) -> Result<Vec<UserSub>> {
+    pub async fn get_online_users(&self, sub: UserSub) -> Result<Vec<UserSub>> {
         let mut con = self.redis_con.write().await;
-        let users: Vec<UserSub> = con.smembers(CacheKey::UsersOnline.to_string())?;
-        Ok(users)
+        let online_users: Vec<UserSub> =
+            con.sinter(&[CacheKey::UsersOnline, CacheKey::Friends(sub)])?;
+        Ok(online_users)
     }
 
     pub async fn remove_online_user(&self, sub: UserSub) -> Result<()> {
