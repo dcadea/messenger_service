@@ -17,7 +17,7 @@ impl CacheKey {
 impl redis::ToRedisArgs for CacheKey {
     fn write_redis_args<W>(&self, out: &mut W)
     where
-        W: ?Sized + redis::RedisWrite
+        W: ?Sized + redis::RedisWrite,
     {
         self.to_string().write_redis_args(out);
     }

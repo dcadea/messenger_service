@@ -58,7 +58,7 @@ impl redis::FromRedisValue for UserInfo {
 impl redis::ToRedisArgs for UserInfo {
     fn write_redis_args<W>(&self, out: &mut W)
     where
-        W: ?Sized + redis::RedisWrite
+        W: ?Sized + redis::RedisWrite,
     {
         serde_json::json!(self).to_string().write_redis_args(out);
     }

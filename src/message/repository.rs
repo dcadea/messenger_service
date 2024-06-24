@@ -1,6 +1,5 @@
 use futures::TryStreamExt;
-use mongodb::bson::{doc, Document};
-use mongodb::options::FindOptions;
+use mongodb::bson::doc;
 use mongodb::Database;
 
 use crate::chat::model::ChatId;
@@ -23,7 +22,7 @@ impl MessageRepository {
 
 impl MessageRepository {
     pub async fn insert(&self, message: &Message) -> Result<MessageId> {
-        let result = self.collection.insert_one(message, None).await?;
+        let result = self.collection.insert_one(message).await?;
         if let Some(id) = result.inserted_id.as_object_id() {
             return Ok(id.to_owned());
         }
@@ -34,17 +33,22 @@ impl MessageRepository {
     }
 
     pub async fn find_by_id(&self, id: MessageId) -> Result<Message> {
-        let filter = doc! {"_id": id};
-        let result = self.collection.find_one(Some(filter), None).await?;
-        result.ok_or(MessageError::NotFound(Some(id)))
+        self.collection
+            .find_one(doc! {"_id": id})
+            .await?
+            .ok_or(MessageError::NotFound(Some(id)))
     }
 
     pub async fn find_by_chat_id(&self, chat_id: &ChatId) -> Result<Vec<Message>> {
-        let filter = doc! {"chat_id": chat_id};
+        let cursor = self
+            .collection
+            .find(doc! {"chat_id": chat_id})
+            .sort(doc! {"timestamp": 1})
+            .await?;
 
-        let find_options = FindOptions::builder().sort(doc! {"timestamp": 1}).build();
+        let messages = cursor.try_collect::<Vec<Message>>().await?;
 
-        self.find_messages_filtered(filter, find_options).await
+        Ok(messages)
     }
 
     pub async fn find_by_chat_id_limited(
@@ -52,18 +56,22 @@ impl MessageRepository {
         chat_id: &ChatId,
         limit: usize,
     ) -> Result<Vec<Message>> {
-        let filter = doc! {"chat_id": chat_id};
-
-        let find_options = FindOptions::builder()
+        let cursor = self
+            .collection
+            .find(doc! {"chat_id": chat_id})
             .sort(doc! {"timestamp": -1})
             .limit(limit as i64)
-            .build();
+            .await?;
 
-        self.find_messages_filtered(filter, find_options).await
+        let messages = cursor
+            .try_collect::<Vec<Message>>()
+            .await
             .map(|mut messages| {
                 messages.reverse();
                 messages
-            })
+            })?;
+
+        Ok(messages)
     }
 
     pub async fn find_by_chat_id_before(
@@ -71,14 +79,18 @@ impl MessageRepository {
         chat_id: &ChatId,
         before: i64,
     ) -> Result<Vec<Message>> {
-        let filter = doc! {
-            "chat_id": chat_id,
-            "timestamp": {"$lt": before}
-        };
+        let cursor = self
+            .collection
+            .find(doc! {
+                "chat_id": chat_id,
+                "timestamp": {"$lt": before}
+            })
+            .sort(doc! {"timestamp": 1})
+            .await?;
 
-        let find_options = FindOptions::builder().sort(doc! {"timestamp": 1}).build();
+        let messages = cursor.try_collect::<Vec<Message>>().await?;
 
-        self.find_messages_filtered(filter, find_options).await
+        Ok(messages)
     }
 
     pub async fn find_by_chat_id_limited_before(
@@ -87,54 +99,43 @@ impl MessageRepository {
         limit: usize,
         before: i64,
     ) -> Result<Vec<Message>> {
-        let filter = doc! {
-            "chat_id": chat_id,
-            "timestamp": {"$lt": before}
-        };
-
-        let find_options = FindOptions::builder()
+        let cursor = self
+            .collection
+            .find(doc! {
+                "chat_id": chat_id,
+                "timestamp": {"$lt": before}
+            })
             .sort(doc! {"timestamp": -1})
             .limit(limit as i64)
-            .build();
+            .await?;
 
-        self.find_messages_filtered(filter, find_options).await
+        let messages = cursor
+            .try_collect::<Vec<Message>>()
+            .await
             .map(|mut messages| {
                 messages.reverse();
                 messages
-            })
+            })?;
+
+        Ok(messages)
     }
 
     pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {
-        let filter = doc! {"_id": id};
-        let update = doc! {"$set": {"text": text}};
-        self.collection.update_one(filter, update, None).await?;
-
+        self.collection
+            .update_one(doc! {"_id": id}, doc! {"$set": {"text": text}})
+            .await?;
         Ok(())
     }
 
     pub async fn delete(&self, id: &MessageId) -> Result<()> {
-        let filter = doc! {"_id": id};
-        self.collection.delete_one(filter, None).await?;
-
+        self.collection.delete_one(doc! {"_id": id}).await?;
         Ok(())
     }
 
     pub async fn mark_as_seen(&self, id: &MessageId) -> Result<()> {
-        let filter = doc! {"_id": id};
-        let update = doc! {"$set": {"seen": true}};
-        self.collection.update_one(filter, update, None).await?;
-
+        self.collection
+            .update_one(doc! {"_id": id}, doc! {"$set": {"seen": true}})
+            .await?;
         Ok(())
-    }
-}
-
-impl MessageRepository {
-    async fn find_messages_filtered(
-        &self,
-        filter: Document,
-        find_options: FindOptions,
-    ) -> Result<Vec<Message>> {
-        let cursor = self.collection.find(Some(filter), find_options).await?;
-        cursor.try_collect().await.map_err(MessageError::from)
     }
 }

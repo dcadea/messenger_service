@@ -8,7 +8,7 @@ log = "0.4.21"
 simplelog = "0.12.2"
 dotenv = "0.15.0"
 chrono = "0.4.38"
-uuid = { version = "1.8.0", features = ["serde", "v4"] }
+uuid = { version = "1.9.0", features = ["serde", "v4"] }
 thiserror = "1.0.61"
 
 serde = { version = "1.0.203", features = ["derive"] }
@@ -27,6 +27,6 @@ reqwest = { version = "0.12.5", features = ["json"] }
 url = "2.5.2"
 jsonwebtoken = "9.3.0"
 
-mongodb = { version = "2.8.2", features = ["tokio-runtime"] }
+mongodb = { version = "^3.0.0-beta" }
 redis = { version = "0.25.4", features = ["tokio-comp", "json"] }
 lapin = "2.3.4"

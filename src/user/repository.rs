@@ -21,13 +21,13 @@ impl UserRepository {
 
 impl UserRepository {
     pub async fn insert(&self, user: &User) -> Result<()> {
-        self.collection.insert_one(user, None).await?;
+        self.collection.insert_one(user).await?;
         Ok(())
     }
 
     pub async fn find_by_sub(&self, sub: &str) -> Result<User> {
         let filter = doc! { "sub": sub };
-        let result = self.collection.find_one(filter, None).await?;
+        let result = self.collection.find_one(filter).await?;
         result.ok_or(UserError::NotFound(sub.to_owned()))
     }
 
@@ -37,7 +37,7 @@ impl UserRepository {
             "$options": "i"
         }};
 
-        let cursor = self.collection.find(filter, None).await?;
+        let cursor = self.collection.find(filter).await?;
 
         cursor.try_collect().await.map_err(UserError::from)
     }
