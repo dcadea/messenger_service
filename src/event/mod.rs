@@ -75,6 +75,7 @@ pub(super) async fn read(
                         },
                         Ok(Close(_)) => {
                             debug!("ws connection closed by client");
+                            // TODO: this might be a good spot to remove user from online users
                             ctx.close.notify_one();
                             break;
                         },
@@ -174,6 +175,7 @@ pub(super) async fn write(
 
 async fn add_online_user(ctx: WsCtx, user_service: UserService) {
     if let Some(user_info) = ctx.get_user_info().await {
+        debug!("adding to online users: {:?}", user_info.sub.clone());
         if let Err(e) = user_service.add_online_user(user_info.sub).await {
             error!("Failed to add user to online users: {:?}", e);
         }
@@ -182,6 +184,7 @@ async fn add_online_user(ctx: WsCtx, user_service: UserService) {
 
 async fn remove_online_user(ctx: WsCtx, user_service: UserService) {
     if let Some(user_info) = ctx.get_user_info().await {
+        debug!("removing from online users: {:?}", user_info.sub.clone());
         if let Err(e) = user_service.remove_online_user(user_info.sub).await {
             error!("Failed to remove user from online users: {:?}", e);
         }
