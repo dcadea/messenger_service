@@ -14,6 +14,7 @@ use tokio::sync::RwLock;
 use tokio_stream::Stream;
 
 use crate::auth::service::AuthService;
+use crate::chat::model::Members;
 use crate::chat::service::ChatService;
 use crate::message::model::{Message, MessageDto};
 use crate::message::service::MessageService;
@@ -77,8 +78,10 @@ impl EventService {
                     recipient,
                     text,
                 } => {
-                    // TODO: check if owner and recipient are members of the chat
                     let owner = user_info.sub;
+
+                    let members = Members::new(owner.clone(), recipient.clone());
+                    self.chat_service.check_members(chat_id, &members).await?;
 
                     let message = self
                         .message_service

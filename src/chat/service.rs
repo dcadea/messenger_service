@@ -1,22 +1,39 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
+use tokio::sync::RwLock;
+
+use redis::Commands;
+
 use crate::chat::error::ChatError;
+use crate::integration::model::CacheKey;
 use crate::message::model::Message;
-use crate::user::model::UserInfo;
+use crate::model::{AppEndpoints, LinkFactory};
+use crate::user::model::{UserInfo, UserSub};
 
 use super::model::{Chat, ChatDto, ChatId, ChatRequest, Members};
 use super::repository::ChatRepository;
 use super::Result;
 
+const CHAT_TTL: u64 = 3600;
+
 #[derive(Clone)]
 pub struct ChatService {
     repository: Arc<ChatRepository>,
+    redis_con: Arc<RwLock<redis::Connection>>,
+    link_factory: Arc<LinkFactory>,
 }
 
 impl ChatService {
-    pub fn new(repository: ChatRepository) -> Self {
+    pub fn new(
+        repository: ChatRepository,
+        redis_con: Arc<RwLock<redis::Connection>>,
+        app_endpoints: AppEndpoints,
+    ) -> Self {
         Self {
             repository: Arc::new(repository),
+            redis_con: redis_con.clone(),
+            link_factory: Arc::new(LinkFactory::new(app_endpoints.api())),
         }
     }
 }
@@ -33,7 +50,7 @@ impl ChatService {
             Ok(_) => Err(ChatError::AlreadyExists(members)),
             Err(ChatError::NotFound(_)) => {
                 let chat = self.repository.insert(&Chat::new(members)).await?;
-                Self::chat_to_dto(chat, user_info)
+                self.chat_to_dto(chat, user_info)
             }
             Err(err) => Err(err),
         }
@@ -50,7 +67,7 @@ impl ChatService {
 
     pub async fn find_by_id(&self, id: ChatId, user_info: &UserInfo) -> Result<ChatDto> {
         match self.repository.find_by_id_and_sub(id, &user_info.sub).await {
-            Ok(chat) => Ok(Self::chat_to_dto(chat, user_info)?),
+            Ok(chat) => Ok(self.chat_to_dto(chat, user_info)?),
             Err(ChatError::NotFound(_)) => Err(ChatError::NotMember),
             Err(err) => Err(err),
         }
@@ -63,25 +80,58 @@ impl ChatService {
             .map(|chats| {
                 chats
                     .into_iter()
-                    .flat_map(|chat| Self::chat_to_dto(chat, user_info))
+                    .flat_map(|chat| self.chat_to_dto(chat, user_info))
                     .collect()
             })
     }
+}
 
-    pub async fn check_member_is_participant(
-        &self,
-        chat_id: ChatId,
-        user_info: &UserInfo,
-    ) -> Result<()> {
-        self.repository
-            .find_by_id_and_sub(chat_id, &user_info.sub)
-            .await
-            .map(|_| ())
+// validations
+impl ChatService {
+    pub async fn check_member(&self, chat_id: ChatId, user_info: &UserInfo) -> Result<()> {
+        let members = self.find_members(chat_id).await?;
+
+        if members.contains(&user_info.sub) {
+            Ok(())
+        } else {
+            Err(ChatError::NotMember)
+        }
+    }
+
+    pub async fn check_members(&self, chat_id: ChatId, members: &Members) -> Result<()> {
+        let cached_members = self.find_members(chat_id).await?;
+        let belongs_to_chat = cached_members.intersection(&members.to_set()).count() > 0;
+
+        if belongs_to_chat {
+            Ok(())
+        } else {
+            Err(ChatError::NotMember)
+        }
+    }
+}
+
+// cache operations
+impl ChatService {
+    pub async fn find_members(&self, chat_id: ChatId) -> Result<HashSet<UserSub>> {
+        let mut con = self.redis_con.write().await;
+
+        let cache_key = CacheKey::Chat(chat_id);
+        let members: Option<HashSet<UserSub>> = con.get(cache_key.clone())?;
+
+        match members {
+            Some(members) => Ok(members),
+            None => {
+                let chat = self.repository.find_by_id(&chat_id).await?;
+                let members = chat.members.to_set();
+                con.set_ex(cache_key, members.clone(), CHAT_TTL)?;
+                Ok(members)
+            }
+        }
     }
 }
 
 impl ChatService {
-    fn chat_to_dto(chat: Chat, user_info: &UserInfo) -> Result<ChatDto> {
+    fn chat_to_dto(&self, chat: Chat, user_info: &UserInfo) -> Result<ChatDto> {
         let recipient;
 
         if chat.members.me == user_info.sub {
@@ -92,6 +142,13 @@ impl ChatService {
             return Err(ChatError::NotMember);
         }
 
-        Ok(ChatDto::from_chat(chat, recipient))
+        let chat_dto = ChatDto::from_chat(chat, recipient.clone());
+        let links = vec![
+            self.link_factory._self(&format!("chats/{}", chat_dto.id)),
+            self.link_factory
+                .recipient(&format!("users?sub={recipient}")),
+        ];
+
+        Ok(chat_dto.with_links(links))
     }
 }

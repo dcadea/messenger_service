@@ -18,9 +18,9 @@ pub struct UserService {
 }
 
 impl UserService {
-    pub fn new(redis_con: RwLock<redis::Connection>, repository: UserRepository) -> Self {
+    pub fn new(redis_con: Arc<RwLock<redis::Connection>>, repository: UserRepository) -> Self {
         Self {
-            redis_con: Arc::new(redis_con),
+            redis_con: redis_con.clone(),
             repository: Arc::new(repository),
         }
     }

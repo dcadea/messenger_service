@@ -72,10 +72,7 @@ impl MessageService {
             }
         };
 
-        let result = result
-            .iter()
-            .map(MessageDto::from)
-            .collect::<Vec<_>>();
+        let result = result.iter().map(MessageDto::from).collect::<Vec<_>>();
 
         Ok(result)
     }

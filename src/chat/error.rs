@@ -15,4 +15,5 @@ pub enum ChatError {
     Unexpected(String),
 
     MongoDBError(#[from] mongodb::error::Error),
+    RedisError(#[from] redis::RedisError),
 }

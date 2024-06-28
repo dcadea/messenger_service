@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+#[derive(Clone)]
 pub struct AppEndpoints {
     address: String,
     port: String,
@@ -20,6 +21,27 @@ impl AppEndpoints {
     }
 }
 
+#[derive(Clone)]
+pub struct LinkFactory {
+    base_url: String,
+}
+
+impl LinkFactory {
+    pub fn new(base_url: String) -> Self {
+        Self { base_url }
+    }
+
+    pub fn _self(&self, path: &str) -> Link {
+        let href = format!("{}/{}", self.base_url, path);
+        Link::new("self", &href)
+    }
+
+    pub fn recipient(&self, path: &str) -> Link {
+        let href = format!("{}/{}", self.base_url, path);
+        Link::new("recipient", &href)
+    }
+}
+
 #[derive(Serialize)]
 pub struct Link {
     rel: String,
@@ -27,21 +49,10 @@ pub struct Link {
 }
 
 impl Link {
-    pub fn _self(path: &str) -> Self {
-        Self::new("self", path)
-    }
-
-    pub fn recipient(path: &str) -> Self {
-        Self::new("recipient", path)
-    }
-}
-
-impl Link {
-    fn new(rel: &str, path: &str) -> Self {
+    fn new(rel: &str, href: &str) -> Self {
         Self {
             rel: rel.to_string(),
-            // TODO: get the base url from configuration
-            href: format!("http://127.0.0.1:8000/api/v1{}", path),
+            href: href.to_string(),
         }
     }
 }

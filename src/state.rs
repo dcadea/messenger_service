@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::model::AppEndpoints;
 use axum::extract::FromRef;
 
@@ -15,6 +17,7 @@ use super::user::service::UserService;
 #[derive(Clone)]
 pub struct AppState {
     pub config: integration::Config,
+    pub app_endpoints: AppEndpoints,
 
     pub auth_service: AuthService,
     pub user_service: UserService,
@@ -26,13 +29,23 @@ pub struct AppState {
 impl AppState {
     pub async fn init() -> Result<Self> {
         let config = integration::Config::default();
+
+        let socket = config.socket;
+        let address = socket.ip().to_string();
+        let port = socket.port().to_string();
+        let app_endpoints = AppEndpoints::new(&address, &port, "api/v1");
+
         let database = integration::init_mongodb(&config).await?;
-        let redis_con = integration::init_redis(&config)?;
+        let redis_con = Arc::new(integration::init_redis(&config)?);
         let rabbitmq_con = integration::init_rabbitmq(&config).await?;
 
         let auth_service = AuthService::try_new(&config)?;
-        let user_service = UserService::new(redis_con, UserRepository::new(&database));
-        let chat_service = ChatService::new(ChatRepository::new(&database));
+        let user_service = UserService::new(redis_con.clone(), UserRepository::new(&database));
+        let chat_service = ChatService::new(
+            ChatRepository::new(&database),
+            redis_con.clone(),
+            app_endpoints.clone(),
+        );
         let message_service = MessageService::new(MessageRepository::new(&database));
         let event_service = EventService::new(
             rabbitmq_con,
@@ -44,6 +57,7 @@ impl AppState {
 
         Ok(Self {
             config,
+            app_endpoints,
             auth_service,
             user_service,
             chat_service,
@@ -91,9 +105,6 @@ impl FromRef<AppState> for EventService {
 
 impl FromRef<AppState> for AppEndpoints {
     fn from_ref(app_state: &AppState) -> AppEndpoints {
-        let socket = app_state.config.socket;
-        let address = socket.ip().to_string();
-        let port = socket.port().to_string();
-        AppEndpoints::new(&address, &port, "api/v1")
+        app_state.app_endpoints.clone()
     }
 }

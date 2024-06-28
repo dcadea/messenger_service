@@ -1,10 +1,12 @@
+use crate::{chat::model::ChatId, user::model::UserSub};
 use std::fmt::{Display, Formatter};
-use crate::user::model::UserSub;
 
+#[derive(Clone)]
 pub enum CacheKey {
     UserInfo(UserSub),
     UsersOnline,
     Friends(UserSub),
+    Chat(ChatId),
 }
 
 impl Display for CacheKey {
@@ -13,6 +15,7 @@ impl Display for CacheKey {
             CacheKey::UserInfo(sub) => write!(f, "userinfo:{}", sub),
             CacheKey::UsersOnline => write!(f, "users:online"),
             CacheKey::Friends(sub) => write!(f, "friends:{}", sub),
+            CacheKey::Chat(id) => write!(f, "chat:{}", id),
         }
     }
 }

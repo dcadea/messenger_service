@@ -2,6 +2,7 @@ use crate::model::Link;
 use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fmt::Debug;
 
 use crate::user::model::UserSub;
@@ -19,6 +20,10 @@ pub struct Members {
 impl Members {
     pub fn new(me: UserSub, you: UserSub) -> Self {
         Self { me, you }
+    }
+
+    pub fn to_set(&self) -> HashSet<UserSub> {
+        HashSet::from([self.me.clone(), self.you.clone()])
     }
 }
 
@@ -72,11 +77,13 @@ impl ChatDto {
             recipient: recipient.clone(),
             last_message: chat.last_message.clone(),
             updated_at: chat.updated_at,
-            links: vec![
-                Link::_self(&format!("/chats/{chat_id}")),
-                Link::recipient(&format!("/users?sub={recipient}")),
-            ],
+            links: vec![],
         }
+    }
+
+    pub fn with_links(mut self, links: Vec<Link>) -> Self {
+        self.links = links;
+        self
     }
 }
 
