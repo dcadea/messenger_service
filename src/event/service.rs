@@ -28,7 +28,7 @@ type NotificationStream = Pin<Box<dyn Stream<Item = Result<Notification>> + Send
 
 #[derive(Clone)]
 pub struct EventService {
-    rabbitmq_con: Arc<RwLock<Connection>>,
+    amqp_con: Arc<RwLock<Connection>>,
     auth_service: Arc<AuthService>,
     chat_service: Arc<ChatService>,
     message_service: Arc<MessageService>,
@@ -37,14 +37,14 @@ pub struct EventService {
 
 impl EventService {
     pub fn new(
-        rabbitmq_con: RwLock<Connection>,
+        amqp_con: RwLock<Connection>,
         auth_service: AuthService,
         chat_service: ChatService,
         message_service: MessageService,
         user_service: UserService,
     ) -> Self {
         Self {
-            rabbitmq_con: Arc::new(rabbitmq_con),
+            amqp_con: Arc::new(amqp_con),
             auth_service: Arc::new(auth_service),
             chat_service: Arc::new(chat_service),
             message_service: Arc::new(message_service),
@@ -227,7 +227,7 @@ impl EventService {
     }
 
     async fn split_queue(&self, q: &impl QueueName) -> Result<(String, Channel)> {
-        let conn = self.rabbitmq_con.read().await;
+        let conn = self.amqp_con.read().await;
         let channel = conn.create_channel().await?;
         let queue_name = &q.to_string();
 

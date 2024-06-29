@@ -4,7 +4,7 @@ use thiserror::Error;
 #[error(transparent)]
 pub enum IntegrationError {
     MongoDB(#[from] mongodb::error::Error),
-    RabbitMQ(#[from] lapin::Error),
+    Lapin(#[from] lapin::Error),
     Redis(#[from] redis::RedisError),
     Reqwest(#[from] reqwest::Error),
 }

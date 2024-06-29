@@ -21,5 +21,5 @@ pub enum EventError {
     _UserError(#[from] UserError),
 
     _ParseJsonError(#[from] serde_json::Error),
-    _RabbitMQError(#[from] lapin::Error),
+    _LapinError(#[from] lapin::Error),
 }

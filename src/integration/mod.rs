@@ -4,12 +4,10 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::Duration;
 
+use crate::integration::error::IntegrationError;
 use dotenv::dotenv;
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, WriteLogger};
-use tokio::sync::RwLock;
-
-use crate::integration::error::IntegrationError;
 
 pub mod error;
 pub mod model;
@@ -22,23 +20,12 @@ type Result<T> = std::result::Result<T, IntegrationError>;
 #[derive(Clone)]
 pub struct Config {
     pub socket: SocketAddr,
-    pub redis_host: String,
-    pub redis_port: String,
 
-    pub mongo_username: String,
-    pub mongo_password: String,
-    pub mongo_host: String,
-    pub mongo_port: String,
-    pub mongo_db: String,
+    pub redis: redis::Config,
+    pub mongo: mongo::Config,
+    pub amqp: amqp::Config,
 
-    pub amqp_host: String,
-    pub amqp_port: String,
-
-    pub issuer: String,
-    pub jwks_url: String,
-    pub userinfo_url: String,
-    pub audience: Vec<String>,
-    pub required_claims: Vec<String>,
+    pub idp: idp::Config,
 }
 
 impl Default for Config {
@@ -69,82 +56,28 @@ impl Default for Config {
             .parse()
             .expect("Failed to parse socket address");
 
-        Self {
-            socket,
-            redis_host: env::var("REDIS_HOST").unwrap_or("127.0.0.1".into()),
-            redis_port: env::var("REDIS_PORT").unwrap_or("6379".into()),
-
-            mongo_username: env::var("MONGO_USERNAME").unwrap_or("root".into()),
-            mongo_password: env::var("MONGO_PASSWORD").unwrap_or("example".into()),
-            mongo_host: env::var("MONGO_HOST").unwrap_or("127.0.0.1".into()),
-            mongo_port: env::var("MONGO_PORT").unwrap_or("27017".into()),
-            mongo_db: env::var("MONGO_DB").unwrap_or("messenger".into()),
-
-            amqp_host: env::var("AMQP_HOST").unwrap_or("127.0.0.1".into()),
-            amqp_port: env::var("AMQP_PORT").unwrap_or("5672".into()),
-
-            issuer: env::var("ISSUER").expect("ISSUER must be set"),
-            jwks_url: env::var("ISSUER")
-                .map(|iss| format!("{}.well-known/jwks.json", iss))
-                .expect("ISSUER must be set"),
-            userinfo_url: env::var("ISSUER")
-                .map(|iss| format!("{}userinfo", iss))
-                .expect("ISSUER must be set"),
-            audience: env::var("AUDIENCE")
+        let idp_config = idp::Config::new(
+            env::var("ISSUER").expect("ISSUER must be set"),
+            env::var("AUDIENCE")
                 .expect("AUDIENCE must be set")
                 .split(',')
                 .map(String::from)
                 .collect::<Vec<String>>(),
-            required_claims: env::var("REQUIRED_CLAIMS")
+            env::var("REQUIRED_CLAIMS")
                 .expect("REQUIRED_CLAIMS must be set")
                 .split(',')
                 .map(String::from)
                 .collect::<Vec<String>>(),
+        );
+
+        Self {
+            socket,
+            redis: redis::Config::default(),
+            mongo: mongo::Config::default(),
+            amqp: amqp::Config::default(),
+            idp: idp_config,
         }
     }
-}
-
-pub async fn init_redis(config: &Config) -> Result<redis::aio::MultiplexedConnection> {
-    let host = config.redis_host.clone();
-    let port = config.redis_port.clone();
-
-    redis::Client::open(format!("redis://{}:{}", host, port))?
-        .get_multiplexed_async_connection_with_timeouts(
-            Duration::from_secs(2),
-            Duration::from_secs(5),
-        )
-        .await
-        .map_err(IntegrationError::from)
-}
-
-pub async fn init_mongodb(config: &Config) -> Result<mongodb::Database> {
-    let username = config.mongo_username.clone();
-    let password = config.mongo_password.clone();
-    let host = config.mongo_host.clone();
-    let port = config.mongo_port.clone();
-    let database = config.mongo_db.clone();
-
-    let connection_url = format!("mongodb://{}:{}@{}:{}", username, password, host, port);
-
-    let mut options = mongodb::options::ClientOptions::parse(connection_url).await?;
-
-    options.connect_timeout = Some(Duration::from_secs(5));
-    options.server_selection_timeout = Some(Duration::from_secs(2));
-
-    mongodb::Client::with_options(options)
-        .map(|client| client.database(&database))
-        .map_err(IntegrationError::from)
-}
-
-pub async fn init_rabbitmq(config: &Config) -> Result<RwLock<lapin::Connection>> {
-    let host = config.amqp_host.clone();
-    let port = config.amqp_port.clone();
-    let addr = format!("amqp://{}:{}/%2f", host, port);
-
-    lapin::Connection::connect(&addr, lapin::ConnectionProperties::default())
-        .await
-        .map(|con| RwLock::new(con))
-        .map_err(IntegrationError::from)
 }
 
 pub fn init_http_client() -> Result<reqwest::Client> {
@@ -153,4 +86,151 @@ pub fn init_http_client() -> Result<reqwest::Client> {
         .timeout(Duration::from_secs(5))
         .build()
         .map_err(IntegrationError::from)
+}
+
+pub mod redis {
+    use std::time::Duration;
+
+    #[derive(Clone)]
+    pub struct Config {
+        host: String,
+        port: u16,
+    }
+
+    impl Default for Config {
+        fn default() -> Self {
+            Self {
+                host: String::from("127.0.0.1"),
+                port: 6379,
+            }
+
+            // TODO
+            // redis_host: env::var("REDIS_HOST").unwrap_or("127.0.0.1".into()),
+            // redis_port: env::var("REDIS_PORT").unwrap_or("6379".into()),
+        }
+    }
+
+    pub async fn init(
+        config: &Config,
+    ) -> crate::integration::Result<redis::aio::MultiplexedConnection> {
+        let redis_con =
+            redis::Client::open(format!("redis://{}:{}", config.host.clone(), config.port))?
+                .get_multiplexed_async_connection_with_timeouts(
+                    Duration::from_secs(2),
+                    Duration::from_secs(5),
+                )
+                .await?;
+
+        Ok(redis_con)
+    }
+}
+
+pub mod mongo {
+    use std::time::Duration;
+
+    #[derive(Clone)]
+    pub struct Config {
+        host: String,
+        port: u16,
+        db: String,
+    }
+
+    impl Default for Config {
+        fn default() -> Self {
+            Self {
+                host: String::from("127.0.0.1"),
+                port: 27017,
+                db: String::from("messenger"),
+            }
+        }
+
+        // TODO
+        // mongo_username: env::var("MONGO_USERNAME").unwrap_or("root".into()),
+        // mongo_password: env::var("MONGO_PASSWORD").unwrap_or("example".into()),
+        // mongo_host: env::var("MONGO_HOST").unwrap_or("127.0.0.1".into()),
+        // mongo_port: env::var("MONGO_PORT").unwrap_or("27017".into()),
+        // mongo_db: env::var("MONGO_DB").unwrap_or("messenger".into()),
+    }
+
+    pub async fn init(config: &Config) -> crate::integration::Result<mongodb::Database> {
+        let options = mongodb::options::ClientOptions::builder()
+            .hosts(vec![mongodb::options::ServerAddress::Tcp {
+                host: config.host.clone(),
+                port: Some(config.port),
+            }])
+            .server_selection_timeout(Some(Duration::from_secs(2)))
+            .connect_timeout(Some(Duration::from_secs(5)))
+            .build();
+
+        let db =
+            mongodb::Client::with_options(options).map(|client| client.database(&config.db))?;
+
+        Ok(db)
+    }
+}
+
+pub mod amqp {
+    use lapin::uri::{AMQPAuthority, AMQPQueryString, AMQPScheme, AMQPUri, AMQPUserInfo};
+    use tokio::sync::RwLock;
+
+    #[derive(Clone)]
+    pub struct Config {
+        host: String,
+        port: u16,
+    }
+
+    impl Default for Config {
+        fn default() -> Self {
+            Self {
+                host: String::from("127.0.0.1"),
+                port: 5672,
+            }
+        }
+
+        // TODO
+        // amqp_host: env::var("AMQP_HOST").unwrap_or("127.0.0.1".into()),
+        // amqp_port: env::var("AMQP_PORT").unwrap_or("5672".into()),
+    }
+
+    pub async fn init(config: &Config) -> crate::integration::Result<RwLock<lapin::Connection>> {
+        let amqp_uri = AMQPUri {
+            scheme: AMQPScheme::AMQP,
+            authority: AMQPAuthority {
+                userinfo: AMQPUserInfo::default(),
+                host: config.host.clone(),
+                port: config.port,
+            },
+            vhost: "/".to_string(),
+            query: AMQPQueryString::default(),
+        };
+
+        let con = lapin::Connection::connect_uri(amqp_uri, lapin::ConnectionProperties::default())
+            .await
+            .map(|con| RwLock::new(con))?;
+
+        Ok(con)
+    }
+}
+
+pub mod idp {
+    #[derive(Clone)]
+    pub struct Config {
+        pub issuer: String,
+        pub jwks_url: String,
+        pub userinfo_url: String,
+        pub audience: Vec<String>,
+        pub required_claims: Vec<String>,
+    }
+
+    impl Config {
+        pub fn new(issuer: String, audience: Vec<String>, required_claims: Vec<String>) -> Self {
+            Self {
+                issuer: issuer.clone(),
+                jwks_url: format!("{}.well-known/jwks.json", issuer),
+                userinfo_url: format!("{}userinfo", issuer),
+                audience,
+                required_claims,
+            }
+        }
+    }
 }

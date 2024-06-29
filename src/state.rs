@@ -33,11 +33,11 @@ impl AppState {
         let port = socket.port().to_string();
         let app_endpoints = AppEndpoints::new(&address, &port, "api/v1");
 
-        let database = integration::init_mongodb(&config).await?;
-        let redis_con = integration::init_redis(&config).await?;
-        let rabbitmq_con = integration::init_rabbitmq(&config).await?;
+        let database = integration::mongo::init(&config.mongo).await?;
+        let redis_con = integration::redis::init(&config.redis).await?;
+        let amqp_con = integration::amqp::init(&config.amqp).await?;
 
-        let auth_service = AuthService::try_new(&config)?;
+        let auth_service = AuthService::try_new(&config.idp)?;
         let user_service = UserService::new(redis_con.clone(), UserRepository::new(&database));
         let chat_service = ChatService::new(
             ChatRepository::new(&database),
@@ -46,7 +46,7 @@ impl AppState {
         );
         let message_service = MessageService::new(MessageRepository::new(&database));
         let event_service = EventService::new(
-            rabbitmq_con,
+            amqp_con,
             auth_service.clone(),
             chat_service.clone(),
             message_service.clone(),

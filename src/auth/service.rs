@@ -8,6 +8,7 @@ use tokio::sync::RwLock;
 use tokio::time::sleep;
 
 use crate::integration;
+use crate::integration::idp;
 use crate::user::model::UserInfo;
 
 use super::error::AuthError;
@@ -16,14 +17,14 @@ use super::Result;
 
 #[derive(Clone)]
 pub struct AuthService {
-    config: Arc<integration::Config>,
+    config: Arc<idp::Config>,
     http: Arc<reqwest::Client>,
     jwt_validator: Arc<Validation>,
     jwk_decoding_keys: Arc<RwLock<HashMap<String, DecodingKey>>>,
 }
 
 impl AuthService {
-    pub fn try_new(config: &integration::Config) -> Result<Self> {
+    pub fn try_new(config: &idp::Config) -> Result<Self> {
         let mut jwt_validator = Validation::new(jsonwebtoken::Algorithm::RS256);
         jwt_validator.set_required_spec_claims(&config.required_claims);
         jwt_validator.set_issuer(&[&config.issuer]);
@@ -92,7 +93,7 @@ impl AuthService {
 }
 
 async fn fetch_jwk_decoding_keys(
-    config: &integration::Config,
+    config: &idp::Config,
     http: &reqwest::Client,
 ) -> Result<HashMap<String, DecodingKey>> {
     let jwk_response = http.get(config.jwks_url.clone()).send().await?;
