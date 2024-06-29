@@ -14,6 +14,9 @@ use crate::integration::error::IntegrationError;
 pub mod error;
 pub mod model;
 
+#[cfg(test)]
+mod tests;
+
 type Result<T> = std::result::Result<T, IntegrationError>;
 
 #[derive(Clone)]
