@@ -1,13 +1,16 @@
 use std::collections::HashSet;
-use std::sync::Arc;
+use std::pin::Pin;
 
+use futures::Stream;
 use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde::{Deserialize, Serialize};
-use tokio::sync::{Notify, RwLock};
 
 use crate::chat::model::ChatId;
 use crate::message::model::{MessageDto, MessageId};
-use crate::user::model::{UserInfo, UserSub};
+use crate::user::model::UserSub;
+
+pub(crate) type NotificationStream =
+    Pin<Box<dyn Stream<Item = crate::event::Result<Notification>> + Send>>;
 
 pub trait QueueName {
     fn to_string(&self) -> String;
@@ -76,31 +79,4 @@ pub enum Notification {
     UsersOnline {
         users: HashSet<UserSub>,
     },
-}
-
-#[derive(Clone)]
-pub struct WsCtx {
-    user_info: Arc<RwLock<Option<UserInfo>>>,
-    pub login: Arc<Notify>,
-    pub close: Arc<Notify>,
-}
-
-impl WsCtx {
-    pub fn new() -> Self {
-        Self {
-            user_info: Arc::new(RwLock::new(None)),
-            login: Arc::new(Notify::new()),
-            close: Arc::new(Notify::new()),
-        }
-    }
-}
-
-impl WsCtx {
-    pub async fn set_user_info(&self, user_info: UserInfo) {
-        *self.user_info.write().await = Some(user_info);
-    }
-
-    pub async fn get_user_info(&self) -> Option<UserInfo> {
-        self.user_info.read().await.clone()
-    }
 }

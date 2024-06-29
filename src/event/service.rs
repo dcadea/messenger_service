@@ -1,17 +1,14 @@
 use std::io;
-use std::pin::Pin;
 use std::sync::Arc;
 
 use futures::TryStreamExt;
 use lapin::options::{
-    BasicAckOptions, BasicCancelOptions, BasicConsumeOptions, BasicPublishOptions,
-    QueueDeclareOptions,
+    BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
 };
 use lapin::types::FieldTable;
 use lapin::{BasicProperties, Channel, Connection};
 use log::debug;
 use tokio::sync::RwLock;
-use tokio_stream::Stream;
 
 use crate::auth::service::AuthService;
 use crate::chat::model::Members;
@@ -21,10 +18,8 @@ use crate::message::service::MessageService;
 use crate::user::service::UserService;
 
 use super::error::EventError;
-use super::model::{Event, MessagesQueue, Notification, QueueName, WsCtx};
-use super::Result;
-
-type NotificationStream = Pin<Box<dyn Stream<Item = Result<Notification>> + Send>>;
+use super::model::{Event, MessagesQueue, Notification, NotificationStream, QueueName};
+use super::{context, Result};
 
 #[derive(Clone)]
 pub struct EventService {
@@ -54,7 +49,7 @@ impl EventService {
 }
 
 impl EventService {
-    pub async fn handle_event(&self, ctx: WsCtx, event: Event) -> Result<()> {
+    pub async fn handle_event(&self, ctx: context::Ws, event: Event) -> Result<()> {
         debug!("handling event: {:?}", event);
         match ctx.get_user_info().await {
             None => {
@@ -62,6 +57,7 @@ impl EventService {
                     let claims = self.auth_service.validate(&token).await?;
                     let user_info = self.user_service.find_user_info(claims.sub.clone()).await?;
                     ctx.set_user_info(user_info).await;
+                    ctx.set_channel(self.create_channel().await?).await;
                     ctx.login.notify_one();
                     return Ok(());
                 }
@@ -102,8 +98,8 @@ impl EventService {
                     use futures::TryFutureExt;
 
                     tokio::try_join!(
-                        self.publish_notification(&owner_queue, &notification),
-                        self.publish_notification(&recipient_queue, &notification),
+                        self.publish_notification(ctx.clone(), &owner_queue, &notification),
+                        self.publish_notification(ctx, &recipient_queue, &notification),
                         self.chat_service
                             .update_last_message(&message)
                             .map_err(EventError::from)
@@ -123,8 +119,8 @@ impl EventService {
                     let notification = Notification::MessageUpdated { id, text };
 
                     tokio::try_join!(
-                        self.publish_notification(&owner_queue, &notification),
-                        self.publish_notification(&recipient_queue, &notification)
+                        self.publish_notification(ctx.clone(), &owner_queue, &notification),
+                        self.publish_notification(ctx, &recipient_queue, &notification)
                     )
                     .map(|_| ())
                 }
@@ -140,8 +136,8 @@ impl EventService {
                     let notification = Notification::MessageDeleted { id };
 
                     tokio::try_join!(
-                        self.publish_notification(&owner_queue, &notification),
-                        self.publish_notification(&recipient_queue, &notification)
+                        self.publish_notification(ctx.clone(), &owner_queue, &notification),
+                        self.publish_notification(ctx, &recipient_queue, &notification)
                     )
                     .map(|_| ())
                 }
@@ -153,7 +149,7 @@ impl EventService {
                     self.message_service.mark_as_seen(&id).await?;
 
                     let owner_queue: MessagesQueue = message.owner.into();
-                    self.publish_notification(&owner_queue, &Notification::MessageSeen { id })
+                    self.publish_notification(ctx, &owner_queue, &Notification::MessageSeen { id })
                         .await
                 }
             },
@@ -162,19 +158,19 @@ impl EventService {
 }
 
 impl EventService {
-    pub async fn read(&self, q: &impl QueueName) -> Result<(String, Channel, NotificationStream)> {
-        let (queue_name, channel) = self.split_queue(q).await?;
+    pub async fn read(&self, ctx: context::Ws, q: &impl QueueName) -> Result<NotificationStream> {
+        self.ensure_queue_exists(ctx.clone(), q).await?;
 
-        let consumer = channel
+        let consumer = ctx
+            .get_channel()
+            .await?
             .basic_consume(
-                &queue_name,
+                &q.to_string(),
                 "",
                 BasicConsumeOptions::default(),
                 FieldTable::default(),
             )
             .await?;
-
-        let consumer_tag = consumer.tag().clone();
 
         let stream = consumer
             .and_then(|delivery| {
@@ -188,52 +184,51 @@ impl EventService {
             })
             .map_err(EventError::from);
 
-        Ok((consumer_tag.to_string(), channel, Box::pin(stream)))
+        Ok(Box::pin(stream))
     }
 
-    pub async fn close_consumer(&self, consumer_tag: &str, channel: &Channel) -> Result<()> {
-        channel
-            .basic_cancel(consumer_tag, BasicCancelOptions::default())
-            .await?;
-
-        Ok(())
+    pub async fn close_channel(&self, ctx: context::Ws) -> Result<()> {
+        let channel = ctx.get_channel().await?;
+        channel.close(200, "OK").await.map_err(EventError::from)
     }
 
     pub async fn publish_notification(
         &self,
+        ctx: context::Ws,
         q: &impl QueueName,
         notification: &Notification,
     ) -> Result<()> {
         let payload = serde_json::to_vec(notification)?;
-        self.publish(q, payload.as_slice()).await
+        self.publish(ctx, q, payload.as_slice()).await
     }
 }
 
 impl EventService {
-    async fn publish(&self, q: &impl QueueName, payload: &[u8]) -> Result<()> {
-        let (queue_name, channel) = self.split_queue(q).await?;
+    async fn create_channel(&self) -> Result<Channel> {
+        let conn = self.amqp_con.read().await;
+        conn.create_channel().await.map_err(EventError::from)
+    }
 
-        channel
+    async fn publish(&self, ctx: context::Ws, q: &impl QueueName, payload: &[u8]) -> Result<()> {
+        self.ensure_queue_exists(ctx.clone(), q).await?;
+        ctx.get_channel()
+            .await?
             .basic_publish(
                 "",
-                &queue_name,
+                &q.to_string(),
                 BasicPublishOptions::default(),
                 payload,
                 BasicProperties::default(),
             )
             .await?;
-
         Ok(())
     }
 
-    async fn split_queue(&self, q: &impl QueueName) -> Result<(String, Channel)> {
-        let conn = self.amqp_con.read().await;
-        let channel = conn.create_channel().await?;
-        let queue_name = &q.to_string();
-
-        let queue_name = channel
+    async fn ensure_queue_exists(&self, ctx: context::Ws, q: &impl QueueName) -> Result<()> {
+        ctx.get_channel()
+            .await?
             .queue_declare(
-                queue_name,
+                &q.to_string(),
                 QueueDeclareOptions {
                     auto_delete: true,
                     ..QueueDeclareOptions::default()
@@ -241,8 +236,7 @@ impl EventService {
                 FieldTable::default(),
             )
             .await
-            .map(|queue| queue.name().to_string())?;
-
-        Ok((queue_name, channel))
+            .map(|_| ())
+            .map_err(EventError::from)
     }
 }

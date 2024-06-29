@@ -14,6 +14,8 @@ pub enum EventError {
     NotOwner,
     #[error("not a message recipient")]
     NotRecipient,
+    #[error("missing amqp channel")]
+    MissingAmqpChannel,
 
     _AuthError(#[from] AuthError),
     _ChatError(#[from] ChatError),

@@ -12,7 +12,7 @@ use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::try_join;
 
-use model::{Event, WsCtx};
+use model::Event;
 use service::EventService;
 
 use crate::event::error::EventError;
@@ -21,6 +21,7 @@ use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 
 pub mod api;
+mod context;
 pub mod error;
 mod model;
 pub mod service;
@@ -33,11 +34,11 @@ pub(super) async fn handle_socket(
     user_service: UserService,
 ) {
     let (sender, receiver) = ws.split();
-    let ctx = WsCtx::new();
+    let ws_ctx = context::Ws::new();
 
-    let read_task = tokio::spawn(read(ctx.clone(), receiver, event_service.clone()));
+    let read_task = tokio::spawn(read(ws_ctx.clone(), receiver, event_service.clone()));
     let write_task = tokio::spawn(write(
-        ctx.clone(),
+        ws_ctx.clone(),
         sender,
         event_service.clone(),
         user_service.clone(),
@@ -48,11 +49,11 @@ pub(super) async fn handle_socket(
         Err(e) => error!("ws disconnected with error: {}", e),
     }
 
-    remove_online_user(ctx.clone(), user_service).await;
+    remove_online_user(ws_ctx.clone(), user_service).await;
 }
 
 pub(super) async fn read(
-    ctx: WsCtx,
+    ctx: context::Ws,
     mut receiver: SplitStream<WebSocket>,
     event_service: EventService,
 ) {
@@ -91,7 +92,7 @@ pub(super) async fn read(
 }
 
 pub(super) async fn write(
-    ctx: WsCtx,
+    ctx: context::Ws,
     sender: SplitSink<WebSocket, ws::Message>,
     event_service: EventService,
     user_service: UserService,
@@ -123,15 +124,14 @@ pub(super) async fn write(
 
     let sub_queue = MessagesQueue::from(user_info.clone().sub);
 
-    let (consumer_tag, channel, mut notifications_stream) =
-        match event_service.read(&sub_queue).await {
-            Ok(binding) => binding,
-            Err(e) => {
-                error!("Failed to create consumer of notifications: {:?}", e);
-                ctx.close.notify_one();
-                return;
-            }
-        };
+    let mut notifications_stream = match event_service.read(ctx.clone(), &sub_queue).await {
+        Ok(binding) => binding,
+        Err(e) => {
+            error!("Failed to create consumer of notifications: {:?}", e);
+            ctx.close.notify_one();
+            return;
+        }
+    };
 
     let sender = Arc::new(RwLock::new(sender));
     loop {
@@ -141,7 +141,7 @@ pub(super) async fn write(
 
             // push new list of online users every 5 seconds
             _ = sleep(Duration::from_secs(5)) =>
-                notify_about_online_users(&user_info, user_service.clone(), event_service.clone()).await,
+                notify_about_online_users(ctx.clone(), &user_info, user_service.clone(), event_service.clone()).await,
 
             // new notification is received from queue => send it to the client
             item = notifications_stream.next() => {
@@ -154,13 +154,17 @@ pub(super) async fn write(
         }
     }
 
-    match event_service.close_consumer(&consumer_tag, &channel).await {
-        Ok(_) => debug!("Consumer {:?} closed", consumer_tag),
-        Err(e) => error!("Failed to close consumer: {:?}", e),
+    match event_service.close_channel(ctx).await {
+        Ok(_) => debug!("Channel closed"),
+        Err(e) => error!("Failed to close channel: {:?}", e),
     }
 }
 
-async fn handle_text_frame(ctx: WsCtx, content: String, event_service: EventService) -> Result<()> {
+async fn handle_text_frame(
+    ctx: context::Ws,
+    content: String,
+    event_service: EventService,
+) -> Result<()> {
     if let Ok(event) = from_str::<Event>(content.as_str()) {
         return event_service.handle_event(ctx.clone(), event).await;
     }
@@ -185,6 +189,7 @@ async fn send_notification(
 }
 
 async fn notify_about_online_users(
+    ctx: context::Ws,
     user_info: &UserInfo,
     user_service: UserService,
     event_service: EventService,
@@ -192,6 +197,7 @@ async fn notify_about_online_users(
     if let Ok(users) = user_service.get_online_users(user_info.sub.clone()).await {
         if let Err(e) = event_service
             .publish_notification(
+                ctx,
                 &MessagesQueue::from(user_info.sub.clone()),
                 &Notification::UsersOnline { users },
             )
@@ -202,7 +208,7 @@ async fn notify_about_online_users(
     }
 }
 
-async fn add_online_user(ctx: WsCtx, user_service: UserService) {
+async fn add_online_user(ctx: context::Ws, user_service: UserService) {
     if let Some(user_info) = ctx.get_user_info().await {
         debug!("adding to online users: {:?}", user_info.sub.clone());
         if let Err(e) = user_service.add_online_user(user_info.sub).await {
@@ -211,7 +217,7 @@ async fn add_online_user(ctx: WsCtx, user_service: UserService) {
     }
 }
 
-async fn remove_online_user(ctx: WsCtx, user_service: UserService) {
+async fn remove_online_user(ctx: context::Ws, user_service: UserService) {
     if let Some(user_info) = ctx.get_user_info().await {
         debug!("removing from online users: {:?}", user_info.sub.clone());
         if let Err(e) = user_service.remove_online_user(user_info.sub).await {
