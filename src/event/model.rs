@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::fmt::Display;
 use std::pin::Pin;
 
 use futures::Stream;
@@ -12,25 +13,16 @@ use crate::user::model::UserSub;
 pub(crate) type NotificationStream =
     Pin<Box<dyn Stream<Item = crate::event::Result<Notification>> + Send>>;
 
-pub trait QueueName {
-    fn to_string(&self) -> String;
+#[derive(Clone)]
+pub enum Queue {
+    Messages(UserSub),
 }
 
-pub struct MessagesQueue {
-    name: String,
-}
-
-impl From<UserSub> for MessagesQueue {
-    fn from(user: UserSub) -> Self {
-        Self {
-            name: user.to_string(),
+impl Display for Queue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Queue::Messages(name) => write!(f, "messages:{}", name),
         }
-    }
-}
-
-impl QueueName for MessagesQueue {
-    fn to_string(&self) -> String {
-        format!("messages:{}", self.name)
     }
 }
 

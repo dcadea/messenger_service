@@ -16,7 +16,7 @@ use model::Event;
 use service::EventService;
 
 use crate::event::error::EventError;
-use crate::event::model::{MessagesQueue, Notification};
+use crate::event::model::{Notification, Queue};
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 
@@ -97,24 +97,21 @@ pub(super) async fn write(
     event_service: EventService,
     user_service: UserService,
 ) {
-    loop {
-        // wait for login notification or close
-        tokio::select! {
-            // close is notified => stop 'write' task
-            _ = ctx.close.notified() => return,
+    // wait for login notification or close
+    tokio::select! {
+        // close is notified => stop 'write' task
+        _ = ctx.close.notified() => return,
 
-            // didn't receive login notification within 5 seconds => stop 'write' task
-            _ = sleep(Duration::from_secs(5)) => {
-                ctx.close.notify_one(); // notify 'read' task to stop
-                return;
-            },
+        // didn't receive login notification within 5 seconds => stop 'write' task
+        _ = sleep(Duration::from_secs(5)) => {
+            ctx.close.notify_one(); // notify 'read' task to stop
+            return;
+        },
 
-            // logged in => break the wait loop and start writing
-            _ = ctx.login.notified() => {
-                add_online_user(ctx.clone(), user_service.clone()).await;
-                break
-            },
-        }
+        // logged in => break the wait loop and start writing
+        _ = ctx.login.notified() => {
+            add_online_user(ctx.clone(), user_service.clone()).await;
+        },
     }
 
     let user_info = ctx
@@ -122,9 +119,9 @@ pub(super) async fn write(
         .await
         .expect("user info has to be set when logged in");
 
-    let sub_queue = MessagesQueue::from(user_info.clone().sub);
+    let messages_queue = Queue::Messages(user_info.clone().sub);
 
-    let mut notifications_stream = match event_service.read(ctx.clone(), &sub_queue).await {
+    let mut notifications_stream = match event_service.read(ctx.clone(), &messages_queue).await {
         Ok(binding) => binding,
         Err(e) => {
             error!("Failed to create consumer of notifications: {:?}", e);
@@ -198,7 +195,7 @@ async fn notify_about_online_users(
         if let Err(e) = event_service
             .publish_notification(
                 ctx,
-                &MessagesQueue::from(user_info.sub.clone()),
+                &Queue::Messages(user_info.sub.clone()),
                 &Notification::UsersOnline { users },
             )
             .await

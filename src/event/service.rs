@@ -18,7 +18,7 @@ use crate::message::service::MessageService;
 use crate::user::service::UserService;
 
 use super::error::EventError;
-use super::model::{Event, MessagesQueue, Notification, NotificationStream, QueueName};
+use super::model::{Event, Notification, NotificationStream, Queue};
 use super::{context, Result};
 
 #[derive(Clone)]
@@ -89,8 +89,8 @@ impl EventService {
                         ))
                         .await?;
 
-                    let owner_queue: MessagesQueue = owner.into();
-                    let recipient_queue: MessagesQueue = recipient.into();
+                    let owner_messages = Queue::Messages(owner);
+                    let recipient_messages = Queue::Messages(recipient);
                     let notification = Notification::MessageCreated {
                         message: MessageDto::from(&message),
                     };
@@ -98,8 +98,8 @@ impl EventService {
                     use futures::TryFutureExt;
 
                     tokio::try_join!(
-                        self.publish_notification(ctx.clone(), &owner_queue, &notification),
-                        self.publish_notification(ctx, &recipient_queue, &notification),
+                        self.publish_notification(ctx.clone(), &owner_messages, &notification),
+                        self.publish_notification(ctx, &recipient_messages, &notification),
                         self.chat_service
                             .update_last_message(&message)
                             .map_err(EventError::from)
@@ -114,13 +114,13 @@ impl EventService {
 
                     self.message_service.update(&id, &text).await?;
 
-                    let owner_queue: MessagesQueue = message.owner.into();
-                    let recipient_queue: MessagesQueue = message.recipient.into();
+                    let owner_messages = Queue::Messages(message.owner);
+                    let recipient_messages = Queue::Messages(message.recipient);
                     let notification = Notification::MessageUpdated { id, text };
 
                     tokio::try_join!(
-                        self.publish_notification(ctx.clone(), &owner_queue, &notification),
-                        self.publish_notification(ctx, &recipient_queue, &notification)
+                        self.publish_notification(ctx.clone(), &owner_messages, &notification),
+                        self.publish_notification(ctx, &recipient_messages, &notification)
                     )
                     .map(|_| ())
                 }
@@ -131,13 +131,13 @@ impl EventService {
                     }
                     self.message_service.delete(&id).await?;
 
-                    let owner_queue: MessagesQueue = message.owner.into();
-                    let recipient_queue: MessagesQueue = message.recipient.into();
+                    let owner_messages = Queue::Messages(message.owner);
+                    let recipient_messages = Queue::Messages(message.recipient);
                     let notification = Notification::MessageDeleted { id };
 
                     tokio::try_join!(
-                        self.publish_notification(ctx.clone(), &owner_queue, &notification),
-                        self.publish_notification(ctx, &recipient_queue, &notification)
+                        self.publish_notification(ctx.clone(), &owner_messages, &notification),
+                        self.publish_notification(ctx, &recipient_messages, &notification)
                     )
                     .map(|_| ())
                 }
@@ -148,9 +148,13 @@ impl EventService {
                     }
                     self.message_service.mark_as_seen(&id).await?;
 
-                    let owner_queue: MessagesQueue = message.owner.into();
-                    self.publish_notification(ctx, &owner_queue, &Notification::MessageSeen { id })
-                        .await
+                    let owner_messages = Queue::Messages(message.owner);
+                    self.publish_notification(
+                        ctx,
+                        &owner_messages,
+                        &Notification::MessageSeen { id },
+                    )
+                    .await
                 }
             },
         }
@@ -158,7 +162,7 @@ impl EventService {
 }
 
 impl EventService {
-    pub async fn read(&self, ctx: context::Ws, q: &impl QueueName) -> Result<NotificationStream> {
+    pub async fn read(&self, ctx: context::Ws, q: &Queue) -> Result<NotificationStream> {
         self.ensure_queue_exists(ctx.clone(), q).await?;
 
         let consumer = ctx
@@ -195,7 +199,7 @@ impl EventService {
     pub async fn publish_notification(
         &self,
         ctx: context::Ws,
-        q: &impl QueueName,
+        q: &Queue,
         notification: &Notification,
     ) -> Result<()> {
         let payload = serde_json::to_vec(notification)?;
@@ -209,7 +213,7 @@ impl EventService {
         conn.create_channel().await.map_err(EventError::from)
     }
 
-    async fn publish(&self, ctx: context::Ws, q: &impl QueueName, payload: &[u8]) -> Result<()> {
+    async fn publish(&self, ctx: context::Ws, q: &Queue, payload: &[u8]) -> Result<()> {
         self.ensure_queue_exists(ctx.clone(), q).await?;
         ctx.get_channel()
             .await?
@@ -224,7 +228,7 @@ impl EventService {
         Ok(())
     }
 
-    async fn ensure_queue_exists(&self, ctx: context::Ws, q: &impl QueueName) -> Result<()> {
+    async fn ensure_queue_exists(&self, ctx: context::Ws, q: &Queue) -> Result<()> {
         ctx.get_channel()
             .await?
             .queue_declare(
