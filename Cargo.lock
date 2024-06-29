@@ -1705,9 +1705,9 @@ dependencies = [
 
 [[package]]
 name = "log"
-version = "0.4.21"
+version = "0.4.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
+checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
 name = "lru-cache"
@@ -1815,9 +1815,9 @@ dependencies = [
 
 [[package]]
 name = "mongodb"
-version = "3.0.0-beta"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08ef345b7227be968cfdfb868520505af2680185193b21652dc39972118348b5"
+checksum = "bb4af699cbb12a221e978134999b16cbf030d964c3a7cd6c4af2584734190e58"
 dependencies = [
  "async-trait",
  "base64 0.13.1",
@@ -1863,9 +1863,9 @@ dependencies = [
 
 [[package]]
 name = "mongodb-internal-macros"
-version = "3.0.0-beta"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ce89fcbef9cdd0342e84db579469576d7a89b3b6b12ddc5be94f7579cba44ff"
+checksum = "1159486b5e1993138c385369c3c46f5608cb0b1c53734e503538366f3c4cedcc"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2748,9 +2748,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.117"
+version = "1.0.118"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "455182ea6142b14f93f4bc5320a2b31c1f266b66a4a5c858b013302a5d8cbfc3"
+checksum = "d947f6b3163d8857ea16c4fa0dd4840d52f3041039a85decd46867eb1abef2e4"
 dependencies = [
  "indexmap 2.2.5",
  "itoa",
@@ -3570,9 +3570,9 @@ checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
 
 [[package]]
 name = "uuid"
-version = "1.9.0"
+version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ea73390fe27785838dcbf75b91b1d84799e28f1ce71e6f372a5dc2200c80de5"
+checksum = "5de17fd2f7da591098415cff336e12965a28061ddace43b59cb3c430179c9439"
 dependencies = [
  "getrandom",
  "serde",
