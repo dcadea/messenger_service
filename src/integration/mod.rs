@@ -101,13 +101,16 @@ impl Default for Config {
     }
 }
 
-pub fn init_redis(config: &Config) -> Result<RwLock<redis::Connection>> {
+pub async fn init_redis(config: &Config) -> Result<redis::aio::MultiplexedConnection> {
     let host = config.redis_host.clone();
     let port = config.redis_port.clone();
 
     redis::Client::open(format!("redis://{}:{}", host, port))?
-        .get_connection_with_timeout(Duration::from_secs(2))
-        .map(|con| RwLock::new(con))
+        .get_multiplexed_async_connection_with_timeouts(
+            Duration::from_secs(2),
+            Duration::from_secs(5),
+        )
+        .await
         .map_err(IntegrationError::from)
 }
 

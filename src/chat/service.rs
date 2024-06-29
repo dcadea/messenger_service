@@ -1,9 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use tokio::sync::RwLock;
-
-use redis::Commands;
+use redis::AsyncCommands;
 
 use crate::chat::error::ChatError;
 use crate::integration::model::CacheKey;
@@ -20,19 +18,19 @@ const CHAT_TTL: u64 = 3600;
 #[derive(Clone)]
 pub struct ChatService {
     repository: Arc<ChatRepository>,
-    redis_con: Arc<RwLock<redis::Connection>>,
+    redis_con: redis::aio::MultiplexedConnection,
     link_factory: Arc<LinkFactory>,
 }
 
 impl ChatService {
     pub fn new(
         repository: ChatRepository,
-        redis_con: Arc<RwLock<redis::Connection>>,
+        redis_con: redis::aio::MultiplexedConnection,
         app_endpoints: AppEndpoints,
     ) -> Self {
         Self {
             repository: Arc::new(repository),
-            redis_con: redis_con.clone(),
+            redis_con,
             link_factory: Arc::new(LinkFactory::new(app_endpoints.api())),
         }
     }
@@ -113,17 +111,17 @@ impl ChatService {
 // cache operations
 impl ChatService {
     pub async fn find_members(&self, chat_id: ChatId) -> Result<HashSet<UserSub>> {
-        let mut con = self.redis_con.write().await;
+        let mut con = self.redis_con.clone();
 
         let cache_key = CacheKey::Chat(chat_id);
-        let members: Option<HashSet<UserSub>> = con.get(cache_key.clone())?;
+        let members: Option<HashSet<UserSub>> = con.get(cache_key.clone()).await?;
 
         match members {
             Some(members) => Ok(members),
             None => {
                 let chat = self.repository.find_by_id(&chat_id).await?;
                 let members = chat.members.to_set();
-                con.set_ex(cache_key, members.clone(), CHAT_TTL)?;
+                let _: () = con.set_ex(cache_key, members.clone(), CHAT_TTL).await?;
                 Ok(members)
             }
         }

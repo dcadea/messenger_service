@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::model::AppEndpoints;
 use axum::extract::FromRef;
 
@@ -36,7 +34,7 @@ impl AppState {
         let app_endpoints = AppEndpoints::new(&address, &port, "api/v1");
 
         let database = integration::init_mongodb(&config).await?;
-        let redis_con = Arc::new(integration::init_redis(&config)?);
+        let redis_con = integration::init_redis(&config).await?;
         let rabbitmq_con = integration::init_rabbitmq(&config).await?;
 
         let auth_service = AuthService::try_new(&config)?;

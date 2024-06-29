@@ -1,7 +1,7 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
-use redis::Commands;
-use tokio::sync::RwLock;
+use redis::AsyncCommands;
 
 use crate::integration::model::CacheKey;
 use crate::user::model::{User, UserInfo, UserSub};
@@ -13,14 +13,14 @@ const USER_INFO_TTL: u64 = 3600;
 
 #[derive(Clone)]
 pub struct UserService {
-    redis_con: Arc<RwLock<redis::Connection>>,
+    redis_con: redis::aio::MultiplexedConnection,
     repository: Arc<UserRepository>,
 }
 
 impl UserService {
-    pub fn new(redis_con: Arc<RwLock<redis::Connection>>, repository: UserRepository) -> Self {
+    pub fn new(redis_con: redis::aio::MultiplexedConnection, repository: UserRepository) -> Self {
         Self {
-            redis_con: redis_con.clone(),
+            redis_con,
             repository: Arc::new(repository),
         }
     }
@@ -53,35 +53,36 @@ impl UserService {
 // cache operations
 impl UserService {
     pub async fn add_online_user(&self, sub: UserSub) -> Result<()> {
-        let mut con = self.redis_con.write().await;
-        let _: () = con.sadd(CacheKey::UsersOnline, sub)?;
+        let mut con = self.redis_con.clone();
+        let _: () = con.sadd(CacheKey::UsersOnline, sub).await?;
         Ok(())
     }
 
-    pub async fn get_online_users(&self, sub: UserSub) -> Result<Vec<UserSub>> {
-        let mut con = self.redis_con.write().await;
-        let online_users: Vec<UserSub> =
-            con.sinter(&[CacheKey::UsersOnline, CacheKey::Friends(sub)])?;
+    pub async fn get_online_users(&self, sub: UserSub) -> Result<HashSet<UserSub>> {
+        let mut con = self.redis_con.clone();
+        let online_users: HashSet<UserSub> = con
+            .sinter(&[CacheKey::UsersOnline, CacheKey::Friends(sub)])
+            .await?;
         Ok(online_users)
     }
 
     pub async fn remove_online_user(&self, sub: UserSub) -> Result<()> {
-        let mut con = self.redis_con.write().await;
-        let _: () = con.srem(CacheKey::UsersOnline, sub)?;
+        let mut con = self.redis_con.clone();
+        let _: () = con.srem(CacheKey::UsersOnline, sub).await?;
         Ok(())
     }
 
     async fn cache_user_info(&self, user_info: &UserInfo) -> Result<()> {
-        let mut con = self.redis_con.write().await;
+        let mut con = self.redis_con.clone();
         let cache_key = CacheKey::UserInfo(user_info.sub.clone());
-        let _: () = con.set_ex(cache_key, user_info, USER_INFO_TTL)?;
+        let _: () = con.set_ex(cache_key, user_info, USER_INFO_TTL).await?;
         Ok(())
     }
 
     async fn find_cached_user_info(&self, sub: UserSub) -> Option<UserInfo> {
-        let mut con = self.redis_con.write().await;
+        let mut con = self.redis_con.clone();
         let cache_key = CacheKey::UserInfo(sub);
-        let cached_user_info: Option<UserInfo> = con.get(cache_key).ok();
+        let cached_user_info: Option<UserInfo> = con.get(cache_key).await.ok();
         cached_user_info
     }
 }
