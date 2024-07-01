@@ -139,7 +139,7 @@ mod tests {
             }
         }
 
-        pub async fn with_redis(&self, redis_container: ContainerAsync<Redis>) -> Self {
+        pub async fn with_redis(&self, redis_container: &ContainerAsync<Redis>) -> Self {
             let redis_config = redis::Config::new(
                 redis_container.get_host().await.unwrap().to_string(),
                 redis_container.get_host_port_ipv4(6379).await.unwrap(),
@@ -154,7 +154,7 @@ mod tests {
             }
         }
 
-        pub async fn with_mongo(&self, mongo_container: ContainerAsync<Mongo>) -> Self {
+        pub async fn with_mongo(&self, mongo_container: &ContainerAsync<Mongo>) -> Self {
             let mongo_config = mongo::Config::new(
                 mongo_container.get_host().await.unwrap().to_string(),
                 mongo_container.get_host_port_ipv4(27017).await.unwrap(),
@@ -170,7 +170,7 @@ mod tests {
             }
         }
 
-        pub async fn with_amqp(&self, amqp_container: ContainerAsync<RabbitMq>) -> Self {
+        pub async fn with_amqp(&self, amqp_container: &ContainerAsync<RabbitMq>) -> Self {
             let amqp_config = amqp::Config::new(
                 amqp_container.get_host().await.unwrap().to_string(),
                 amqp_container.get_host_port_ipv4(5672).await.unwrap(),

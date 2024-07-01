@@ -105,11 +105,11 @@ mod tests {
             .unwrap();
 
         let test_config = integration::Config::test()
-            .with_redis(redis_container)
+            .with_redis(&redis_container)
             .await
-            .with_mongo(mongo_container)
+            .with_mongo(&mongo_container)
             .await
-            .with_amqp(amqp_container)
+            .with_amqp(&amqp_container)
             .await;
 
         let app_state = AppState::init(test_config).await.unwrap();
