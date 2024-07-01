@@ -13,9 +13,6 @@ use crate::integration::error::IntegrationError;
 pub mod error;
 pub mod model;
 
-#[cfg(test)]
-mod tests;
-
 type Result<T> = std::result::Result<T, IntegrationError>;
 
 #[derive(Clone)]
@@ -140,6 +137,13 @@ pub mod mongo {
         db: String,
     }
 
+    #[cfg(test)]
+    impl Config {
+        pub fn new(host: String, port: u16, db: String) -> Self {
+            Self { host, port, db }
+        }
+    }
+
     impl Default for Config {
         fn default() -> Self {
             Self {
@@ -249,3 +253,5 @@ pub mod idp {
         }
     }
 }
+
+
