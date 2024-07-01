@@ -18,14 +18,14 @@ const CHAT_TTL: u64 = 3600;
 #[derive(Clone)]
 pub struct ChatService {
     repository: Arc<ChatRepository>,
-    redis_con: redis::aio::MultiplexedConnection,
+    redis_con: redis::aio::ConnectionManager,
     link_factory: Arc<LinkFactory>,
 }
 
 impl ChatService {
     pub fn new(
         repository: ChatRepository,
-        redis_con: redis::aio::MultiplexedConnection,
+        redis_con: redis::aio::ConnectionManager,
         app_endpoints: AppEndpoints,
     ) -> Self {
         Self {

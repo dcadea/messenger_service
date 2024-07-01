@@ -13,12 +13,12 @@ const USER_INFO_TTL: u64 = 3600;
 
 #[derive(Clone)]
 pub struct UserService {
-    redis_con: redis::aio::MultiplexedConnection,
+    redis_con: redis::aio::ConnectionManager,
     repository: Arc<UserRepository>,
 }
 
 impl UserService {
-    pub fn new(redis_con: redis::aio::MultiplexedConnection, repository: UserRepository) -> Self {
+    pub fn new(redis_con: redis::aio::ConnectionManager, repository: UserRepository) -> Self {
         Self {
             redis_con,
             repository: Arc::new(repository),

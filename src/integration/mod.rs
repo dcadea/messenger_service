@@ -4,10 +4,11 @@ use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::Duration;
 
-use crate::integration::error::IntegrationError;
 use dotenv::dotenv;
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, WriteLogger};
+
+use crate::integration::error::IntegrationError;
 
 pub mod error;
 pub mod model;
@@ -72,9 +73,9 @@ impl Default for Config {
 
         Self {
             socket,
-            redis: redis::Config::default(),
-            mongo: mongo::Config::default(),
-            amqp: amqp::Config::default(),
+            redis: redis::Config::env().unwrap_or_default(),
+            mongo: mongo::Config::env().unwrap_or_default(),
+            amqp: amqp::Config::env().unwrap_or_default(),
             idp: idp_config,
         }
     }
@@ -89,7 +90,9 @@ pub fn init_http_client() -> Result<reqwest::Client> {
 }
 
 pub mod redis {
-    use std::time::Duration;
+    use std::env;
+
+    use crate::integration::Result;
 
     #[derive(Clone)]
     pub struct Config {
@@ -103,22 +106,21 @@ pub mod redis {
                 host: String::from("127.0.0.1"),
                 port: 6379,
             }
-
-            // TODO
-            // redis_host: env::var("REDIS_HOST").unwrap_or("127.0.0.1".into()),
-            // redis_port: env::var("REDIS_PORT").unwrap_or("6379".into()),
         }
     }
 
-    pub async fn init(
-        config: &Config,
-    ) -> crate::integration::Result<redis::aio::MultiplexedConnection> {
+    impl Config {
+        pub fn env() -> Result<Self> {
+            let host = env::var("REDIS_HOST")?;
+            let port = env::var("REDIS_PORT")?.parse()?;
+            Ok(Self { host, port })
+        }
+    }
+
+    pub async fn init(config: &Config) -> Result<redis::aio::ConnectionManager> {
         let redis_con =
             redis::Client::open(format!("redis://{}:{}", config.host.clone(), config.port))?
-                .get_multiplexed_async_connection_with_timeouts(
-                    Duration::from_secs(2),
-                    Duration::from_secs(5),
-                )
+                .get_connection_manager()
                 .await?;
 
         Ok(redis_con)
@@ -126,7 +128,10 @@ pub mod redis {
 }
 
 pub mod mongo {
+    use std::env;
     use std::time::Duration;
+
+    use crate::integration::Result;
 
     #[derive(Clone)]
     pub struct Config {
@@ -143,16 +148,18 @@ pub mod mongo {
                 db: String::from("messenger"),
             }
         }
-
-        // TODO
-        // mongo_username: env::var("MONGO_USERNAME").unwrap_or("root".into()),
-        // mongo_password: env::var("MONGO_PASSWORD").unwrap_or("example".into()),
-        // mongo_host: env::var("MONGO_HOST").unwrap_or("127.0.0.1".into()),
-        // mongo_port: env::var("MONGO_PORT").unwrap_or("27017".into()),
-        // mongo_db: env::var("MONGO_DB").unwrap_or("messenger".into()),
     }
 
-    pub async fn init(config: &Config) -> crate::integration::Result<mongodb::Database> {
+    impl Config {
+        pub fn env() -> Result<Self> {
+            let host = env::var("MONGO_HOST")?;
+            let port = env::var("MONGO_PORT")?.parse()?;
+            let db = env::var("MONGO_DB")?;
+            Ok(Self { host, port, db })
+        }
+    }
+
+    pub async fn init(config: &Config) -> Result<mongodb::Database> {
         let options = mongodb::options::ClientOptions::builder()
             .hosts(vec![mongodb::options::ServerAddress::Tcp {
                 host: config.host.clone(),
@@ -170,8 +177,12 @@ pub mod mongo {
 }
 
 pub mod amqp {
+    use std::env;
+
     use lapin::uri::{AMQPAuthority, AMQPQueryString, AMQPScheme, AMQPUri, AMQPUserInfo};
     use tokio::sync::RwLock;
+
+    use crate::integration::Result;
 
     #[derive(Clone)]
     pub struct Config {
@@ -186,13 +197,17 @@ pub mod amqp {
                 port: 5672,
             }
         }
-
-        // TODO
-        // amqp_host: env::var("AMQP_HOST").unwrap_or("127.0.0.1".into()),
-        // amqp_port: env::var("AMQP_PORT").unwrap_or("5672".into()),
     }
 
-    pub async fn init(config: &Config) -> crate::integration::Result<RwLock<lapin::Connection>> {
+    impl Config {
+        pub fn env() -> Result<Self> {
+            let host = env::var("AMQP_HOST")?;
+            let port = env::var("AMQP_PORT")?.parse()?;
+            Ok(Self { host, port })
+        }
+    }
+
+    pub async fn init(config: &Config) -> Result<RwLock<lapin::Connection>> {
         let amqp_uri = AMQPUri {
             scheme: AMQPScheme::AMQP,
             authority: AMQPAuthority {
