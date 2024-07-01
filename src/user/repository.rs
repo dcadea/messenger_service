@@ -55,7 +55,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_insert_user() {
-        let mongo = Mongo::default()
+        let mongo = Mongo::default() // TODO: remove
             .with_container_name("mongo-test")
             .start()
             .await

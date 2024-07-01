@@ -1,5 +1,6 @@
-use crate::model::AppEndpoints;
 use axum::extract::FromRef;
+
+use crate::model::AppEndpoints;
 
 use super::auth::service::AuthService;
 use super::chat::repository::ChatRepository;
@@ -25,9 +26,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub async fn init() -> Result<Self> {
-        let config = integration::Config::default();
-
+    pub async fn init(config: integration::Config) -> Result<Self> {
         let socket = config.socket;
         let address = socket.ip().to_string();
         let port = socket.port().to_string();

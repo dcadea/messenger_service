@@ -33,3 +33,14 @@ pub async fn init(config: &Config) -> Result<redis::aio::ConnectionManager> {
 
     Ok(redis_con)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::integration::redis::Config;
+
+    impl Config {
+        pub fn new(host: String, port: u16) -> Self {
+            Self { host, port }
+        }
+    }
+}

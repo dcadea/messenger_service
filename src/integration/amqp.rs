@@ -46,3 +46,14 @@ pub async fn init(config: &Config) -> Result<RwLock<lapin::Connection>> {
 
     Ok(con)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::integration::amqp::Config;
+
+    impl Config {
+        pub fn new(host: String, port: u16) -> Self {
+            Self { host, port }
+        }
+    }
+}
