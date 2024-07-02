@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use futures::TryFutureExt;
+
 use redis::AsyncCommands;
 
 use crate::chat::error::ChatError;
@@ -13,7 +15,7 @@ use super::model::{Chat, ChatDto, ChatId, ChatRequest, Members};
 use super::repository::ChatRepository;
 use super::Result;
 
-const CHAT_TTL: u64 = 3600;
+const CHAT_TTL: i64 = 3600;
 
 #[derive(Clone)]
 pub struct ChatService {
@@ -114,14 +116,19 @@ impl ChatService {
         let mut con = self.redis_con.clone();
 
         let cache_key = CacheKey::Chat(chat_id);
-        let members: Option<HashSet<UserSub>> = con.get(cache_key.clone()).await?;
+        let members: Option<HashSet<UserSub>> = con.smembers(cache_key.clone()).await?;
 
         match members {
             Some(members) => Ok(members),
             None => {
                 let chat = self.repository.find_by_id(&chat_id).await?;
                 let members = chat.members.to_set();
-                let _: () = con.set_ex(cache_key, members.clone(), CHAT_TTL).await?;
+
+                let _: () = con
+                    .clone()
+                    .sadd(cache_key.clone(), members.clone())
+                    .and_then(|_: ()| con.expire(cache_key.clone(), CHAT_TTL))
+                    .await?;
                 Ok(members)
             }
         }
