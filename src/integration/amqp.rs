@@ -48,12 +48,31 @@ pub async fn init(config: &Config) -> Result<RwLock<lapin::Connection>> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
+    use testcontainers_modules::rabbitmq::RabbitMq;
+    use testcontainers_modules::testcontainers::{ContainerAsync, ImageExt};
+    use testcontainers_modules::testcontainers::runners::AsyncRunner;
     use crate::integration::amqp::Config;
 
-    impl Config {
-        pub fn new(host: String, port: u16) -> Self {
-            Self { host, port }
+    pub struct TestContainer {
+        amqp: ContainerAsync<RabbitMq>,
+        pub config: Config,
+    }
+
+    impl TestContainer {
+        pub async fn init() -> Self {
+            let amqp = RabbitMq::default()
+                .with_container_name("awg_test_amqp")
+                .start()
+                .await
+                .unwrap();
+
+            let config = Config {
+                host: amqp.get_host().await.unwrap().to_string(),
+                port: amqp.get_host_port_ipv4(5672).await.unwrap(),
+            };
+
+            Self { amqp, config }
         }
     }
 }

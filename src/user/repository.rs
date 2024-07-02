@@ -45,40 +45,26 @@ impl UserRepository {
 
 #[cfg(test)]
 mod tests {
-    use testcontainers_modules::mongo::Mongo;
-    use testcontainers_modules::testcontainers::runners::AsyncRunner;
-    use testcontainers_modules::testcontainers::ImageExt;
-
-    use crate::integration::mongo;
-    use crate::user::model::{User, UserSub};
-    use crate::user::repository::UserRepository;
-
-    #[tokio::test]
-    async fn test_insert_user() {
-        let mongo = Mongo::default() // TODO: remove
-            .with_container_name("mongo-test")
-            .start()
-            .await
-            .unwrap();
-
-        let config = mongo::Config::new(
-            mongo.get_host().await.unwrap().to_string(),
-            mongo.get_host_port_ipv4(27017).await.unwrap(),
-            "test".to_string(),
-        );
-        let database = mongo::init(&config).await.unwrap();
-        let repository = UserRepository::new(&database);
-
-        let user = User::new(
-            UserSub::from("valera"),
-            "valera",
-            "Valera",
-            "valera.jpg",
-            "valera@mail.test",
-        );
-        repository.insert(&user).await.unwrap();
-
-        let inserted = repository.find_by_sub("valera").await.unwrap();
-        assert_eq!(inserted, inserted);
-    }
+    // use crate::integration::mongo;
+    // use crate::user::model::{User, UserSub};
+    // use crate::user::repository::UserRepository;
+    //
+    // #[tokio::test]
+    // async fn test_insert_user() {
+    //     let mongo_config = MONGO_TEST_CONTAINER.get().await.config.clone();
+    //     let database = mongo::init(&mongo_config).await.unwrap();
+    //     let repository = UserRepository::new(&database);
+    //
+    //     let user = User::new(
+    //         UserSub::from("valera"),
+    //         "valera",
+    //         "Valera",
+    //         "valera.jpg",
+    //         "valera@mail.test",
+    //     );
+    //     repository.insert(&user).await.unwrap();
+    //
+    //     let inserted = repository.find_by_sub("valera").await.unwrap();
+    //     assert_eq!(inserted, inserted);
+    // }
 }

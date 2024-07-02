@@ -1,7 +1,7 @@
 use axum::http::StatusCode;
 use axum::middleware::from_fn_with_state;
-use axum::routing::get;
 use axum::Router;
+use axum::routing::get;
 use log::error;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
@@ -74,45 +74,17 @@ fn app(app_state: AppState) -> Router {
 
 #[cfg(test)]
 mod tests {
-    use axum::http::Request;
-    use testcontainers_modules::mongo::Mongo;
-    use testcontainers_modules::rabbitmq::RabbitMq;
-    use testcontainers_modules::redis::Redis;
-    use testcontainers_modules::testcontainers::runners::AsyncRunner;
-    use testcontainers_modules::testcontainers::ImageExt;
+    use axum::http::{Request, StatusCode};
     use tower::ServiceExt;
 
-    use super::*;
+    use crate::{app, integration};
+    use crate::state::AppState;
 
     #[tokio::test]
     async fn test_health() {
-        let redis_container = Redis::default()
-            .with_container_name("awg_test_redis")
-            .start()
-            .await
-            .unwrap();
+        let test_config = integration::Config::test();
 
-        let mongo_container = Mongo::default()
-            .with_container_name("awg_test_mongo")
-            .start()
-            .await
-            .unwrap();
-
-        let amqp_container = RabbitMq::default()
-            .with_container_name("awg_test_rabbitmq")
-            .start()
-            .await
-            .unwrap();
-
-        let test_config = integration::Config::test()
-            .with_redis(&redis_container)
-            .await
-            .with_mongo(&mongo_container)
-            .await
-            .with_amqp(&amqp_container)
-            .await;
-
-        let app_state = AppState::init(test_config).await.unwrap();
+        let app_state = AppState::init(test_config.await).await.unwrap();
         let router = app(app_state);
 
         let response = router
