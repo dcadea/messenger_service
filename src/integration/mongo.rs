@@ -43,34 +43,3 @@ pub async fn init(config: &Config) -> Result<mongodb::Database> {
 
     Ok(db)
 }
-
-#[cfg(test)]
-pub mod tests {
-    use testcontainers_modules::mongo::Mongo;
-    use testcontainers_modules::testcontainers::{ContainerAsync, ImageExt};
-    use testcontainers_modules::testcontainers::runners::AsyncRunner;
-    use crate::integration::mongo::Config;
-
-    pub struct TestContainer {
-        mongo: ContainerAsync<Mongo>,
-        pub config: Config,
-    }
-
-    impl TestContainer {
-        pub async fn init() -> Self {
-            let mongo = Mongo::default()
-                .with_container_name("awg_test_mongo")
-                .start()
-                .await
-                .unwrap();
-
-            let config = Config {
-                host: mongo.get_host().await.unwrap().to_string(),
-                port: mongo.get_host_port_ipv4(27017).await.unwrap(),
-                db: String::from("test_messenger"),
-            };
-
-            Self { mongo, config }
-        }
-    }
-}

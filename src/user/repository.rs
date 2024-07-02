@@ -42,29 +42,3 @@ impl UserRepository {
         cursor.try_collect().await.map_err(UserError::from)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    // use crate::integration::mongo;
-    // use crate::user::model::{User, UserSub};
-    // use crate::user::repository::UserRepository;
-    //
-    // #[tokio::test]
-    // async fn test_insert_user() {
-    //     let mongo_config = MONGO_TEST_CONTAINER.get().await.config.clone();
-    //     let database = mongo::init(&mongo_config).await.unwrap();
-    //     let repository = UserRepository::new(&database);
-    //
-    //     let user = User::new(
-    //         UserSub::from("valera"),
-    //         "valera",
-    //         "Valera",
-    //         "valera.jpg",
-    //         "valera@mail.test",
-    //     );
-    //     repository.insert(&user).await.unwrap();
-    //
-    //     let inserted = repository.find_by_sub("valera").await.unwrap();
-    //     assert_eq!(inserted, inserted);
-    // }
-}

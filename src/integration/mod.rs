@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use dotenv::dotenv;
 use log::LevelFilter;
-use simplelog::{ColorChoice, CombinedLogger, TerminalMode, TermLogger, WriteLogger};
+use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, WriteLogger};
 
 use crate::integration::error::IntegrationError;
 
@@ -72,7 +72,6 @@ impl Default for Config {
                 .collect::<Vec<String>>(),
         );
 
-        // FIXME: use testcontainers instead of env configs
         Self {
             socket,
             redis: redis::Config::env().unwrap_or_default(),
@@ -89,50 +88,4 @@ pub fn init_http_client() -> Result<reqwest::Client> {
         .timeout(Duration::from_secs(5))
         .build()
         .map_err(IntegrationError::from)
-}
-
-#[cfg(test)]
-pub mod tests {
-    use std::net::SocketAddr;
-
-    use log::LevelFilter;
-    use simplelog::{ColorChoice, CombinedLogger, TerminalMode, TermLogger};
-
-    use crate::integration::{amqp, idp, mongo, redis, Config};
-
-    impl Config {
-        pub async fn test() -> Self {
-            let socket: SocketAddr = "127.0.0.1:8001".parse().unwrap();
-
-            let level = LevelFilter::Debug;
-            CombinedLogger::init(vec![TermLogger::new(
-                level,
-                simplelog::Config::default(),
-                TerminalMode::Mixed,
-                ColorChoice::Auto,
-            )])
-                .unwrap();
-
-            // TODO: mock it
-            let idp_config = idp::Config::new(
-                String::from("https://dcadea.auth0.com/"),
-                vec![String::from("https://dcadea.auth0.com/api/v1/")],
-                vec![
-                    String::from("iss"),
-                    String::from("sub"),
-                    String::from("aud"),
-                    String::from("exp"),
-                    String::from("permissions"),
-                ],
-            );
-
-            Self {
-                socket,
-                redis: redis::Config::default(),
-                mongo: mongo::Config::default(),
-                amqp: amqp::Config::default(),
-                idp: idp_config,
-            }
-        }
-    }
 }

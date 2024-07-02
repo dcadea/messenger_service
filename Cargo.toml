@@ -30,5 +30,3 @@ jsonwebtoken = "9.3.0"
 mongodb = "3.0.0"
 redis = { version = "0.25.4", features = ["connection-manager", "tokio-comp", "json"] }
 lapin = "2.3.4"
-
-testcontainers-modules = { version = "0.7.1", features = ["mongo", "rabbitmq", "redis"] }

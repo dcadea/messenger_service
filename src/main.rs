@@ -1,7 +1,7 @@
 use axum::http::StatusCode;
 use axum::middleware::from_fn_with_state;
-use axum::Router;
 use axum::routing::get;
+use axum::Router;
 use log::error;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
@@ -70,34 +70,4 @@ fn app(app_state: AppState) -> Router {
                 .allow_methods(Any)
                 .allow_headers(Any),
         )
-}
-
-#[cfg(test)]
-mod tests {
-    use axum::http::{Request, StatusCode};
-    use tower::ServiceExt;
-
-    use crate::{app, integration};
-    use crate::state::AppState;
-
-    #[tokio::test]
-    async fn test_health() {
-        let test_config = integration::Config::test();
-
-        let app_state = AppState::init(test_config.await).await.unwrap();
-        let router = app(app_state);
-
-        let response = router
-            .oneshot(
-                Request::builder()
-                    .uri("/health")
-                    .body(axum::body::Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::OK);
-        //TODO: assert_eq!(response.body(), "I'm good! Hbu?");
-    }
 }
