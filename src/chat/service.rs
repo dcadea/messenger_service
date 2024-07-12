@@ -1,25 +1,24 @@
-use std::collections::HashSet;
-use std::sync::Arc;
-
-use futures::TryFutureExt;
-
-use redis::AsyncCommands;
-
+use super::model::{Chat, ChatDto, ChatId, ChatRequest, Members};
+use super::repository::ChatRepository;
+use super::Result;
 use crate::chat::error::ChatError;
 use crate::integration::model::CacheKey;
 use crate::message::model::Message;
 use crate::model::{AppEndpoints, LinkFactory};
 use crate::user::model::{UserInfo, UserSub};
-
-use super::model::{Chat, ChatDto, ChatId, ChatRequest, Members};
-use super::repository::ChatRepository;
-use super::Result;
+use crate::user::service::UserService;
+use futures::future::try_join_all;
+use futures::TryFutureExt;
+use redis::AsyncCommands;
+use std::collections::HashSet;
+use std::sync::Arc;
 
 const CHAT_TTL: i64 = 3600;
 
 #[derive(Clone)]
 pub struct ChatService {
     repository: Arc<ChatRepository>,
+    user_service: Arc<UserService>,
     redis_con: redis::aio::ConnectionManager,
     link_factory: Arc<LinkFactory>,
 }
@@ -27,11 +26,13 @@ pub struct ChatService {
 impl ChatService {
     pub fn new(
         repository: ChatRepository,
+        user_service: UserService,
         redis_con: redis::aio::ConnectionManager,
         app_endpoints: AppEndpoints,
     ) -> Self {
         Self {
             repository: Arc::new(repository),
+            user_service: Arc::new(user_service),
             redis_con,
             link_factory: Arc::new(LinkFactory::new(app_endpoints.api())),
         }
@@ -50,7 +51,7 @@ impl ChatService {
             Ok(_) => Err(ChatError::AlreadyExists(members)),
             Err(ChatError::NotFound(_)) => {
                 let chat = self.repository.insert(&Chat::new(members)).await?;
-                self.chat_to_dto(chat, user_info)
+                self.chat_to_dto(chat, user_info).await
             }
             Err(err) => Err(err),
         }
@@ -67,22 +68,23 @@ impl ChatService {
 
     pub async fn find_by_id(&self, id: ChatId, user_info: &UserInfo) -> Result<ChatDto> {
         match self.repository.find_by_id_and_sub(id, &user_info.sub).await {
-            Ok(chat) => Ok(self.chat_to_dto(chat, user_info)?),
+            Ok(chat) => Ok(self.chat_to_dto(chat, user_info).await?),
             Err(ChatError::NotFound(_)) => Err(ChatError::NotMember),
             Err(err) => Err(err),
         }
     }
 
     pub async fn find_all(&self, user_info: &UserInfo) -> Result<Vec<ChatDto>> {
-        self.repository
-            .find_by_sub(&user_info.sub)
-            .await
-            .map(|chats| {
-                chats
-                    .into_iter()
-                    .flat_map(|chat| self.chat_to_dto(chat, user_info))
-                    .collect()
-            })
+        let chats = self.repository.find_by_sub(&user_info.sub).await?;
+
+        let chat_dtos = try_join_all(
+            chats
+                .into_iter()
+                .map(|chat| async { self.chat_to_dto(chat, user_info).await }),
+        )
+        .await?;
+
+        Ok(chat_dtos)
     }
 }
 
@@ -136,7 +138,7 @@ impl ChatService {
 }
 
 impl ChatService {
-    fn chat_to_dto(&self, chat: Chat, user_info: &UserInfo) -> Result<ChatDto> {
+    async fn chat_to_dto(&self, chat: Chat, user_info: &UserInfo) -> Result<ChatDto> {
         let recipient;
 
         if chat.members.me == user_info.sub {
@@ -147,7 +149,9 @@ impl ChatService {
             return Err(ChatError::NotMember);
         }
 
-        let chat_dto = ChatDto::from_chat(chat, recipient.clone());
+        let recipient_info = self.user_service.find_user_info(recipient.clone()).await?;
+
+        let chat_dto = ChatDto::from_chat(chat, recipient_info.name);
         let links = vec![
             self.link_factory._self(&format!("chats/{}", chat_dto.id)),
             self.link_factory

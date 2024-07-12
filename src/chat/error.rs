@@ -1,6 +1,6 @@
-use thiserror::Error;
-
 use super::model::{ChatId, Members};
+use crate::user::error::UserError;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 #[error(transparent)]
@@ -13,6 +13,8 @@ pub enum ChatError {
     NotMember,
     #[error("unexpected chat error: {0}")]
     Unexpected(String),
+
+    _UserError(#[from] UserError),
 
     MongoDBError(#[from] mongodb::error::Error),
     RedisError(#[from] redis::RedisError),

@@ -40,6 +40,7 @@ impl AppState {
         let user_service = UserService::new(redis_con.clone(), UserRepository::new(&database));
         let chat_service = ChatService::new(
             ChatRepository::new(&database),
+            user_service.clone(),
             redis_con.clone(),
             app_endpoints.clone(),
         );

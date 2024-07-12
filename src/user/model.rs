@@ -18,7 +18,7 @@ pub struct User {
 pub struct UserInfo {
     pub sub: UserSub,
     nickname: String,
-    name: String,
+    pub name: String,
     picture: String,
     email: String,
 }
