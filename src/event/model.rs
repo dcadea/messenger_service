@@ -10,8 +10,7 @@ use crate::chat::model::ChatId;
 use crate::message::model::{MessageDto, MessageId};
 use crate::user::model::UserSub;
 
-pub(crate) type NotificationStream =
-    Pin<Box<dyn Stream<Item = crate::event::Result<Notification>> + Send>>;
+pub(crate) type EventStream = Pin<Box<dyn Stream<Item = crate::event::Result<Event>> + Send>>;
 
 #[derive(Clone)]
 pub enum Queue {
@@ -28,7 +27,7 @@ impl Display for Queue {
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum Event {
+pub enum Command {
     Auth {
         token: String,
     },
@@ -51,7 +50,7 @@ pub enum Event {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum Notification {
+pub enum Event {
     MessageCreated {
         message: MessageDto,
     },

@@ -12,11 +12,10 @@ use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::try_join;
 
-use model::Event;
 use service::EventService;
 
 use crate::event::error::EventError;
-use crate::event::model::{Notification, Queue};
+use crate::event::model::{Command, Event, Queue};
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 
@@ -121,10 +120,10 @@ pub(super) async fn write(
 
     let messages_queue = Queue::Messages(user_info.clone().sub);
 
-    let mut notifications_stream = match event_service.read(ctx.clone(), &messages_queue).await {
+    let mut event_stream = match event_service.read(ctx.clone(), &messages_queue).await {
         Ok(binding) => binding,
         Err(e) => {
-            error!("Failed to create consumer of notifications: {:?}", e);
+            error!("Failed to create consumer of events: {:?}", e);
             ctx.close.notify_one();
             return;
         }
@@ -138,14 +137,14 @@ pub(super) async fn write(
 
             // push new list of online users every 5 seconds
             _ = sleep(Duration::from_secs(5)) =>
-                notify_about_online_users(ctx.clone(), &user_info, user_service.clone(), event_service.clone()).await,
+                publish_online_users(ctx.clone(), &user_info, user_service.clone(), event_service.clone()).await,
 
-            // new notification is received from queue => send it to the client
-            item = notifications_stream.next() => {
+            // new event is received from queue => send it to the client
+            item = event_stream.next() => {
                 match item {
                     None => break,
-                    Some(Err(e)) => error!("Failed to read notification from queue: {:?}", e),
-                    Some(Ok(notification)) => send_notification(sender.clone(), &notification).await,
+                    Some(Err(e)) => error!("Failed to read event from queue: {:?}", e),
+                    Some(Ok(event)) => send_event(sender.clone(), &event).await,
                 }
             },
         }
@@ -162,30 +161,27 @@ async fn handle_text_frame(
     content: String,
     event_service: EventService,
 ) -> Result<()> {
-    if let Ok(event) = from_str::<Event>(content.as_str()) {
-        return event_service.handle_event(ctx.clone(), event).await;
+    if let Ok(command) = from_str::<Command>(content.as_str()) {
+        return event_service.handle_command(ctx.clone(), command).await;
     }
     warn!("skipping frame, content is malformed: {}", content);
     Ok(())
 }
 
-async fn send_notification(
-    sender: Arc<RwLock<SplitSink<WebSocket, ws::Message>>>,
-    notification: &Notification,
-) {
-    debug!("sending notification: {:?}", notification);
-    match serde_json::to_string(&notification) {
-        Ok(notification) => {
+async fn send_event(sender: Arc<RwLock<SplitSink<WebSocket, ws::Message>>>, event: &Event) {
+    debug!("sending event: {:?}", event);
+    match serde_json::to_string(&event) {
+        Ok(event) => {
             let mut sender = sender.write().await;
-            if let Err(e) = sender.send(Text(notification)).await {
-                error!("Failed to send notification to client: {:?}", e);
+            if let Err(e) = sender.send(Text(event)).await {
+                error!("Failed to send event to client: {:?}", e);
             }
         }
-        Err(e) => error!("Failed to serialize notification: {:?}", e),
+        Err(e) => error!("Failed to serialize event: {:?}", e),
     }
 }
 
-async fn notify_about_online_users(
+async fn publish_online_users(
     ctx: context::Ws,
     user_info: &UserInfo,
     user_service: UserService,
@@ -193,14 +189,14 @@ async fn notify_about_online_users(
 ) {
     if let Ok(users) = user_service.get_online_users(user_info.sub.clone()).await {
         if let Err(e) = event_service
-            .publish_notification(
+            .publish_event(
                 ctx,
                 &Queue::Messages(user_info.sub.clone()),
-                &Notification::UsersOnline { users },
+                &Event::UsersOnline { users },
             )
             .await
         {
-            error!("failed to publish online users notification: {:?}", e);
+            error!("failed to publish online users event: {:?}", e);
         }
     }
 }

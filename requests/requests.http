@@ -27,14 +27,14 @@ GET {{apiUrl}}/users?sub=github|106
 Authorization: Bearer {{token}}
 
 
-### WS connection and events
-# Auth event:
+### WS connection and commands
+# Auth command:
 # {
 #   "type": "auth",
 #   "token": "{{token}}"
 # }
 #
-# Create message event:
+# Create message command:
 #{
 #  "type": "create_message",
 #  "chat_id": "9f7b7b7b7b7b7b7b7b7b7b7b",
@@ -42,14 +42,14 @@ Authorization: Bearer {{token}}
 #  "text": "finally a cat message"
 #}
 #
-# Update message event:
+# Update message command:
 #{
 #  "type": "update_message",
 #  "id": "5f7b7b7b7b7b7b7b7b7b7b7b",
 #  "text": "updated message"
 #}
 #
-# Delete message event:
+# Delete message command:
 #{
 #  "type": "delete_message",
 #  "id": "5f7b7b7b7b7b7b7b7b7b7b7b"
