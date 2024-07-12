@@ -43,7 +43,7 @@ pub enum Command {
     DeleteMessage {
         id: MessageId,
     },
-    SeenMessage {
+    MarkAsSeenMessage {
         id: MessageId,
     },
 }
@@ -51,19 +51,19 @@ pub enum Command {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Event {
-    MessageCreated {
+    NewMessage {
         message: MessageDto,
     },
-    MessageUpdated {
+    UpdatedMessage {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
         id: MessageId,
         text: String,
     },
-    MessageDeleted {
+    DeletedMessage {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
         id: MessageId,
     },
-    MessageSeen {
+    SeenMessage {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
         id: MessageId,
     },

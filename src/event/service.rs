@@ -91,7 +91,7 @@ impl EventService {
 
                     let owner_messages = Queue::Messages(owner);
                     let recipient_messages = Queue::Messages(recipient);
-                    let event = Event::MessageCreated {
+                    let event = Event::NewMessage {
                         message: MessageDto::from(&message),
                     };
 
@@ -116,7 +116,7 @@ impl EventService {
 
                     let owner_messages = Queue::Messages(message.owner);
                     let recipient_messages = Queue::Messages(message.recipient);
-                    let event = Event::MessageUpdated { id, text };
+                    let event = Event::UpdatedMessage { id, text };
 
                     tokio::try_join!(
                         self.publish_event(ctx.clone(), &owner_messages, &event),
@@ -133,7 +133,7 @@ impl EventService {
 
                     let owner_messages = Queue::Messages(message.owner);
                     let recipient_messages = Queue::Messages(message.recipient);
-                    let event = Event::MessageDeleted { id };
+                    let event = Event::DeletedMessage { id };
 
                     tokio::try_join!(
                         self.publish_event(ctx.clone(), &owner_messages, &event),
@@ -141,7 +141,7 @@ impl EventService {
                     )
                     .map(|_| ())
                 }
-                Command::SeenMessage { id } => {
+                Command::MarkAsSeenMessage { id } => {
                     let message = self.message_service.find_by_id(id).await?;
                     if message.recipient != user_info.sub {
                         return Err(EventError::NotRecipient);
@@ -149,7 +149,7 @@ impl EventService {
                     self.message_service.mark_as_seen(&id).await?;
 
                     let owner_messages = Queue::Messages(message.owner);
-                    self.publish_event(ctx, &owner_messages, &Event::MessageSeen { id })
+                    self.publish_event(ctx, &owner_messages, &Event::SeenMessage { id })
                         .await
                 }
             },
