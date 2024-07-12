@@ -62,6 +62,7 @@ impl Chat {
 pub struct ChatDto {
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     pub id: ChatId,
+    recipient: UserSub,
     recipient_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     last_message: Option<String>,
@@ -70,10 +71,11 @@ pub struct ChatDto {
 }
 
 impl ChatDto {
-    pub fn from_chat(chat: Chat, recipient_name: String) -> Self {
+    pub fn new(chat: Chat, recipient: UserSub, recipient_name: String) -> Self {
         let chat_id = chat.id.expect("No way chat id is missing!?");
         Self {
             id: chat_id,
+            recipient,
             recipient_name,
             last_message: chat.last_message.clone(),
             updated_at: chat.updated_at,

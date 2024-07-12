@@ -120,20 +120,20 @@ impl ChatService {
         let cache_key = CacheKey::Chat(chat_id);
         let members: Option<HashSet<UserSub>> = con.smembers(cache_key.clone()).await?;
 
-        match members {
-            Some(members) => Ok(members),
-            None => {
-                let chat = self.repository.find_by_id(&chat_id).await?;
-                let members = chat.members.to_set();
-
-                let _: () = con
-                    .clone()
-                    .sadd(cache_key.clone(), members.clone())
-                    .and_then(|_: ()| con.expire(cache_key.clone(), CHAT_TTL))
-                    .await?;
-                Ok(members)
-            }
+        if members.clone().is_some_and(|m| !m.is_empty()) {
+            return Ok(members.unwrap());
         }
+
+        let chat = self.repository.find_by_id(&chat_id).await?;
+        let members = chat.members.to_set();
+
+        let _: () = con
+            .clone()
+            .sadd(cache_key.clone(), members.clone())
+            .and_then(|_: ()| con.expire(cache_key.clone(), CHAT_TTL))
+            .await?;
+
+        Ok(members)
     }
 }
 
@@ -151,7 +151,7 @@ impl ChatService {
 
         let recipient_info = self.user_service.find_user_info(recipient.clone()).await?;
 
-        let chat_dto = ChatDto::from_chat(chat, recipient_info.name);
+        let chat_dto = ChatDto::new(chat, recipient.clone(), recipient_info.name);
         let links = vec![
             self.link_factory._self(&format!("chats/{}", chat_dto.id)),
             self.link_factory
