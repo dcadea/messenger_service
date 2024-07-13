@@ -62,7 +62,7 @@ impl Chat {
 pub struct ChatDto {
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     pub id: ChatId,
-    recipient: UserSub,
+    pub recipient: UserSub,
     recipient_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     last_message: Option<String>,

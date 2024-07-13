@@ -72,6 +72,12 @@ impl UserService {
         Ok(())
     }
 
+    pub async fn add_friend(&self, sub: UserSub, friend: UserSub) -> Result<()> {
+        let mut con = self.redis_con.clone();
+        let _: () = con.sadd(CacheKey::Friends(sub), friend).await?;
+        Ok(())
+    }
+
     async fn cache_user_info(&self, user_info: &UserInfo) -> Result<()> {
         let mut con = self.redis_con.clone();
         let cache_key = CacheKey::UserInfo(user_info.sub.clone());

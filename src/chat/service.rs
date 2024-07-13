@@ -40,17 +40,16 @@ impl ChatService {
 }
 
 impl ChatService {
-    pub async fn create(
-        &self,
-        chat_request: &ChatRequest,
-        user_info: &UserInfo,
-    ) -> Result<ChatDto> {
-        let members = Members::new(user_info.sub.clone(), chat_request.recipient.clone());
+    pub async fn create(&self, req: &ChatRequest, user_info: &UserInfo) -> Result<ChatDto> {
+        let owner = user_info.clone().sub;
+        let recipient = req.clone().recipient;
+        let members = Members::new(owner.clone(), recipient.clone());
 
         match self.repository.find_id_by_members(&members).await {
             Ok(_) => Err(ChatError::AlreadyExists(members)),
             Err(ChatError::NotFound(_)) => {
                 let chat = self.repository.insert(&Chat::new(members)).await?;
+                self.user_service.add_friend(owner, recipient).await?;
                 self.chat_to_dto(chat, user_info).await
             }
             Err(err) => Err(err),
@@ -68,7 +67,11 @@ impl ChatService {
 
     pub async fn find_by_id(&self, id: ChatId, user_info: &UserInfo) -> Result<ChatDto> {
         match self.repository.find_by_id_and_sub(id, &user_info.sub).await {
-            Ok(chat) => Ok(self.chat_to_dto(chat, user_info).await?),
+            Ok(chat) => {
+                let chat_dto = self.chat_to_dto(chat, user_info).await?;
+                // TODO: add friends
+                Ok(chat_dto)
+            }
             Err(ChatError::NotFound(_)) => Err(ChatError::NotMember),
             Err(err) => Err(err),
         }
@@ -84,6 +87,8 @@ impl ChatService {
         )
         .await?;
 
+        // TODO: add friends
+
         Ok(chat_dtos)
     }
 }
@@ -92,23 +97,24 @@ impl ChatService {
 impl ChatService {
     pub async fn check_member(&self, chat_id: ChatId, user_info: &UserInfo) -> Result<()> {
         let members = self.find_members(chat_id).await?;
+        let belongs_to_chat = members.contains(&user_info.sub);
 
-        if members.contains(&user_info.sub) {
-            Ok(())
-        } else {
-            Err(ChatError::NotMember)
+        if !belongs_to_chat {
+            return Err(ChatError::NotMember);
         }
+
+        Ok(())
     }
 
     pub async fn check_members(&self, chat_id: ChatId, members: &Members) -> Result<()> {
         let cached_members = self.find_members(chat_id).await?;
         let belongs_to_chat = cached_members.intersection(&members.to_set()).count() > 0;
 
-        if belongs_to_chat {
-            Ok(())
-        } else {
-            Err(ChatError::NotMember)
+        if !belongs_to_chat {
+            return Err(ChatError::NotMember);
         }
+
+        Ok(())
     }
 }
 
