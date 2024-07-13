@@ -1,37 +1,12 @@
-use crate::model::Link;
 use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::fmt::Debug;
 
+use crate::model::Link;
 use crate::user::model::UserSub;
 use crate::util::serialize_object_id;
 
 pub type ChatId = mongodb::bson::oid::ObjectId;
-
-// TODO: revise the necessity of this struct
-#[derive(Serialize, Deserialize, Clone)]
-pub struct Members {
-    pub me: UserSub,
-    pub you: UserSub,
-}
-
-impl Members {
-    pub fn new(me: UserSub, you: UserSub) -> Self {
-        Self { me, you }
-    }
-
-    pub fn to_set(&self) -> HashSet<UserSub> {
-        HashSet::from([self.me.clone(), self.you.clone()])
-    }
-}
-
-impl Debug for Members {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{} : {}]", self.me, self.you)
-    }
-}
 
 #[derive(Serialize, Deserialize)]
 pub struct Chat {
@@ -41,14 +16,14 @@ pub struct Chat {
         skip_serializing_if = "Option::is_none"
     )]
     pub id: Option<ChatId>,
-    pub members: Members,
+    pub members: [UserSub; 2],
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_message: Option<String>,
     updated_at: i64,
 }
 
 impl Chat {
-    pub fn new(members: Members) -> Self {
+    pub fn new(members: [UserSub; 2]) -> Self {
         Self {
             id: None,
             members,

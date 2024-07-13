@@ -4,7 +4,7 @@ use mongodb::bson::doc;
 use crate::user::model::UserSub;
 
 use super::error::ChatError;
-use super::model::{Chat, ChatId, Members};
+use super::model::{Chat, ChatId};
 use super::Result;
 
 pub struct ChatRepository {
@@ -66,12 +66,7 @@ impl ChatRepository {
     pub async fn find_by_sub(&self, sub: &UserSub) -> Result<Vec<Chat>> {
         let cursor = self
             .collection
-            .find(doc! {
-                "$or": [
-                    { "members.me": sub },
-                    { "members.you": sub },
-                ]
-            })
+            .find(doc! {"members": sub})
             .sort(doc! {"updated_at": -1})
             .await?;
 
@@ -89,10 +84,7 @@ impl ChatRepository {
         self.collection
             .find_one(doc! {
                 "_id": id,
-                "$or": [
-                    { "members.me": sub },
-                    { "members.you": sub },
-                ]
+                "members": sub
             })
             .await?
             .ok_or(ChatError::NotFound(Some(id)))
@@ -102,17 +94,11 @@ impl ChatRepository {
      * Find a chat id by its members
      * @param members: The members of the chat
      */
-    pub async fn find_id_by_members(&self, members: &Members) -> Result<ChatId> {
-        let me = &members.me;
-        let you = &members.you;
-
+    pub async fn find_id_by_members(&self, members: [&UserSub; 2]) -> Result<ChatId> {
         let result = self
             .collection
             .find_one(doc! {
-                "$or": [
-                    { "members.me": me, "members.you": you },
-                    { "members.me": you, "members.you": me },
-                ]
+                "members": { "$all": members.to_vec() }
             })
             .await?;
 
