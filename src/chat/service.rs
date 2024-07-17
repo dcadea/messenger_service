@@ -81,7 +81,6 @@ impl ChatService {
         match self.repository.find_by_id_and_sub(id, &user_info.sub).await {
             Ok(chat) => {
                 let chat_dto = self.chat_to_dto(chat, user_info).await?;
-                // TODO: add friends
                 Ok(chat_dto)
             }
             Err(ChatError::NotFound(_)) => Err(ChatError::NotMember),
@@ -98,8 +97,6 @@ impl ChatService {
                 .map(|chat| async { self.chat_to_dto(chat, user_info).await }),
         )
         .await?;
-
-        // TODO: add friends
 
         Ok(chat_dtos)
     }

@@ -192,7 +192,7 @@ async fn publish_online_users(
             .publish_event(
                 ctx,
                 &Queue::Messages(user_info.sub.clone()),
-                &Event::UsersOnline { users },
+                &Event::OnlineUsers { users },
             )
             .await
         {

@@ -12,6 +12,12 @@ pub struct User {
     name: String,
     picture: String,
     email: String,
+    friends: Vec<UserSub>,
+}
+
+#[derive(Deserialize)]
+pub struct Friends {
+    pub friends: Vec<UserSub>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -44,6 +50,7 @@ impl From<UserInfo> for User {
             name: info.name,
             picture: info.picture,
             email: info.email,
+            friends: vec![],
         }
     }
 }

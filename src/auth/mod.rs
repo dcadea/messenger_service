@@ -10,6 +10,7 @@ use service::AuthService;
 
 use crate::auth::error::AuthError;
 use crate::user::error::UserError;
+use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 
 pub mod error;
@@ -56,6 +57,22 @@ pub async fn set_user_context(
     };
 
     request.extensions_mut().insert(user_info);
+
+    let response = next.run(request).await;
+    Ok(response)
+}
+
+pub async fn cache_user_friends(
+    user_service: State<UserService>,
+    request: Request,
+    next: Next,
+) -> super::result::Result<Response> {
+    let user_info = request
+        .extensions()
+        .get::<UserInfo>()
+        .ok_or(AuthError::Unauthorized)?;
+
+    user_service.cache_friends(user_info.sub.clone()).await?;
 
     let response = next.run(request).await;
     Ok(response)

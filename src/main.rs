@@ -7,6 +7,7 @@ use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 
+use crate::auth::cache_user_friends;
 use auth::{set_user_context, validate_token};
 use state::AppState;
 
@@ -53,7 +54,8 @@ fn app(app_state: AppState) -> Router {
         .route_layer(
             ServiceBuilder::new()
                 .layer(from_fn_with_state(app_state.clone(), validate_token))
-                .layer(from_fn_with_state(app_state.clone(), set_user_context)),
+                .layer(from_fn_with_state(app_state.clone(), set_user_context))
+                .layer(from_fn_with_state(app_state.clone(), cache_user_friends)),
         );
 
     Router::new()
