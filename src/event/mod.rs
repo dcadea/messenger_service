@@ -1,3 +1,4 @@
+use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -5,7 +6,7 @@ use axum::extract::ws;
 use axum::extract::ws::Message::{Close, Text};
 use axum::extract::ws::WebSocket;
 use futures::stream::{SplitSink, SplitStream};
-use futures::{SinkExt, StreamExt};
+use futures::{SinkExt, Stream, StreamExt};
 use log::{debug, error, warn};
 use serde_json::from_str;
 use tokio::sync::RwLock;
@@ -129,16 +130,32 @@ pub(super) async fn write(
         }
     };
 
+    let mut online_status_changes = match listen_online_status_change().await {
+        Ok(stream) => stream,
+        Err(e) => {
+            error!("Failed to listen online status changes: {:?}", e);
+            ctx.close.notify_one();
+            return;
+        }
+    };
+
     let sender = Arc::new(RwLock::new(sender));
     loop {
         tokio::select! {
             // close is notified => stop 'write' task
             _ = ctx.close.notified() => break,
 
-            // push new list of online users every 5 seconds
-            _ = sleep(Duration::from_secs(5)) =>
-                publish_online_users(ctx.clone(), &user_info, user_service.clone(), event_service.clone()).await,
-
+            // push new list of online users when somebody logs in or out
+            status = online_status_changes.next() => {
+                match status {
+                    None => continue,
+                    Some(Err(e)) => error!("Failed to read online status change: {:?}", e),
+                    Some(Ok(msg)) => {
+                        debug!("{:?}" ,msg);
+                        publish_online_users(ctx.clone(), &user_info, user_service.clone(), event_service.clone()).await;
+                    }
+                }
+            },
             // new event is received from queue => send it to the client
             item = event_stream.next() => {
                 match item {
@@ -217,4 +234,42 @@ async fn remove_online_user(ctx: context::Ws, user_service: UserService) {
             error!("Failed to remove user from online users: {:?}", e);
         }
     }
+}
+
+pub(crate) type OnlineStatusChangedStream = Pin<Box<dyn Stream<Item = Result<redis::Msg>> + Send>>;
+
+// FIXME
+async fn listen_online_status_change() -> Result<OnlineStatusChangedStream> {
+    let config = crate::integration::redis::Config::env().unwrap_or_default();
+    let client = crate::integration::redis::init_client(&config)
+        .await
+        .map_err(EventError::from)?;
+    let mut con = client
+        .get_async_connection()
+        .await
+        .map_err(EventError::from)?;
+
+    redis::cmd("CONFIG")
+        .arg("SET")
+        .arg("notify-keyspace-events")
+        .arg("KEAg")
+        .query_async(&mut con)
+        .await
+        .map_err(EventError::from)?;
+
+    let mut pubsub = con.into_pubsub();
+    pubsub
+        .psubscribe("__keyspace@0__:users:online")
+        .await
+        .map_err(EventError::from)?;
+
+    let stream = pubsub
+        .into_on_message()
+        .map(|msg| {
+            debug!("Received keyspace message: {:?}", msg);
+            Ok(msg)
+        })
+        .boxed();
+
+    Ok(Box::pin(stream))
 }

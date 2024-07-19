@@ -2,6 +2,7 @@ use thiserror::Error;
 
 use crate::auth::error::AuthError;
 use crate::chat::error::ChatError;
+use crate::integration::error::IntegrationError;
 use crate::message::error::MessageError;
 use crate::user::error::UserError;
 
@@ -19,9 +20,11 @@ pub enum EventError {
 
     _AuthError(#[from] AuthError),
     _ChatError(#[from] ChatError),
+    _IntegrationError(#[from] IntegrationError),
     _MessageError(#[from] MessageError),
     _UserError(#[from] UserError),
 
     _ParseJsonError(#[from] serde_json::Error),
     _LapinError(#[from] lapin::Error),
+    _RedisError(#[from] redis::RedisError),
 }

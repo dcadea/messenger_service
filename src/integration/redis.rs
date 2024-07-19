@@ -1,6 +1,6 @@
-use std::env;
-
+use crate::integration::error::IntegrationError;
 use crate::integration::Result;
+use std::env;
 
 #[derive(Clone)]
 pub struct Config {
@@ -25,11 +25,15 @@ impl Config {
     }
 }
 
-pub async fn init(config: &Config) -> Result<redis::aio::ConnectionManager> {
-    let redis_con =
-        redis::Client::open(format!("redis://{}:{}", config.host.clone(), config.port))?
-            .get_connection_manager()
-            .await?;
+pub async fn init_client(config: &Config) -> Result<redis::Client> {
+    redis::Client::open(format!("redis://{}:{}", config.host.clone(), config.port))
+        .map_err(IntegrationError::from)
+}
 
-    Ok(redis_con)
+pub async fn init(config: &Config) -> Result<redis::aio::ConnectionManager> {
+    init_client(config)
+        .await?
+        .get_connection_manager()
+        .await
+        .map_err(IntegrationError::from)
 }
