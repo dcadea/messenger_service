@@ -17,6 +17,7 @@ use service::EventService;
 
 use crate::event::error::EventError;
 use crate::event::model::{Command, Event, Queue};
+use crate::integration::model::{CacheKey, Keyspace};
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 
@@ -236,32 +237,20 @@ async fn remove_online_user(ctx: context::Ws, user_service: UserService) {
     }
 }
 
-pub(crate) type OnlineStatusChangedStream = Pin<Box<dyn Stream<Item = Result<redis::Msg>> + Send>>;
+type OnlineStatusChangedStream = Pin<Box<dyn Stream<Item = Result<redis::Msg>> + Send>>;
 
 // FIXME
 async fn listen_online_status_change() -> Result<OnlineStatusChangedStream> {
     let config = crate::integration::redis::Config::env().unwrap_or_default();
-    let client = crate::integration::redis::init_client(&config)
-        .await
-        .map_err(EventError::from)?;
-    let mut con = client
-        .get_async_connection()
-        .await
-        .map_err(EventError::from)?;
+    let client = crate::integration::redis::init_client(&config).await?;
+    let mut con = client.get_async_connection().await?;
 
-    redis::cmd("CONFIG")
-        .arg("SET")
-        .arg("notify-keyspace-events")
-        .arg("KEAg")
-        .query_async(&mut con)
-        .await
-        .map_err(EventError::from)?;
+    enable_keyspace_events(&mut con).await?;
 
     let mut pubsub = con.into_pubsub();
     pubsub
-        .psubscribe("__keyspace@0__:users:online")
-        .await
-        .map_err(EventError::from)?;
+        .psubscribe(Keyspace::new(CacheKey::UsersOnline))
+        .await?;
 
     let stream = pubsub
         .into_on_message()
@@ -272,4 +261,15 @@ async fn listen_online_status_change() -> Result<OnlineStatusChangedStream> {
         .boxed();
 
     Ok(Box::pin(stream))
+}
+
+async fn enable_keyspace_events(con: &mut redis::aio::Connection) -> Result<()> {
+    redis::cmd("CONFIG")
+        .arg("SET")
+        .arg("notify-keyspace-events")
+        .arg("KEAg")
+        .query_async(con)
+        .await
+        .map(|_: ()| ())
+        .map_err(EventError::from)
 }

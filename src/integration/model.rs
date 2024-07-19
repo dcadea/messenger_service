@@ -29,3 +29,29 @@ impl redis::ToRedisArgs for CacheKey {
         self.to_string().write_redis_args(out);
     }
 }
+
+#[derive(Clone)]
+pub struct Keyspace {
+    pub key: CacheKey,
+}
+
+impl Keyspace {
+    pub fn new(key: CacheKey) -> Self {
+        Self { key }
+    }
+}
+
+impl Display for Keyspace {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "__keyspace@0__:{}", self.key)
+    }
+}
+
+impl redis::ToRedisArgs for Keyspace {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite,
+    {
+        self.to_string().write_redis_args(out);
+    }
+}
