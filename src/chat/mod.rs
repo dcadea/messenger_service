@@ -6,4 +6,4 @@ pub mod model;
 pub mod repository;
 pub mod service;
 
-pub type Result<T> = std::result::Result<T, ChatError>;
+type Result<T> = std::result::Result<T, ChatError>;

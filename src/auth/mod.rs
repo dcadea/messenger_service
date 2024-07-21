@@ -14,8 +14,9 @@ use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 
 pub mod error;
-mod model;
 pub mod service;
+
+mod model;
 
 type Result<T> = std::result::Result<T, AuthError>;
 
