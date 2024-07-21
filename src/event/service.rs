@@ -48,7 +48,7 @@ impl EventService {
 }
 
 impl EventService {
-    pub async fn handle_command(&self, ctx: context::Ws, command: Command) -> Result<()> {
+    pub async fn handle_command(&self, ctx: &context::Ws, command: Command) -> Result<()> {
         debug!("handling command: {:?}", command);
         match ctx.get_user_info().await {
             None => {
@@ -98,7 +98,7 @@ impl EventService {
                     use futures::TryFutureExt;
 
                     tokio::try_join!(
-                        self.publish_event(ctx.clone(), &owner_messages, &event),
+                        self.publish_event(ctx, &owner_messages, &event),
                         self.publish_event(ctx, &recipient_messages, &event),
                         self.chat_service
                             .update_last_message(&message)
@@ -119,7 +119,7 @@ impl EventService {
                     let event = Event::UpdatedMessage { id, text };
 
                     tokio::try_join!(
-                        self.publish_event(ctx.clone(), &owner_messages, &event),
+                        self.publish_event(ctx, &owner_messages, &event),
                         self.publish_event(ctx, &recipient_messages, &event)
                     )
                     .map(|_| ())
@@ -136,7 +136,7 @@ impl EventService {
                     let event = Event::DeletedMessage { id };
 
                     tokio::try_join!(
-                        self.publish_event(ctx.clone(), &owner_messages, &event),
+                        self.publish_event(ctx, &owner_messages, &event),
                         self.publish_event(ctx, &recipient_messages, &event)
                     )
                     .map(|_| ())
@@ -158,8 +158,8 @@ impl EventService {
 }
 
 impl EventService {
-    pub async fn read(&self, ctx: context::Ws, q: &Queue) -> Result<EventStream> {
-        self.ensure_queue_exists(ctx.clone(), q).await?;
+    pub async fn read(&self, ctx: &context::Ws, q: &Queue) -> Result<EventStream> {
+        self.ensure_queue_exists(ctx, q).await?;
 
         let consumer = ctx
             .get_channel()
@@ -187,12 +187,12 @@ impl EventService {
         Ok(Box::pin(stream))
     }
 
-    pub async fn close_channel(&self, ctx: context::Ws) -> Result<()> {
+    pub async fn close_channel(&self, ctx: &context::Ws) -> Result<()> {
         let channel = ctx.get_channel().await?;
         channel.close(200, "OK").await.map_err(EventError::from)
     }
 
-    pub async fn publish_event(&self, ctx: context::Ws, q: &Queue, event: &Event) -> Result<()> {
+    pub async fn publish_event(&self, ctx: &context::Ws, q: &Queue, event: &Event) -> Result<()> {
         let payload = serde_json::to_vec(event)?;
         self.publish(ctx, q, payload.as_slice()).await
     }
@@ -204,8 +204,8 @@ impl EventService {
         conn.create_channel().await.map_err(EventError::from)
     }
 
-    async fn publish(&self, ctx: context::Ws, q: &Queue, payload: &[u8]) -> Result<()> {
-        self.ensure_queue_exists(ctx.clone(), q).await?;
+    async fn publish(&self, ctx: &context::Ws, q: &Queue, payload: &[u8]) -> Result<()> {
+        self.ensure_queue_exists(ctx, q).await?;
         ctx.get_channel()
             .await?
             .basic_publish(
@@ -219,7 +219,7 @@ impl EventService {
         Ok(())
     }
 
-    async fn ensure_queue_exists(&self, ctx: context::Ws, q: &Queue) -> Result<()> {
+    async fn ensure_queue_exists(&self, ctx: &context::Ws, q: &Queue) -> Result<()> {
         ctx.get_channel()
             .await?
             .queue_declare(

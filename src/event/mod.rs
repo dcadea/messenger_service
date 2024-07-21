@@ -22,24 +22,21 @@ use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 
 pub mod api;
-mod context;
 pub mod error;
-mod model;
 pub mod service;
 
-pub type Result<T> = std::result::Result<T, EventError>;
+mod context;
+mod model;
 
-pub(super) async fn handle_socket(
-    ws: WebSocket,
-    event_service: EventService,
-    user_service: UserService,
-) {
+type Result<T> = std::result::Result<T, EventError>;
+
+async fn handle_socket(ws: WebSocket, event_service: EventService, user_service: UserService) {
     let (sender, receiver) = ws.split();
-    let ws_ctx = context::Ws::new();
+    let ctx = context::Ws::new();
 
-    let read_task = tokio::spawn(read(ws_ctx.clone(), receiver, event_service.clone()));
+    let read_task = tokio::spawn(read(ctx.clone(), receiver, event_service.clone()));
     let write_task = tokio::spawn(write(
-        ws_ctx.clone(),
+        ctx.clone(),
         sender,
         event_service.clone(),
         user_service.clone(),
@@ -50,14 +47,10 @@ pub(super) async fn handle_socket(
         Err(e) => error!("ws disconnected with error: {}", e),
     }
 
-    remove_online_user(ws_ctx.clone(), user_service).await;
+    remove_online_user(&ctx, user_service).await
 }
 
-pub(super) async fn read(
-    ctx: context::Ws,
-    mut receiver: SplitStream<WebSocket>,
-    event_service: EventService,
-) {
+async fn read(ctx: context::Ws, mut receiver: SplitStream<WebSocket>, event_service: EventService) {
     loop {
         tokio::select! {
             // close is notified => stop 'read' task
@@ -78,7 +71,7 @@ pub(super) async fn read(
                             break;
                         },
                         Ok(Text(content)) => {
-                            if let Err(e) = handle_text_frame(ctx.clone(), content, event_service.clone()).await {
+                            if let Err(e) = handle_text_frame(&ctx, content, event_service.clone()).await {
                                 error!("failed to handle text frame: {:?}", e);
                                 ctx.close.notify_one(); // notify 'write' task to stop
                                 break;
@@ -92,7 +85,7 @@ pub(super) async fn read(
     }
 }
 
-pub(super) async fn write(
+async fn write(
     ctx: context::Ws,
     sender: SplitSink<WebSocket, ws::Message>,
     event_service: EventService,
@@ -111,7 +104,7 @@ pub(super) async fn write(
 
         // logged in => break the wait loop and start writing
         _ = ctx.login.notified() => {
-            add_online_user(ctx.clone(), user_service.clone()).await;
+            add_online_user(&ctx, user_service.clone()).await;
         },
     }
 
@@ -122,7 +115,7 @@ pub(super) async fn write(
 
     let messages_queue = Queue::Messages(user_info.clone().sub);
 
-    let mut event_stream = match event_service.read(ctx.clone(), &messages_queue).await {
+    let mut event_stream = match event_service.read(&ctx, &messages_queue).await {
         Ok(binding) => binding,
         Err(e) => {
             error!("Failed to create consumer of events: {:?}", e);
@@ -153,7 +146,7 @@ pub(super) async fn write(
                     Some(Err(e)) => error!("Failed to read online status change: {:?}", e),
                     Some(Ok(msg)) => {
                         debug!("{:?}" ,msg);
-                        publish_online_users(ctx.clone(), &user_info, user_service.clone(), event_service.clone()).await;
+                        publish_online_users(&ctx, &user_info, user_service.clone(), event_service.clone()).await;
                     }
                 }
             },
@@ -168,19 +161,19 @@ pub(super) async fn write(
         }
     }
 
-    match event_service.close_channel(ctx).await {
+    match event_service.close_channel(&ctx).await {
         Ok(_) => debug!("Channel closed"),
         Err(e) => error!("Failed to close channel: {:?}", e),
     }
 }
 
 async fn handle_text_frame(
-    ctx: context::Ws,
+    ctx: &context::Ws,
     content: String,
     event_service: EventService,
 ) -> Result<()> {
     if let Ok(command) = from_str::<Command>(content.as_str()) {
-        return event_service.handle_command(ctx.clone(), command).await;
+        return event_service.handle_command(ctx, command).await;
     }
     warn!("skipping frame, content is malformed: {}", content);
     Ok(())
@@ -200,26 +193,33 @@ async fn send_event(sender: Arc<RwLock<SplitSink<WebSocket, ws::Message>>>, even
 }
 
 async fn publish_online_users(
-    ctx: context::Ws,
+    ctx: &context::Ws,
     user_info: &UserInfo,
     user_service: UserService,
     event_service: EventService,
 ) {
-    if let Ok(users) = user_service.get_online_users(user_info.sub.clone()).await {
-        if let Err(e) = event_service
+    if let Ok(users) = user_service.get_online_friends(user_info.sub.clone()).await {
+        if ctx.same_online_friends(&users).await {
+            return;
+        }
+
+        match event_service
             .publish_event(
                 ctx,
                 &Queue::Messages(user_info.sub.clone()),
-                &Event::OnlineUsers { users },
+                &Event::OnlineUsers {
+                    users: users.clone(),
+                },
             )
             .await
         {
-            error!("failed to publish online users event: {:?}", e);
+            Ok(_) => ctx.set_online_friends(users).await,
+            Err(e) => error!("failed to publish online users event: {:?}", e),
         }
     }
 }
 
-async fn add_online_user(ctx: context::Ws, user_service: UserService) {
+async fn add_online_user(ctx: &context::Ws, user_service: UserService) {
     if let Some(user_info) = ctx.get_user_info().await {
         debug!("adding to online users: {:?}", user_info.sub.clone());
         if let Err(e) = user_service.add_online_user(user_info.sub).await {
@@ -228,7 +228,7 @@ async fn add_online_user(ctx: context::Ws, user_service: UserService) {
     }
 }
 
-async fn remove_online_user(ctx: context::Ws, user_service: UserService) {
+async fn remove_online_user(ctx: &context::Ws, user_service: UserService) {
     if let Some(user_info) = ctx.get_user_info().await {
         debug!("removing from online users: {:?}", user_info.sub.clone());
         if let Err(e) = user_service.remove_online_user(user_info.sub).await {

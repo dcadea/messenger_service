@@ -64,7 +64,7 @@ impl UserService {
         Ok(())
     }
 
-    pub async fn get_online_users(&self, sub: UserSub) -> Result<HashSet<UserSub>> {
+    pub async fn get_online_friends(&self, sub: UserSub) -> Result<HashSet<UserSub>> {
         let mut con = self.redis_con.clone();
         let online_users: HashSet<UserSub> = con
             .sinter(&[CacheKey::UsersOnline, CacheKey::Friends(sub)])
