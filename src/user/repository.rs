@@ -3,10 +3,9 @@ use mongodb::bson::doc;
 use mongodb::options::FindOneOptions;
 use mongodb::Database;
 
-use crate::user::UserError;
-
 use super::model::{Friends, User, UserSub};
 use super::Result;
+use crate::user;
 
 pub struct UserRepository {
     users_col: mongodb::Collection<User>,
@@ -31,7 +30,7 @@ impl UserRepository {
     pub async fn find_by_sub(&self, sub: &str) -> Result<User> {
         let filter = doc! { "sub": sub };
         let result = self.users_col.find_one(filter).await?;
-        result.ok_or(UserError::NotFound(sub.to_owned()))
+        result.ok_or(user::Error::NotFound(sub.to_owned()))
     }
 
     pub async fn search_by_nickname(&self, nickname: &str) -> Result<Vec<User>> {
@@ -42,7 +41,7 @@ impl UserRepository {
 
         let cursor = self.users_col.find(filter).await?;
 
-        cursor.try_collect().await.map_err(UserError::from)
+        cursor.try_collect().await.map_err(user::Error::from)
     }
 
     pub async fn add_friend(&self, sub: &str, friend: &str) -> Result<()> {
@@ -66,7 +65,7 @@ impl UserRepository {
             .await?;
 
         friends
-            .ok_or(UserError::NotFound(sub.to_owned()))
+            .ok_or(user::Error::NotFound(sub.to_owned()))
             .map(|f| f.friends)
     }
 }

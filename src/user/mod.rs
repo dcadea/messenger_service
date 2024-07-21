@@ -1,19 +1,17 @@
-use thiserror::Error;
-
 pub mod api;
 pub mod model;
 pub mod repository;
 pub mod service;
 
-type Result<T> = std::result::Result<T, UserError>;
+type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum UserError {
+pub enum Error {
     #[error("user not found: {0}")]
     NotFound(String),
 
-    _MongoDBError(#[from] mongodb::error::Error),
-    _RedisError(#[from] redis::RedisError),
-    _ParseJsonError(#[from] serde_json::Error),
+    _MongoDB(#[from] mongodb::error::Error),
+    _Redis(#[from] redis::RedisError),
+    _ParseJson(#[from] serde_json::Error),
 }

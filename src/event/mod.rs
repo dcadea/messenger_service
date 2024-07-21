@@ -2,7 +2,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
-use self::service::EventService;
 use axum::extract::ws;
 use axum::extract::ws::Message::{Close, Text};
 use axum::extract::ws::WebSocket;
@@ -10,25 +9,16 @@ use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, Stream, StreamExt};
 use log::{debug, error, warn};
 use serde_json::from_str;
-use thiserror::Error;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::try_join;
 
-use crate::auth::AuthError;
-
-use crate::chat::ChatError;
-
+use self::service::EventService;
 use crate::event::model::{Command, Event, Queue};
-
 use crate::integration::model::{CacheKey, Keyspace};
-use crate::integration::IntegrationError;
-
-use crate::message::MessageError;
-
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
-use crate::user::UserError;
+use crate::{auth, chat, integration, message, user};
 
 pub mod api;
 pub mod service;
@@ -36,11 +26,11 @@ pub mod service;
 mod context;
 mod model;
 
-type Result<T> = std::result::Result<T, EventError>;
+type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum EventError {
+pub enum Error {
     #[error("missing user info")]
     MissingUserInfo,
     #[error("not a message owner")]
@@ -50,15 +40,15 @@ pub enum EventError {
     #[error("missing amqp channel")]
     MissingAmqpChannel,
 
-    _AuthError(#[from] AuthError),
-    _ChatError(#[from] ChatError),
-    _IntegrationError(#[from] IntegrationError),
-    _MessageError(#[from] MessageError),
-    _UserError(#[from] UserError),
+    _Auth(#[from] auth::Error),
+    _Chat(#[from] chat::Error),
+    _Integration(#[from] integration::Error),
+    _Message(#[from] message::Error),
+    _User(#[from] user::Error),
 
-    _ParseJsonError(#[from] serde_json::Error),
-    _LapinError(#[from] lapin::Error),
-    _RedisError(#[from] redis::RedisError),
+    _ParseJson(#[from] serde_json::Error),
+    _Lapin(#[from] lapin::Error),
+    _Redis(#[from] redis::RedisError),
 }
 
 async fn handle_socket(ws: WebSocket, event_service: EventService, user_service: UserService) {
@@ -302,5 +292,5 @@ async fn enable_keyspace_events(con: &mut redis::aio::Connection) -> Result<()> 
         .query_async(con)
         .await
         .map(|_: ()| ())
-        .map_err(EventError::from)
+        .map_err(Error::from)
 }

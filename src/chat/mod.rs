@@ -1,20 +1,17 @@
-use thiserror::Error;
-
 use crate::chat::model::ChatId;
-
+use crate::user;
 use crate::user::model::UserSub;
-use crate::user::UserError;
 
 pub mod api;
 pub mod model;
 pub mod repository;
 pub mod service;
 
-type Result<T> = std::result::Result<T, ChatError>;
+type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum ChatError {
+pub enum Error {
     #[error("chat not found: {0:?}")]
     NotFound(Option<ChatId>),
     #[error("chat already exists for members: {0:?}")]
@@ -24,8 +21,8 @@ pub enum ChatError {
     #[error("unexpected chat error: {0}")]
     Unexpected(String),
 
-    _UserError(#[from] UserError),
+    _User(#[from] user::Error),
 
-    MongoDBError(#[from] mongodb::error::Error),
-    RedisError(#[from] redis::RedisError),
+    _MongoDB(#[from] mongodb::error::Error),
+    _Redis(#[from] redis::RedisError),
 }

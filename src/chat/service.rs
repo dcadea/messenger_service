@@ -4,16 +4,15 @@ use futures::future::try_join_all;
 use futures::TryFutureExt;
 use redis::AsyncCommands;
 
-use crate::chat::ChatError;
+use super::model::{Chat, ChatDto, ChatId, ChatRequest};
+use super::repository::ChatRepository;
+use super::Result;
+use crate::chat;
 use crate::integration::model::CacheKey;
 use crate::message::model::Message;
 use crate::model::{AppEndpoints, LinkFactory};
 use crate::user::model::{UserInfo, UserSub};
 use crate::user::service::UserService;
-
-use super::model::{Chat, ChatDto, ChatId, ChatRequest};
-use super::repository::ChatRepository;
-use super::Result;
 
 const CHAT_TTL: i64 = 3600;
 
@@ -51,8 +50,8 @@ impl ChatService {
             .find_id_by_members([&owner, &recipient])
             .await
         {
-            Ok(_) => Err(ChatError::AlreadyExists([owner, recipient])),
-            Err(ChatError::NotFound(_)) => {
+            Ok(_) => Err(chat::Error::AlreadyExists([owner, recipient])),
+            Err(chat::Error::NotFound(_)) => {
                 let chat = self
                     .repository
                     .insert(&Chat::new([owner.clone(), recipient.clone()]))
@@ -83,7 +82,7 @@ impl ChatService {
                 let chat_dto = self.chat_to_dto(chat, user_info).await?;
                 Ok(chat_dto)
             }
-            Err(ChatError::NotFound(_)) => Err(ChatError::NotMember),
+            Err(chat::Error::NotFound(_)) => Err(chat::Error::NotMember),
             Err(err) => Err(err),
         }
     }
@@ -109,7 +108,7 @@ impl ChatService {
         let belongs_to_chat = members.contains(sub);
 
         if !belongs_to_chat {
-            return Err(ChatError::NotMember);
+            return Err(chat::Error::NotMember);
         }
 
         Ok(())
@@ -121,7 +120,7 @@ impl ChatService {
             cached_members.contains(&members[0]) && cached_members.contains(&members[1]);
 
         if !belongs_to_chat {
-            return Err(ChatError::NotMember);
+            return Err(chat::Error::NotMember);
         }
 
         Ok(())
@@ -161,7 +160,7 @@ impl ChatService {
         let recipient = members
             .iter()
             .find(|&m| m != &user_info.sub) // someone who is not a logged user :)
-            .ok_or(ChatError::NotMember)?;
+            .ok_or(chat::Error::NotMember)?;
 
         let recipient_info = self.user_service.find_user_info(recipient.clone()).await?;
 

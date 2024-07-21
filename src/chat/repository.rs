@@ -1,10 +1,10 @@
 use futures::stream::TryStreamExt;
 use mongodb::bson::doc;
 
+use crate::chat;
 use crate::user::model::UserSub;
 
 use super::model::{Chat, ChatId};
-use super::ChatError;
 use super::Result;
 
 pub struct ChatRepository {
@@ -30,7 +30,7 @@ impl ChatRepository {
             return self.find_by_id(&id).await;
         }
 
-        Err(ChatError::Unexpected("Failed to insert chat".to_owned()))
+        Err(chat::Error::Unexpected("Failed to insert chat".to_owned()))
     }
 
     /**
@@ -56,7 +56,7 @@ impl ChatRepository {
         self.collection
             .find_one(doc! { "_id": id })
             .await?
-            .ok_or(ChatError::NotFound(Some(*id)))
+            .ok_or(chat::Error::NotFound(Some(*id)))
     }
 
     /**
@@ -87,7 +87,7 @@ impl ChatRepository {
                 "members": sub
             })
             .await?
-            .ok_or(ChatError::NotFound(Some(id)))
+            .ok_or(chat::Error::NotFound(Some(id)))
     }
 
     /**
@@ -108,6 +108,6 @@ impl ChatRepository {
             }
         }
 
-        Err(ChatError::NotFound(None))
+        Err(chat::Error::NotFound(None))
     }
 }

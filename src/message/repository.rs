@@ -2,11 +2,10 @@ use futures::TryStreamExt;
 use mongodb::bson::doc;
 use mongodb::Database;
 
-use crate::chat::model::ChatId;
-
 use super::model::{Message, MessageId};
-use super::MessageError;
 use super::Result;
+use crate::chat::model::ChatId;
+use crate::message;
 
 pub struct MessageRepository {
     collection: mongodb::Collection<Message>,
@@ -27,7 +26,7 @@ impl MessageRepository {
             return Ok(id.to_owned());
         }
 
-        Err(MessageError::Unexpected(
+        Err(message::Error::Unexpected(
             "Failed to insert message".to_owned(),
         ))
     }
@@ -36,7 +35,7 @@ impl MessageRepository {
         self.collection
             .find_one(doc! {"_id": id})
             .await?
-            .ok_or(MessageError::NotFound(Some(id)))
+            .ok_or(message::Error::NotFound(Some(id)))
     }
 
     pub async fn find_by_chat_id(&self, chat_id: &ChatId) -> Result<Vec<Message>> {

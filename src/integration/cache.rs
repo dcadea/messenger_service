@@ -1,4 +1,4 @@
-use crate::integration::IntegrationError;
+use crate::integration;
 use crate::integration::Result;
 use std::env;
 
@@ -27,7 +27,7 @@ impl Config {
 
 pub async fn init_client(config: &Config) -> Result<redis::Client> {
     redis::Client::open(format!("redis://{}:{}", config.host.clone(), config.port))
-        .map_err(IntegrationError::from)
+        .map_err(integration::Error::from)
 }
 
 pub async fn init(config: &Config) -> Result<redis::aio::ConnectionManager> {
@@ -35,5 +35,5 @@ pub async fn init(config: &Config) -> Result<redis::aio::ConnectionManager> {
         .await?
         .get_connection_manager()
         .await
-        .map_err(IntegrationError::from)
+        .map_err(integration::Error::from)
 }

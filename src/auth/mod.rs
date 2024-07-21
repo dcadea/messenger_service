@@ -4,26 +4,22 @@ use axum::response::Response;
 use axum_extra::headers::authorization::Bearer;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
-use thiserror::Error;
 
 use self::model::TokenClaims;
 use self::service::AuthService;
-
-use crate::integration::IntegrationError;
-
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
-use crate::user::UserError;
+use crate::{integration, user};
 
 pub mod service;
 
 mod model;
 
-type Result<T> = std::result::Result<T, AuthError>;
+type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum AuthError {
+pub enum Error {
     #[error("unauthorized to access the resource")]
     Unauthorized,
     #[error("forbidden: {0}")]
@@ -35,10 +31,11 @@ pub enum AuthError {
     #[error("unexpected auth error: {0}")]
     Unexpected(String),
 
-    _UserError(#[from] UserError),
-    _IntegrationError(#[from] IntegrationError),
-    _ReqwestError(#[from] reqwest::Error),
-    _ParseJsonError(#[from] serde_json::Error),
+    _User(#[from] user::Error),
+    _Integration(#[from] integration::Error),
+
+    _Reqwest(#[from] reqwest::Error),
+    _ParseJson(#[from] serde_json::Error),
 }
 
 pub async fn validate_token(
@@ -47,7 +44,7 @@ pub async fn validate_token(
     mut request: Request,
     next: Next,
 ) -> super::result::Result<Response> {
-    let auth_header = auth_header.ok_or(AuthError::Unauthorized)?;
+    let auth_header = auth_header.ok_or(Error::Unauthorized)?;
     let claims = auth_service.validate(auth_header.token()).await?;
     request.extensions_mut().insert(claims);
 
@@ -65,11 +62,11 @@ pub async fn set_user_context(
     let claims = request
         .extensions()
         .get::<TokenClaims>()
-        .ok_or(AuthError::Unauthorized)?;
+        .ok_or(Error::Unauthorized)?;
 
     let user_info = match user_service.find_user_info(claims.sub.clone()).await {
         Ok(user_info) => user_info,
-        Err(UserError::NotFound(_)) => {
+        Err(user::Error::NotFound(_)) => {
             let user_info = auth_service.get_user_info(auth_header.token()).await?;
             let user = user_info.clone().into();
             user_service.create(&user).await?;
@@ -92,7 +89,7 @@ pub async fn cache_user_friends(
     let user_info = request
         .extensions()
         .get::<UserInfo>()
-        .ok_or(AuthError::Unauthorized)?;
+        .ok_or(Error::Unauthorized)?;
 
     user_service.cache_friends(user_info.sub.clone()).await?;
 

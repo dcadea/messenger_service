@@ -7,12 +7,11 @@ use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 
-use crate::integration;
 use crate::integration::idp;
 use crate::user::model::UserInfo;
+use crate::{auth, integration};
 
 use super::model::TokenClaims;
-use super::AuthError;
 use super::Result;
 
 #[derive(Clone)]
@@ -58,11 +57,13 @@ impl AuthService {
     pub async fn validate(&self, token: &str) -> Result<TokenClaims> {
         let kid = self.get_kid(token)?;
         let decoding_keys_guard = self.jwk_decoding_keys.read().await;
-        let decoding_key = decoding_keys_guard.get(&kid).ok_or(AuthError::UnknownKid)?;
+        let decoding_key = decoding_keys_guard
+            .get(&kid)
+            .ok_or(auth::Error::UnknownKid)?;
 
         decode::<TokenClaims>(token, decoding_key, &self.jwt_validator)
             .map(|data| data.claims)
-            .map_err(|e| AuthError::Forbidden(e.to_string()))
+            .map_err(|e| auth::Error::Forbidden(e.to_string()))
     }
 
     pub async fn get_user_info(&self, token: &str) -> Result<UserInfo> {
@@ -82,13 +83,13 @@ impl AuthService {
 impl AuthService {
     fn get_kid(&self, token: &str) -> Result<String> {
         let jwt_header =
-            decode_header(token).map_err(|e| AuthError::TokenMalformed(e.to_string()))?;
+            decode_header(token).map_err(|e| auth::Error::TokenMalformed(e.to_string()))?;
 
         jwt_header
             .kid
             .as_ref()
             .map(|kid| kid.to_string())
-            .ok_or(AuthError::UnknownKid)
+            .ok_or(auth::Error::UnknownKid)
     }
 }
 
@@ -103,7 +104,7 @@ async fn fetch_jwk_decoding_keys(
     for jwk in jwk_set.keys.iter() {
         if let Some(kid) = jwk.clone().common.key_id {
             let key =
-                DecodingKey::from_jwk(jwk).map_err(|e| AuthError::Unexpected(e.to_string()))?;
+                DecodingKey::from_jwk(jwk).map_err(|e| auth::Error::Unexpected(e.to_string()))?;
             jwk_decoding_keys.insert(kid, key);
         }
     }

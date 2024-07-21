@@ -12,12 +12,12 @@ use tokio::sync::RwLock;
 
 use crate::auth::service::AuthService;
 use crate::chat::service::ChatService;
+use crate::event;
 use crate::message::model::{Message, MessageDto};
 use crate::message::service::MessageService;
 use crate::user::service::UserService;
 
 use super::model::{Command, Event, EventStream, Queue};
-use super::EventError;
 use super::{context, Result};
 
 #[derive(Clone)]
@@ -61,7 +61,7 @@ impl EventService {
                     return Ok(());
                 }
 
-                Err(EventError::MissingUserInfo)
+                Err(event::Error::MissingUserInfo)
             }
             Some(user_info) => match command {
                 Command::Auth { .. } => {
@@ -102,14 +102,14 @@ impl EventService {
                         self.publish_event(ctx, &recipient_messages, &event),
                         self.chat_service
                             .update_last_message(&message)
-                            .map_err(EventError::from)
+                            .map_err(event::Error::from)
                     )
                     .map(|_| ())
                 }
                 Command::UpdateMessage { id, text } => {
                     let message = self.message_service.find_by_id(id).await?;
                     if message.owner != user_info.sub {
-                        return Err(EventError::NotOwner);
+                        return Err(event::Error::NotOwner);
                     }
 
                     self.message_service.update(&id, &text).await?;
@@ -127,7 +127,7 @@ impl EventService {
                 Command::DeleteMessage { id } => {
                     let message = self.message_service.find_by_id(id).await?;
                     if message.owner != user_info.sub {
-                        return Err(EventError::NotOwner);
+                        return Err(event::Error::NotOwner);
                     }
                     self.message_service.delete(&id).await?;
 
@@ -144,7 +144,7 @@ impl EventService {
                 Command::MarkAsSeenMessage { id } => {
                     let message = self.message_service.find_by_id(id).await?;
                     if message.recipient != user_info.sub {
-                        return Err(EventError::NotRecipient);
+                        return Err(event::Error::NotRecipient);
                     }
                     self.message_service.mark_as_seen(&id).await?;
 
@@ -182,14 +182,14 @@ impl EventService {
                     Ok(event)
                 }
             })
-            .map_err(EventError::from);
+            .map_err(event::Error::from);
 
         Ok(Box::pin(stream))
     }
 
     pub async fn close_channel(&self, ctx: &context::Ws) -> Result<()> {
         let channel = ctx.get_channel().await?;
-        channel.close(200, "OK").await.map_err(EventError::from)
+        channel.close(200, "OK").await.map_err(event::Error::from)
     }
 
     pub async fn publish_event(&self, ctx: &context::Ws, q: &Queue, event: &Event) -> Result<()> {
@@ -201,7 +201,7 @@ impl EventService {
 impl EventService {
     async fn create_channel(&self) -> Result<Channel> {
         let conn = self.amqp_con.read().await;
-        conn.create_channel().await.map_err(EventError::from)
+        conn.create_channel().await.map_err(event::Error::from)
     }
 
     async fn publish(&self, ctx: &context::Ws, q: &Queue, payload: &[u8]) -> Result<()> {
@@ -232,6 +232,6 @@ impl EventService {
             )
             .await
             .map(|_| ())
-            .map_err(EventError::from)
+            .map_err(event::Error::from)
     }
 }

@@ -4,7 +4,7 @@ use axum::{Extension, Json, Router};
 use axum_extra::extract::Query;
 
 use crate::chat::service::ChatService;
-use crate::error::ApiError;
+use crate::error::Error;
 use crate::result::Result;
 use crate::state::AppState;
 use crate::user::model::UserInfo;
@@ -26,7 +26,7 @@ async fn find_handler(
 ) -> Result<Json<Vec<MessageDto>>> {
     let chat_id = params
         .chat_id
-        .ok_or(ApiError::QueryParamRequired("chat_id".to_owned()))?;
+        .ok_or(Error::QueryParamRequired("chat_id".to_owned()))?;
 
     chat_service.check_member(chat_id, &user_info.sub).await?;
 

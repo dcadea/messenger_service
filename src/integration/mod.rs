@@ -1,4 +1,3 @@
-use std::env;
 use std::fs::File;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -7,7 +6,6 @@ use std::time::Duration;
 use dotenv::dotenv;
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, WriteLogger};
-use thiserror::Error;
 
 pub mod amqp;
 pub mod cache;
@@ -15,18 +13,18 @@ pub mod db;
 pub mod idp;
 pub mod model;
 
-type Result<T> = std::result::Result<T, IntegrationError>;
+type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum IntegrationError {
-    VarError(#[from] std::env::VarError),
-    ParseIntError(#[from] std::num::ParseIntError),
+pub enum Error {
+    Var(#[from] std::env::VarError),
+    ParseInt(#[from] std::num::ParseIntError),
 
-    MongoDB(#[from] mongodb::error::Error),
-    Lapin(#[from] lapin::Error),
-    Redis(#[from] redis::RedisError),
-    Reqwest(#[from] reqwest::Error),
+    _MongoDB(#[from] mongodb::error::Error),
+    _Lapin(#[from] lapin::Error),
+    _Redis(#[from] redis::RedisError),
+    _Reqwest(#[from] reqwest::Error),
 }
 
 #[derive(Clone)]
@@ -44,7 +42,7 @@ impl Default for Config {
     fn default() -> Self {
         dotenv().ok();
 
-        let rust_log = env::var("RUST_LOG").unwrap_or("info".into());
+        let rust_log = std::env::var("RUST_LOG").unwrap_or("info".into());
         let level = LevelFilter::from_str(&rust_log).unwrap_or(LevelFilter::Info);
         CombinedLogger::init(vec![
             TermLogger::new(
@@ -61,21 +59,21 @@ impl Default for Config {
         ])
         .expect("Failed to initialize logger");
 
-        let app_addr = env::var("APP_ADDR").unwrap_or("127.0.0.1".into());
-        let app_port = env::var("APP_PORT").unwrap_or("8000".into());
+        let app_addr = std::env::var("APP_ADDR").unwrap_or("127.0.0.1".into());
+        let app_port = std::env::var("APP_PORT").unwrap_or("8000".into());
 
         let socket = format!("{}:{}", app_addr, app_port)
             .parse()
             .expect("Failed to parse socket address");
 
         let idp_config = idp::Config::new(
-            env::var("ISSUER").expect("ISSUER must be set"),
-            env::var("AUDIENCE")
+            std::env::var("ISSUER").expect("ISSUER must be set"),
+            std::env::var("AUDIENCE")
                 .expect("AUDIENCE must be set")
                 .split(',')
                 .map(String::from)
                 .collect::<Vec<String>>(),
-            env::var("REQUIRED_CLAIMS")
+            std::env::var("REQUIRED_CLAIMS")
                 .expect("REQUIRED_CLAIMS must be set")
                 .split(',')
                 .map(String::from)
@@ -97,5 +95,5 @@ pub fn init_http_client() -> Result<reqwest::Client> {
         .connect_timeout(Duration::from_secs(2))
         .timeout(Duration::from_secs(5))
         .build()
-        .map_err(IntegrationError::from)
+        .map_err(Error::from)
 }

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use tokio::sync::{Notify, RwLock};
 
-use crate::event::EventError;
+use crate::event;
 use crate::event::Result;
 use crate::user::model::{UserInfo, UserSub};
 
@@ -46,7 +46,7 @@ impl Ws {
             .read()
             .await
             .clone()
-            .ok_or(EventError::MissingAmqpChannel)
+            .ok_or(event::Error::MissingAmqpChannel)
     }
 
     pub async fn set_online_friends(&self, friends: HashSet<UserSub>) {

@@ -4,39 +4,32 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use log::error;
 use serde::Serialize;
-use std::borrow::ToOwned;
-use thiserror::Error;
 
-use super::auth::AuthError;
-use super::chat::ChatError;
-use super::event::EventError;
-use super::integration::IntegrationError;
-use super::message::MessageError;
-use super::user::UserError;
+use crate::{auth, chat, event, integration, message, user};
 
-#[derive(Error, Debug)]
+#[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum ApiError {
+pub enum Error {
     #[error("Query parameter '{0}' is required")]
     QueryParamRequired(String),
     #[error("unexpected api error {0}")]
     Unexpected(String),
 
-    _AuthError(#[from] AuthError),
-    _ChatError(#[from] ChatError),
-    _EventError(#[from] EventError),
-    _IntegrationError(#[from] IntegrationError),
-    _MessageError(#[from] MessageError),
-    _UserError(#[from] UserError),
+    _Auth(#[from] auth::Error),
+    _Chat(#[from] chat::Error),
+    _Event(#[from] event::Error),
+    _Integration(#[from] integration::Error),
+    _Message(#[from] message::Error),
+    _User(#[from] user::Error),
 }
 
-impl From<InvalidHeaderValue> for ApiError {
+impl From<InvalidHeaderValue> for Error {
     fn from(err: InvalidHeaderValue) -> Self {
         Self::Unexpected(err.to_string())
     }
 }
 
-impl IntoResponse for ApiError {
+impl IntoResponse for Error {
     fn into_response(self) -> Response {
         #[derive(Serialize)]
         struct ErrorResponse {
@@ -47,28 +40,26 @@ impl IntoResponse for ApiError {
         error!("{}", message);
 
         let (status, message) = match self {
-            Self::_AuthError(AuthError::Unauthorized) => (StatusCode::UNAUTHORIZED, message),
-            Self::_AuthError(AuthError::Forbidden(_)) => {
+            Self::_Auth(auth::Error::Unauthorized) => (StatusCode::UNAUTHORIZED, message),
+            Self::_Auth(auth::Error::Forbidden(_)) => {
                 (StatusCode::FORBIDDEN, "Forbidden".to_owned())
             }
-            Self::_AuthError(AuthError::UnknownKid) => {
-                (StatusCode::FORBIDDEN, "Forbidden".to_owned())
-            }
-            Self::_AuthError(AuthError::TokenMalformed(_)) => {
+            Self::_Auth(auth::Error::UnknownKid) => (StatusCode::FORBIDDEN, "Forbidden".to_owned()),
+            Self::_Auth(auth::Error::TokenMalformed(_)) => {
                 (StatusCode::BAD_REQUEST, "Token malformed".to_owned())
             }
 
-            Self::_EventError(EventError::MissingUserInfo) => (StatusCode::UNAUTHORIZED, message),
-            Self::_EventError(EventError::NotOwner) => (StatusCode::FORBIDDEN, message),
-            Self::_EventError(EventError::NotRecipient) => (StatusCode::FORBIDDEN, message),
+            Self::_Chat(chat::Error::NotFound(_)) => (StatusCode::NOT_FOUND, message),
+            Self::_Chat(chat::Error::AlreadyExists(_)) => (StatusCode::CONFLICT, message),
+            Self::_Chat(chat::Error::NotMember) => (StatusCode::FORBIDDEN, message),
 
-            Self::_ChatError(ChatError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
-            Self::_ChatError(ChatError::AlreadyExists(_)) => (StatusCode::CONFLICT, message),
-            Self::_ChatError(ChatError::NotMember) => (StatusCode::FORBIDDEN, message),
+            Self::_Event(event::Error::MissingUserInfo) => (StatusCode::UNAUTHORIZED, message),
+            Self::_Event(event::Error::NotOwner) => (StatusCode::FORBIDDEN, message),
+            Self::_Event(event::Error::NotRecipient) => (StatusCode::FORBIDDEN, message),
 
-            Self::_MessageError(MessageError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
+            Self::_Message(message::Error::NotFound(_)) => (StatusCode::NOT_FOUND, message),
 
-            Self::_UserError(UserError::NotFound(_)) => (StatusCode::NOT_FOUND, message),
+            Self::_User(user::Error::NotFound(_)) => (StatusCode::NOT_FOUND, message),
 
             Self::QueryParamRequired(_) => (StatusCode::BAD_REQUEST, message),
             _ => (

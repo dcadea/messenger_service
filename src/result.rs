@@ -1,3 +1,3 @@
-use super::error::ApiError;
+use super::error::Error;
 
-pub type Result<T> = std::result::Result<T, ApiError>;
+pub type Result<T> = std::result::Result<T, Error>;
