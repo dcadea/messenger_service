@@ -7,24 +7,34 @@ use std::time::Duration;
 use dotenv::dotenv;
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, WriteLogger};
-
-use crate::integration::error::IntegrationError;
+use thiserror::Error;
 
 pub mod amqp;
-pub mod error;
+pub mod cache;
+pub mod db;
 pub mod idp;
 pub mod model;
-pub mod mongo;
-pub mod redis;
 
 type Result<T> = std::result::Result<T, IntegrationError>;
+
+#[derive(Error, Debug)]
+#[error(transparent)]
+pub enum IntegrationError {
+    VarError(#[from] std::env::VarError),
+    ParseIntError(#[from] std::num::ParseIntError),
+
+    MongoDB(#[from] mongodb::error::Error),
+    Lapin(#[from] lapin::Error),
+    Redis(#[from] redis::RedisError),
+    Reqwest(#[from] reqwest::Error),
+}
 
 #[derive(Clone)]
 pub struct Config {
     pub socket: SocketAddr,
 
-    pub redis: redis::Config,
-    pub mongo: mongo::Config,
+    pub redis: cache::Config,
+    pub mongo: db::Config,
     pub amqp: amqp::Config,
 
     pub idp: idp::Config,
@@ -74,8 +84,8 @@ impl Default for Config {
 
         Self {
             socket,
-            redis: redis::Config::env().unwrap_or_default(),
-            mongo: mongo::Config::env().unwrap_or_default(),
+            redis: cache::Config::env().unwrap_or_default(),
+            mongo: db::Config::env().unwrap_or_default(),
             amqp: amqp::Config::env().unwrap_or_default(),
             idp: idp_config,
         }

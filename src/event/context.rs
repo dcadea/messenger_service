@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use tokio::sync::{Notify, RwLock};
 
-use crate::event::error::EventError;
+use crate::event::EventError;
 use crate::event::Result;
 use crate::user::model::{UserInfo, UserSub};
 

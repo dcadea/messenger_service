@@ -4,8 +4,8 @@ use mongodb::Database;
 
 use crate::chat::model::ChatId;
 
-use super::error::MessageError;
 use super::model::{Message, MessageId};
+use super::MessageError;
 use super::Result;
 
 pub struct MessageRepository {

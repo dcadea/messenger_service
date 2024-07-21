@@ -16,8 +16,8 @@ use crate::message::model::{Message, MessageDto};
 use crate::message::service::MessageService;
 use crate::user::service::UserService;
 
-use super::error::EventError;
 use super::model::{Command, Event, EventStream, Queue};
+use super::EventError;
 use super::{context, Result};
 
 #[derive(Clone)]

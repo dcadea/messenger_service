@@ -11,8 +11,8 @@ use crate::integration;
 use crate::integration::idp;
 use crate::user::model::UserInfo;
 
-use super::error::AuthError;
 use super::model::TokenClaims;
+use super::AuthError;
 use super::Result;
 
 #[derive(Clone)]

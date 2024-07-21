@@ -2,6 +2,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
+use self::service::EventService;
 use axum::extract::ws;
 use axum::extract::ws::Message::{Close, Text};
 use axum::extract::ws::WebSocket;
@@ -9,26 +10,56 @@ use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, Stream, StreamExt};
 use log::{debug, error, warn};
 use serde_json::from_str;
+use thiserror::Error;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::try_join;
 
-use service::EventService;
+use crate::auth::AuthError;
 
-use crate::event::error::EventError;
+use crate::chat::ChatError;
+
 use crate::event::model::{Command, Event, Queue};
+
 use crate::integration::model::{CacheKey, Keyspace};
+use crate::integration::IntegrationError;
+
+use crate::message::MessageError;
+
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
+use crate::user::UserError;
 
 pub mod api;
-pub mod error;
 pub mod service;
 
 mod context;
 mod model;
 
 type Result<T> = std::result::Result<T, EventError>;
+
+#[derive(Error, Debug)]
+#[error(transparent)]
+pub enum EventError {
+    #[error("missing user info")]
+    MissingUserInfo,
+    #[error("not a message owner")]
+    NotOwner,
+    #[error("not a message recipient")]
+    NotRecipient,
+    #[error("missing amqp channel")]
+    MissingAmqpChannel,
+
+    _AuthError(#[from] AuthError),
+    _ChatError(#[from] ChatError),
+    _IntegrationError(#[from] IntegrationError),
+    _MessageError(#[from] MessageError),
+    _UserError(#[from] UserError),
+
+    _ParseJsonError(#[from] serde_json::Error),
+    _LapinError(#[from] lapin::Error),
+    _RedisError(#[from] redis::RedisError),
+}
 
 async fn handle_socket(ws: WebSocket, event_service: EventService, user_service: UserService) {
     let (sender, receiver) = ws.split();
@@ -241,8 +272,8 @@ type OnlineStatusChangedStream = Pin<Box<dyn Stream<Item = Result<redis::Msg>> +
 
 // FIXME
 async fn listen_online_status_change() -> Result<OnlineStatusChangedStream> {
-    let config = crate::integration::redis::Config::env().unwrap_or_default();
-    let client = crate::integration::redis::init_client(&config).await?;
+    let config = crate::integration::cache::Config::env().unwrap_or_default();
+    let client = crate::integration::cache::init_client(&config).await?;
     let mut con = client.get_async_connection().await?;
 
     enable_keyspace_events(&mut con).await?;

@@ -7,7 +7,7 @@ use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
 
-use crate::auth::{set_user_context, validate_token, cache_user_friends};
+use crate::auth::{cache_user_friends, set_user_context, validate_token};
 use crate::state::AppState;
 
 mod auth;

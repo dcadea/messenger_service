@@ -4,21 +4,42 @@ use axum::response::Response;
 use axum_extra::headers::authorization::Bearer;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
+use thiserror::Error;
 
-use model::TokenClaims;
-use service::AuthService;
+use self::model::TokenClaims;
+use self::service::AuthService;
 
-use crate::auth::error::AuthError;
-use crate::user::error::UserError;
+use crate::integration::IntegrationError;
+
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
+use crate::user::UserError;
 
-pub mod error;
 pub mod service;
 
 mod model;
 
 type Result<T> = std::result::Result<T, AuthError>;
+
+#[derive(Error, Debug)]
+#[error(transparent)]
+pub enum AuthError {
+    #[error("unauthorized to access the resource")]
+    Unauthorized,
+    #[error("forbidden: {0}")]
+    Forbidden(String),
+    #[error("missing or unknown kid")]
+    UnknownKid,
+    #[error("token is malformed: {0}")]
+    TokenMalformed(String),
+    #[error("unexpected auth error: {0}")]
+    Unexpected(String),
+
+    _UserError(#[from] UserError),
+    _IntegrationError(#[from] IntegrationError),
+    _ReqwestError(#[from] reqwest::Error),
+    _ParseJsonError(#[from] serde_json::Error),
+}
 
 pub async fn validate_token(
     auth_service: State<AuthService>,

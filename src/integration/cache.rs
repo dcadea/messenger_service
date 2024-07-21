@@ -1,4 +1,4 @@
-use crate::integration::error::IntegrationError;
+use crate::integration::IntegrationError;
 use crate::integration::Result;
 use std::env;
 

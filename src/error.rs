@@ -7,12 +7,12 @@ use serde::Serialize;
 use std::borrow::ToOwned;
 use thiserror::Error;
 
-use super::auth::error::AuthError;
-use super::chat::error::ChatError;
-use super::event::error::EventError;
-use super::integration::error::IntegrationError;
-use super::message::error::MessageError;
-use super::user::error::UserError;
+use super::auth::AuthError;
+use super::chat::ChatError;
+use super::event::EventError;
+use super::integration::IntegrationError;
+use super::message::MessageError;
+use super::user::UserError;
 
 #[derive(Error, Debug)]
 #[error(transparent)]

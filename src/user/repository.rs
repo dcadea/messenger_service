@@ -1,8 +1,9 @@
-use crate::user::error::UserError;
 use futures::TryStreamExt;
 use mongodb::bson::doc;
 use mongodb::options::FindOneOptions;
 use mongodb::Database;
+
+use crate::user::UserError;
 
 use super::model::{Friends, User, UserSub};
 use super::Result;

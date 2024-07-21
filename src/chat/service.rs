@@ -4,7 +4,7 @@ use futures::future::try_join_all;
 use futures::TryFutureExt;
 use redis::AsyncCommands;
 
-use crate::chat::error::ChatError;
+use crate::chat::ChatError;
 use crate::integration::model::CacheKey;
 use crate::message::model::Message;
 use crate::model::{AppEndpoints, LinkFactory};

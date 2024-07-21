@@ -3,8 +3,8 @@ use mongodb::bson::doc;
 
 use crate::user::model::UserSub;
 
-use super::error::ChatError;
 use super::model::{Chat, ChatId};
+use super::ChatError;
 use super::Result;
 
 pub struct ChatRepository {
