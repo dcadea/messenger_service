@@ -1,7 +1,8 @@
-use crate::user::model::UserSub;
 use serde::Deserialize;
+
+use crate::user::model::Sub;
 
 #[derive(Deserialize, Clone)]
 pub struct TokenClaims {
-    pub sub: UserSub,
+    pub sub: Sub,
 }

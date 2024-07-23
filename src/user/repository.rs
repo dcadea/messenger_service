@@ -3,7 +3,7 @@ use mongodb::bson::doc;
 use mongodb::options::FindOneOptions;
 use mongodb::Database;
 
-use super::model::{Friends, User, UserSub};
+use super::model::{Friends, Sub, User};
 use super::Result;
 use crate::user;
 
@@ -27,7 +27,7 @@ impl UserRepository {
         Ok(())
     }
 
-    pub async fn find_by_sub(&self, sub: &str) -> Result<User> {
+    pub async fn find_by_sub(&self, sub: &Sub) -> Result<User> {
         let filter = doc! { "sub": sub };
         let result = self.users_col.find_one(filter).await?;
         result.ok_or(user::Error::NotFound(sub.to_owned()))
@@ -44,7 +44,7 @@ impl UserRepository {
         cursor.try_collect().await.map_err(user::Error::from)
     }
 
-    pub async fn add_friend(&self, sub: &str, friend: &str) -> Result<()> {
+    pub async fn add_friend(&self, sub: &Sub, friend: &Sub) -> Result<()> {
         let filter = doc! { "sub": sub };
         let update = doc! { "$push": { "friends": friend } };
 
@@ -52,7 +52,7 @@ impl UserRepository {
         Ok(())
     }
 
-    pub async fn find_friends_by_sub(&self, sub: &str) -> Result<Vec<UserSub>> {
+    pub async fn find_friends_by_sub(&self, sub: &Sub) -> Result<Vec<Sub>> {
         let filter = doc! { "sub": sub };
         let projection = FindOneOptions::builder()
             .projection(doc! { "friends": 1 })
@@ -65,7 +65,7 @@ impl UserRepository {
             .await?;
 
         friends
-            .ok_or(user::Error::NotFound(sub.to_owned()))
+            .ok_or(user::Error::NotFound(sub.clone()))
             .map(|f| f.friends)
     }
 }

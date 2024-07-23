@@ -2,7 +2,7 @@ use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde::{Deserialize, Serialize};
 
 use crate::chat::model::ChatId;
-use crate::user::model::UserSub;
+use crate::user::model::Sub;
 use crate::util::serialize_object_id;
 
 pub type MessageId = mongodb::bson::oid::ObjectId;
@@ -16,15 +16,15 @@ pub struct Message {
     )]
     id: Option<MessageId>,
     chat_id: ChatId,
-    pub owner: UserSub,
-    pub recipient: UserSub,
+    pub owner: Sub,
+    pub recipient: Sub,
     pub text: String,
     timestamp: i64,
     seen: bool,
 }
 
 impl Message {
-    pub fn new(chat_id: ChatId, owner: UserSub, recipient: UserSub, text: &str) -> Self {
+    pub fn new(chat_id: ChatId, owner: Sub, recipient: Sub, text: &str) -> Self {
         Self {
             id: None,
             chat_id,
@@ -55,8 +55,8 @@ pub struct MessageDto {
     id: MessageId,
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     chat_id: ChatId,
-    owner: UserSub,
-    recipient: UserSub,
+    owner: Sub,
+    recipient: Sub,
     text: String,
     timestamp: i64,
     seen: bool,
@@ -67,8 +67,8 @@ impl From<&Message> for MessageDto {
         Self {
             id: message.id.expect("where is message id!?"),
             chat_id: message.chat_id,
-            owner: message.owner.to_string(),
-            recipient: message.recipient.to_string(),
+            owner: message.owner.clone(),
+            recipient: message.recipient.clone(),
             text: message.clone().text,
             timestamp: message.timestamp,
             seen: message.seen,

@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::user::model::UserSub;
+use crate::user::model::Sub;
 use crate::util::serialize_object_id;
 
 type GroupId = mongodb::bson::oid::ObjectId;
-type Participants = Vec<UserSub>;
 
 #[derive(Serialize, Deserialize)]
 pub struct Group {
@@ -15,8 +14,8 @@ pub struct Group {
     )]
     id: Option<GroupId>,
     name: String,
-    owner: UserSub,
-    participants: Participants,
+    owner: Sub,
+    participants: Vec<Sub>,
     picture: String,
     last_message: String,
 }

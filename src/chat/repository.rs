@@ -2,7 +2,7 @@ use futures::stream::TryStreamExt;
 use mongodb::bson::doc;
 
 use crate::chat;
-use crate::user::model::UserSub;
+use crate::user::model::Sub;
 
 use super::model::{Chat, ChatId};
 use super::Result;
@@ -63,7 +63,7 @@ impl ChatRepository {
      * Find a chat where the user sub is a member
      * @param sub: The user sub
      */
-    pub async fn find_by_sub(&self, sub: &UserSub) -> Result<Vec<Chat>> {
+    pub async fn find_by_sub(&self, sub: &Sub) -> Result<Vec<Chat>> {
         let cursor = self
             .collection
             .find(doc! {"members": sub})
@@ -80,7 +80,7 @@ impl ChatRepository {
      * @param id: The id of the chat
      * @param sub: The user sub
      */
-    pub async fn find_by_id_and_sub(&self, id: ChatId, sub: &UserSub) -> Result<Chat> {
+    pub async fn find_by_id_and_sub(&self, id: ChatId, sub: &Sub) -> Result<Chat> {
         self.collection
             .find_one(doc! {
                 "_id": id,
@@ -94,7 +94,7 @@ impl ChatRepository {
      * Find a chat id by its members
      * @param members: The members of the chat
      */
-    pub async fn find_id_by_members(&self, members: [&UserSub; 2]) -> Result<ChatId> {
+    pub async fn find_id_by_members(&self, members: [&Sub; 2]) -> Result<ChatId> {
         let result = self
             .collection
             .find_one(doc! {

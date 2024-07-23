@@ -8,19 +8,19 @@ use serde::{Deserialize, Serialize};
 
 use crate::chat::model::ChatId;
 use crate::message::model::{MessageDto, MessageId};
-use crate::user::model::UserSub;
+use crate::user::model::Sub;
 
 pub(crate) type EventStream = Pin<Box<dyn Stream<Item = crate::event::Result<Event>> + Send>>;
 
 #[derive(Clone)]
 pub enum Queue {
-    Messages(UserSub),
+    Messages(Sub),
 }
 
 impl Display for Queue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Queue::Messages(name) => write!(f, "messages:{}", name),
+            Queue::Messages(sub) => write!(f, "messages:{:?}", sub),
         }
     }
 }
@@ -33,7 +33,7 @@ pub enum Command {
     },
     CreateMessage {
         chat_id: ChatId,
-        recipient: UserSub,
+        recipient: Sub,
         text: String,
     },
     UpdateMessage {
@@ -68,6 +68,6 @@ pub enum Event {
         id: MessageId,
     },
     OnlineUsers {
-        users: HashSet<UserSub>,
+        users: HashSet<Sub>,
     },
 }

@@ -1,6 +1,6 @@
 use crate::chat::model::ChatId;
 use crate::user;
-use crate::user::model::UserSub;
+use crate::user::model::Sub;
 
 pub mod api;
 pub mod model;
@@ -15,7 +15,7 @@ pub enum Error {
     #[error("chat not found: {0:?}")]
     NotFound(Option<ChatId>),
     #[error("chat already exists for members: {0:?}")]
-    AlreadyExists([UserSub; 2]),
+    AlreadyExists([Sub; 2]),
     #[error("user is not a member of the chat")]
     NotMember,
     #[error("unexpected chat error: {0}")]

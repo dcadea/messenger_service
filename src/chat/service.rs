@@ -11,7 +11,7 @@ use crate::chat;
 use crate::integration::model::CacheKey;
 use crate::message::model::Message;
 use crate::model::{AppEndpoints, LinkFactory};
-use crate::user::model::{UserInfo, UserSub};
+use crate::user::model::{Sub, UserInfo};
 use crate::user::service::UserService;
 
 const CHAT_TTL: i64 = 3600;
@@ -103,7 +103,7 @@ impl ChatService {
 
 // validations
 impl ChatService {
-    pub async fn check_member(&self, chat_id: ChatId, sub: &UserSub) -> Result<()> {
+    pub async fn check_member(&self, chat_id: ChatId, sub: &Sub) -> Result<()> {
         let members = self.find_members(chat_id).await?;
         let belongs_to_chat = members.contains(sub);
 
@@ -114,7 +114,7 @@ impl ChatService {
         Ok(())
     }
 
-    pub async fn check_members(&self, chat_id: ChatId, members: [UserSub; 2]) -> Result<()> {
+    pub async fn check_members(&self, chat_id: ChatId, members: [Sub; 2]) -> Result<()> {
         let cached_members = self.find_members(chat_id).await?;
         let belongs_to_chat =
             cached_members.contains(&members[0]) && cached_members.contains(&members[1]);
@@ -129,11 +129,11 @@ impl ChatService {
 
 // cache operations
 impl ChatService {
-    pub async fn find_members(&self, chat_id: ChatId) -> Result<[UserSub; 2]> {
+    pub async fn find_members(&self, chat_id: ChatId) -> Result<[Sub; 2]> {
         let mut con = self.redis_con.clone();
 
         let cache_key = CacheKey::Chat(chat_id);
-        let members: Option<Vec<UserSub>> = con.smembers(cache_key.clone()).await?;
+        let members: Option<Vec<Sub>> = con.smembers(cache_key.clone()).await?;
 
         if members.clone().is_some_and(|m| m.len() == 2) {
             let members = members.unwrap();
@@ -169,7 +169,7 @@ impl ChatService {
         let links = vec![
             self.link_factory._self(&format!("chats/{}", chat_dto.id)),
             self.link_factory
-                .recipient(&format!("users?sub={recipient}")),
+                .recipient(&format!("users?sub={:?}", recipient)),
         ];
 
         Ok(chat_dto.with_links(links))

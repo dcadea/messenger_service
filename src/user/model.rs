@@ -1,28 +1,71 @@
 use serde::{Deserialize, Serialize};
 
 type UserId = mongodb::bson::oid::ObjectId;
-pub type UserSub = String;
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct Sub(String);
+
+impl Serialize for Sub {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Sub {
+    fn deserialize<D>(deserializer: D) -> Result<Sub, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(Sub(s))
+    }
+}
+
+impl From<Sub> for mongodb::bson::Bson {
+    fn from(val: Sub) -> Self {
+        mongodb::bson::Bson::String(val.0)
+    }
+}
+
+impl redis::FromRedisValue for Sub {
+    fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Sub> {
+        let s = String::from_redis_value(v)?;
+        Ok(Sub(s))
+    }
+}
+
+impl redis::ToRedisArgs for Sub {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite,
+    {
+        self.0.write_redis_args(out);
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct User {
     #[serde(skip)]
     _id: Option<UserId>,
-    sub: UserSub,
+    sub: Sub,
     nickname: String,
     name: String,
     picture: String,
     email: String,
-    friends: Vec<UserSub>,
+    friends: Vec<Sub>, // vec of sub
 }
 
 #[derive(Deserialize)]
 pub struct Friends {
-    pub friends: Vec<UserSub>,
+    pub friends: Vec<Sub>, // vec of sub
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UserInfo {
-    pub sub: UserSub,
+    pub sub: Sub,
     nickname: String,
     pub name: String,
     picture: String,
@@ -73,6 +116,6 @@ impl redis::ToRedisArgs for UserInfo {
 
 #[derive(Deserialize)]
 pub(super) struct UserParams {
-    pub sub: Option<UserSub>,
+    pub sub: Option<Sub>,
     pub nickname: Option<String>,
 }

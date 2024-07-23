@@ -3,7 +3,7 @@ use serde;
 use serde::{Deserialize, Serialize};
 
 use crate::model::Link;
-use crate::user::model::UserSub;
+use crate::user::model::Sub;
 use crate::util::serialize_object_id;
 
 pub type ChatId = mongodb::bson::oid::ObjectId;
@@ -16,14 +16,14 @@ pub struct Chat {
         skip_serializing_if = "Option::is_none"
     )]
     pub id: Option<ChatId>,
-    pub members: [UserSub; 2],
+    pub members: [Sub; 2],
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_message: Option<String>,
     updated_at: i64,
 }
 
 impl Chat {
-    pub fn new(members: [UserSub; 2]) -> Self {
+    pub fn new(members: [Sub; 2]) -> Self {
         Self {
             id: None,
             members,
@@ -37,7 +37,7 @@ impl Chat {
 pub struct ChatDto {
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     pub id: ChatId,
-    pub recipient: UserSub,
+    pub recipient: Sub,
     recipient_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     last_message: Option<String>,
@@ -46,7 +46,7 @@ pub struct ChatDto {
 }
 
 impl ChatDto {
-    pub fn new(chat: Chat, recipient: UserSub, recipient_name: String) -> Self {
+    pub fn new(chat: Chat, recipient: Sub, recipient_name: String) -> Self {
         let chat_id = chat.id.expect("No way chat id is missing!?");
         Self {
             id: chat_id,
@@ -66,5 +66,5 @@ impl ChatDto {
 
 #[derive(Deserialize, Clone)]
 pub struct ChatRequest {
-    pub recipient: UserSub,
+    pub recipient: Sub,
 }
