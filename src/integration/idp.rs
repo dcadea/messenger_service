@@ -10,9 +10,9 @@ pub struct Config {
 impl Config {
     pub fn new(issuer: String, audience: Vec<String>, required_claims: Vec<String>) -> Self {
         Self {
-            issuer: issuer.clone(),
-            jwks_url: format!("{}.well-known/jwks.json", issuer),
-            userinfo_url: format!("{}userinfo", issuer),
+            jwks_url: format!("{}.well-known/jwks.json", &issuer),
+            userinfo_url: format!("{}userinfo", &issuer),
+            issuer,
             audience,
             required_claims,
         }

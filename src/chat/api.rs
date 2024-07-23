@@ -33,7 +33,7 @@ async fn find_by_id_handler(
     chat_service: State<ChatService>,
     Path(id): Path<ChatId>,
 ) -> Result<Json<ChatDto>> {
-    let result = chat_service.find_by_id(id, &user_info).await?;
+    let result = chat_service.find_by_id(&id, &user_info).await?;
     Ok(Json(result))
 }
 

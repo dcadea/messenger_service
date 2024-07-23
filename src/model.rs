@@ -27,8 +27,10 @@ pub struct LinkFactory {
 }
 
 impl LinkFactory {
-    pub fn new(base_url: String) -> Self {
-        Self { base_url }
+    pub fn new(base_url: &str) -> Self {
+        Self {
+            base_url: base_url.to_string(),
+        }
     }
 
     pub fn _self(&self, path: &str) -> Link {

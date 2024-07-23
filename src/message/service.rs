@@ -27,7 +27,7 @@ impl MessageService {
             .map(|id| message.with_id(id))
     }
 
-    pub async fn find_by_id(&self, id: MessageId) -> Result<Message> {
+    pub async fn find_by_id(&self, id: &MessageId) -> Result<Message> {
         self.repository.find_by_id(id).await
     }
 
@@ -72,7 +72,10 @@ impl MessageService {
             }
         };
 
-        let result = result.iter().map(MessageDto::from).collect::<Vec<_>>();
+        let result = result
+            .iter()
+            .map(|msg| MessageDto::from(msg.clone()))
+            .collect::<Vec<_>>();
 
         Ok(result)
     }

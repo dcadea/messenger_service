@@ -64,7 +64,7 @@ pub async fn set_user_context(
         .get::<TokenClaims>()
         .ok_or(Error::Unauthorized)?;
 
-    let user_info = match user_service.find_user_info(claims.sub.clone()).await {
+    let user_info = match user_service.find_user_info(&claims.sub).await {
         Ok(user_info) => user_info,
         Err(user::Error::NotFound(_)) => {
             let user_info = auth_service.get_user_info(auth_header.token()).await?;
@@ -91,7 +91,7 @@ pub async fn cache_user_friends(
         .get::<UserInfo>()
         .ok_or(Error::Unauthorized)?;
 
-    user_service.cache_friends(user_info.sub.clone()).await?;
+    user_service.cache_friends(&user_info.sub).await?;
 
     let response = next.run(request).await;
     Ok(response)

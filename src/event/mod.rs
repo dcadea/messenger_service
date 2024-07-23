@@ -134,7 +134,7 @@ async fn write(
         .await
         .expect("user info has to be set when logged in");
 
-    let messages_queue = Queue::Messages(user_info.clone().sub);
+    let messages_queue = Queue::Messages(user_info.sub.to_owned());
 
     let mut event_stream = match event_service.read(&ctx, &messages_queue).await {
         Ok(binding) => binding,
@@ -219,7 +219,7 @@ async fn publish_online_users(
     user_service: UserService,
     event_service: EventService,
 ) {
-    if let Ok(users) = user_service.get_online_friends(user_info.sub.clone()).await {
+    if let Ok(users) = user_service.get_online_friends(&user_info.sub).await {
         if ctx.same_online_friends(&users).await {
             return;
         }
@@ -227,7 +227,7 @@ async fn publish_online_users(
         match event_service
             .publish_event(
                 ctx,
-                &Queue::Messages(user_info.sub.clone()),
+                &Queue::Messages(user_info.sub.to_owned()),
                 &Event::OnlineUsers {
                     users: users.clone(),
                 },
@@ -242,8 +242,8 @@ async fn publish_online_users(
 
 async fn add_online_user(ctx: &context::Ws, user_service: UserService) {
     if let Some(user_info) = ctx.get_user_info().await {
-        debug!("adding to online users: {:?}", user_info.sub.clone());
-        if let Err(e) = user_service.add_online_user(user_info.sub).await {
+        debug!("adding to online users: {:?}", &user_info.sub);
+        if let Err(e) = user_service.add_online_user(&user_info.sub).await {
             error!("Failed to add user to online users: {:?}", e);
         }
     }
@@ -251,8 +251,8 @@ async fn add_online_user(ctx: &context::Ws, user_service: UserService) {
 
 async fn remove_online_user(ctx: &context::Ws, user_service: UserService) {
     if let Some(user_info) = ctx.get_user_info().await {
-        debug!("removing from online users: {:?}", user_info.sub.clone());
-        if let Err(e) = user_service.remove_online_user(user_info.sub).await {
+        debug!("removing from online users: {:?}", &user_info.sub);
+        if let Err(e) = user_service.remove_online_user(&user_info.sub).await {
             error!("Failed to remove user from online users: {:?}", e);
         }
     }

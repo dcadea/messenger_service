@@ -21,7 +21,7 @@ async fn find_handler(
     user_service: State<UserService>,
 ) -> impl IntoResponse {
     match params.sub {
-        Some(sub) => match user_service.find_user_info(sub).await {
+        Some(sub) => match user_service.find_user_info(&sub).await {
             Ok(user_info) => Json(user_info).into_response(),
             Err(err) => Error::from(err).into_response(),
         },

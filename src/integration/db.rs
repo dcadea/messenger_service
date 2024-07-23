@@ -32,7 +32,7 @@ impl Config {
 pub async fn init(config: &Config) -> Result<mongodb::Database> {
     let options = mongodb::options::ClientOptions::builder()
         .hosts(vec![mongodb::options::ServerAddress::Tcp {
-            host: config.host.clone(),
+            host: config.host.to_owned(),
             port: Some(config.port),
         }])
         .server_selection_timeout(Some(Duration::from_secs(2)))

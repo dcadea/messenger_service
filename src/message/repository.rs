@@ -7,6 +7,8 @@ use super::Result;
 use crate::chat::model::ChatId;
 use crate::message;
 
+const MESSAGES_COLLECTION: &str = "messages";
+
 pub struct MessageRepository {
     collection: mongodb::Collection<Message>,
 }
@@ -14,7 +16,7 @@ pub struct MessageRepository {
 impl MessageRepository {
     pub fn new(database: &Database) -> Self {
         Self {
-            collection: database.collection("messages"),
+            collection: database.collection(MESSAGES_COLLECTION),
         }
     }
 }
@@ -31,11 +33,11 @@ impl MessageRepository {
         ))
     }
 
-    pub async fn find_by_id(&self, id: MessageId) -> Result<Message> {
+    pub async fn find_by_id(&self, id: &MessageId) -> Result<Message> {
         self.collection
             .find_one(doc! {"_id": id})
             .await?
-            .ok_or(message::Error::NotFound(Some(id)))
+            .ok_or(message::Error::NotFound(Some(id.to_owned())))
     }
 
     pub async fn find_by_chat_id(&self, chat_id: &ChatId) -> Result<Vec<Message>> {

@@ -7,6 +7,8 @@ use super::model::{Friends, Sub, User};
 use super::Result;
 use crate::user;
 
+const USERS_COLLECTION: &str = "users";
+
 pub struct UserRepository {
     users_col: mongodb::Collection<User>,
     friends_col: mongodb::Collection<Friends>,
@@ -15,8 +17,8 @@ pub struct UserRepository {
 impl UserRepository {
     pub fn new(database: &Database) -> Self {
         Self {
-            users_col: database.collection("users"),
-            friends_col: database.collection("users"),
+            users_col: database.collection(USERS_COLLECTION),
+            friends_col: database.collection(USERS_COLLECTION),
         }
     }
 }
@@ -65,7 +67,7 @@ impl UserRepository {
             .await?;
 
         friends
-            .ok_or(user::Error::NotFound(sub.clone()))
+            .ok_or(user::Error::NotFound(sub.to_owned()))
             .map(|f| f.friends)
     }
 }

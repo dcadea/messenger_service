@@ -7,6 +7,8 @@ use crate::user::model::Sub;
 use super::model::{Chat, ChatId};
 use super::Result;
 
+const CHATS_COLLECTION: &str = "chats";
+
 pub struct ChatRepository {
     collection: mongodb::Collection<Chat>,
 }
@@ -14,7 +16,7 @@ pub struct ChatRepository {
 impl ChatRepository {
     pub fn new(database: &mongodb::Database) -> Self {
         Self {
-            collection: database.collection("chats"),
+            collection: database.collection(CHATS_COLLECTION),
         }
     }
 }
@@ -80,21 +82,21 @@ impl ChatRepository {
      * @param id: The id of the chat
      * @param sub: The user sub
      */
-    pub async fn find_by_id_and_sub(&self, id: ChatId, sub: &Sub) -> Result<Chat> {
+    pub async fn find_by_id_and_sub(&self, id: &ChatId, sub: &Sub) -> Result<Chat> {
         self.collection
             .find_one(doc! {
                 "_id": id,
                 "members": sub
             })
             .await?
-            .ok_or(chat::Error::NotFound(Some(id)))
+            .ok_or(chat::Error::NotFound(Some(id.to_owned())))
     }
 
     /**
      * Find a chat id by its members
      * @param members: The members of the chat
      */
-    pub async fn find_id_by_members(&self, members: [&Sub; 2]) -> Result<ChatId> {
+    pub async fn find_id_by_members(&self, members: [Sub; 2]) -> Result<ChatId> {
         let result = self
             .collection
             .find_one(doc! {

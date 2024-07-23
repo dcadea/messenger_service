@@ -62,8 +62,8 @@ pub struct MessageDto {
     seen: bool,
 }
 
-impl From<&Message> for MessageDto {
-    fn from(message: &Message) -> Self {
+impl From<Message> for MessageDto {
+    fn from(message: Message) -> Self {
         Self {
             id: message.id.expect("where is message id!?"),
             chat_id: message.chat_id,

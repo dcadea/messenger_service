@@ -28,7 +28,7 @@ async fn find_handler(
         .chat_id
         .ok_or(Error::QueryParamRequired("chat_id".to_owned()))?;
 
-    chat_service.check_member(chat_id, &user_info.sub).await?;
+    chat_service.check_member(&chat_id, &user_info.sub).await?;
 
     let result = message_service
         .find_by_chat_id_and_params(&chat_id, &params)

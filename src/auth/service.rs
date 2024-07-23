@@ -14,6 +14,8 @@ use crate::{auth, integration};
 use super::model::TokenClaims;
 use super::Result;
 
+const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
+
 #[derive(Clone)]
 pub struct AuthService {
     config: Arc<idp::Config>,
@@ -31,7 +33,7 @@ impl AuthService {
 
         let jwk_decoding_keys = Arc::new(RwLock::new(HashMap::new()));
         let service = Self {
-            config: Arc::new(config.clone()),
+            config: Arc::new(config.to_owned()),
             http: Arc::new(integration::init_http_client()?),
             jwt_validator: Arc::new(jwt_validator),
             jwk_decoding_keys: jwk_decoding_keys.clone(),
@@ -45,7 +47,7 @@ impl AuthService {
                     Ok(keys) => *jwk_decoding_keys.write().await = keys,
                     Err(e) => eprintln!("Failed to update JWK decoding keys: {:?}", e),
                 }
-                sleep(Duration::from_secs(24 * 60 * 60)).await;
+                sleep(ONE_DAY).await;
             }
         });
 
@@ -87,7 +89,6 @@ impl AuthService {
 
         jwt_header
             .kid
-            .as_ref()
             .map(|kid| kid.to_string())
             .ok_or(auth::Error::UnknownKid)
     }
@@ -97,10 +98,12 @@ async fn fetch_jwk_decoding_keys(
     config: &idp::Config,
     http: &reqwest::Client,
 ) -> Result<HashMap<String, DecodingKey>> {
-    let jwk_response = http.get(config.jwks_url.clone()).send().await?;
+    let jwk_response = http.get(&config.jwks_url).send().await?;
     let jwk_json = jwk_response.json().await?;
     let jwk_set: JwkSet = serde_json::from_value(jwk_json)?;
+
     let mut jwk_decoding_keys = HashMap::new();
+
     for jwk in jwk_set.keys.iter() {
         if let Some(kid) = jwk.clone().common.key_id {
             let key =

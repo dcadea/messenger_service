@@ -18,9 +18,8 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
 pub enum Error {
-    Var(#[from] std::env::VarError),
-    ParseInt(#[from] std::num::ParseIntError),
-
+    _Var(#[from] std::env::VarError),
+    _ParseInt(#[from] std::num::ParseIntError),
     _MongoDB(#[from] mongodb::error::Error),
     _Lapin(#[from] lapin::Error),
     _Redis(#[from] redis::RedisError),

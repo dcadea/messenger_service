@@ -33,7 +33,7 @@ pub async fn init(config: &Config) -> Result<RwLock<lapin::Connection>> {
         scheme: AMQPScheme::AMQP,
         authority: AMQPAuthority {
             userinfo: AMQPUserInfo::default(),
-            host: config.host.clone(),
+            host: config.host.to_owned(),
             port: config.port,
         },
         vhost: "/".to_string(),

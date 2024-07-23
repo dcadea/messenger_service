@@ -54,7 +54,7 @@ impl EventService {
             None => {
                 if let Command::Auth { token } = command {
                     let claims = self.auth_service.validate(&token).await?;
-                    let user_info = self.user_service.find_user_info(claims.sub.clone()).await?;
+                    let user_info = self.user_service.find_user_info(&claims.sub).await?;
                     ctx.set_user_info(user_info).await;
                     ctx.set_channel(self.create_channel().await?).await;
                     ctx.login.notify_one();
@@ -76,7 +76,7 @@ impl EventService {
                     let owner = user_info.sub;
 
                     self.chat_service
-                        .check_members(chat_id, [owner.clone(), recipient.clone()])
+                        .check_members(&chat_id, [owner.clone(), recipient.clone()])
                         .await?;
 
                     let message = self
@@ -92,7 +92,7 @@ impl EventService {
                     let owner_messages = Queue::Messages(owner);
                     let recipient_messages = Queue::Messages(recipient);
                     let event = Event::NewMessage {
-                        message: MessageDto::from(&message),
+                        message: MessageDto::from(message.clone()),
                     };
 
                     use futures::TryFutureExt;
@@ -107,7 +107,7 @@ impl EventService {
                     .map(|_| ())
                 }
                 Command::UpdateMessage { id, text } => {
-                    let message = self.message_service.find_by_id(id).await?;
+                    let message = self.message_service.find_by_id(&id).await?;
                     if message.owner != user_info.sub {
                         return Err(event::Error::NotOwner);
                     }
@@ -125,7 +125,7 @@ impl EventService {
                     .map(|_| ())
                 }
                 Command::DeleteMessage { id } => {
-                    let message = self.message_service.find_by_id(id).await?;
+                    let message = self.message_service.find_by_id(&id).await?;
                     if message.owner != user_info.sub {
                         return Err(event::Error::NotOwner);
                     }
@@ -142,7 +142,7 @@ impl EventService {
                     .map(|_| ())
                 }
                 Command::MarkAsSeenMessage { id } => {
-                    let message = self.message_service.find_by_id(id).await?;
+                    let message = self.message_service.find_by_id(&id).await?;
                     if message.recipient != user_info.sub {
                         return Err(event::Error::NotRecipient);
                     }
@@ -173,14 +173,11 @@ impl EventService {
             .await?;
 
         let stream = consumer
-            .and_then(|delivery| {
-                let data = delivery.data.clone();
-                async move {
-                    let event = serde_json::from_slice::<Event>(&data)
-                        .map_err(|e| lapin::Error::IOError(Arc::new(io::Error::from(e))))?;
-                    delivery.ack(BasicAckOptions::default()).await?;
-                    Ok(event)
-                }
+            .and_then(|delivery| async move {
+                let event = serde_json::from_slice::<Event>(&delivery.data)
+                    .map_err(|e| lapin::Error::IOError(Arc::new(io::Error::from(e))))?;
+                delivery.ack(BasicAckOptions::default()).await?;
+                Ok(event)
             })
             .map_err(event::Error::from);
 

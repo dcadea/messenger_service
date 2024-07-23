@@ -35,7 +35,7 @@ impl ChatService {
             repository: Arc::new(repository),
             user_service: Arc::new(user_service),
             redis_con,
-            link_factory: Arc::new(LinkFactory::new(app_endpoints.api())),
+            link_factory: Arc::new(LinkFactory::new(&app_endpoints.api())),
         }
     }
 }
@@ -47,7 +47,7 @@ impl ChatService {
 
         match self
             .repository
-            .find_id_by_members([&owner, &recipient])
+            .find_id_by_members([owner.to_owned(), recipient.to_owned()])
             .await
         {
             Ok(_) => Err(chat::Error::AlreadyExists([owner, recipient])),
@@ -57,7 +57,7 @@ impl ChatService {
                     .insert(&Chat::new([owner.clone(), recipient.clone()]))
                     .await?;
 
-                self.user_service.add_friend(owner, recipient).await?;
+                self.user_service.add_friend(&owner, &recipient).await?;
 
                 self.chat_to_dto(chat, user_info).await
             }
@@ -68,7 +68,7 @@ impl ChatService {
     pub async fn update_last_message(&self, message: &Message) -> Result<()> {
         let chat_id = self
             .repository
-            .find_id_by_members([&message.owner, &message.recipient])
+            .find_id_by_members([message.owner.to_owned(), message.recipient.to_owned()])
             .await?;
 
         self.repository
@@ -76,7 +76,7 @@ impl ChatService {
             .await
     }
 
-    pub async fn find_by_id(&self, id: ChatId, user_info: &UserInfo) -> Result<ChatDto> {
+    pub async fn find_by_id(&self, id: &ChatId, user_info: &UserInfo) -> Result<ChatDto> {
         match self.repository.find_by_id_and_sub(id, &user_info.sub).await {
             Ok(chat) => {
                 let chat_dto = self.chat_to_dto(chat, user_info).await?;
@@ -103,7 +103,7 @@ impl ChatService {
 
 // validations
 impl ChatService {
-    pub async fn check_member(&self, chat_id: ChatId, sub: &Sub) -> Result<()> {
+    pub async fn check_member(&self, chat_id: &ChatId, sub: &Sub) -> Result<()> {
         let members = self.find_members(chat_id).await?;
         let belongs_to_chat = members.contains(sub);
 
@@ -114,7 +114,7 @@ impl ChatService {
         Ok(())
     }
 
-    pub async fn check_members(&self, chat_id: ChatId, members: [Sub; 2]) -> Result<()> {
+    pub async fn check_members(&self, chat_id: &ChatId, members: [Sub; 2]) -> Result<()> {
         let cached_members = self.find_members(chat_id).await?;
         let belongs_to_chat =
             cached_members.contains(&members[0]) && cached_members.contains(&members[1]);
@@ -129,24 +129,24 @@ impl ChatService {
 
 // cache operations
 impl ChatService {
-    pub async fn find_members(&self, chat_id: ChatId) -> Result<[Sub; 2]> {
+    pub async fn find_members(&self, chat_id: &ChatId) -> Result<[Sub; 2]> {
         let mut con = self.redis_con.clone();
 
-        let cache_key = CacheKey::Chat(chat_id);
+        let cache_key = CacheKey::Chat(chat_id.to_owned());
         let members: Option<Vec<Sub>> = con.smembers(cache_key.clone()).await?;
 
-        if members.clone().is_some_and(|m| m.len() == 2) {
+        if members.as_ref().is_some_and(|m| m.len() == 2) {
             let members = members.unwrap();
             return Ok([members[0].clone(), members[1].clone()]);
         }
 
-        let chat = self.repository.find_by_id(&chat_id).await?;
+        let chat = self.repository.find_by_id(chat_id).await?;
         let members = chat.members;
 
         let _: () = con
             .clone()
-            .sadd(cache_key.clone(), &members.clone())
-            .and_then(|_: ()| con.expire(cache_key.clone(), CHAT_TTL))
+            .sadd(&cache_key, &members.clone())
+            .and_then(|_: ()| con.expire(&cache_key, CHAT_TTL))
             .await?;
 
         Ok(members)
@@ -155,16 +155,16 @@ impl ChatService {
 
 impl ChatService {
     async fn chat_to_dto(&self, chat: Chat, user_info: &UserInfo) -> Result<ChatDto> {
-        let members = chat.members.clone();
+        let members = chat.members.to_owned();
 
         let recipient = members
             .iter()
             .find(|&m| m != &user_info.sub) // someone who is not a logged user :)
             .ok_or(chat::Error::NotMember)?;
 
-        let recipient_info = self.user_service.find_user_info(recipient.clone()).await?;
+        let recipient_info = self.user_service.find_user_info(recipient).await?;
 
-        let chat_dto = ChatDto::new(chat, recipient.clone(), recipient_info.name);
+        let chat_dto = ChatDto::new(chat, recipient.to_owned(), recipient_info.name);
 
         let links = vec![
             self.link_factory._self(&format!("chats/{}", chat_dto.id)),

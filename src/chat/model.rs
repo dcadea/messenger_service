@@ -52,7 +52,7 @@ impl ChatDto {
             id: chat_id,
             recipient,
             recipient_name,
-            last_message: chat.last_message.clone(),
+            last_message: chat.last_message,
             updated_at: chat.updated_at,
             links: vec![],
         }
