@@ -20,7 +20,7 @@ pub enum Queue {
 impl Display for Queue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Queue::Messages(sub) => write!(f, "messages:{:?}", sub),
+            Queue::Messages(sub) => write!(f, "messages:{sub}"),
         }
     }
 }

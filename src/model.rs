@@ -17,7 +17,7 @@ impl AppEndpoints {
     }
 
     pub fn api(&self) -> String {
-        format!("http://{}:{}/{}", self.address, self.port, self.api_path)
+        format!("http://{}:{}/{}", &self.address, &self.port, &self.api_path)
     }
 }
 
@@ -34,12 +34,12 @@ impl LinkFactory {
     }
 
     pub fn _self(&self, path: &str) -> Link {
-        let href = format!("{}/{}", self.base_url, path);
+        let href = format!("{}/{path}", &self.base_url);
         Link::new("self", &href)
     }
 
     pub fn recipient(&self, path: &str) -> Link {
-        let href = format!("{}/{}", self.base_url, path);
+        let href = format!("{}/{path}", &self.base_url);
         Link::new("recipient", &href)
     }
 }

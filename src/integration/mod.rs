@@ -61,7 +61,7 @@ impl Default for Config {
         let app_addr = std::env::var("APP_ADDR").unwrap_or("127.0.0.1".into());
         let app_port = std::env::var("APP_PORT").unwrap_or("8000".into());
 
-        let socket = format!("{}:{}", app_addr, app_port)
+        let socket = format!("{app_addr}:{app_port}")
             .parse()
             .expect("Failed to parse socket address");
 

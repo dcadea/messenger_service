@@ -1,9 +1,17 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 type UserId = mongodb::bson::oid::ObjectId;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Sub(String);
+
+impl Display for Sub {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl Serialize for Sub {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

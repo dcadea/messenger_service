@@ -45,7 +45,7 @@ async fn create_handler(
 ) -> Result<impl IntoResponse> {
     let base_url = app_endpoints.api();
     let result = chat_service.create(&chat_request, &user_info).await?;
-    let location = format!("{base_url}/chats/{}", result.id);
+    let location = format!("{base_url}/chats/{}", &result.id);
 
     let mut response = Json(result).into_response();
     *response.status_mut() = StatusCode::CREATED;

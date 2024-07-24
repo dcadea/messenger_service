@@ -39,12 +39,7 @@ impl Message {
     pub fn with_id(&self, id: MessageId) -> Self {
         Self {
             id: Some(id),
-            chat_id: self.chat_id,
-            owner: self.owner.clone(),
-            recipient: self.recipient.clone(),
-            text: self.text.clone(),
-            timestamp: self.timestamp,
-            seen: self.seen,
+            ..self.clone()
         }
     }
 }

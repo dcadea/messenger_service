@@ -167,9 +167,9 @@ impl ChatService {
         let chat_dto = ChatDto::new(chat, recipient.to_owned(), recipient_info.name);
 
         let links = vec![
-            self.link_factory._self(&format!("chats/{}", chat_dto.id)),
+            self.link_factory._self(&format!("chats/{}", &chat_dto.id)),
             self.link_factory
-                .recipient(&format!("users?sub={:?}", recipient)),
+                .recipient(&format!("users?sub={recipient}")),
         ];
 
         Ok(chat_dto.with_links(links))

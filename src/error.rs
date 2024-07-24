@@ -36,11 +36,11 @@ impl IntoResponse for Error {
             message: String,
         }
 
-        let message = format!("{}", self);
-        error!("{}", message);
+        let error_message = self.to_string();
+        error!("{error_message}");
 
         let (status, message) = match self {
-            Self::_Auth(auth::Error::Unauthorized) => (StatusCode::UNAUTHORIZED, message),
+            Self::_Auth(auth::Error::Unauthorized) => (StatusCode::UNAUTHORIZED, error_message),
             Self::_Auth(auth::Error::Forbidden(_)) => {
                 (StatusCode::FORBIDDEN, "Forbidden".to_owned())
             }
@@ -49,19 +49,21 @@ impl IntoResponse for Error {
                 (StatusCode::BAD_REQUEST, "Token malformed".to_owned())
             }
 
-            Self::_Chat(chat::Error::NotFound(_)) => (StatusCode::NOT_FOUND, message),
-            Self::_Chat(chat::Error::AlreadyExists(_)) => (StatusCode::CONFLICT, message),
-            Self::_Chat(chat::Error::NotMember) => (StatusCode::FORBIDDEN, message),
+            Self::_Chat(chat::Error::NotFound(_)) => (StatusCode::NOT_FOUND, error_message),
+            Self::_Chat(chat::Error::AlreadyExists(_)) => (StatusCode::CONFLICT, error_message),
+            Self::_Chat(chat::Error::NotMember) => (StatusCode::FORBIDDEN, error_message),
 
-            Self::_Event(event::Error::MissingUserInfo) => (StatusCode::UNAUTHORIZED, message),
-            Self::_Event(event::Error::NotOwner) => (StatusCode::FORBIDDEN, message),
-            Self::_Event(event::Error::NotRecipient) => (StatusCode::FORBIDDEN, message),
+            Self::_Event(event::Error::MissingUserInfo) => {
+                (StatusCode::UNAUTHORIZED, error_message)
+            }
+            Self::_Event(event::Error::NotOwner) => (StatusCode::FORBIDDEN, error_message),
+            Self::_Event(event::Error::NotRecipient) => (StatusCode::FORBIDDEN, error_message),
 
-            Self::_Message(message::Error::NotFound(_)) => (StatusCode::NOT_FOUND, message),
+            Self::_Message(message::Error::NotFound(_)) => (StatusCode::NOT_FOUND, error_message),
 
-            Self::_User(user::Error::NotFound(_)) => (StatusCode::NOT_FOUND, message),
+            Self::_User(user::Error::NotFound(_)) => (StatusCode::NOT_FOUND, error_message),
 
-            Self::QueryParamRequired(_) => (StatusCode::BAD_REQUEST, message),
+            Self::QueryParamRequired(_) => (StatusCode::BAD_REQUEST, error_message),
             _ => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_owned(),

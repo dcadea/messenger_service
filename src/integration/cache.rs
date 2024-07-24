@@ -26,12 +26,8 @@ impl Config {
 }
 
 pub async fn init_client(config: &Config) -> Result<redis::Client> {
-    redis::Client::open(format!(
-        "redis://{}:{}",
-        config.host.to_owned(),
-        config.port
-    ))
-    .map_err(integration::Error::from)
+    redis::Client::open(format!("redis://{}:{}", &config.host, &config.port))
+        .map_err(integration::Error::from)
 }
 
 pub async fn init(config: &Config) -> Result<redis::aio::ConnectionManager> {
