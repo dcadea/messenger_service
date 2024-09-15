@@ -1,6 +1,6 @@
 [package]
-name = "messenger_api"
-version = "0.1.0"
+name = "messenger_service"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
@@ -8,25 +8,25 @@ log = "0.4.22"
 simplelog = "0.12.2"
 dotenv = "0.15.0"
 chrono = "0.4.38"
-uuid = { version = "1.9.1", features = ["serde", "v4"] }
-thiserror = "1.0.61"
+uuid = { version = "1.10.0", features = ["serde", "v4"] }
+thiserror = "1.0.63"
 
-serde = { version = "1.0.203", features = ["derive"] }
-serde_json = "1.0.120"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"
 
-tokio = { version = "1.38.0", features = ["macros", "sync", "rt-multi-thread"] }
+tokio = { version = "1.40.0", features = ["macros", "sync", "rt-multi-thread"] }
 tokio-amqp = "2.0.0"
-tokio-stream = "0.1.15"
+tokio-stream = "0.1.16"
 futures = { version = "0.3.30", default-features = false }
 
 axum = { version = "0.7.5", features = ["ws", "macros"] }
 axum-extra = { version = "0.9.3", features = ["query", "typed-header"] }
-tower = "0.4.13"
+tower = "0.5.1"
 tower-http = { version = "0.5.2", features = ["cors"] }
-reqwest = { version = "0.12.5", features = ["json"] }
+reqwest = { version = "0.12.7", features = ["json"] }
 url = "2.5.2"
 jsonwebtoken = "9.3.0"
 
-mongodb = "3.0.0"
-redis = { version = "0.25.4", features = ["connection-manager", "tokio-comp", "json"] }
-lapin = "2.3.4"
+mongodb = "3.1.0"
+redis = { version = "0.27.2", features = ["connection-manager", "tokio-comp", "json"] }
+lapin = "2.5.0"

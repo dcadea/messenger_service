@@ -1,6 +1,6 @@
-# Messenger API
+# Messenger Service
 
-This is a Rust-based project that uses various libraries and frameworks to implement a messenger API.
+This is a Rust-based project that uses various libraries and frameworks to implement a messenger service.
 
 ## Getting Started
 
@@ -17,8 +17,8 @@ Check [configuration](#configuration) for further steps.
 ### Installing
 ```bash
 # Clone the repository
-git clone https://github.com/dcadea/messenger_api.git
-cd messenger_api    # Navigate to the project directory
+git clone https://github.com/dcadea/messenger_service.git
+cd messenger_service    # Navigate to the project directory
 cargo build         # Build the project
 ```
 
@@ -35,9 +35,9 @@ Or you could just use an IDE like RustRover or Zed :rocket:.
 
 ### With Docker
 ```bash
-cd messenger_api
-docker build -t messenger_api:latest .
-docker run -d -p 8000:8000 messenger_api:latest
+cd messenger_service
+docker build -t messenger_service:latest .
+docker run -d -p 8000:8000 messenger_service:latest
 ```
 
 ### Configuration
