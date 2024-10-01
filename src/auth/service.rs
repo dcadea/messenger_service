@@ -4,8 +4,10 @@ use std::time::Duration;
 
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
+use oauth2::basic::BasicClient;
+use oauth2::reqwest::async_http_client;
+use oauth2::{AuthorizationCode, CsrfToken, Scope, TokenResponse};
 use tokio::sync::RwLock;
-use tokio::time::sleep;
 
 use crate::integration::idp;
 use crate::user::model::UserInfo;
@@ -20,6 +22,7 @@ const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
 pub struct AuthService {
     config: Arc<idp::Config>,
     http: Arc<reqwest::Client>,
+    oauth2: Arc<BasicClient>,
     jwt_validator: Arc<Validation>,
     jwk_decoding_keys: Arc<RwLock<HashMap<String, DecodingKey>>>,
 }
@@ -29,33 +32,61 @@ impl AuthService {
         let mut jwt_validator = Validation::new(jsonwebtoken::Algorithm::RS256);
         jwt_validator.set_required_spec_claims(&config.required_claims);
         jwt_validator.set_issuer(&[&config.issuer]);
-        jwt_validator.set_audience(&config.audience);
+        jwt_validator.set_audience(&[&config.audience]);
 
         let jwk_decoding_keys = Arc::new(RwLock::new(HashMap::new()));
         let service = Self {
             config: Arc::new(config.to_owned()),
             http: Arc::new(integration::init_http_client()?),
+            oauth2: Arc::new(integration::idp::init(config)),
             jwt_validator: Arc::new(jwt_validator),
             jwk_decoding_keys: jwk_decoding_keys.clone(),
         };
 
-        let http = integration::init_http_client()?;
-        let config_clone = config.clone();
-        tokio::spawn(async move {
-            loop {
-                match fetch_jwk_decoding_keys(&config_clone, &http).await {
-                    Ok(keys) => *jwk_decoding_keys.write().await = keys,
-                    Err(e) => eprintln!("Failed to update JWK decoding keys: {:?}", e),
-                }
-                sleep(ONE_DAY).await;
-            }
-        });
+        // TODO: uncomment
+        // let http = integration::init_http_client()?;
+        // let config_clone = config.clone();
+        // tokio::spawn(async move {
+        //     loop {
+        //         match fetch_jwk_decoding_keys(&config_clone, &http).await {
+        //             Ok(keys) => *jwk_decoding_keys.write().await = keys,
+        //             Err(e) => eprintln!("Failed to update JWK decoding keys: {:?}", e),
+        //         }
+        //         sleep(ONE_DAY).await;
+        //     }
+        // });
 
         Ok(service)
     }
 }
 
 impl AuthService {
+    pub async fn authorize(&self) -> String {
+        let (auth_url, _) = self // TODO: use csrf_token
+            .oauth2
+            .authorize_url(CsrfToken::new_random)
+            .add_extra_param("audience", self.config.audience.clone())
+            .add_scopes([
+                Scope::new("openid".to_string()),
+                Scope::new("profile".to_string()),
+            ])
+            .url();
+        auth_url.to_string()
+    }
+
+    pub async fn exchange_code(&self, code: &str) -> Result<String> {
+        let code = AuthorizationCode::new(code.to_string());
+
+        let token_result = self
+            .oauth2
+            .exchange_code(code)
+            .request_async(async_http_client)
+            .await
+            .expect("Failed to exchange code"); // FIXME: handle error
+
+        Ok(token_result.access_token().secret().to_owned())
+    }
+
     pub async fn validate(&self, token: &str) -> Result<TokenClaims> {
         let kid = self.get_kid(token)?;
         let decoding_keys_guard = self.jwk_decoding_keys.read().await;

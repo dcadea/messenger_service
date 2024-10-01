@@ -26,7 +26,13 @@ tower-http = { version = "0.5.2", features = ["cors"] }
 reqwest = { version = "0.12.7", features = ["json"] }
 url = "2.5.2"
 jsonwebtoken = "9.3.0"
+oauth2 = "4.4.2"
+maud = { version = "0.26.0", features = ["axum"] }
 
 mongodb = "3.1.0"
-redis = { version = "0.27.2", features = ["connection-manager", "tokio-comp", "json"] }
+redis = { version = "0.27.2", features = [
+    "connection-manager",
+    "tokio-comp",
+    "json",
+] }
 lapin = "2.5.0"

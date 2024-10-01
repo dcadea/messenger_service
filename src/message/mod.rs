@@ -1,6 +1,6 @@
 use crate::message::model::MessageId;
 
-pub mod api;
+pub mod markup;
 pub mod model;
 pub mod repository;
 pub mod service;

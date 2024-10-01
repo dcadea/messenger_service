@@ -3,6 +3,7 @@ use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{Json, Router};
 use axum_extra::extract::Query;
+use maud::{html, Markup, Render};
 
 use crate::error::Error;
 use crate::state::AppState;
@@ -32,5 +33,25 @@ async fn find_handler(
             },
             None => Error::QueryParamRequired("sub or nickname".to_owned()).into_response(),
         },
+    }
+}
+
+pub(crate) struct UserHeader<'a> {
+    pub name: &'a str,
+    pub picture: &'a str,
+}
+
+impl Render for UserHeader<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            header."flex justify-between items-center mb-4" {
+                img."w-12 h-12 rounded-full mr-2"
+                    src=(self.picture)
+                    alt="User avatar" {}
+                h2.text-2xl {(self.name)}
+                a."bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                    href="/logout" { "Logout" }
+            }
+        }
     }
 }

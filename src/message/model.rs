@@ -8,7 +8,7 @@ use crate::util::serialize_object_id;
 pub type MessageId = mongodb::bson::oid::ObjectId;
 
 #[derive(Deserialize, Serialize, Clone)]
-pub struct Message {
+pub(crate) struct Message {
     #[serde(
         alias = "_id",
         serialize_with = "serialize_object_id",
@@ -47,14 +47,14 @@ impl Message {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MessageDto {
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-    id: MessageId,
+    pub id: MessageId,
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     chat_id: ChatId,
-    owner: Sub,
-    recipient: Sub,
-    text: String,
-    timestamp: i64,
-    seen: bool,
+    pub owner: Sub,
+    pub recipient: Sub,
+    pub text: String,
+    pub timestamp: i64,
+    pub seen: bool,
 }
 
 impl From<Message> for MessageDto {

@@ -40,7 +40,7 @@ pub struct ChatDto {
     pub recipient: Sub,
     recipient_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    last_message: Option<String>,
+    pub last_message: Option<String>,
     updated_at: i64,
     links: Vec<Link>,
 }

@@ -27,10 +27,6 @@ impl MessageService {
             .map(|id| message.with_id(id))
     }
 
-    pub async fn find_by_id(&self, id: &MessageId) -> Result<Message> {
-        self.repository.find_by_id(id).await
-    }
-
     pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {
         self.repository.update(id, text).await
     }
@@ -45,6 +41,13 @@ impl MessageService {
 }
 
 impl MessageService {
+    pub async fn find_by_id(&self, id: &MessageId) -> Result<MessageDto> {
+        self.repository
+            .find_by_id(id)
+            .await
+            .map(|msg| MessageDto::from(msg))
+    }
+
     pub async fn find_by_chat_id_and_params(
         &self,
         chat_id: &ChatId,

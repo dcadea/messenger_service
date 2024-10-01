@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 type UserId = mongodb::bson::oid::ObjectId;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct Sub(String);
+pub struct Sub(pub String); // TODO: remove pub
 
 impl Display for Sub {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -76,7 +76,7 @@ pub struct UserInfo {
     pub sub: Sub,
     nickname: String,
     pub name: String,
-    picture: String,
+    pub picture: String,
     email: String,
 }
 

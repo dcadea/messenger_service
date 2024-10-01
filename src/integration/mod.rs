@@ -66,12 +66,11 @@ impl Default for Config {
             .expect("Failed to parse socket address");
 
         let idp_config = idp::Config::new(
+            std::env::var("CLIENT_ID").expect("CLIENT_ID must be set"),
+            std::env::var("CLIENT_SECRET").expect("CLIENT_SECRET must be set"),
+            std::env::var("REDIRECT_URL").expect("REDIRECT_URL must be set"),
             std::env::var("ISSUER").expect("ISSUER must be set"),
-            std::env::var("AUDIENCE")
-                .expect("AUDIENCE must be set")
-                .split(',')
-                .map(String::from)
-                .collect::<Vec<String>>(),
+            std::env::var("AUDIENCE").expect("AUDIENCE must be set"),
             std::env::var("REQUIRED_CLAIMS")
                 .expect("REQUIRED_CLAIMS must be set")
                 .split(',')

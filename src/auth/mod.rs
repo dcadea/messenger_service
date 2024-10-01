@@ -7,11 +7,13 @@ use axum_extra::TypedHeader;
 
 use self::model::TokenClaims;
 use self::service::AuthService;
-use crate::user::model::UserInfo;
+use crate::user::model::{Sub, UserInfo};
 use crate::user::service::UserService;
 use crate::{integration, user};
 
+pub mod api;
 pub mod service;
+pub mod template;
 
 mod model;
 
@@ -47,6 +49,22 @@ pub async fn validate_token(
     let auth_header = auth_header.ok_or(Error::Unauthorized)?;
     let claims = auth_service.validate(auth_header.token()).await?;
     request.extensions_mut().insert(claims);
+
+    let response = next.run(request).await;
+    Ok(response)
+}
+
+// TODO: remove this function
+pub async fn set_test_user_context(
+    user_service: State<UserService>,
+    mut request: Request,
+    next: Next,
+) -> super::result::Result<Response> {
+    let user_info = user_service
+        .find_user_info(&Sub("github|10639696".to_string()))
+        .await?;
+
+    request.extensions_mut().insert(user_info);
 
     let response = next.run(request).await;
     Ok(response)
