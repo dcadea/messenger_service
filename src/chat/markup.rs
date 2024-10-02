@@ -3,7 +3,7 @@ use axum::routing::get;
 use axum::{Extension, Router};
 use maud::{html, Markup, Render};
 
-use crate::message::markup::MessageInput;
+use crate::message::markup::message_input;
 use crate::result::Result;
 use crate::state::AppState;
 use crate::user::model::UserInfo;
@@ -70,7 +70,7 @@ async fn active_chat(
             hx-get={ "/api/messages?limit=25&chat_id=" (chat.id) }
             hx-trigger="load" {}
 
-        (MessageInput)
+        (message_input(&chat_id, &recipient.sub))
     })
 }
 

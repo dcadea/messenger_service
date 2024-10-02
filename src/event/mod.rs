@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::extract::ws;
-use axum::extract::ws::Message::{Close, Text};
+use axum::extract::ws::Message::{Binary, Close, Text};
 use axum::extract::ws::WebSocket;
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, Stream, StreamExt};
@@ -98,6 +98,9 @@ async fn read(ctx: context::Ws, mut receiver: SplitStream<WebSocket>, event_serv
                                 break;
                             }
                         },
+                        Ok(Binary(content)) => {
+                            warn!("received binary ws frame: {:?}", content);
+                        }
                         Ok(wtf) => warn!("received non-text ws frame: {:?}", wtf)
                     }
                 }
@@ -117,11 +120,12 @@ async fn write(
         // close is notified => stop 'write' task
         _ = ctx.close.notified() => return,
 
-        // didn't receive login notification within 5 seconds => stop 'write' task
-        _ = sleep(Duration::from_secs(5)) => {
-            ctx.close.notify_one(); // notify 'read' task to stop
-            return;
-        },
+        // TODO: uncomment
+        // // didn't receive login notification within 5 seconds => stop 'write' task
+        // _ = sleep(Duration::from_secs(5)) => {
+        //     ctx.close.notify_one(); // notify 'read' task to stop
+        //     return;
+        // },
 
         // logged in => break the wait loop and start writing
         _ = ctx.login.notified() => {

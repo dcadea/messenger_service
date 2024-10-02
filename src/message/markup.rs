@@ -4,11 +4,12 @@ use axum::{Extension, Router};
 use axum_extra::extract::Query;
 use maud::{html, Markup, Render};
 
+use crate::chat::model::ChatId;
 use crate::chat::service::ChatService;
 use crate::error::Error;
 use crate::result::Result;
 use crate::state::AppState;
-use crate::user::model::UserInfo;
+use crate::user::model::{Sub, UserInfo};
 
 use super::model::{MessageDto, MessageId, MessageParams};
 use super::service::MessageService;
@@ -66,22 +67,24 @@ async fn delete_one(id: Path<MessageId>, message_service: State<MessageService>)
     Ok(())
 }
 
-pub(crate) struct MessageInput;
+pub(crate) fn message_input(chat_id: &ChatId, recipient: &Sub) -> Markup {
+    html! {
+        form #message-input
+            ws-send
+            ."border-gray-200 flex"
+        {
+            input type="hidden" name="type" value="create_message" {}
+            input type="hidden" name="chat_id" value=(chat_id) {}
+            input type="hidden" name="recipient" value=(recipient) {}
 
-impl Render for MessageInput {
-    fn render(&self) -> Markup {
-        html! {
-            form ."border-gray-200 flex"
-                hx-post="/api/messages"
-            {
-                input ."border border-gray-300 rounded-l-md p-2 flex-1"
-                    type="text"
-                    placeholder="Type your message..." {}
+            input ."border border-gray-300 rounded-l-md p-2 flex-1"
+                type="text"
+                name="text"
+                placeholder="Type your message..." {}
 
-                input ."bg-blue-600 text-white px-4 rounded-r-md"
-                    type="submit"
-                    value="Send" {}
-            }
+            input ."bg-blue-600 text-white px-4 rounded-r-md"
+                type="submit"
+                value="Send" {}
         }
     }
 }

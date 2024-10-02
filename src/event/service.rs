@@ -15,6 +15,7 @@ use crate::chat::service::ChatService;
 use crate::event;
 use crate::message::model::{Message, MessageDto};
 use crate::message::service::MessageService;
+use crate::user::model::Sub;
 use crate::user::service::UserService;
 
 use super::model::{Command, Event, EventStream, Queue};
@@ -52,16 +53,21 @@ impl EventService {
         debug!("handling command: {:?}", command);
         match ctx.get_user_info().await {
             None => {
-                if let Command::Auth { token } = command {
-                    let claims = self.auth_service.validate(&token).await?;
-                    let user_info = self.user_service.find_user_info(&claims.sub).await?;
-                    ctx.set_user_info(user_info).await;
-                    ctx.set_channel(self.create_channel().await?).await;
-                    ctx.login.notify_one();
-                    return Ok(());
-                }
+                // if let Command::Auth { token } = command {
+                // TODO: revert
+                // let claims = self.auth_service.validate(&token).await?;
+                // let user_info = self.user_service.find_user_info(&claims.sub).await?;
+                let user_info = self
+                    .user_service
+                    .find_user_info(&Sub("github|10639696".to_string()))
+                    .await?;
+                ctx.set_user_info(user_info).await;
+                ctx.set_channel(self.create_channel().await?).await;
+                ctx.login.notify_one();
+                return Ok(());
+                // }
 
-                Err(event::Error::MissingUserInfo)
+                // Err(event::Error::MissingUserInfo)
             }
             Some(user_info) => match command {
                 Command::Auth { .. } => {
