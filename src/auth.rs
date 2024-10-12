@@ -18,8 +18,8 @@ use axum::http::StatusCode;
 type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Deserialize, Clone)]
-struct TokenClaims {
-    sub: user::Sub,
+pub(crate) struct TokenClaims {
+    pub sub: user::Sub,
 }
 
 pub(crate) fn endpoints<S>(state: AppState) -> Router<S> {
@@ -46,7 +46,7 @@ pub(self) mod handler {
     #[derive(Deserialize)]
     pub struct Params {
         code: String,
-        state: String,
+        // FIXME state: String,
     }
 
     pub async fn login(auth_service: State<AuthService>) -> crate::Result<impl IntoResponse> {
@@ -73,12 +73,13 @@ pub(crate) mod service {
     use oauth2::reqwest::async_http_client;
     use oauth2::{AuthorizationCode, CsrfToken, Scope, TokenResponse};
     use tokio::sync::RwLock;
+    use tokio::time::sleep;
 
     use super::TokenClaims;
 
+    use crate::integration;
     use crate::integration::idp;
     use crate::user::model::UserInfo;
-    use crate::{auth, integration};
 
     const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
 
@@ -107,18 +108,17 @@ pub(crate) mod service {
                 jwk_decoding_keys: jwk_decoding_keys.clone(),
             };
 
-            // TODO: uncomment
-            // let http = integration::init_http_client()?;
-            // let config_clone = config.clone();
-            // tokio::spawn(async move {
-            //     loop {
-            //         match fetch_jwk_decoding_keys(&config_clone, &http).await {
-            //             Ok(keys) => *jwk_decoding_keys.write().await = keys,
-            //             Err(e) => eprintln!("Failed to update JWK decoding keys: {:?}", e),
-            //         }
-            //         sleep(ONE_DAY).await;
-            //     }
-            // });
+            let http = integration::init_http_client()?;
+            let config_clone = config.clone();
+            tokio::spawn(async move {
+                loop {
+                    match fetch_jwk_decoding_keys(&config_clone, &http).await {
+                        Ok(keys) => *jwk_decoding_keys.write().await = keys,
+                        Err(e) => eprintln!("Failed to update JWK decoding keys: {:?}", e),
+                    }
+                    sleep(ONE_DAY).await;
+                }
+            });
 
             Ok(service)
         }
@@ -156,14 +156,14 @@ pub(crate) mod service {
             let decoding_keys_guard = self.jwk_decoding_keys.read().await;
             let decoding_key = decoding_keys_guard
                 .get(&kid)
-                .ok_or(auth::Error::UnknownKid)?;
+                .ok_or(super::Error::UnknownKid)?;
 
             decode::<TokenClaims>(token, decoding_key, &self.jwt_validator)
                 .map(|data| data.claims)
-                .map_err(|e| auth::Error::Forbidden(e.to_string()))
+                .map_err(|e| super::Error::Forbidden(e.to_string()))
         }
 
-        pub async fn get_user_info(&self, token: &str) -> super::Result<UserInfo> {
+        pub(super) async fn get_user_info(&self, token: &str) -> super::Result<UserInfo> {
             let user_info = self
                 .http
                 .get(&self.config.userinfo_url)
@@ -180,12 +180,12 @@ pub(crate) mod service {
     impl AuthService {
         fn get_kid(&self, token: &str) -> super::Result<String> {
             let jwt_header =
-                decode_header(token).map_err(|e| auth::Error::TokenMalformed(e.to_string()))?;
+                decode_header(token).map_err(|e| super::Error::TokenMalformed(e.to_string()))?;
 
             jwt_header
                 .kid
                 .map(|kid| kid.to_string())
-                .ok_or(auth::Error::UnknownKid)
+                .ok_or(super::Error::UnknownKid)
         }
     }
 
@@ -202,7 +202,7 @@ pub(crate) mod service {
         for jwk in jwk_set.keys.iter() {
             if let Some(kid) = jwk.clone().common.key_id {
                 let key = DecodingKey::from_jwk(jwk)
-                    .map_err(|e| auth::Error::Unexpected(e.to_string()))?;
+                    .map_err(|e| super::Error::Unexpected(e.to_string()))?;
                 jwk_decoding_keys.insert(kid, key);
             }
         }
@@ -220,22 +220,6 @@ pub(crate) async fn validate_token(
     let auth_header = auth_header.ok_or(Error::Unauthorized)?;
     let claims = auth_service.validate(auth_header.token()).await?;
     request.extensions_mut().insert(claims);
-
-    let response = next.run(request).await;
-    Ok(response)
-}
-
-// TODO: remove this function
-pub(crate) async fn set_test_user_context(
-    user_service: State<UserService>,
-    mut request: Request,
-    next: Next,
-) -> crate::Result<Response> {
-    let user_info = user_service
-        .find_user_info(&user::Sub("github|10639696".to_string()))
-        .await?;
-
-    request.extensions_mut().insert(user_info);
 
     let response = next.run(request).await;
     Ok(response)

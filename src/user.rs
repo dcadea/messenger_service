@@ -75,8 +75,7 @@ pub(crate) mod markup {
                     placeholder="Search users..."
                     hx-post="/api/users/search"
                     hx-trigger="input changed delay:500ms, search"
-                    hx-target="#search-results"
-                    hx-swap="innerHTML" {}
+                    hx-target="#search-results" {}
 
                 #search-results ."relative" {}
             }

@@ -1,5 +1,4 @@
 use std::fs::File;
-use std::net::SocketAddr;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -11,8 +10,6 @@ type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone)]
 pub(crate) struct Config {
-    pub socket: SocketAddr,
-
     pub redis: cache::Config,
     pub mongo: db::Config,
     pub amqp: amqp::Config,
@@ -41,13 +38,6 @@ impl Default for Config {
         ])
         .expect("Failed to initialize logger");
 
-        let app_addr = std::env::var("APP_ADDR").unwrap_or("127.0.0.1".into());
-        let app_port = std::env::var("APP_PORT").unwrap_or("8000".into());
-
-        let socket = format!("{app_addr}:{app_port}")
-            .parse()
-            .expect("Failed to parse socket address");
-
         let idp_config = idp::Config::new(
             std::env::var("CLIENT_ID").expect("CLIENT_ID must be set"),
             std::env::var("CLIENT_SECRET").expect("CLIENT_SECRET must be set"),
@@ -62,7 +52,6 @@ impl Default for Config {
         );
 
         Self {
-            socket,
             redis: cache::Config::env().unwrap_or_default(),
             mongo: db::Config::env().unwrap_or_default(),
             amqp: amqp::Config::env().unwrap_or_default(),

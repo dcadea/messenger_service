@@ -1,17 +1,13 @@
-use auth::set_test_user_context;
 use axum::http::StatusCode;
-use axum::middleware::{from_fn, from_fn_with_state};
+use axum::middleware::from_fn_with_state;
 use axum::routing::get;
-use axum::{Extension, Router};
-use futures::FutureExt;
+use axum::Router;
 use log::error;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
-use user::model::UserInfo;
 
 use crate::auth::{cache_user_friends, set_user_context, validate_token};
-use crate::markup::Wrappable;
 use crate::state::AppState;
 
 mod auth;
@@ -22,7 +18,6 @@ mod group;
 mod integration;
 mod markup;
 mod message;
-mod model;
 mod state;
 mod user;
 
@@ -41,8 +36,7 @@ async fn main() {
 
     let router = app(app_state.clone());
 
-    let socket = app_state.config.socket;
-    let listener = TcpListener::bind(socket)
+    let listener = TcpListener::bind("127.0.0.1:8000")
         .await
         .expect("Failed to bind to socket");
     axum::serve(listener, router)
@@ -50,18 +44,10 @@ async fn main() {
         .expect("Failed to start server");
 }
 
-async fn root(logged_user: Extension<UserInfo>) -> Wrappable {
-    chat::markup::all_chats(logged_user)
-        .await
-        .map(|r| markup::Wrappable(r))
-        .expect("Failed to render root")
-}
-
 fn app(app_state: AppState) -> Router {
     let pages_router = Router::new()
-        .route("/", get(root).route_layer(from_fn(markup::wrap_in_base)))
         .merge(chat::pages(app_state.clone()))
-        .layer(from_fn_with_state(app_state.clone(), set_test_user_context));
+        .layer(from_fn_with_state(app_state.clone(), set_user_context));
 
     let resources_router = Router::new()
         .merge(chat::resources(app_state.clone()))
@@ -69,8 +55,8 @@ fn app(app_state: AppState) -> Router {
         .merge(user::resources(app_state.clone()))
         .route_layer(
             ServiceBuilder::new()
-                // .layer(from_fn_with_state(app_state.clone(), validate_token))
-                .layer(from_fn_with_state(app_state.clone(), set_test_user_context))
+                .layer(from_fn_with_state(app_state.clone(), validate_token))
+                .layer(from_fn_with_state(app_state.clone(), set_user_context))
                 .layer(from_fn_with_state(app_state.clone(), cache_user_friends)),
         );
 

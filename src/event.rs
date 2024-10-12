@@ -65,10 +65,10 @@ pub(crate) mod service {
 
     use crate::auth::service::AuthService;
     use crate::chat::service::ChatService;
+    use crate::event;
     use crate::message::model::{Message, MessageDto};
     use crate::message::service::MessageService;
     use crate::user::service::UserService;
-    use crate::{event, user};
 
     use super::context;
     use super::model::{Command, Event, EventStream, Queue};
@@ -109,21 +109,16 @@ pub(crate) mod service {
             debug!("handling command: {:?}", command);
             match ctx.get_user_info().await {
                 None => {
-                    // if let Command::Auth { token } = command {
-                    // TODO: revert
-                    // let claims = self.auth_service.validate(&token).await?;
-                    // let user_info = self.user_service.find_user_info(&claims.sub).await?;
-                    let user_info = self
-                        .user_service
-                        .find_user_info(&user::Sub("github|10639696".to_string()))
-                        .await?;
-                    ctx.set_user_info(user_info).await;
-                    ctx.set_channel(self.create_channel().await?).await;
-                    ctx.login.notify_one();
-                    return Ok(());
-                    // }
+                    if let Command::Auth { token } = command {
+                        let claims = self.auth_service.validate(&token).await?;
+                        let user_info = self.user_service.find_user_info(&claims.sub).await?;
+                        ctx.set_user_info(user_info).await;
+                        ctx.set_channel(self.create_channel().await?).await;
+                        ctx.login.notify_one();
+                        return Ok(());
+                    }
 
-                    // Err(event::Error::MissingUserInfo)
+                    Err(event::Error::MissingUserInfo)
                 }
                 Some(user_info) => match command {
                     Command::Auth { .. } => {
@@ -507,12 +502,11 @@ async fn write(
         // close is notified => stop 'write' task
         _ = ctx.close.notified() => return,
 
-        // TODO: uncomment
-        // // didn't receive login notification within 5 seconds => stop 'write' task
-        // _ = sleep(Duration::from_secs(5)) => {
-        //     ctx.close.notify_one(); // notify 'read' task to stop
-        //     return;
-        // },
+        // didn't receive login notification within 5 seconds => stop 'write' task
+        _ = sleep(Duration::from_secs(5)) => {
+            ctx.close.notify_one(); // notify 'read' task to stop
+            return;
+        },
 
         // logged in => break the wait loop and start writing
         _ = ctx.login.notified() => {

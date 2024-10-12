@@ -1,12 +1,19 @@
-use axum::{routing::get, Router};
+use axum::{
+    middleware::from_fn,
+    routing::{get, post},
+    Router,
+};
 
 use crate::{state::AppState, user};
+
+use super::markup::wrap_in_base;
 
 type Result<T> = std::result::Result<T, Error>;
 pub(crate) type Id = mongodb::bson::oid::ObjectId;
 
 pub(crate) fn pages<S>(state: AppState) -> Router<S> {
     Router::new()
+        .route("/", get(handler::home).route_layer(from_fn(wrap_in_base)))
         .route("/chats", get(markup::all_chats))
         .route("/chats/:id", get(markup::active_chat))
         .with_state(state)
@@ -14,12 +21,38 @@ pub(crate) fn pages<S>(state: AppState) -> Router<S> {
 
 pub(crate) fn resources<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route("/chats", get(markup::find_all))
-        .route("/chats/:id", get(markup::find_one))
+        .route("/chats", get(markup::all))
+        .route("/chats/:id", get(markup::one))
+        .route("/chats", post(handler::create))
         .with_state(state)
 }
 
-pub(crate) mod markup {
+mod handler {
+    use axum::{extract::State, Extension, Json};
+
+    use crate::{markup::Wrappable, user::model::UserInfo};
+
+    use super::{model::ChatRequest, service::ChatService};
+
+    pub async fn home(logged_user: Extension<UserInfo>) -> Wrappable {
+        super::markup::all_chats(logged_user)
+            .await
+            .map(|r| Wrappable(r))
+            .expect("Failed to render root")
+    }
+
+    pub async fn create(
+        user_info: Extension<UserInfo>,
+        chat_service: State<ChatService>,
+        Json(chat_request): Json<ChatRequest>,
+    ) -> crate::Result<()> {
+        let _ = chat_service.create(&chat_request, &user_info).await?;
+
+        Ok(())
+    }
+}
+
+mod markup {
     use axum::extract::{Path, State};
     use axum::Extension;
     use maud::{html, Markup, Render};
@@ -51,7 +84,7 @@ pub(crate) mod markup {
         })
     }
 
-    pub(super) async fn active_chat(
+    pub async fn active_chat(
         chat_id: Path<Id>,
         logged_user: Extension<UserInfo>,
         chat_service: State<ChatService>,
@@ -79,7 +112,7 @@ pub(crate) mod markup {
         })
     }
 
-    pub(super) async fn find_all(
+    pub async fn all(
         user_info: Extension<UserInfo>,
         chat_service: State<ChatService>,
     ) -> crate::Result<Markup> {
@@ -93,7 +126,7 @@ pub(crate) mod markup {
         })
     }
 
-    pub(super) async fn find_one(
+    pub async fn one(
         user_info: Extension<UserInfo>,
         chat_service: State<ChatService>,
         Path(id): Path<Id>,
@@ -118,25 +151,6 @@ pub(crate) mod markup {
             }
         }
     }
-
-    // async fn create_handler(
-    //     user_info: Extension<UserInfo>,
-    //     chat_service: State<ChatService>,
-    //     app_endpoints: State<AppEndpoints>,
-    //     Json(chat_request): Json<ChatRequest>,
-    // ) -> crate::Result<impl IntoResponse> {
-    //     let base_url = app_endpoints.api();
-    //     let result = chat_service.create(&chat_request, &user_info).await?;
-    //     let location = format!("{base_url}/chats/{}", &result.id);
-
-    //     let mut response = Json(result).into_response();
-    //     *response.status_mut() = StatusCode::CREATED;
-    //     response
-    //         .headers_mut()
-    //         .insert(header::LOCATION, HeaderValue::from_str(&location)?);
-
-    //     Ok(response)
-    // }
 }
 
 pub(crate) mod repository {
@@ -268,7 +282,6 @@ pub(crate) mod service {
     use super::Id;
     use crate::integration::cache;
     use crate::message::model::Message;
-    use crate::model::{AppEndpoints, LinkFactory};
     use crate::user::model::UserInfo;
     use crate::user::service::UserService;
     use crate::{chat, user};
@@ -280,7 +293,6 @@ pub(crate) mod service {
         repository: Arc<ChatRepository>,
         user_service: Arc<UserService>,
         redis_con: redis::aio::ConnectionManager,
-        link_factory: Arc<LinkFactory>,
     }
 
     impl ChatService {
@@ -288,13 +300,11 @@ pub(crate) mod service {
             repository: ChatRepository,
             user_service: UserService,
             redis_con: redis::aio::ConnectionManager,
-            app_endpoints: AppEndpoints,
         ) -> Self {
             Self {
                 repository: Arc::new(repository),
                 user_service: Arc::new(user_service),
                 redis_con,
-                link_factory: Arc::new(LinkFactory::new(&app_endpoints.api())),
             }
         }
     }
@@ -433,13 +443,7 @@ pub(crate) mod service {
 
             let chat_dto = ChatDto::new(chat, recipient.to_owned(), recipient_info.name);
 
-            let links = vec![
-                self.link_factory._self(&format!("chats/{}", &chat_dto.id)),
-                self.link_factory
-                    .recipient(&format!("users?sub={recipient}")),
-            ];
-
-            Ok(chat_dto.with_links(links))
+            Ok(chat_dto)
         }
     }
 }
@@ -450,7 +454,6 @@ mod model {
     use serde;
     use serde::{Deserialize, Serialize};
 
-    use crate::model::Link;
     use crate::user;
 
     use super::Id;
@@ -489,7 +492,6 @@ mod model {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub last_message: Option<String>,
         updated_at: i64,
-        links: Vec<Link>,
     }
 
     impl ChatDto {
@@ -501,13 +503,7 @@ mod model {
                 recipient_name,
                 last_message: chat.last_message,
                 updated_at: chat.updated_at,
-                links: vec![],
             }
-        }
-
-        pub fn with_links(mut self, links: Vec<Link>) -> Self {
-            self.links = links;
-            self
         }
     }
 
