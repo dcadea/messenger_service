@@ -9,7 +9,7 @@ use crate::{auth, chat, event, integration, message, user};
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum Error {
+pub(crate) enum Error {
     #[error("Query parameter '{0}' is required")]
     QueryParamRequired(String),
     #[error("unexpected api error {0}")]

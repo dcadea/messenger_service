@@ -1,21 +1,25 @@
+use self::service::AuthService;
+use crate::user::model::UserInfo;
+use crate::user::service::UserService;
+use crate::{integration, user};
 use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
 use axum_extra::headers::authorization::Bearer;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
-
-use self::model::TokenClaims;
-use self::service::AuthService;
-use crate::user::model::{Sub, UserInfo};
-use crate::user::service::UserService;
-use crate::{integration, user};
+use serde::Deserialize;
 
 type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Deserialize, Clone)]
+struct TokenClaims {
+    sub: user::Sub,
+}
+
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum Error {
+pub(crate) enum Error {
     #[error("unauthorized to access the resource")]
     Unauthorized,
     #[error("forbidden: {0}")]
@@ -34,12 +38,12 @@ pub enum Error {
     _ParseJson(#[from] serde_json::Error),
 }
 
-pub async fn validate_token(
+pub(crate) async fn validate_token(
     auth_service: State<AuthService>,
     auth_header: Option<TypedHeader<Authorization<Bearer>>>,
     mut request: Request,
     next: Next,
-) -> super::result::Result<Response> {
+) -> crate::Result<Response> {
     let auth_header = auth_header.ok_or(Error::Unauthorized)?;
     let claims = auth_service.validate(auth_header.token()).await?;
     request.extensions_mut().insert(claims);
@@ -49,13 +53,13 @@ pub async fn validate_token(
 }
 
 // TODO: remove this function
-pub async fn set_test_user_context(
+pub(crate) async fn set_test_user_context(
     user_service: State<UserService>,
     mut request: Request,
     next: Next,
-) -> super::result::Result<Response> {
+) -> crate::Result<Response> {
     let user_info = user_service
-        .find_user_info(&Sub("github|10639696".to_string()))
+        .find_user_info(&user::Sub("github|10639696".to_string()))
         .await?;
 
     request.extensions_mut().insert(user_info);
@@ -64,13 +68,13 @@ pub async fn set_test_user_context(
     Ok(response)
 }
 
-pub async fn set_user_context(
+pub(crate) async fn set_user_context(
     user_service: State<UserService>,
     auth_service: State<AuthService>,
     auth_header: TypedHeader<Authorization<Bearer>>,
     mut request: Request,
     next: Next,
-) -> super::result::Result<Response> {
+) -> crate::Result<Response> {
     let claims = request
         .extensions()
         .get::<TokenClaims>()
@@ -93,11 +97,11 @@ pub async fn set_user_context(
     Ok(response)
 }
 
-pub async fn cache_user_friends(
+pub(crate) async fn cache_user_friends(
     user_service: State<UserService>,
     request: Request,
     next: Next,
-) -> super::result::Result<Response> {
+) -> crate::Result<Response> {
     let user_info = request
         .extensions()
         .get::<UserInfo>()
@@ -109,7 +113,7 @@ pub async fn cache_user_friends(
     Ok(response)
 }
 
-pub mod api {
+pub(crate) mod api {
     use axum::http::StatusCode;
     use axum::{
         extract::State,
@@ -118,11 +122,11 @@ pub mod api {
         Router,
     };
     use axum_extra::extract::Query;
+    use serde::Deserialize;
 
-    use crate::result::Result;
     use crate::state::AppState;
 
-    use super::{model::CallbackParams, service::AuthService};
+    use super::service::AuthService;
 
     pub fn endpoints<S>(state: AppState) -> Router<S> {
         Router::new()
@@ -135,20 +139,26 @@ pub mod api {
             .with_state(state)
     }
 
-    async fn login_handler(auth_service: State<AuthService>) -> Result<impl IntoResponse> {
+    #[derive(Deserialize)]
+    struct Params {
+        code: String,
+        state: String,
+    }
+
+    async fn login_handler(auth_service: State<AuthService>) -> crate::Result<impl IntoResponse> {
         Ok(Redirect::to(&auth_service.authorize().await))
     }
 
     async fn callback_handler(
-        params: Query<CallbackParams>,
+        params: Query<Params>,
         auth_service: State<AuthService>,
-    ) -> Result<impl IntoResponse> {
+    ) -> crate::Result<impl IntoResponse> {
         let token = auth_service.exchange_code(&params.code).await?;
         Ok((StatusCode::OK, token)) // TODO: set in session storage
     }
 }
 
-pub mod service {
+pub(crate) mod service {
     use std::collections::HashMap;
     use std::sync::Arc;
     use std::time::Duration;
@@ -160,12 +170,11 @@ pub mod service {
     use oauth2::{AuthorizationCode, CsrfToken, Scope, TokenResponse};
     use tokio::sync::RwLock;
 
+    use super::TokenClaims;
+
     use crate::integration::idp;
     use crate::user::model::UserInfo;
     use crate::{auth, integration};
-
-    use super::model::TokenClaims;
-    use super::Result;
 
     const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
 
@@ -179,7 +188,7 @@ pub mod service {
     }
 
     impl AuthService {
-        pub fn try_new(config: &idp::Config) -> Result<Self> {
+        pub fn try_new(config: &idp::Config) -> super::Result<Self> {
             let mut jwt_validator = Validation::new(jsonwebtoken::Algorithm::RS256);
             jwt_validator.set_required_spec_claims(&config.required_claims);
             jwt_validator.set_issuer(&[&config.issuer]);
@@ -225,7 +234,7 @@ pub mod service {
             auth_url.to_string()
         }
 
-        pub async fn exchange_code(&self, code: &str) -> Result<String> {
+        pub async fn exchange_code(&self, code: &str) -> super::Result<String> {
             let code = AuthorizationCode::new(code.to_string());
 
             let token_result = self
@@ -238,7 +247,7 @@ pub mod service {
             Ok(token_result.access_token().secret().to_owned())
         }
 
-        pub async fn validate(&self, token: &str) -> Result<TokenClaims> {
+        pub async fn validate(&self, token: &str) -> super::Result<TokenClaims> {
             let kid = self.get_kid(token)?;
             let decoding_keys_guard = self.jwk_decoding_keys.read().await;
             let decoding_key = decoding_keys_guard
@@ -250,7 +259,7 @@ pub mod service {
                 .map_err(|e| auth::Error::Forbidden(e.to_string()))
         }
 
-        pub async fn get_user_info(&self, token: &str) -> Result<UserInfo> {
+        pub async fn get_user_info(&self, token: &str) -> super::Result<UserInfo> {
             let user_info = self
                 .http
                 .get(&self.config.userinfo_url)
@@ -265,7 +274,7 @@ pub mod service {
     }
 
     impl AuthService {
-        fn get_kid(&self, token: &str) -> Result<String> {
+        fn get_kid(&self, token: &str) -> super::Result<String> {
             let jwt_header =
                 decode_header(token).map_err(|e| auth::Error::TokenMalformed(e.to_string()))?;
 
@@ -279,7 +288,7 @@ pub mod service {
     async fn fetch_jwk_decoding_keys(
         config: &idp::Config,
         http: &reqwest::Client,
-    ) -> Result<HashMap<String, DecodingKey>> {
+    ) -> super::Result<HashMap<String, DecodingKey>> {
         let jwk_response = http.get(&config.jwks_url).send().await?;
         let jwk_json = jwk_response.json().await?;
         let jwk_set: JwkSet = serde_json::from_value(jwk_json)?;
@@ -295,35 +304,5 @@ pub mod service {
         }
 
         Ok(jwk_decoding_keys)
-    }
-}
-
-pub mod template {
-    use maud::{html, Markup};
-
-    use crate::markup::base;
-
-    fn login() -> Markup {
-        base(html! {
-            h2 { "Please Login" }
-            a href="/login" { "Login with SSO" }
-        })
-    }
-}
-
-mod model {
-    use serde::Deserialize;
-
-    use crate::user::model::Sub;
-
-    #[derive(Deserialize)]
-    pub struct CallbackParams {
-        pub code: String,
-        pub state: String, // TODO: use state
-    }
-
-    #[derive(Deserialize, Clone)]
-    pub struct TokenClaims {
-        pub sub: Sub,
     }
 }

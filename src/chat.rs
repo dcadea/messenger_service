@@ -1,16 +1,15 @@
-use crate::chat::model::ChatId;
 use crate::user;
-use crate::user::model::Sub;
 
 type Result<T> = std::result::Result<T, Error>;
+pub(crate) type Id = mongodb::bson::oid::ObjectId;
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum Error {
+pub(crate) enum Error {
     #[error("chat not found: {0:?}")]
-    NotFound(Option<ChatId>),
+    NotFound(Option<Id>),
     #[error("chat already exists for members: {0:?}")]
-    AlreadyExists([Sub; 2]),
+    AlreadyExists([user::Sub; 2]),
     #[error("user is not a member of the chat")]
     NotMember,
     #[error("unexpected chat error: {0}")]
@@ -22,21 +21,21 @@ pub enum Error {
     _Redis(#[from] redis::RedisError),
 }
 
-pub mod markup {
+pub(crate) mod markup {
     use axum::extract::{Path, State};
     use axum::routing::get;
     use axum::{Extension, Router};
     use maud::{html, Markup, Render};
 
     use crate::message::markup::message_input;
-    use crate::result::Result;
     use crate::state::AppState;
     use crate::user::markup::UserHeader;
     use crate::user::model::UserInfo;
     use crate::user::service::UserService;
 
-    use super::model::{ChatDto, ChatId};
+    use super::model::ChatDto;
     use super::service::ChatService;
+    use super::Id;
 
     pub fn pages<S>(state: AppState) -> Router<S> {
         Router::new()
@@ -45,7 +44,14 @@ pub mod markup {
             .with_state(state)
     }
 
-    pub async fn all_chats(logged_user: Extension<UserInfo>) -> Result<Markup> {
+    pub fn resources<S>(state: AppState) -> Router<S> {
+        Router::new()
+            .route("/chats", get(find_all))
+            .route("/chats/:id", get(find_one))
+            .with_state(state)
+    }
+
+    pub async fn all_chats(logged_user: Extension<UserInfo>) -> crate::Result<Markup> {
         Ok(html! {
             #chat-window ."flex flex-col h-full"
                 hx-get="/api/chats"
@@ -61,11 +67,11 @@ pub mod markup {
     }
 
     async fn active_chat(
-        chat_id: Path<ChatId>,
+        chat_id: Path<Id>,
         logged_user: Extension<UserInfo>,
         chat_service: State<ChatService>,
         user_service: State<UserService>,
-    ) -> Result<Markup> {
+    ) -> crate::Result<Markup> {
         let chat = chat_service.find_by_id(&chat_id, &logged_user).await?;
         let recipient = user_service.find_user_info(&chat.recipient).await?;
 
@@ -88,17 +94,10 @@ pub mod markup {
         })
     }
 
-    pub fn resources<S>(state: AppState) -> Router<S> {
-        Router::new()
-            .route("/chats", get(find_all))
-            .route("/chats/:id", get(find_one))
-            .with_state(state)
-    }
-
     async fn find_all(
         user_info: Extension<UserInfo>,
         chat_service: State<ChatService>,
-    ) -> Result<Markup> {
+    ) -> crate::Result<Markup> {
         let chats = chat_service.find_all(&user_info).await?;
         Ok(html! {
             div class="chat-list flex flex-col" {
@@ -112,8 +111,8 @@ pub mod markup {
     async fn find_one(
         user_info: Extension<UserInfo>,
         chat_service: State<ChatService>,
-        Path(id): Path<ChatId>,
-    ) -> Result<Markup> {
+        Path(id): Path<Id>,
+    ) -> crate::Result<Markup> {
         let chat = chat_service.find_by_id(&id, &user_info).await?;
         Ok(chat.render())
     }
@@ -141,7 +140,7 @@ pub mod markup {
     //     chat_service: State<ChatService>,
     //     app_endpoints: State<AppEndpoints>,
     //     Json(chat_request): Json<ChatRequest>,
-    // ) -> Result<impl IntoResponse> {
+    // ) -> crate::Result<impl IntoResponse> {
     //     let base_url = app_endpoints.api();
     //     let result = chat_service.create(&chat_request, &user_info).await?;
     //     let location = format!("{base_url}/chats/{}", &result.id);
@@ -157,15 +156,15 @@ pub mod markup {
 }
 
 pub mod model {
+    use messenger_service::serde::serialize_object_id;
     use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
     use serde;
     use serde::{Deserialize, Serialize};
 
     use crate::model::Link;
-    use crate::user::model::Sub;
-    use crate::util::serialize_object_id;
+    use crate::user;
 
-    pub type ChatId = mongodb::bson::oid::ObjectId;
+    use super::Id;
 
     #[derive(Serialize, Deserialize)]
     pub struct Chat {
@@ -174,15 +173,15 @@ pub mod model {
             serialize_with = "serialize_object_id",
             skip_serializing_if = "Option::is_none"
         )]
-        pub id: Option<ChatId>,
-        pub members: [Sub; 2],
+        pub id: Option<Id>,
+        pub members: [user::Sub; 2],
         #[serde(skip_serializing_if = "Option::is_none")]
         pub last_message: Option<String>,
         updated_at: i64,
     }
 
     impl Chat {
-        pub fn new(members: [Sub; 2]) -> Self {
+        pub fn new(members: [user::Sub; 2]) -> Self {
             Self {
                 id: None,
                 members,
@@ -195,8 +194,8 @@ pub mod model {
     #[derive(Serialize)]
     pub struct ChatDto {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-        pub id: ChatId,
-        pub recipient: Sub,
+        pub id: Id,
+        pub recipient: user::Sub,
         recipient_name: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub last_message: Option<String>,
@@ -205,7 +204,7 @@ pub mod model {
     }
 
     impl ChatDto {
-        pub fn new(chat: Chat, recipient: Sub, recipient_name: String) -> Self {
+        pub fn new(chat: Chat, recipient: user::Sub, recipient_name: String) -> Self {
             let chat_id = chat.id.expect("No way chat id is missing!?");
             Self {
                 id: chat_id,
@@ -225,7 +224,7 @@ pub mod model {
 
     #[derive(Deserialize, Clone)]
     pub struct ChatRequest {
-        pub recipient: Sub,
+        pub recipient: user::Sub,
     }
 }
 
@@ -233,11 +232,10 @@ pub mod repository {
     use futures::stream::TryStreamExt;
     use mongodb::bson::doc;
 
-    use crate::chat;
-    use crate::user::model::Sub;
+    use crate::{chat, user};
 
-    use super::model::{Chat, ChatId};
-    use super::Result;
+    use super::model::Chat;
+    use super::Id;
 
     const CHATS_COLLECTION: &str = "chats";
 
@@ -258,7 +256,7 @@ pub mod repository {
          * Insert a new chat into the database
          * @param chat: The chat to insert
          */
-        pub async fn insert(&self, chat: &Chat) -> Result<Chat> {
+        pub async fn insert(&self, chat: &Chat) -> super::Result<Chat> {
             let result = self.collection.insert_one(chat).await?;
             if let Some(id) = result.inserted_id.as_object_id() {
                 return self.find_by_id(&id).await;
@@ -273,7 +271,7 @@ pub mod repository {
          * @param text: The text of the last message
          * @param updated_at: The timestamp of the last message
          */
-        pub async fn update_last_message(&self, id: &ChatId, text: &str) -> Result<()> {
+        pub async fn update_last_message(&self, id: &Id, text: &str) -> super::Result<()> {
             self.collection
                 .update_one(
                     doc! { "_id": id },
@@ -286,7 +284,7 @@ pub mod repository {
             Ok(())
         }
 
-        pub async fn find_by_id(&self, id: &ChatId) -> Result<Chat> {
+        pub async fn find_by_id(&self, id: &Id) -> super::Result<Chat> {
             self.collection
                 .find_one(doc! { "_id": id })
                 .await?
@@ -297,7 +295,7 @@ pub mod repository {
          * Find a chat where the user sub is a member
          * @param sub: The user sub
          */
-        pub async fn find_by_sub(&self, sub: &Sub) -> Result<Vec<Chat>> {
+        pub async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Chat>> {
             let cursor = self
                 .collection
                 .find(doc! {"members": sub})
@@ -314,7 +312,7 @@ pub mod repository {
          * @param id: The id of the chat
          * @param sub: The user sub
          */
-        pub async fn find_by_id_and_sub(&self, id: &ChatId, sub: &Sub) -> Result<Chat> {
+        pub async fn find_by_id_and_sub(&self, id: &Id, sub: &user::Sub) -> super::Result<Chat> {
             self.collection
                 .find_one(doc! {
                     "_id": id,
@@ -328,7 +326,7 @@ pub mod repository {
          * Find a chat id by its members
          * @param members: The members of the chat
          */
-        pub async fn find_id_by_members(&self, members: [Sub; 2]) -> Result<ChatId> {
+        pub async fn find_id_by_members(&self, members: [user::Sub; 2]) -> super::Result<Id> {
             let result = self
                 .collection
                 .find_one(doc! {
@@ -354,15 +352,15 @@ pub mod service {
     use futures::TryFutureExt;
     use redis::AsyncCommands;
 
-    use super::model::{Chat, ChatDto, ChatId, ChatRequest};
+    use super::model::{Chat, ChatDto, ChatRequest};
     use super::repository::ChatRepository;
-    use super::Result;
-    use crate::chat;
-    use crate::integration::model::CacheKey;
+    use super::Id;
+    use crate::integration::cache;
     use crate::message::model::Message;
     use crate::model::{AppEndpoints, LinkFactory};
-    use crate::user::model::{Sub, UserInfo};
+    use crate::user::model::UserInfo;
     use crate::user::service::UserService;
+    use crate::{chat, user};
 
     const CHAT_TTL: i64 = 3600;
 
@@ -391,7 +389,11 @@ pub mod service {
     }
 
     impl ChatService {
-        pub async fn create(&self, req: &ChatRequest, user_info: &UserInfo) -> Result<ChatDto> {
+        pub async fn create(
+            &self,
+            req: &ChatRequest,
+            user_info: &UserInfo,
+        ) -> super::Result<ChatDto> {
             let owner = user_info.clone().sub;
             let recipient = req.clone().recipient;
 
@@ -415,7 +417,7 @@ pub mod service {
             }
         }
 
-        pub async fn update_last_message(&self, message: &Message) -> Result<()> {
+        pub async fn update_last_message(&self, message: &Message) -> super::Result<()> {
             let chat_id = self
                 .repository
                 .find_id_by_members([message.owner.to_owned(), message.recipient.to_owned()])
@@ -426,7 +428,7 @@ pub mod service {
                 .await
         }
 
-        pub async fn find_by_id(&self, id: &ChatId, user_info: &UserInfo) -> Result<ChatDto> {
+        pub async fn find_by_id(&self, id: &Id, user_info: &UserInfo) -> super::Result<ChatDto> {
             match self.repository.find_by_id_and_sub(id, &user_info.sub).await {
                 Ok(chat) => {
                     let chat_dto = self.chat_to_dto(chat, user_info).await?;
@@ -437,7 +439,7 @@ pub mod service {
             }
         }
 
-        pub async fn find_all(&self, user_info: &UserInfo) -> Result<Vec<ChatDto>> {
+        pub async fn find_all(&self, user_info: &UserInfo) -> super::Result<Vec<ChatDto>> {
             let chats = self.repository.find_by_sub(&user_info.sub).await?;
 
             let chat_dtos = try_join_all(
@@ -453,7 +455,7 @@ pub mod service {
 
     // validations
     impl ChatService {
-        pub async fn check_member(&self, chat_id: &ChatId, sub: &Sub) -> Result<()> {
+        pub async fn check_member(&self, chat_id: &Id, sub: &user::Sub) -> super::Result<()> {
             let members = self.find_members(chat_id).await?;
             let belongs_to_chat = members.contains(sub);
 
@@ -464,7 +466,11 @@ pub mod service {
             Ok(())
         }
 
-        pub async fn check_members(&self, chat_id: &ChatId, members: [Sub; 2]) -> Result<()> {
+        pub async fn check_members(
+            &self,
+            chat_id: &Id,
+            members: [user::Sub; 2],
+        ) -> super::Result<()> {
             let cached_members = self.find_members(chat_id).await?;
             let belongs_to_chat =
                 cached_members.contains(&members[0]) && cached_members.contains(&members[1]);
@@ -479,11 +485,11 @@ pub mod service {
 
     // cache operations
     impl ChatService {
-        pub async fn find_members(&self, chat_id: &ChatId) -> Result<[Sub; 2]> {
+        pub async fn find_members(&self, chat_id: &Id) -> super::Result<[user::Sub; 2]> {
             let mut con = self.redis_con.clone();
 
-            let cache_key = CacheKey::Chat(chat_id.to_owned());
-            let members: Option<Vec<Sub>> = con.smembers(cache_key.clone()).await?;
+            let cache_key = cache::Key::Chat(chat_id.to_owned());
+            let members: Option<Vec<user::Sub>> = con.smembers(cache_key.clone()).await?;
 
             if members.as_ref().is_some_and(|m| m.len() == 2) {
                 let members = members.unwrap();
@@ -504,7 +510,7 @@ pub mod service {
     }
 
     impl ChatService {
-        async fn chat_to_dto(&self, chat: Chat, user_info: &UserInfo) -> Result<ChatDto> {
+        async fn chat_to_dto(&self, chat: Chat, user_info: &UserInfo) -> super::Result<ChatDto> {
             let members = chat.members.to_owned();
 
             let recipient = members

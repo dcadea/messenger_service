@@ -1,6 +1,36 @@
-use model::Sub;
+use std::fmt::Display;
+
+use serde::{Deserialize, Serialize};
 
 type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub(crate) struct Sub(pub String); // TODO: remove pub
+
+impl Display for Sub {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Serialize for Sub {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Sub {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Sub, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(Sub(s))
+    }
+}
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
@@ -20,12 +50,13 @@ pub mod markup {
     use axum::{Json, Router};
     use axum_extra::extract::Query;
     use maud::{html, Markup, Render};
+    use serde::Deserialize;
 
     use crate::error::Error;
     use crate::state::AppState;
 
-    use super::model::UserParams;
     use super::service::UserService;
+    use super::Sub;
 
     pub fn resources<S>(state: AppState) -> Router<S> {
         Router::new()
@@ -33,8 +64,14 @@ pub mod markup {
             .with_state(state)
     }
 
+    #[derive(Deserialize)]
+    struct Params {
+        sub: Option<Sub>,
+        nickname: Option<String>,
+    }
+
     async fn find_handler(
-        Query(params): Query<UserParams>,
+        Query(params): Query<Params>,
         user_service: State<UserService>,
     ) -> impl IntoResponse {
         match params.sub {
@@ -74,66 +111,16 @@ pub mod markup {
 }
 
 pub mod model {
-    use std::fmt::Display;
-
     use serde::{Deserialize, Serialize};
 
-    type UserId = mongodb::bson::oid::ObjectId;
+    use super::Sub;
 
-    #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-    pub struct Sub(pub String); // TODO: remove pub
-
-    impl Display for Sub {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{}", self.0)
-        }
-    }
-
-    impl Serialize for Sub {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-        {
-            self.0.serialize(serializer)
-        }
-    }
-
-    impl<'de> Deserialize<'de> for Sub {
-        fn deserialize<D>(deserializer: D) -> Result<Sub, D::Error>
-        where
-            D: serde::Deserializer<'de>,
-        {
-            let s = String::deserialize(deserializer)?;
-            Ok(Sub(s))
-        }
-    }
-
-    impl From<Sub> for mongodb::bson::Bson {
-        fn from(val: Sub) -> Self {
-            mongodb::bson::Bson::String(val.0)
-        }
-    }
-
-    impl redis::FromRedisValue for Sub {
-        fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Sub> {
-            let s = String::from_redis_value(v)?;
-            Ok(Sub(s))
-        }
-    }
-
-    impl redis::ToRedisArgs for Sub {
-        fn write_redis_args<W>(&self, out: &mut W)
-        where
-            W: ?Sized + redis::RedisWrite,
-        {
-            self.0.write_redis_args(out);
-        }
-    }
+    type Id = mongodb::bson::oid::ObjectId;
 
     #[derive(Serialize, Deserialize, Clone)]
     pub struct User {
         #[serde(skip)]
-        _id: Option<UserId>,
+        _id: Option<Id>,
         sub: Sub,
         nickname: String,
         name: String,
@@ -181,28 +168,6 @@ pub mod model {
             }
         }
     }
-
-    impl redis::FromRedisValue for UserInfo {
-        fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
-            let user_info: UserInfo = serde_json::from_str(&String::from_redis_value(value)?)?;
-            Ok(user_info)
-        }
-    }
-
-    impl redis::ToRedisArgs for UserInfo {
-        fn write_redis_args<W>(&self, out: &mut W)
-        where
-            W: ?Sized + redis::RedisWrite,
-        {
-            serde_json::json!(self).to_string().write_redis_args(out);
-        }
-    }
-
-    #[derive(Deserialize)]
-    pub(super) struct UserParams {
-        pub sub: Option<Sub>,
-        pub nickname: Option<String>,
-    }
 }
 
 pub mod repository {
@@ -211,8 +176,8 @@ pub mod repository {
     use mongodb::options::FindOneOptions;
     use mongodb::Database;
 
-    use super::model::{Friends, Sub, User};
-    use super::Result;
+    use super::model::{Friends, User};
+    use super::{Result, Sub};
     use crate::user;
 
     const USERS_COLLECTION: &str = "users";
@@ -232,18 +197,18 @@ pub mod repository {
     }
 
     impl UserRepository {
-        pub async fn insert(&self, user: &User) -> Result<()> {
+        pub async fn insert(&self, user: &User) -> super::Result<()> {
             self.users_col.insert_one(user).await?;
             Ok(())
         }
 
-        pub async fn find_by_sub(&self, sub: &Sub) -> Result<User> {
+        pub async fn find_by_sub(&self, sub: &Sub) -> super::Result<User> {
             let filter = doc! { "sub": sub };
             let result = self.users_col.find_one(filter).await?;
             result.ok_or(user::Error::NotFound(sub.to_owned()))
         }
 
-        pub async fn search_by_nickname(&self, nickname: &str) -> Result<Vec<User>> {
+        pub async fn search_by_nickname(&self, nickname: &str) -> super::Result<Vec<User>> {
             let filter = doc! { "nickname":{
                 "$regex": nickname,
                 "$options": "i"
@@ -254,7 +219,7 @@ pub mod repository {
             cursor.try_collect().await.map_err(user::Error::from)
         }
 
-        pub async fn add_friend(&self, sub: &Sub, friend: &Sub) -> Result<()> {
+        pub async fn add_friend(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
             let filter = doc! { "sub": sub };
             let update = doc! { "$push": { "friends": friend } };
 
@@ -262,7 +227,7 @@ pub mod repository {
             Ok(())
         }
 
-        pub async fn find_friends_by_sub(&self, sub: &Sub) -> Result<Vec<Sub>> {
+        pub async fn find_friends_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<user::Sub>> {
             let filter = doc! { "sub": sub };
             let projection = FindOneOptions::builder()
                 .projection(doc! { "friends": 1 })
@@ -287,11 +252,11 @@ pub mod service {
 
     use redis::AsyncCommands;
 
-    use crate::integration::model::CacheKey;
-    use crate::user::model::{Sub, User, UserInfo};
+    use crate::integration::cache;
+    use crate::user::model::{User, UserInfo};
 
     use super::repository::UserRepository;
-    use super::Result;
+    use super::{Result, Sub};
 
     const USER_INFO_TTL: u64 = 3600;
 
@@ -311,11 +276,11 @@ pub mod service {
     }
 
     impl UserService {
-        pub async fn create(&self, user: &User) -> Result<()> {
+        pub async fn create(&self, user: &User) -> super::Result<()> {
             self.repository.insert(user).await
         }
 
-        pub async fn find_user_info(&self, sub: &Sub) -> Result<UserInfo> {
+        pub async fn find_user_info(&self, sub: &Sub) -> super::Result<UserInfo> {
             let cached_user_info = self.find_cached_user_info(sub).await;
 
             match cached_user_info {
@@ -328,12 +293,12 @@ pub mod service {
             }
         }
 
-        pub async fn search_user_info(&self, nickname: &str) -> Result<Vec<UserInfo>> {
+        pub async fn search_user_info(&self, nickname: &str) -> super::Result<Vec<UserInfo>> {
             let users = self.repository.search_by_nickname(nickname).await?;
             Ok(users.into_iter().map(|user| user.into()).collect())
         }
 
-        pub async fn add_friend(&self, sub: &Sub, friend: &Sub) -> Result<()> {
+        pub async fn add_friend(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
             self.repository.add_friend(sub, friend).await?;
             self.cache_friend(sub, friend).await?;
             Ok(())
@@ -342,50 +307,54 @@ pub mod service {
 
     // cache operations
     impl UserService {
-        pub async fn add_online_user(&self, sub: &Sub) -> Result<()> {
+        pub async fn add_online_user(&self, sub: &Sub) -> super::Result<()> {
             let mut con = self.redis_con.clone();
-            let _: () = con.sadd(CacheKey::UsersOnline, sub).await?;
+            let _: () = con.sadd(cache::Key::UsersOnline, sub).await?;
             Ok(())
         }
 
-        pub async fn get_online_friends(&self, sub: &Sub) -> Result<HashSet<Sub>> {
+        pub async fn get_online_friends(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
             let mut con = self.redis_con.clone();
             let online_users: HashSet<Sub> = con
-                .sinter(&[CacheKey::UsersOnline, CacheKey::Friends(sub.to_owned())])
+                .sinter(&[cache::Key::UsersOnline, cache::Key::Friends(sub.to_owned())])
                 .await?;
             Ok(online_users)
         }
 
-        pub async fn remove_online_user(&self, sub: &Sub) -> Result<()> {
+        pub async fn remove_online_user(&self, sub: &Sub) -> super::Result<()> {
             let mut con = self.redis_con.clone();
-            let _: () = con.srem(CacheKey::UsersOnline, sub).await?;
+            let _: () = con.srem(cache::Key::UsersOnline, sub).await?;
             Ok(())
         }
 
-        pub async fn cache_friends(&self, sub: &Sub) -> Result<()> {
+        pub async fn cache_friends(&self, sub: &Sub) -> super::Result<()> {
             let friends = self.repository.find_friends_by_sub(sub).await?;
 
             let mut con = self.redis_con.clone();
-            let _: () = con.sadd(CacheKey::Friends(sub.to_owned()), friends).await?;
+            let _: () = con
+                .sadd(cache::Key::Friends(sub.to_owned()), friends)
+                .await?;
             Ok(())
         }
 
-        async fn cache_friend(&self, sub: &Sub, friend: &Sub) -> Result<()> {
+        async fn cache_friend(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
             let mut con = self.redis_con.clone();
-            let _: () = con.sadd(CacheKey::Friends(sub.to_owned()), friend).await?;
+            let _: () = con
+                .sadd(cache::Key::Friends(sub.to_owned()), friend)
+                .await?;
             Ok(())
         }
 
-        async fn cache_user_info(&self, user_info: &UserInfo) -> Result<()> {
+        async fn cache_user_info(&self, user_info: &UserInfo) -> super::Result<()> {
             let mut con = self.redis_con.clone();
-            let cache_key = CacheKey::UserInfo(user_info.sub.to_owned());
+            let cache_key = cache::Key::UserInfo(user_info.sub.to_owned());
             let _: () = con.set_ex(cache_key, user_info, USER_INFO_TTL).await?;
             Ok(())
         }
 
         async fn find_cached_user_info(&self, sub: &Sub) -> Option<UserInfo> {
             let mut con = self.redis_con.clone();
-            let cache_key = CacheKey::UserInfo(sub.to_owned());
+            let cache_key = cache::Key::UserInfo(sub.to_owned());
             let cached_user_info: Option<UserInfo> = con.get(cache_key).await.ok();
             cached_user_info
         }

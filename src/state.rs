@@ -9,7 +9,6 @@ use super::event::service::EventService;
 use super::integration;
 use super::message::repository::MessageRepository;
 use super::message::service::MessageService;
-use super::result::Result;
 use super::user::repository::UserRepository;
 use super::user::service::UserService;
 
@@ -26,7 +25,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub async fn init(config: integration::Config) -> Result<Self> {
+    pub async fn init(config: integration::Config) -> crate::Result<Self> {
         let socket = config.socket;
         let address = socket.ip().to_string();
         let port = socket.port().to_string();

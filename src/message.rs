@@ -1,34 +1,34 @@
-use crate::message::model::MessageId;
-
 type Result<T> = std::result::Result<T, Error>;
+pub(crate) type Id = mongodb::bson::oid::ObjectId;
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum Error {
+pub(crate) enum Error {
     #[error("message not found: {0:?}")]
-    NotFound(Option<MessageId>),
+    NotFound(Option<Id>),
     #[error("unexpected message error: {0}")]
     Unexpected(String),
 
     _MongoDB(#[from] mongodb::error::Error),
 }
 
-pub mod markup {
+pub(crate) mod markup {
     use axum::extract::{Path, State};
     use axum::routing::{delete, get};
     use axum::{Extension, Router};
     use axum_extra::extract::Query;
     use maud::{html, Markup};
+    use serde::Deserialize;
 
-    use crate::chat::model::ChatId;
     use crate::chat::service::ChatService;
     use crate::error::Error;
-    use crate::result::Result;
     use crate::state::AppState;
-    use crate::user::model::{Sub, UserInfo};
+    use crate::user::model::UserInfo;
+    use crate::{chat, user};
 
-    use super::model::{MessageDto, MessageId, MessageParams};
+    use super::model::MessageDto;
     use super::service::MessageService;
+    use super::Id;
 
     pub fn resources<S>(state: AppState) -> Router<S> {
         Router::new()
@@ -38,12 +38,19 @@ pub mod markup {
             .with_state(state)
     }
 
+    #[derive(Deserialize)]
+    struct Params {
+        chat_id: Option<chat::Id>,
+        end_time: Option<i64>,
+        limit: Option<usize>,
+    }
+
     async fn find_all(
         user_info: Extension<UserInfo>,
-        params: Query<MessageParams>,
+        params: Query<Params>,
         chat_service: State<ChatService>,
         message_service: State<MessageService>,
-    ) -> Result<Markup> {
+    ) -> crate::Result<Markup> {
         let chat_id = params
             .chat_id
             .ok_or(Error::QueryParamRequired("chat_id".to_owned()))?;
@@ -51,7 +58,7 @@ pub mod markup {
         chat_service.check_member(&chat_id, &user_info.sub).await?;
 
         let messages = message_service
-            .find_by_chat_id_and_params(&chat_id, &params)
+            .find_by_chat_id_and_params(&chat_id, params.limit, params.end_time)
             .await?;
 
         Ok(html! {
@@ -64,10 +71,10 @@ pub mod markup {
     }
 
     async fn find_one(
-        id: Path<MessageId>,
+        id: Path<Id>,
         user_info: Extension<UserInfo>,
         message_service: State<MessageService>,
-    ) -> Result<Markup> {
+    ) -> crate::Result<Markup> {
         // TODO: chat_service.check_member(&chat_id, &user_info.sub).await?;
 
         let msg = message_service.find_by_id(&id).await?;
@@ -75,7 +82,7 @@ pub mod markup {
         Ok(message_item(&msg, &user_info))
     }
 
-    async fn delete_one(id: Path<MessageId>, message_service: State<MessageService>) -> Result<()> {
+    async fn delete_one(id: Path<Id>, message_service: State<MessageService>) -> crate::Result<()> {
         // TODO: chat_service.check_member(&chat_id, &user_info.sub).await?;
 
         message_service.delete(&id).await?;
@@ -83,7 +90,7 @@ pub mod markup {
         Ok(())
     }
 
-    pub(crate) fn message_input(chat_id: &ChatId, recipient: &Sub) -> Markup {
+    pub fn message_input(chat_id: &chat::Id, recipient: &user::Sub) -> Markup {
         html! {
             form #message-input
                 ws-send
@@ -148,34 +155,34 @@ pub mod markup {
         }
     }
 }
-pub mod model {
+
+pub(crate) mod model {
     use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
     use serde::{Deserialize, Serialize};
 
-    use crate::chat::model::ChatId;
-    use crate::user::model::Sub;
-    use crate::util::serialize_object_id;
+    use crate::{chat, user};
+    use messenger_service::serde::serialize_object_id;
 
-    pub type MessageId = mongodb::bson::oid::ObjectId;
+    use super::Id;
 
     #[derive(Deserialize, Serialize, Clone)]
-    pub(crate) struct Message {
+    pub struct Message {
         #[serde(
             alias = "_id",
             serialize_with = "serialize_object_id",
             skip_serializing_if = "Option::is_none"
         )]
-        id: Option<MessageId>,
-        chat_id: ChatId,
-        pub owner: Sub,
-        pub recipient: Sub,
+        id: Option<Id>,
+        chat_id: chat::Id,
+        pub owner: user::Sub,
+        pub recipient: user::Sub,
         pub text: String,
         timestamp: i64,
         seen: bool,
     }
 
     impl Message {
-        pub fn new(chat_id: ChatId, owner: Sub, recipient: Sub, text: &str) -> Self {
+        pub fn new(chat_id: chat::Id, owner: user::Sub, recipient: user::Sub, text: &str) -> Self {
             Self {
                 id: None,
                 chat_id,
@@ -187,7 +194,7 @@ pub mod model {
             }
         }
 
-        pub fn with_id(&self, id: MessageId) -> Self {
+        pub fn with_id(&self, id: Id) -> Self {
             Self {
                 id: Some(id),
                 ..self.clone()
@@ -198,11 +205,11 @@ pub mod model {
     #[derive(Serialize, Deserialize, Debug)]
     pub struct MessageDto {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-        pub id: MessageId,
+        pub id: Id,
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-        chat_id: ChatId,
-        pub owner: Sub,
-        pub recipient: Sub,
+        chat_id: chat::Id,
+        pub owner: user::Sub,
+        pub recipient: user::Sub,
         pub text: String,
         pub timestamp: i64,
         pub seen: bool,
@@ -221,24 +228,15 @@ pub mod model {
             }
         }
     }
-
-    #[derive(Deserialize)]
-    pub struct MessageParams {
-        pub chat_id: Option<ChatId>,
-        pub end_time: Option<i64>,
-        pub limit: Option<usize>,
-    }
 }
 
-pub mod repository {
+pub(crate) mod repository {
     use futures::TryStreamExt;
     use mongodb::bson::doc;
     use mongodb::Database;
 
-    use super::model::{Message, MessageId};
-    use super::Result;
-    use crate::chat::model::ChatId;
-    use crate::message;
+    use super::{model::Message, Id};
+    use crate::{chat, message};
 
     const MESSAGES_COLLECTION: &str = "messages";
 
@@ -255,7 +253,7 @@ pub mod repository {
     }
 
     impl MessageRepository {
-        pub async fn insert(&self, message: &Message) -> Result<MessageId> {
+        pub async fn insert(&self, message: &Message) -> super::Result<Id> {
             let result = self.collection.insert_one(message).await?;
             if let Some(id) = result.inserted_id.as_object_id() {
                 return Ok(id.to_owned());
@@ -266,14 +264,14 @@ pub mod repository {
             ))
         }
 
-        pub async fn find_by_id(&self, id: &MessageId) -> Result<Message> {
+        pub async fn find_by_id(&self, id: &Id) -> super::Result<Message> {
             self.collection
                 .find_one(doc! {"_id": id})
                 .await?
                 .ok_or(message::Error::NotFound(Some(id.to_owned())))
         }
 
-        pub async fn find_by_chat_id(&self, chat_id: &ChatId) -> Result<Vec<Message>> {
+        pub async fn find_by_chat_id(&self, chat_id: &chat::Id) -> super::Result<Vec<Message>> {
             let cursor = self
                 .collection
                 .find(doc! {"chat_id": chat_id})
@@ -287,9 +285,9 @@ pub mod repository {
 
         pub async fn find_by_chat_id_limited(
             &self,
-            chat_id: &ChatId,
+            chat_id: &chat::Id,
             limit: usize,
-        ) -> Result<Vec<Message>> {
+        ) -> super::Result<Vec<Message>> {
             let cursor = self
                 .collection
                 .find(doc! {"chat_id": chat_id})
@@ -310,9 +308,9 @@ pub mod repository {
 
         pub async fn find_by_chat_id_before(
             &self,
-            chat_id: &ChatId,
+            chat_id: &chat::Id,
             before: i64,
-        ) -> Result<Vec<Message>> {
+        ) -> super::Result<Vec<Message>> {
             let cursor = self
                 .collection
                 .find(doc! {
@@ -329,10 +327,10 @@ pub mod repository {
 
         pub async fn find_by_chat_id_limited_before(
             &self,
-            chat_id: &ChatId,
+            chat_id: &chat::Id,
             limit: usize,
             before: i64,
-        ) -> Result<Vec<Message>> {
+        ) -> super::Result<Vec<Message>> {
             let cursor = self
                 .collection
                 .find(doc! {
@@ -354,19 +352,19 @@ pub mod repository {
             Ok(messages)
         }
 
-        pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {
+        pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
             self.collection
                 .update_one(doc! {"_id": id}, doc! {"$set": {"text": text}})
                 .await?;
             Ok(())
         }
 
-        pub async fn delete(&self, id: &MessageId) -> Result<()> {
+        pub async fn delete(&self, id: &Id) -> super::Result<()> {
             self.collection.delete_one(doc! {"_id": id}).await?;
             Ok(())
         }
 
-        pub async fn mark_as_seen(&self, id: &MessageId) -> Result<()> {
+        pub async fn mark_as_seen(&self, id: &Id) -> super::Result<()> {
             self.collection
                 .update_one(doc! {"_id": id}, doc! {"$set": {"seen": true}})
                 .await?;
@@ -375,14 +373,14 @@ pub mod repository {
     }
 }
 
-pub mod service {
+pub(crate) mod service {
     use std::sync::Arc;
 
-    use crate::chat::model::ChatId;
+    use crate::chat;
 
-    use super::model::{Message, MessageDto, MessageId, MessageParams};
+    use super::model::{Message, MessageDto};
     use super::repository::MessageRepository;
-    use super::Result;
+    use super::Id;
 
     #[derive(Clone)]
     pub struct MessageService {
@@ -398,28 +396,28 @@ pub mod service {
     }
 
     impl MessageService {
-        pub async fn create(&self, message: &Message) -> Result<Message> {
+        pub async fn create(&self, message: &Message) -> super::Result<Message> {
             self.repository
                 .insert(message)
                 .await
                 .map(|id| message.with_id(id))
         }
 
-        pub async fn update(&self, id: &MessageId, text: &str) -> Result<()> {
+        pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
             self.repository.update(id, text).await
         }
 
-        pub async fn delete(&self, id: &MessageId) -> Result<()> {
+        pub async fn delete(&self, id: &Id) -> super::Result<()> {
             self.repository.delete(id).await
         }
 
-        pub async fn mark_as_seen(&self, id: &MessageId) -> Result<()> {
+        pub async fn mark_as_seen(&self, id: &Id) -> super::Result<()> {
             self.repository.mark_as_seen(id).await
         }
     }
 
     impl MessageService {
-        pub async fn find_by_id(&self, id: &MessageId) -> Result<MessageDto> {
+        pub async fn find_by_id(&self, id: &Id) -> super::Result<MessageDto> {
             self.repository
                 .find_by_id(id)
                 .await
@@ -428,12 +426,10 @@ pub mod service {
 
         pub async fn find_by_chat_id_and_params(
             &self,
-            chat_id: &ChatId,
-            params: &MessageParams,
-        ) -> Result<Vec<MessageDto>> {
-            let limit = params.limit;
-            let end_time = params.end_time;
-
+            chat_id: &chat::Id,
+            limit: Option<usize>,
+            end_time: Option<i64>,
+        ) -> super::Result<Vec<MessageDto>> {
             let result = match (limit, end_time) {
                 (None, None) => self.repository.find_by_chat_id(chat_id).await?,
                 (Some(limit), None) => {

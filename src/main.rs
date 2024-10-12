@@ -23,10 +23,10 @@ mod integration;
 mod markup;
 mod message;
 mod model;
-mod result;
 mod state;
 mod user;
-mod util;
+
+pub(crate) type Result<T> = std::result::Result<T, crate::error::Error>;
 
 #[tokio::main]
 async fn main() {

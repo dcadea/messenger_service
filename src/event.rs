@@ -8,23 +8,47 @@ use axum::extract::ws::WebSocket;
 use futures::stream::{SplitSink, SplitStream};
 use futures::{SinkExt, Stream, StreamExt};
 use log::{debug, error, warn};
+use serde::Deserialize;
 use serde_json::from_str;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::try_join;
 
 use self::service::EventService;
-use crate::event::model::{Command, Event, Queue};
-use crate::integration::model::{CacheKey, Keyspace};
+use crate::event::model::{Event, Queue};
+use crate::integration::cache;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 use crate::{auth, chat, integration, message, user};
 
 type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Deserialize, Debug)]
+#[serde(tag = "type", rename_all = "snake_case")]
+enum Command {
+    Auth {
+        token: String,
+    },
+    CreateMessage {
+        chat_id: chat::Id,
+        recipient: user::Sub,
+        text: String,
+    },
+    UpdateMessage {
+        id: message::Id,
+        text: String,
+    },
+    DeleteMessage {
+        id: message::Id,
+    },
+    MarkAsSeenMessage {
+        id: message::Id,
+    },
+}
+
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum Error {
+pub(crate) enum Error {
     #[error("missing user info")]
     MissingUserInfo,
     #[error("not a message owner")]
@@ -190,7 +214,7 @@ async fn handle_text_frame(
     ctx: &context::Ws,
     content: String,
     event_service: EventService,
-) -> Result<()> {
+) -> self::Result<()> {
     if let Ok(command) = from_str::<Command>(content.as_str()) {
         return event_service.handle_command(ctx, command).await;
     }
@@ -256,10 +280,10 @@ async fn remove_online_user(ctx: &context::Ws, user_service: UserService) {
     }
 }
 
-type OnlineStatusChangedStream = Pin<Box<dyn Stream<Item = Result<redis::Msg>> + Send>>;
+type OnlineStatusChangedStream = Pin<Box<dyn Stream<Item = self::Result<redis::Msg>> + Send>>;
 
 // FIXME
-async fn listen_online_status_change() -> Result<OnlineStatusChangedStream> {
+async fn listen_online_status_change() -> self::Result<OnlineStatusChangedStream> {
     let config = crate::integration::cache::Config::env().unwrap_or_default();
     let client = crate::integration::cache::init_client(&config).await?;
     let mut con = client.get_async_connection().await?;
@@ -268,7 +292,7 @@ async fn listen_online_status_change() -> Result<OnlineStatusChangedStream> {
 
     let mut pubsub = con.into_pubsub();
     pubsub
-        .psubscribe(Keyspace::new(CacheKey::UsersOnline))
+        .psubscribe(cache::Keyspace::new(cache::Key::UsersOnline))
         .await?;
 
     let stream = pubsub
@@ -282,7 +306,7 @@ async fn listen_online_status_change() -> Result<OnlineStatusChangedStream> {
     Ok(Box::pin(stream))
 }
 
-async fn enable_keyspace_events(con: &mut redis::aio::Connection) -> Result<()> {
+async fn enable_keyspace_events(con: &mut redis::aio::Connection) -> self::Result<()> {
     redis::cmd("CONFIG")
         .arg("SET")
         .arg("notify-keyspace-events")
@@ -293,13 +317,12 @@ async fn enable_keyspace_events(con: &mut redis::aio::Connection) -> Result<()> 
         .map_err(Error::from)
 }
 
-pub mod api {
+pub(crate) mod api {
     use axum::extract::{State, WebSocketUpgrade};
     use axum::response::Response;
     use axum::routing::get;
     use axum::Router;
 
-    use crate::result::Result;
     use crate::state::AppState;
     use crate::user::service::UserService;
 
@@ -316,12 +339,12 @@ pub mod api {
         ws: WebSocketUpgrade,
         State(event_service): State<EventService>,
         State(user_service): State<UserService>,
-    ) -> Result<Response> {
+    ) -> crate::Result<Response> {
         Ok(ws.on_upgrade(move |socket| handle_socket(socket, event_service, user_service)))
     }
 }
 
-pub mod service {
+pub(crate) mod service {
     use std::io;
     use std::sync::Arc;
 
@@ -336,14 +359,13 @@ pub mod service {
 
     use crate::auth::service::AuthService;
     use crate::chat::service::ChatService;
-    use crate::event;
     use crate::message::model::{Message, MessageDto};
     use crate::message::service::MessageService;
-    use crate::user::model::Sub;
     use crate::user::service::UserService;
+    use crate::{event, user};
 
-    use super::model::{Command, Event, EventStream, Queue};
-    use super::{context, Result};
+    use super::model::{Event, EventStream, Queue};
+    use super::{context, Command};
 
     #[derive(Clone)]
     pub struct EventService {
@@ -373,7 +395,11 @@ pub mod service {
     }
 
     impl EventService {
-        pub async fn handle_command(&self, ctx: &context::Ws, command: Command) -> Result<()> {
+        pub async fn handle_command(
+            &self,
+            ctx: &context::Ws,
+            command: Command,
+        ) -> super::Result<()> {
             debug!("handling command: {:?}", command);
             match ctx.get_user_info().await {
                 None => {
@@ -383,7 +409,7 @@ pub mod service {
                     // let user_info = self.user_service.find_user_info(&claims.sub).await?;
                     let user_info = self
                         .user_service
-                        .find_user_info(&Sub("github|10639696".to_string()))
+                        .find_user_info(&user::Sub("github|10639696".to_string()))
                         .await?;
                     ctx.set_user_info(user_info).await;
                     ctx.set_channel(self.create_channel().await?).await;
@@ -488,7 +514,7 @@ pub mod service {
     }
 
     impl EventService {
-        pub async fn read(&self, ctx: &context::Ws, q: &Queue) -> Result<EventStream> {
+        pub async fn read(&self, ctx: &context::Ws, q: &Queue) -> super::Result<EventStream> {
             self.ensure_queue_exists(ctx, q).await?;
 
             let consumer = ctx
@@ -514,7 +540,7 @@ pub mod service {
             Ok(Box::pin(stream))
         }
 
-        pub async fn close_channel(&self, ctx: &context::Ws) -> Result<()> {
+        pub async fn close_channel(&self, ctx: &context::Ws) -> super::Result<()> {
             let channel = ctx.get_channel().await?;
             channel.close(200, "OK").await.map_err(event::Error::from)
         }
@@ -524,19 +550,19 @@ pub mod service {
             ctx: &context::Ws,
             q: &Queue,
             event: &Event,
-        ) -> Result<()> {
+        ) -> super::Result<()> {
             let payload = serde_json::to_vec(event)?;
             self.publish(ctx, q, payload.as_slice()).await
         }
     }
 
     impl EventService {
-        async fn create_channel(&self) -> Result<Channel> {
+        async fn create_channel(&self) -> super::Result<Channel> {
             let conn = self.amqp_con.read().await;
             conn.create_channel().await.map_err(event::Error::from)
         }
 
-        async fn publish(&self, ctx: &context::Ws, q: &Queue, payload: &[u8]) -> Result<()> {
+        async fn publish(&self, ctx: &context::Ws, q: &Queue, payload: &[u8]) -> super::Result<()> {
             self.ensure_queue_exists(ctx, q).await?;
             ctx.get_channel()
                 .await?
@@ -551,7 +577,7 @@ pub mod service {
             Ok(())
         }
 
-        async fn ensure_queue_exists(&self, ctx: &context::Ws, q: &Queue) -> Result<()> {
+        async fn ensure_queue_exists(&self, ctx: &context::Ws, q: &Queue) -> super::Result<()> {
             ctx.get_channel()
                 .await?
                 .queue_declare(
@@ -575,15 +601,14 @@ mod context {
 
     use tokio::sync::{Notify, RwLock};
 
-    use crate::event;
-    use crate::event::Result;
-    use crate::user::model::{Sub, UserInfo};
+    use crate::user::model::UserInfo;
+    use crate::{event, user};
 
     #[derive(Clone)]
     pub struct Ws {
         user_info: Arc<RwLock<Option<UserInfo>>>,
         channel: Arc<RwLock<Option<lapin::Channel>>>,
-        online_friends: Arc<RwLock<HashSet<Sub>>>,
+        online_friends: Arc<RwLock<HashSet<user::Sub>>>,
         pub login: Arc<Notify>,
         pub close: Arc<Notify>,
     }
@@ -613,7 +638,7 @@ mod context {
             *self.channel.write().await = Some(channel);
         }
 
-        pub async fn get_channel(&self) -> Result<lapin::Channel> {
+        pub async fn get_channel(&self) -> super::Result<lapin::Channel> {
             self.channel
                 .read()
                 .await
@@ -621,11 +646,11 @@ mod context {
                 .ok_or(event::Error::MissingAmqpChannel)
         }
 
-        pub async fn set_online_friends(&self, friends: HashSet<Sub>) {
+        pub async fn set_online_friends(&self, friends: HashSet<user::Sub>) {
             *self.online_friends.write().await = friends;
         }
 
-        pub async fn same_online_friends(&self, friends: &HashSet<Sub>) -> bool {
+        pub async fn same_online_friends(&self, friends: &HashSet<user::Sub>) -> bool {
             let f = self.online_friends.read().await;
             f.symmetric_difference(friends).count() == 0
         }
@@ -641,15 +666,14 @@ mod model {
     use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
     use serde::{Deserialize, Serialize};
 
-    use crate::chat::model::ChatId;
-    use crate::message::model::{MessageDto, MessageId};
-    use crate::user::model::Sub;
+    use crate::message::model::MessageDto;
+    use crate::{message, user};
 
-    pub(crate) type EventStream = Pin<Box<dyn Stream<Item = crate::event::Result<Event>> + Send>>;
+    pub(crate) type EventStream = Pin<Box<dyn Stream<Item = super::Result<Event>> + Send>>;
 
     #[derive(Clone)]
     pub enum Queue {
-        Messages(Sub),
+        Messages(user::Sub),
     }
 
     impl Display for Queue {
@@ -660,29 +684,6 @@ mod model {
         }
     }
 
-    #[derive(Deserialize, Debug)]
-    #[serde(tag = "type", rename_all = "snake_case")]
-    pub enum Command {
-        Auth {
-            token: String,
-        },
-        CreateMessage {
-            chat_id: ChatId,
-            recipient: Sub,
-            text: String,
-        },
-        UpdateMessage {
-            id: MessageId,
-            text: String,
-        },
-        DeleteMessage {
-            id: MessageId,
-        },
-        MarkAsSeenMessage {
-            id: MessageId,
-        },
-    }
-
     #[derive(Serialize, Deserialize, Debug)]
     #[serde(tag = "type", rename_all = "snake_case")]
     pub enum Event {
@@ -691,19 +692,19 @@ mod model {
         },
         UpdatedMessage {
             #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-            id: MessageId,
+            id: message::Id,
             text: String,
         },
         DeletedMessage {
             #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-            id: MessageId,
+            id: message::Id,
         },
         SeenMessage {
             #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-            id: MessageId,
+            id: message::Id,
         },
         OnlineUsers {
-            users: HashSet<Sub>,
+            users: HashSet<user::Sub>,
         },
     }
 }

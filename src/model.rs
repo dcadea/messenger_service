@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 #[derive(Clone)]
-pub struct AppEndpoints {
+pub(crate) struct AppEndpoints {
     address: String,
     port: String,
     api_path: String,
@@ -22,7 +22,7 @@ impl AppEndpoints {
 }
 
 #[derive(Clone)]
-pub struct LinkFactory {
+pub(crate) struct LinkFactory {
     base_url: String,
 }
 
@@ -45,7 +45,7 @@ impl LinkFactory {
 }
 
 #[derive(Serialize)]
-pub struct Link {
+pub(crate) struct Link {
     rel: String,
     href: String,
 }

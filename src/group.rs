@@ -1,10 +1,10 @@
 mod model {
     use serde::{Deserialize, Serialize};
 
-    use crate::user::model::Sub;
-    use crate::util::serialize_object_id;
+    use crate::user;
+    use messenger_service::serde::serialize_object_id;
 
-    type GroupId = mongodb::bson::oid::ObjectId;
+    type Id = mongodb::bson::oid::ObjectId;
 
     #[derive(Serialize, Deserialize)]
     struct Group {
@@ -13,10 +13,10 @@ mod model {
             serialize_with = "serialize_object_id",
             skip_serializing_if = "Option::is_none"
         )]
-        id: Option<GroupId>,
+        id: Option<Id>,
         name: String,
-        owner: Sub,
-        participants: Vec<Sub>,
+        owner: user::Sub,
+        participants: Vec<user::Sub>,
         picture: String,
         last_message: String,
     }
