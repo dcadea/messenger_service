@@ -1,7 +1,7 @@
 use mongodb::bson::oid::ObjectId;
 use serde::Serializer;
 
-pub fn serialize_object_id<S>(
+pub(crate) fn serialize_object_id<S>(
     message_id: &Option<ObjectId>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
