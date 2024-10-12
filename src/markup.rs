@@ -5,25 +5,26 @@ use axum::{
     middleware::Next,
     response::{Html, IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
-use maud::{html, Markup, Render, DOCTYPE};
+use maud::{html, Markup, DOCTYPE};
 use reqwest::header::CONTENT_LENGTH;
 
-struct Script<'a>(&'a str);
-
-impl Render for Script<'_> {
-    fn render(&self) -> Markup {
-        html! {
-            script src=(self.0) {}
-        }
-    }
-}
-
-struct Css<'a>(&'a str);
-
-impl Render for Css<'_> {
-    fn render(&self) -> Markup {
-        html! {
-            link rel="stylesheet" href=(self.0) {}
+pub(crate) fn base(content: Markup) -> Markup {
+    html! {
+        (DOCTYPE)
+        html {
+            head {
+                meta charset="utf-8" {}
+                title { "AWG Messenger" }
+                script src="https://unpkg.com/htmx.org@2.0.2" {}
+                script src="https://unpkg.com/htmx.org@2.0.2/dist/ext/ws.js" {}
+                script src="https://cdn.tailwindcss.com" {}
+                link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" {}
+            }
+            body."h-screen bg-black flex items-center justify-center" {
+                ."max-w-lg h-3/5 md:h-4/5 md:w-4/5 bg-white rounded-2xl p-6" {
+                    (content)
+                }
+            }
         }
     }
 }
@@ -62,28 +63,4 @@ pub(crate) async fn wrap_in_base(request: Request, next: Next) -> Response {
     }
 
     response
-}
-
-pub(crate) fn base(content: Markup) -> Markup {
-    html! {
-        (DOCTYPE)
-        html {
-            head {
-                meta charset="utf-8" {}
-                title { "AWG Messenger" }
-                (Script("https://unpkg.com/htmx.org@2.0.2"))
-                (Script("https://unpkg.com/htmx.org@2.0.2/dist/ext/ws.js"))
-                (Script("https://cdn.tailwindcss.com"))
-                (Css("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"))
-            }
-            body."h-screen bg-black flex items-center justify-center" {
-                ."max-w-lg h-3/5 md:h-4/5 md:w-4/5 bg-white rounded-2xl p-6"
-                    hx-ext="ws"
-                    ws-connect="/ws"
-                {
-                    (content)
-                }
-            }
-        }
-    }
 }

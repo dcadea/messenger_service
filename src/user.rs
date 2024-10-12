@@ -1,95 +1,49 @@
 use std::fmt::Display;
 
+use axum::{routing::post, Router};
 use serde::{Deserialize, Serialize};
 
+use crate::state::AppState;
+
 type Result<T> = std::result::Result<T, Error>;
+type Id = mongodb::bson::oid::ObjectId;
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) struct Sub(pub String); // TODO: remove pub
-
-impl Display for Sub {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
+pub(crate) fn resources<S>(state: AppState) -> Router<S> {
+    Router::new()
+        .route("/users/search", post(self::handler::search))
+        .with_state(state)
 }
 
-impl Serialize for Sub {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        self.0.serialize(serializer)
+pub(self) mod handler {
+    use axum::{extract::State, response::IntoResponse, Form};
+    use serde::Deserialize;
+
+    use super::service::UserService;
+
+    #[derive(Deserialize)]
+    pub struct FindParams {
+        nickname: String,
     }
-}
 
-impl<'de> Deserialize<'de> for Sub {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Sub, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Ok(Sub(s))
+    pub async fn search(
+        user_service: State<UserService>,
+        params: Form<FindParams>,
+    ) -> impl IntoResponse {
+        let users = match user_service.search_user_info(&params.nickname).await {
+            Ok(users) => users,
+            Err(err) => return crate::error::Error::from(err).into_response(),
+        };
+
+        super::markup::search_result(&users).into_response()
     }
-}
-
-#[derive(thiserror::Error, Debug)]
-#[error(transparent)]
-pub(crate) enum Error {
-    #[error("user not found: {:?}", 0)]
-    NotFound(Sub),
-
-    _MongoDB(#[from] mongodb::error::Error),
-    _Redis(#[from] redis::RedisError),
-    _ParseJson(#[from] serde_json::Error),
 }
 
 pub(crate) mod markup {
-    use axum::extract::State;
-    use axum::response::IntoResponse;
-    use axum::routing::get;
-    use axum::{Json, Router};
-    use axum_extra::extract::Query;
     use maud::{html, Markup, Render};
-    use serde::Deserialize;
 
-    use crate::error::Error;
-    use crate::state::AppState;
+    use super::model::UserInfo;
 
-    use super::service::UserService;
-    use super::Sub;
-
-    pub fn resources<S>(state: AppState) -> Router<S> {
-        Router::new()
-            .route("/users", get(find_handler))
-            .with_state(state)
-    }
-
-    #[derive(Deserialize)]
-    struct Params {
-        sub: Option<Sub>,
-        nickname: Option<String>,
-    }
-
-    async fn find_handler(
-        Query(params): Query<Params>,
-        user_service: State<UserService>,
-    ) -> impl IntoResponse {
-        match params.sub {
-            Some(sub) => match user_service.find_user_info(&sub).await {
-                Ok(user_info) => Json(user_info).into_response(),
-                Err(err) => Error::from(err).into_response(),
-            },
-            None => match params.nickname {
-                Some(nickname) => match user_service.search_user_info(&nickname).await {
-                    Ok(user_infos) => Json(user_infos).into_response(),
-                    Err(err) => Error::from(err).into_response(),
-                },
-                None => Error::QueryParamRequired("sub or nickname".to_owned()).into_response(),
-            },
-        }
-    }
-
-    pub(crate) struct UserHeader<'a> {
+    pub struct UserHeader<'a> {
         pub name: &'a str,
         pub picture: &'a str,
     }
@@ -108,14 +62,57 @@ pub(crate) mod markup {
             }
         }
     }
+
+    pub struct UserSearch;
+
+    impl Render for UserSearch {
+        fn render(&self) -> Markup {
+            html! {
+
+                input."mb-4 w-full px-3 py-2 border border-gray-300 rounded-md"
+                    type="search"
+                    name="nickname"
+                    placeholder="Search users..."
+                    hx-post="/api/users/search"
+                    hx-trigger="input changed delay:500ms, search"
+                    hx-target="#search-results"
+                    hx-swap="innerHTML" {}
+
+                #search-results ."relative" {}
+            }
+        }
+    }
+
+    pub(super) fn search_result(users: &Vec<UserInfo>) -> Markup {
+        let search_result_class =
+            "absolute w-full bg-white border border-gray-300 rounded-md shadow-lg";
+        html! {
+            @if users.is_empty() {
+                ul class=({search_result_class}) {
+                    li."px-3 py-2" { "No users found" }
+                }
+            } @else {
+                ul class=({search_result_class}) {
+                    @for user in users {
+                        li."px-3 py-2 hover:bg-gray-200 cursor-pointer flex items-center" {
+                            img."w-6 h-6 rounded-full mr-3"
+                                src=(user.picture)
+                                alt="User avatar" {}
+                            div {
+                                strong {(user.name)} (user.nickname)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub(crate) mod model {
     use serde::{Deserialize, Serialize};
 
-    use super::Sub;
-
-    type Id = mongodb::bson::oid::ObjectId;
+    use super::{Id, Sub};
 
     #[derive(Serialize, Deserialize, Clone)]
     pub struct User {
@@ -137,7 +134,7 @@ pub(crate) mod model {
     #[derive(Serialize, Deserialize, Clone, Debug)]
     pub struct UserInfo {
         pub sub: Sub,
-        nickname: String,
+        pub nickname: String,
         pub name: String,
         pub picture: String,
         email: String,
@@ -205,7 +202,7 @@ pub(crate) mod repository {
         pub async fn find_by_sub(&self, sub: &Sub) -> super::Result<User> {
             let filter = doc! { "sub": sub };
             let result = self.users_col.find_one(filter).await?;
-            result.ok_or(user::Error::NotFound(sub.to_owned()))
+            result.ok_or(super::Error::NotFound(sub.to_owned()))
         }
 
         pub async fn search_by_nickname(&self, nickname: &str) -> super::Result<Vec<User>> {
@@ -216,7 +213,7 @@ pub(crate) mod repository {
 
             let cursor = self.users_col.find(filter).await?;
 
-            cursor.try_collect().await.map_err(user::Error::from)
+            cursor.try_collect().await.map_err(super::Error::from)
         }
 
         pub async fn add_friend(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
@@ -240,7 +237,7 @@ pub(crate) mod repository {
                 .await?;
 
             friends
-                .ok_or(user::Error::NotFound(sub.to_owned()))
+                .ok_or(super::Error::NotFound(sub.to_owned()))
                 .map(|f| f.friends)
         }
     }
@@ -359,4 +356,43 @@ pub(crate) mod service {
             cached_user_info
         }
     }
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub(crate) struct Sub(pub String); // TODO: remove pub
+
+impl Display for Sub {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Serialize for Sub {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Sub {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Sub, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(Sub(s))
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error(transparent)]
+pub(crate) enum Error {
+    #[error("user not found: {:?}", 0)]
+    NotFound(Sub),
+
+    _MongoDB(#[from] mongodb::error::Error),
+    _Redis(#[from] redis::RedisError),
+    _ParseJson(#[from] serde_json::Error),
 }

@@ -13,7 +13,7 @@ use super::user::repository::UserRepository;
 use super::user::service::UserService;
 
 #[derive(Clone)]
-pub struct AppState {
+pub(crate) struct AppState {
     pub config: integration::Config,
     pub app_endpoints: AppEndpoints,
 

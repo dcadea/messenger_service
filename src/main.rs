@@ -60,13 +60,13 @@ async fn root(logged_user: Extension<UserInfo>) -> Wrappable {
 fn app(app_state: AppState) -> Router {
     let pages_router = Router::new()
         .route("/", get(root).route_layer(from_fn(markup::wrap_in_base)))
-        .merge(chat::markup::pages(app_state.clone()))
+        .merge(chat::pages(app_state.clone()))
         .layer(from_fn_with_state(app_state.clone(), set_test_user_context));
 
     let resources_router = Router::new()
-        .merge(chat::markup::resources(app_state.clone()))
-        .merge(message::markup::resources(app_state.clone()))
-        .merge(user::markup::resources(app_state.clone()))
+        .merge(chat::resources(app_state.clone()))
+        .merge(message::resources(app_state.clone()))
+        .merge(user::resources(app_state.clone()))
         .route_layer(
             ServiceBuilder::new()
                 // .layer(from_fn_with_state(app_state.clone(), validate_token))
@@ -75,14 +75,14 @@ fn app(app_state: AppState) -> Router {
         );
 
     Router::new()
-        .merge(auth::api::endpoints(app_state.clone()))
+        .merge(auth::endpoints(app_state.clone()))
+        .merge(event::endpoints(app_state.clone()))
         .merge(pages_router)
         .nest("/api", resources_router)
         .route(
             "/health",
             get(|| async { (StatusCode::OK, "I'm good! Hbu?") }),
         )
-        .merge(event::api::ws_router(app_state.clone()))
         .fallback(|| async { (StatusCode::NOT_FOUND, "Why are you here?") })
         .layer(
             CorsLayer::new()

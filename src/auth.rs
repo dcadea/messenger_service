@@ -1,14 +1,19 @@
 use self::service::AuthService;
+use crate::state::AppState;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 use crate::{integration, user};
 use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::Response;
+use axum::routing::get;
+use axum::Router;
 use axum_extra::headers::authorization::Bearer;
 use axum_extra::headers::Authorization;
 use axum_extra::TypedHeader;
 use serde::Deserialize;
+
+use axum::http::StatusCode;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -17,139 +22,38 @@ struct TokenClaims {
     sub: user::Sub,
 }
 
-#[derive(thiserror::Error, Debug)]
-#[error(transparent)]
-pub(crate) enum Error {
-    #[error("unauthorized to access the resource")]
-    Unauthorized,
-    #[error("forbidden: {0}")]
-    Forbidden(String),
-    #[error("missing or unknown kid")]
-    UnknownKid,
-    #[error("token is malformed: {0}")]
-    TokenMalformed(String),
-    #[error("unexpected auth error: {0}")]
-    Unexpected(String),
-
-    _User(#[from] user::Error),
-    _Integration(#[from] integration::Error),
-
-    _Reqwest(#[from] reqwest::Error),
-    _ParseJson(#[from] serde_json::Error),
+pub(crate) fn endpoints<S>(state: AppState) -> Router<S> {
+    Router::new()
+        .route("/login", get(handler::login))
+        .route(
+            "/logout",
+            get(|| async { (StatusCode::OK, "Mocking logout :)") }),
+        )
+        .route("/callback", get(handler::callback))
+        .with_state(state)
 }
 
-pub(crate) async fn validate_token(
-    auth_service: State<AuthService>,
-    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
-    mut request: Request,
-    next: Next,
-) -> crate::Result<Response> {
-    let auth_header = auth_header.ok_or(Error::Unauthorized)?;
-    let claims = auth_service.validate(auth_header.token()).await?;
-    request.extensions_mut().insert(claims);
-
-    let response = next.run(request).await;
-    Ok(response)
-}
-
-// TODO: remove this function
-pub(crate) async fn set_test_user_context(
-    user_service: State<UserService>,
-    mut request: Request,
-    next: Next,
-) -> crate::Result<Response> {
-    let user_info = user_service
-        .find_user_info(&user::Sub("github|10639696".to_string()))
-        .await?;
-
-    request.extensions_mut().insert(user_info);
-
-    let response = next.run(request).await;
-    Ok(response)
-}
-
-pub(crate) async fn set_user_context(
-    user_service: State<UserService>,
-    auth_service: State<AuthService>,
-    auth_header: TypedHeader<Authorization<Bearer>>,
-    mut request: Request,
-    next: Next,
-) -> crate::Result<Response> {
-    let claims = request
-        .extensions()
-        .get::<TokenClaims>()
-        .ok_or(Error::Unauthorized)?;
-
-    let user_info = match user_service.find_user_info(&claims.sub).await {
-        Ok(user_info) => user_info,
-        Err(user::Error::NotFound(_)) => {
-            let user_info = auth_service.get_user_info(auth_header.token()).await?;
-            let user = user_info.clone().into();
-            user_service.create(&user).await?;
-            user_info
-        }
-        Err(e) => return Err(e.into()),
-    };
-
-    request.extensions_mut().insert(user_info);
-
-    let response = next.run(request).await;
-    Ok(response)
-}
-
-pub(crate) async fn cache_user_friends(
-    user_service: State<UserService>,
-    request: Request,
-    next: Next,
-) -> crate::Result<Response> {
-    let user_info = request
-        .extensions()
-        .get::<UserInfo>()
-        .ok_or(Error::Unauthorized)?;
-
-    user_service.cache_friends(&user_info.sub).await?;
-
-    let response = next.run(request).await;
-    Ok(response)
-}
-
-pub(crate) mod api {
+pub(self) mod handler {
+    use super::service::AuthService;
     use axum::http::StatusCode;
     use axum::{
         extract::State,
         response::{IntoResponse, Redirect},
-        routing::get,
-        Router,
     };
     use axum_extra::extract::Query;
     use serde::Deserialize;
 
-    use crate::state::AppState;
-
-    use super::service::AuthService;
-
-    pub fn endpoints<S>(state: AppState) -> Router<S> {
-        Router::new()
-            .route("/login", get(login_handler))
-            .route(
-                "/logout",
-                get(|| async { (StatusCode::OK, "Mocking logout :)") }),
-            )
-            .route("/callback", get(callback_handler))
-            .with_state(state)
-    }
-
     #[derive(Deserialize)]
-    struct Params {
+    pub struct Params {
         code: String,
         state: String,
     }
 
-    async fn login_handler(auth_service: State<AuthService>) -> crate::Result<impl IntoResponse> {
+    pub async fn login(auth_service: State<AuthService>) -> crate::Result<impl IntoResponse> {
         Ok(Redirect::to(&auth_service.authorize().await))
     }
 
-    async fn callback_handler(
+    pub async fn callback(
         params: Query<Params>,
         auth_service: State<AuthService>,
     ) -> crate::Result<impl IntoResponse> {
@@ -305,4 +209,100 @@ pub(crate) mod service {
 
         Ok(jwk_decoding_keys)
     }
+}
+
+pub(crate) async fn validate_token(
+    auth_service: State<AuthService>,
+    auth_header: Option<TypedHeader<Authorization<Bearer>>>,
+    mut request: Request,
+    next: Next,
+) -> crate::Result<Response> {
+    let auth_header = auth_header.ok_or(Error::Unauthorized)?;
+    let claims = auth_service.validate(auth_header.token()).await?;
+    request.extensions_mut().insert(claims);
+
+    let response = next.run(request).await;
+    Ok(response)
+}
+
+// TODO: remove this function
+pub(crate) async fn set_test_user_context(
+    user_service: State<UserService>,
+    mut request: Request,
+    next: Next,
+) -> crate::Result<Response> {
+    let user_info = user_service
+        .find_user_info(&user::Sub("github|10639696".to_string()))
+        .await?;
+
+    request.extensions_mut().insert(user_info);
+
+    let response = next.run(request).await;
+    Ok(response)
+}
+
+pub(crate) async fn set_user_context(
+    user_service: State<UserService>,
+    auth_service: State<AuthService>,
+    auth_header: TypedHeader<Authorization<Bearer>>,
+    mut request: Request,
+    next: Next,
+) -> crate::Result<Response> {
+    let claims = request
+        .extensions()
+        .get::<TokenClaims>()
+        .ok_or(Error::Unauthorized)?;
+
+    let user_info = match user_service.find_user_info(&claims.sub).await {
+        Ok(user_info) => user_info,
+        Err(user::Error::NotFound(_)) => {
+            let user_info = auth_service.get_user_info(auth_header.token()).await?;
+            let user = user_info.clone().into();
+            user_service.create(&user).await?;
+            user_info
+        }
+        Err(e) => return Err(e.into()),
+    };
+
+    request.extensions_mut().insert(user_info);
+
+    let response = next.run(request).await;
+    Ok(response)
+}
+
+pub(crate) async fn cache_user_friends(
+    user_service: State<UserService>,
+    request: Request,
+    next: Next,
+) -> crate::Result<Response> {
+    let user_info = request
+        .extensions()
+        .get::<UserInfo>()
+        .ok_or(Error::Unauthorized)?;
+
+    user_service.cache_friends(&user_info.sub).await?;
+
+    let response = next.run(request).await;
+    Ok(response)
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error(transparent)]
+pub(crate) enum Error {
+    #[error("unauthorized to access the resource")]
+    Unauthorized,
+    #[error("forbidden: {0}")]
+    Forbidden(String),
+    #[error("missing or unknown kid")]
+    UnknownKid,
+    #[error("token is malformed: {0}")]
+    TokenMalformed(String),
+    #[error("unexpected auth error: {0}")]
+    Unexpected(String),
+
+    _User(#[from] user::Error),
+    _Integration(#[from] integration::Error),
+
+    _Reqwest(#[from] reqwest::Error),
+    _ParseJson(#[from] serde_json::Error),
 }

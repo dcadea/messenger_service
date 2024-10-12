@@ -1,28 +1,30 @@
+use axum::{
+    routing::{delete, get},
+    Router,
+};
+
+use crate::state::AppState;
+
 type Result<T> = std::result::Result<T, Error>;
 pub(crate) type Id = mongodb::bson::oid::ObjectId;
 
-#[derive(thiserror::Error, Debug)]
-#[error(transparent)]
-pub(crate) enum Error {
-    #[error("message not found: {0:?}")]
-    NotFound(Option<Id>),
-    #[error("unexpected message error: {0}")]
-    Unexpected(String),
-
-    _MongoDB(#[from] mongodb::error::Error),
+pub(crate) fn resources<S>(state: AppState) -> Router<S> {
+    Router::new()
+        .route("/messages", get(markup::find_all))
+        .route("/messages/:id", get(markup::find_one))
+        .route("/messages/:id", delete(markup::delete_one))
+        .with_state(state)
 }
 
 pub(crate) mod markup {
     use axum::extract::{Path, State};
-    use axum::routing::{delete, get};
-    use axum::{Extension, Router};
+    use axum::Extension;
     use axum_extra::extract::Query;
     use maud::{html, Markup};
     use serde::Deserialize;
 
     use crate::chat::service::ChatService;
     use crate::error::Error;
-    use crate::state::AppState;
     use crate::user::model::UserInfo;
     use crate::{chat, user};
 
@@ -30,22 +32,14 @@ pub(crate) mod markup {
     use super::service::MessageService;
     use super::Id;
 
-    pub fn resources<S>(state: AppState) -> Router<S> {
-        Router::new()
-            .route("/messages", get(find_all))
-            .route("/messages/:id", get(find_one))
-            .route("/messages/:id", delete(delete_one))
-            .with_state(state)
-    }
-
     #[derive(Deserialize)]
-    struct Params {
+    pub(super) struct Params {
         chat_id: Option<chat::Id>,
         end_time: Option<i64>,
         limit: Option<usize>,
     }
 
-    async fn find_all(
+    pub(super) async fn find_all(
         user_info: Extension<UserInfo>,
         params: Query<Params>,
         chat_service: State<ChatService>,
@@ -70,7 +64,7 @@ pub(crate) mod markup {
         })
     }
 
-    async fn find_one(
+    pub(super) async fn find_one(
         id: Path<Id>,
         user_info: Extension<UserInfo>,
         message_service: State<MessageService>,
@@ -82,7 +76,10 @@ pub(crate) mod markup {
         Ok(message_item(&msg, &user_info))
     }
 
-    async fn delete_one(id: Path<Id>, message_service: State<MessageService>) -> crate::Result<()> {
+    pub(super) async fn delete_one(
+        id: Path<Id>,
+        message_service: State<MessageService>,
+    ) -> crate::Result<()> {
         // TODO: chat_service.check_member(&chat_id, &user_info.sub).await?;
 
         message_service.delete(&id).await?;
@@ -92,9 +89,7 @@ pub(crate) mod markup {
 
     pub fn message_input(chat_id: &chat::Id, recipient: &user::Sub) -> Markup {
         html! {
-            form #message-input
-                ws-send
-                ."border-gray-200 flex"
+            form #message-input ."border-gray-200 flex"
             {
                 input type="hidden" name="type" value="create_message" {}
                 input type="hidden" name="chat_id" value=(chat_id) {}
@@ -457,4 +452,15 @@ pub(crate) mod service {
             Ok(result)
         }
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error(transparent)]
+pub(crate) enum Error {
+    #[error("message not found: {0:?}")]
+    NotFound(Option<Id>),
+    #[error("unexpected message error: {0}")]
+    Unexpected(String),
+
+    _MongoDB(#[from] mongodb::error::Error),
 }

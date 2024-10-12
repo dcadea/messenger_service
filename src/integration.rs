@@ -9,17 +9,6 @@ use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, WriteLogg
 
 type Result<T> = std::result::Result<T, Error>;
 
-#[derive(thiserror::Error, Debug)]
-#[error(transparent)]
-pub(crate) enum Error {
-    _Var(#[from] std::env::VarError),
-    _ParseInt(#[from] std::num::ParseIntError),
-    _MongoDB(#[from] mongodb::error::Error),
-    _Lapin(#[from] lapin::Error),
-    _Redis(#[from] redis::RedisError),
-    _Reqwest(#[from] reqwest::Error),
-}
-
 #[derive(Clone)]
 pub(crate) struct Config {
     pub socket: SocketAddr,
@@ -80,14 +69,6 @@ impl Default for Config {
             idp: idp_config,
         }
     }
-}
-
-pub(crate) fn init_http_client() -> self::Result<reqwest::Client> {
-    reqwest::Client::builder()
-        .connect_timeout(Duration::from_secs(2))
-        .timeout(Duration::from_secs(5))
-        .build()
-        .map_err(Error::from)
 }
 
 pub(crate) mod amqp {
@@ -374,4 +355,23 @@ pub(crate) mod idp {
         BasicClient::new(client_id, Some(client_secret), auth_url, Some(token_url))
             .set_redirect_uri(redirect_url)
     }
+}
+
+pub(crate) fn init_http_client() -> self::Result<reqwest::Client> {
+    reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(5))
+        .build()
+        .map_err(Error::from)
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error(transparent)]
+pub(crate) enum Error {
+    _Var(#[from] std::env::VarError),
+    _ParseInt(#[from] std::num::ParseIntError),
+    _MongoDB(#[from] mongodb::error::Error),
+    _Lapin(#[from] lapin::Error),
+    _Redis(#[from] redis::RedisError),
+    _Reqwest(#[from] reqwest::Error),
 }

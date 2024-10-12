@@ -1,10 +1,12 @@
+type Id = mongodb::bson::oid::ObjectId;
+
 mod model {
     use serde::{Deserialize, Serialize};
 
     use crate::user;
     use messenger_service::serde::serialize_object_id;
 
-    type Id = mongodb::bson::oid::ObjectId;
+    use super::Id;
 
     #[derive(Serialize, Deserialize)]
     struct Group {

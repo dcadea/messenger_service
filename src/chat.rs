@@ -1,35 +1,31 @@
-use crate::user;
+use axum::{routing::get, Router};
+
+use crate::{state::AppState, user};
 
 type Result<T> = std::result::Result<T, Error>;
 pub(crate) type Id = mongodb::bson::oid::ObjectId;
 
-#[derive(thiserror::Error, Debug)]
-#[error(transparent)]
-pub(crate) enum Error {
-    #[error("chat not found: {0:?}")]
-    NotFound(Option<Id>),
-    #[error("chat already exists for members: {0:?}")]
-    AlreadyExists([user::Sub; 2]),
-    #[error("user is not a member of the chat")]
-    NotMember,
-    #[error("unexpected chat error: {0}")]
-    Unexpected(String),
+pub(crate) fn pages<S>(state: AppState) -> Router<S> {
+    Router::new()
+        .route("/chats", get(markup::all_chats))
+        .route("/chats/:id", get(markup::active_chat))
+        .with_state(state)
+}
 
-    _User(#[from] user::Error),
-
-    _MongoDB(#[from] mongodb::error::Error),
-    _Redis(#[from] redis::RedisError),
+pub(crate) fn resources<S>(state: AppState) -> Router<S> {
+    Router::new()
+        .route("/chats", get(markup::find_all))
+        .route("/chats/:id", get(markup::find_one))
+        .with_state(state)
 }
 
 pub(crate) mod markup {
     use axum::extract::{Path, State};
-    use axum::routing::get;
-    use axum::{Extension, Router};
+    use axum::Extension;
     use maud::{html, Markup, Render};
 
     use crate::message::markup::message_input;
-    use crate::state::AppState;
-    use crate::user::markup::UserHeader;
+    use crate::user::markup::{UserHeader, UserSearch};
     use crate::user::model::UserInfo;
     use crate::user::service::UserService;
 
@@ -37,36 +33,25 @@ pub(crate) mod markup {
     use super::service::ChatService;
     use super::Id;
 
-    pub fn pages<S>(state: AppState) -> Router<S> {
-        Router::new()
-            .route("/chats", get(all_chats))
-            .route("/chats/:id", get(active_chat))
-            .with_state(state)
-    }
-
-    pub fn resources<S>(state: AppState) -> Router<S> {
-        Router::new()
-            .route("/chats", get(find_all))
-            .route("/chats/:id", get(find_one))
-            .with_state(state)
-    }
-
     pub async fn all_chats(logged_user: Extension<UserInfo>) -> crate::Result<Markup> {
         Ok(html! {
-            #chat-window ."flex flex-col h-full"
-                hx-get="/api/chats"
-                hx-trigger="load"
-                hx-swap="beforeend"
-            {
+            #chat-window ."flex flex-col h-full" {
                 (UserHeader{
                     name: &logged_user.name,
                     picture: &logged_user.picture,
                 })
+
+                (UserSearch{})
+
+                #chat-list
+                    hx-get="/api/chats"
+                    hx-trigger="load"
+                    hx-swap="outerHTML" {}
             }
         })
     }
 
-    async fn active_chat(
+    pub(super) async fn active_chat(
         chat_id: Path<Id>,
         logged_user: Extension<UserInfo>,
         chat_service: State<ChatService>,
@@ -80,7 +65,7 @@ pub(crate) mod markup {
                 a class="border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
                     hx-get="/chats"
                     hx-target="#chat-window"
-                    hx-swap="innerHTML" { "X" }
+                    hx-swap="outerHTML" { "X" }
                 h2 class="text-2xl" { (recipient.name) }
                 img class="w-12 h-12 rounded-full"
                     src=(recipient.picture) alt="User avatar" {}
@@ -94,13 +79,13 @@ pub(crate) mod markup {
         })
     }
 
-    async fn find_all(
+    pub(super) async fn find_all(
         user_info: Extension<UserInfo>,
         chat_service: State<ChatService>,
     ) -> crate::Result<Markup> {
         let chats = chat_service.find_all(&user_info).await?;
         Ok(html! {
-            div class="chat-list flex flex-col" {
+            #chat-list class="flex flex-col" {
                 @for chat in chats {
                     (chat)
                 }
@@ -108,7 +93,7 @@ pub(crate) mod markup {
         })
     }
 
-    async fn find_one(
+    pub(super) async fn find_one(
         user_info: Extension<UserInfo>,
         chat_service: State<ChatService>,
         Path(id): Path<Id>,
@@ -123,8 +108,7 @@ pub(crate) mod markup {
                 div class="chat-item p-4 mb-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex justify-between"
                     id={"c-" (self.id)}
                     hx-get={"/chats/" (self.id)}
-                    hx-target="#chat-window"
-                    hx-swap="innerHTML" {
+                    hx-target="#chat-window" {
 
                     span."chat-recipient font-bold" { (self.recipient) }
                     @if let Some(last_message) = &self.last_message {
@@ -155,80 +139,7 @@ pub(crate) mod markup {
     // }
 }
 
-pub mod model {
-    use messenger_service::serde::serialize_object_id;
-    use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
-    use serde;
-    use serde::{Deserialize, Serialize};
-
-    use crate::model::Link;
-    use crate::user;
-
-    use super::Id;
-
-    #[derive(Serialize, Deserialize)]
-    pub struct Chat {
-        #[serde(
-            alias = "_id",
-            serialize_with = "serialize_object_id",
-            skip_serializing_if = "Option::is_none"
-        )]
-        pub id: Option<Id>,
-        pub members: [user::Sub; 2],
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub last_message: Option<String>,
-        updated_at: i64,
-    }
-
-    impl Chat {
-        pub fn new(members: [user::Sub; 2]) -> Self {
-            Self {
-                id: None,
-                members,
-                last_message: None,
-                updated_at: 0,
-            }
-        }
-    }
-
-    #[derive(Serialize)]
-    pub struct ChatDto {
-        #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-        pub id: Id,
-        pub recipient: user::Sub,
-        recipient_name: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub last_message: Option<String>,
-        updated_at: i64,
-        links: Vec<Link>,
-    }
-
-    impl ChatDto {
-        pub fn new(chat: Chat, recipient: user::Sub, recipient_name: String) -> Self {
-            let chat_id = chat.id.expect("No way chat id is missing!?");
-            Self {
-                id: chat_id,
-                recipient,
-                recipient_name,
-                last_message: chat.last_message,
-                updated_at: chat.updated_at,
-                links: vec![],
-            }
-        }
-
-        pub fn with_links(mut self, links: Vec<Link>) -> Self {
-            self.links = links;
-            self
-        }
-    }
-
-    #[derive(Deserialize, Clone)]
-    pub struct ChatRequest {
-        pub recipient: user::Sub,
-    }
-}
-
-pub mod repository {
+pub(crate) mod repository {
     use futures::stream::TryStreamExt;
     use mongodb::bson::doc;
 
@@ -345,7 +256,7 @@ pub mod repository {
     }
 }
 
-pub mod service {
+pub(crate) mod service {
     use std::sync::Arc;
 
     use futures::future::try_join_all;
@@ -531,4 +442,95 @@ pub mod service {
             Ok(chat_dto.with_links(links))
         }
     }
+}
+
+mod model {
+    use messenger_service::serde::serialize_object_id;
+    use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
+    use serde;
+    use serde::{Deserialize, Serialize};
+
+    use crate::model::Link;
+    use crate::user;
+
+    use super::Id;
+
+    #[derive(Serialize, Deserialize)]
+    pub struct Chat {
+        #[serde(
+            alias = "_id",
+            serialize_with = "serialize_object_id",
+            skip_serializing_if = "Option::is_none"
+        )]
+        pub id: Option<Id>,
+        pub members: [user::Sub; 2],
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub last_message: Option<String>,
+        updated_at: i64,
+    }
+
+    impl Chat {
+        pub fn new(members: [user::Sub; 2]) -> Self {
+            Self {
+                id: None,
+                members,
+                last_message: None,
+                updated_at: 0,
+            }
+        }
+    }
+
+    #[derive(Serialize)]
+    pub struct ChatDto {
+        #[serde(serialize_with = "serialize_object_id_as_hex_string")]
+        pub id: Id,
+        pub recipient: user::Sub,
+        recipient_name: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub last_message: Option<String>,
+        updated_at: i64,
+        links: Vec<Link>,
+    }
+
+    impl ChatDto {
+        pub fn new(chat: Chat, recipient: user::Sub, recipient_name: String) -> Self {
+            let chat_id = chat.id.expect("No way chat id is missing!?");
+            Self {
+                id: chat_id,
+                recipient,
+                recipient_name,
+                last_message: chat.last_message,
+                updated_at: chat.updated_at,
+                links: vec![],
+            }
+        }
+
+        pub fn with_links(mut self, links: Vec<Link>) -> Self {
+            self.links = links;
+            self
+        }
+    }
+
+    #[derive(Deserialize, Clone)]
+    pub struct ChatRequest {
+        pub recipient: user::Sub,
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error(transparent)]
+pub(crate) enum Error {
+    #[error("chat not found: {0:?}")]
+    NotFound(Option<Id>),
+    #[error("chat already exists for members: {0:?}")]
+    AlreadyExists([user::Sub; 2]),
+    #[error("user is not a member of the chat")]
+    NotMember,
+    #[error("unexpected chat error: {0}")]
+    Unexpected(String),
+
+    _User(#[from] user::Error),
+
+    _MongoDB(#[from] mongodb::error::Error),
+    _Redis(#[from] redis::RedisError),
 }
