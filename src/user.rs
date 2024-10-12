@@ -34,7 +34,7 @@ impl<'de> Deserialize<'de> for Sub {
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub enum Error {
+pub(crate) enum Error {
     #[error("user not found: {:?}", 0)]
     NotFound(Sub),
 
@@ -43,7 +43,7 @@ pub enum Error {
     _ParseJson(#[from] serde_json::Error),
 }
 
-pub mod markup {
+pub(crate) mod markup {
     use axum::extract::State;
     use axum::response::IntoResponse;
     use axum::routing::get;
@@ -110,7 +110,7 @@ pub mod markup {
     }
 }
 
-pub mod model {
+pub(crate) mod model {
     use serde::{Deserialize, Serialize};
 
     use super::Sub;
@@ -170,14 +170,14 @@ pub mod model {
     }
 }
 
-pub mod repository {
+pub(crate) mod repository {
     use futures::TryStreamExt;
     use mongodb::bson::doc;
     use mongodb::options::FindOneOptions;
     use mongodb::Database;
 
     use super::model::{Friends, User};
-    use super::{Result, Sub};
+    use super::Sub;
     use crate::user;
 
     const USERS_COLLECTION: &str = "users";
@@ -246,7 +246,7 @@ pub mod repository {
     }
 }
 
-pub mod service {
+pub(crate) mod service {
     use std::collections::HashSet;
     use std::sync::Arc;
 
@@ -256,7 +256,7 @@ pub mod service {
     use crate::user::model::{User, UserInfo};
 
     use super::repository::UserRepository;
-    use super::{Result, Sub};
+    use super::Sub;
 
     const USER_INFO_TTL: u64 = 3600;
 
