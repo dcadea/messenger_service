@@ -6,6 +6,7 @@ use maud::{html, Markup, Render};
 use crate::message::markup::message_input;
 use crate::result::Result;
 use crate::state::AppState;
+use crate::user::markup::UserHeader;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 
@@ -14,8 +15,52 @@ use super::service::ChatService;
 
 pub fn pages<S>(state: AppState) -> Router<S> {
     Router::new()
+        .route("/chats", get(all_chats))
         .route("/chats/:id", get(active_chat))
         .with_state(state)
+}
+
+pub async fn all_chats(logged_user: Extension<UserInfo>) -> Result<Markup> {
+    Ok(html! {
+        #chat-window ."flex flex-col h-full"
+            hx-get="/api/chats"
+            hx-trigger="load"
+            hx-swap="beforeend"
+        {
+            (UserHeader{
+                name: &logged_user.name,
+                picture: &logged_user.picture,
+            })
+        }
+    })
+}
+
+async fn active_chat(
+    chat_id: Path<ChatId>,
+    logged_user: Extension<UserInfo>,
+    chat_service: State<ChatService>,
+    user_service: State<UserService>,
+) -> Result<Markup> {
+    let chat = chat_service.find_by_id(&chat_id, &logged_user).await?;
+    let recipient = user_service.find_user_info(&chat.recipient).await?;
+
+    Ok(html! {
+        header class="flex justify-between items-center" {
+            a class="border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
+                hx-get="/chats"
+                hx-target="#chat-window"
+                hx-swap="innerHTML" { "X" }
+            h2 class="text-2xl" { (recipient.name) }
+            img class="w-12 h-12 rounded-full"
+                src=(recipient.picture) alt="User avatar" {}
+        }
+
+        div ."flex-grow overflow-y-auto mt-4 mb-4"
+            hx-get={ "/api/messages?limit=25&chat_id=" (chat.id) }
+            hx-trigger="load" {}
+
+        (message_input(&chat_id, &recipient.sub))
+    })
 }
 
 pub fn resources<S>(state: AppState) -> Router<S> {
@@ -46,32 +91,6 @@ async fn find_one(
 ) -> Result<Markup> {
     let chat = chat_service.find_by_id(&id, &user_info).await?;
     Ok(chat.render())
-}
-
-async fn active_chat(
-    chat_id: Path<ChatId>,
-    logged_user: Extension<UserInfo>,
-    chat_service: State<ChatService>,
-    user_service: State<UserService>,
-) -> Result<Markup> {
-    let chat = chat_service.find_by_id(&chat_id, &logged_user).await?;
-    let recipient = user_service.find_user_info(&chat.recipient).await?;
-
-    Ok(html! {
-        header class="flex justify-between items-center" {
-            a class="border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
-                href="/" { "X" }
-            h2 class="text-2xl" { (recipient.name) }
-            img class="w-12 h-12 rounded-full"
-                src=(recipient.picture) alt="User avatar" {}
-        }
-
-        div ."flex-grow overflow-y-auto mt-4 mb-4"
-            hx-get={ "/api/messages?limit=25&chat_id=" (chat.id) }
-            hx-trigger="load" {}
-
-        (message_input(&chat_id, &recipient.sub))
-    })
 }
 
 impl Render for ChatDto {

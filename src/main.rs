@@ -1,14 +1,17 @@
 use auth::set_test_user_context;
 use axum::http::StatusCode;
-use axum::middleware::from_fn_with_state;
+use axum::middleware::{from_fn, from_fn_with_state};
 use axum::routing::get;
-use axum::Router;
+use axum::{Extension, Router};
+use futures::FutureExt;
 use log::error;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
+use user::model::UserInfo;
 
 use crate::auth::{cache_user_friends, set_user_context, validate_token};
+use crate::markup::Wrappable;
 use crate::state::AppState;
 
 mod auth;
@@ -47,8 +50,16 @@ async fn main() {
         .expect("Failed to start server");
 }
 
+async fn root(logged_user: Extension<UserInfo>) -> Wrappable {
+    chat::markup::all_chats(logged_user)
+        .await
+        .map(|r| markup::Wrappable(r))
+        .expect("Failed to render root")
+}
+
 fn app(app_state: AppState) -> Router {
     let pages_router = Router::new()
+        .route("/", get(root).route_layer(from_fn(markup::wrap_in_base)))
         .merge(chat::markup::pages(app_state.clone()))
         .layer(from_fn_with_state(app_state.clone(), set_test_user_context));
 
@@ -64,7 +75,6 @@ fn app(app_state: AppState) -> Router {
         );
 
     Router::new()
-        .route("/", get(self::markup::root))
         .merge(auth::api::endpoints(app_state.clone()))
         .merge(pages_router)
         .nest("/api", resources_router)

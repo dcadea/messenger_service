@@ -2,7 +2,7 @@ use axum::extract::{Path, State};
 use axum::routing::{delete, get};
 use axum::{Extension, Router};
 use axum_extra::extract::Query;
-use maud::{html, Markup, Render};
+use maud::{html, Markup};
 
 use crate::chat::model::ChatId;
 use crate::chat::service::ChatService;
