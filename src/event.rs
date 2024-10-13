@@ -110,8 +110,8 @@ pub(crate) mod service {
             match ctx.get_user_info().await {
                 None => {
                     if let Command::Auth { token } = command {
-                        let claims = self.auth_service.validate(&token).await?;
-                        let user_info = self.user_service.find_user_info(&claims.sub).await?;
+                        let sub = self.auth_service.validate(&token).await?;
+                        let user_info = self.user_service.find_user_info(&sub).await?;
                         ctx.set_user_info(user_info).await;
                         ctx.set_channel(self.create_channel().await?).await;
                         ctx.login.notify_one();

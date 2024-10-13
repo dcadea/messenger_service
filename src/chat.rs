@@ -35,10 +35,7 @@ mod handler {
     use super::{model::ChatRequest, service::ChatService};
 
     pub async fn home(logged_user: Extension<UserInfo>) -> Wrappable {
-        super::markup::all_chats(logged_user)
-            .await
-            .map(|r| Wrappable(r))
-            .expect("Failed to render root")
+        Wrappable(super::markup::all_chats(logged_user).await)
     }
 
     pub async fn create(
@@ -66,8 +63,8 @@ mod markup {
     use super::service::ChatService;
     use super::Id;
 
-    pub async fn all_chats(logged_user: Extension<UserInfo>) -> crate::Result<Markup> {
-        Ok(html! {
+    pub async fn all_chats(logged_user: Extension<UserInfo>) -> Markup {
+        html! {
             #chat-window ."flex flex-col h-full" {
                 (UserHeader{
                     name: &logged_user.name,
@@ -81,7 +78,7 @@ mod markup {
                     hx-trigger="load"
                     hx-swap="outerHTML" {}
             }
-        })
+        }
     }
 
     pub async fn active_chat(

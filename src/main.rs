@@ -62,6 +62,7 @@ fn app(app_state: AppState) -> Router {
         );
 
     Router::new()
+        .merge(auth::pages(app_state.clone()))
         .merge(auth::endpoints(app_state.clone()))
         .merge(event::endpoints(app_state.clone()))
         .merge(protected_router)
