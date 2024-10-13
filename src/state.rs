@@ -27,8 +27,8 @@ impl AppState {
         let redis_con = integration::cache::init(&config.redis).await?;
         let amqp_con = integration::amqp::init(&config.amqp).await?;
 
-        let auth_service = AuthService::try_new(&config.idp)?;
-        let user_service = UserService::new(redis_con.clone(), UserRepository::new(&database));
+        let auth_service = AuthService::try_new(&config.idp, redis_con.clone())?;
+        let user_service = UserService::new(UserRepository::new(&database), redis_con.clone());
         let chat_service = ChatService::new(
             ChatRepository::new(&database),
             user_service.clone(),

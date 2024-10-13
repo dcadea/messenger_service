@@ -45,14 +45,15 @@ async fn main() {
 }
 
 fn app(app_state: AppState) -> Router {
-    let pages_router = Router::new()
+    let protected_router = Router::new()
         .merge(chat::pages(app_state.clone()))
-        .layer(from_fn_with_state(app_state.clone(), set_user_context));
-
-    let resources_router = Router::new()
-        .merge(chat::resources(app_state.clone()))
-        .merge(message::resources(app_state.clone()))
-        .merge(user::resources(app_state.clone()))
+        .nest(
+            "/api",
+            Router::new()
+                .merge(chat::resources(app_state.clone()))
+                .merge(message::resources(app_state.clone()))
+                .merge(user::resources(app_state.clone())),
+        )
         .route_layer(
             ServiceBuilder::new()
                 .layer(from_fn_with_state(app_state.clone(), validate_token))
@@ -63,8 +64,7 @@ fn app(app_state: AppState) -> Router {
     Router::new()
         .merge(auth::endpoints(app_state.clone()))
         .merge(event::endpoints(app_state.clone()))
-        .merge(pages_router)
-        .nest("/api", resources_router)
+        .merge(protected_router)
         .route(
             "/health",
             get(|| async { (StatusCode::OK, "I'm good! Hbu?") }),

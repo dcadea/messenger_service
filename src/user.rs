@@ -258,15 +258,15 @@ pub(crate) mod service {
 
     #[derive(Clone)]
     pub struct UserService {
-        redis_con: redis::aio::ConnectionManager,
         repository: Arc<UserRepository>,
+        redis_con: redis::aio::ConnectionManager,
     }
 
     impl UserService {
-        pub fn new(redis_con: redis::aio::ConnectionManager, repository: UserRepository) -> Self {
+        pub fn new(repository: UserRepository, redis_con: redis::aio::ConnectionManager) -> Self {
             Self {
-                redis_con,
                 repository: Arc::new(repository),
+                redis_con,
             }
         }
     }

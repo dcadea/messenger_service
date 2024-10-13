@@ -158,6 +158,7 @@ pub(crate) mod cache {
         UsersOnline,
         Friends(user::Sub),
         Chat(chat::Id),
+        Session(String),
     }
 
     impl Display for Key {
@@ -167,6 +168,7 @@ pub(crate) mod cache {
                 Key::UsersOnline => write!(f, "users:online"),
                 Key::Friends(sub) => write!(f, "friends:{sub}"),
                 Key::Chat(id) => write!(f, "chat:{id}"),
+                Key::Session(id) => write!(f, "session:{id}"),
             }
         }
     }
