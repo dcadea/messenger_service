@@ -1,6 +1,6 @@
 use maud::html;
 
-use crate::markup::Wrappable;
+use messenger_service::markup::Wrappable;
 
 pub async fn login() -> Wrappable {
     Wrappable(html! {

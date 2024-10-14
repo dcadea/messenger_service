@@ -2,11 +2,11 @@ use axum::extract::{Path, State};
 use axum::Extension;
 use maud::{html, Markup, Render};
 
-use crate::markup::Wrappable;
 use crate::message::markup::message_input;
 use crate::user::markup::{UserHeader, UserSearch};
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
+use messenger_service::markup::Wrappable;
 
 use super::model::ChatDto;
 use super::service::ChatService;
