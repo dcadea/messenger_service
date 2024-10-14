@@ -1,6 +1,5 @@
 use messenger_service::serde::serialize_object_id;
 use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
-use serde;
 use serde::{Deserialize, Serialize};
 
 use crate::user;

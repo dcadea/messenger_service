@@ -17,11 +17,14 @@ pub async fn validate_sid(
     next: Next,
 ) -> crate::Result<Response> {
     if let Some(sid) = jar.get(super::SESSION_ID) {
-        if let Some(token) = auth_service.find_token(sid.value()).await {
-            let sub = auth_service.validate(&token).await?;
-            request.extensions_mut().insert(sub);
-            request.extensions_mut().insert(AccessToken::new(token));
-        }
+        let token = auth_service
+            .find_token(sid.value())
+            .await
+            .ok_or(super::Error::Forbidden(String::from("invalid sid")))?;
+
+        let sub = auth_service.validate(&token).await?;
+        request.extensions_mut().insert(sub);
+        request.extensions_mut().insert(AccessToken::new(token));
     }
 
     Ok(next.run(request).await)
@@ -48,7 +51,7 @@ pub async fn authorize(
         .get::<AccessToken>()
         .ok_or(super::Error::Unauthorized)?;
 
-    let user_info = match user_service.find_user_info(&sub).await {
+    let user_info = match user_service.find_user_info(sub).await {
         Ok(user_info) => user_info,
         Err(user::Error::NotFound(_)) => {
             let user_info = auth_service.get_user_info(token.secret()).await?;

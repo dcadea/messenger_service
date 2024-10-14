@@ -87,7 +87,7 @@ impl AuthService {
     }
 
     pub async fn exchange_code(&self, code: &str, csrf: &str) -> super::Result<AccessToken> {
-        let _ = self.validate_state(csrf).await?;
+        self.validate_state(csrf).await?;
 
         let code = AuthorizationCode::new(code.to_string());
 

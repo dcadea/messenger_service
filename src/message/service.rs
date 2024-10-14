@@ -42,10 +42,7 @@ impl MessageService {
 
 impl MessageService {
     pub async fn find_by_id(&self, id: &Id) -> super::Result<MessageDto> {
-        self.repository
-            .find_by_id(id)
-            .await
-            .map(|msg| MessageDto::from(msg))
+        self.repository.find_by_id(id).await.map(MessageDto::from)
     }
 
     pub async fn find_by_chat_id_and_params(
