@@ -46,6 +46,9 @@ Application will not start without the **required** environment configuration. <
 - Required environment variables:
 ```dotenv
 # example with Auth0 as auth server
+CLIENT_ID={{your_client_id}}
+CLIENT_SECRET={{your_client_secret}}
+REDIRECT_URI=http://localhost:8000/callback
 ISSUER=https://dcadea.auth0.com/
 AUDIENCE=https://messenger.angelwing.io/api/v1
 REQUIRED_CLAIMS=iss,sub,aud,exp,permissions
@@ -54,14 +57,9 @@ REQUIRED_CLAIMS=iss,sub,aud,exp,permissions
 ```dotenv
 RUST_LOG=info
 
-APP_ADDR=127.0.0.1
-APP_PORT=8000
-
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 
-MONGO_USERNAME=root
-MONGO_PASSWORD=example
 MONGO_HOST=127.0.0.1
 MONGO_PORT=27017
 MONGO_DB=messenger
@@ -76,6 +74,8 @@ AMQP_PORT=5672
 - [Cargo](https://doc.rust-lang.org/cargo/) - The Rust package manager
 - [Axum](https://docs.rs/axum/0.7.5/axum/) - Web application framework
 - [Tokio](https://tokio.rs/) - Asynchronous runtime
+- [htmx](https://htmx.org/) - Hypermedia driven web framework
+- [maud](https://maud.lambda.xyz/) - HTML template engine
 - [MongoDB](https://www.mongodb.com/) - Database
 - [Redis](https://redis.io/) - In-memory data structure store
 - [Lapin](https://docs.rs/lapin/2.3.4/lapin/) - AMQP client library
