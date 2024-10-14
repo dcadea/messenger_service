@@ -47,6 +47,7 @@ pub enum Key {
     Friends(user::Sub),
     Chat(chat::Id),
     Session(String),
+    Csrf(String),
 }
 
 impl Display for Key {
@@ -57,6 +58,7 @@ impl Display for Key {
             Key::Friends(sub) => write!(f, "friends:{sub}"),
             Key::Chat(id) => write!(f, "chat:{id}"),
             Key::Session(id) => write!(f, "session:{id}"),
+            Key::Csrf(csrf) => write!(f, "csrf:{csrf}"),
         }
     }
 }

@@ -21,6 +21,7 @@ use crate::user::model::UserInfo;
 
 const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
 const TOKEN_TTL: Duration = Duration::from_secs(36000);
+const EXCHANGE_TTL: Duration = Duration::from_secs(5);
 
 #[derive(Clone)]
 pub struct AuthService {
@@ -69,8 +70,8 @@ impl AuthService {
 }
 
 impl AuthService {
-    pub async fn authorize(&self) -> String {
-        let (auth_url, _) = self // TODO: use csrf_token
+    pub async fn authorize(&self) -> super::Result<String> {
+        let (auth_url, csrf) = self
             .oauth2
             .authorize_url(CsrfToken::new_random)
             .add_extra_param("audience", self.config.audience.clone())
@@ -79,10 +80,15 @@ impl AuthService {
                 Scope::new("profile".to_string()),
             ])
             .url();
-        auth_url.to_string()
+
+        self.cache_csrf(csrf.secret()).await?;
+
+        Ok(auth_url.to_string())
     }
 
-    pub async fn exchange_code(&self, code: &str) -> super::Result<AccessToken> {
+    pub async fn exchange_code(&self, code: &str, csrf: &str) -> super::Result<AccessToken> {
+        let _ = self.validate_state(csrf).await?;
+
         let code = AuthorizationCode::new(code.to_string());
 
         let token_result = self
@@ -152,6 +158,20 @@ impl AuthService {
         let sid = cache::Key::Session(sid.to_string());
         let token: Option<String> = con.get(sid).await.ok();
         token
+    }
+
+    async fn cache_csrf(&self, csrf: &str) -> super::Result<()> {
+        let mut con = self.redis_con.clone();
+        let cache_key = cache::Key::Csrf(csrf.to_string());
+        let _: () = con.set_ex(cache_key, csrf, EXCHANGE_TTL.as_secs()).await?;
+        Ok(())
+    }
+
+    async fn validate_state(&self, csrf: &str) -> super::Result<()> {
+        let mut con = self.redis_con.clone();
+        let cache_key = cache::Key::Csrf(csrf.to_string());
+        let csrf: Option<String> = con.get_del(cache_key).await?;
+        csrf.map(|_| ()).ok_or(super::Error::InvalidState)
     }
 }
 

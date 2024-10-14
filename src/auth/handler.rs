@@ -10,11 +10,12 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct Params {
     code: String,
-    // FIXME state: String,
+    state: String,
 }
 
-pub async fn login(auth_service: State<AuthService>) -> impl IntoResponse {
-    Redirect::to(&auth_service.authorize().await)
+pub async fn login(auth_service: State<AuthService>) -> crate::Result<impl IntoResponse> {
+    let auth_url = auth_service.authorize().await?;
+    Ok(Redirect::to(&auth_url))
 }
 
 pub async fn logout(
@@ -34,7 +35,9 @@ pub async fn callback(
     auth_service: State<AuthService>,
     jar: CookieJar,
 ) -> crate::Result<impl IntoResponse> {
-    let token = auth_service.exchange_code(&params.code).await?;
+    let token = auth_service
+        .exchange_code(&params.code, &params.state)
+        .await?;
 
     let sid = uuid::Uuid::new_v4();
     auth_service.cache_token(&sid, token.secret()).await?;

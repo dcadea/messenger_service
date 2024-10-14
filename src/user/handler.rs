@@ -1,4 +1,5 @@
-use axum::{extract::State, response::IntoResponse, Form};
+use axum::{extract::State, Form};
+use maud::Markup;
 use serde::Deserialize;
 
 use super::{markup, service::UserService};
@@ -11,11 +12,8 @@ pub struct FindParams {
 pub async fn search(
     user_service: State<UserService>,
     params: Form<FindParams>,
-) -> impl IntoResponse {
-    let users = match user_service.search_user_info(&params.nickname).await {
-        Ok(users) => users,
-        Err(err) => return crate::error::Error::from(err).into_response(),
-    };
+) -> crate::Result<Markup> {
+    let users = user_service.search_user_info(&params.nickname).await?;
 
-    markup::search_result(&users).into_response()
+    Ok(markup::search_result(&users))
 }

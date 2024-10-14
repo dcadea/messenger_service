@@ -129,6 +129,8 @@ pub enum Error {
     TokenMalformed(String),
     #[error("unexpected auth error: {0}")]
     Unexpected(String),
+    #[error("invalid state")]
+    InvalidState,
 
     _User(#[from] user::Error),
     _Integration(#[from] integration::Error),

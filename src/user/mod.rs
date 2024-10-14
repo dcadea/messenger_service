@@ -21,7 +21,7 @@ pub fn resources<S>(state: AppState) -> Router<S> {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct Sub(pub String); // TODO: remove pub
+pub struct Sub(pub String);
 
 impl Display for Sub {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
