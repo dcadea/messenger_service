@@ -27,7 +27,6 @@ pub struct UserSearch;
 impl Render for UserSearch {
     fn render(&self) -> Markup {
         html! {
-
             input."mb-4 w-full px-3 py-2 border border-gray-300 rounded-md"
                 type="search"
                 name="nickname"

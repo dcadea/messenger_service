@@ -18,14 +18,14 @@ pub(crate) fn pages<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/", get(markup::home))
         .route("/chats", get(markup::all_chats))
-        .route("/chats/:id", get(markup::active_chat))
+        .route("/chats/:id", get(handler::open_chat))
         .with_state(state)
 }
 
 pub(crate) fn resources<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route("/chats", get(markup::all))
-        .route("/chats/:id", get(markup::one))
+        .route("/chats", get(handler::find_all))
+        .route("/chats/:id", get(handler::find_one))
         .route("/chats", post(handler::create))
         .with_state(state)
 }
