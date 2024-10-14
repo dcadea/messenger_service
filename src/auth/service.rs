@@ -69,7 +69,7 @@ impl AuthService {
 }
 
 impl AuthService {
-    pub(super) async fn authorize(&self) -> String {
+    pub async fn authorize(&self) -> String {
         let (auth_url, _) = self // TODO: use csrf_token
             .oauth2
             .authorize_url(CsrfToken::new_random)
@@ -108,7 +108,7 @@ impl AuthService {
             .map_err(|e| super::Error::Forbidden(e.to_string()))
     }
 
-    pub(super) async fn get_user_info(&self, token: &str) -> super::Result<UserInfo> {
+    pub async fn get_user_info(&self, token: &str) -> super::Result<UserInfo> {
         let user_info = self
             .http
             .get(&self.config.userinfo_url)
@@ -133,21 +133,21 @@ impl AuthService {
             .ok_or(super::Error::UnknownKid)
     }
 
-    pub(super) async fn cache_token(&self, sid: &uuid::Uuid, token: &str) -> super::Result<()> {
+    pub async fn cache_token(&self, sid: &uuid::Uuid, token: &str) -> super::Result<()> {
         let mut con = self.redis_con.clone();
         let cache_key = cache::Key::Session(sid.to_string());
         let _: () = con.set_ex(cache_key, token, TOKEN_TTL.as_secs()).await?;
         Ok(())
     }
 
-    pub(super) async fn invalidate_token(&self, sid: &str) -> super::Result<()> {
+    pub async fn invalidate_token(&self, sid: &str) -> super::Result<()> {
         let mut con = self.redis_con.clone();
         let sid = cache::Key::Session(sid.to_string());
         let _: () = con.del(sid).await?;
         Ok(())
     }
 
-    pub(super) async fn find_token(&self, sid: &str) -> Option<String> {
+    pub async fn find_token(&self, sid: &str) -> Option<String> {
         let mut con = self.redis_con.clone();
         let sid = cache::Key::Session(sid.to_string());
         let token: Option<String> = con.get(sid).await.ok();

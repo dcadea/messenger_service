@@ -11,7 +11,7 @@ use super::user::repository::UserRepository;
 use super::user::service::UserService;
 
 #[derive(Clone)]
-pub(crate) struct AppState {
+pub struct AppState {
     pub config: integration::Config,
 
     pub auth_service: AuthService,

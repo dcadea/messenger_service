@@ -7,11 +7,11 @@ use crate::{auth, chat, integration, message, user};
 mod context;
 mod handler;
 mod model;
-pub(super) mod service;
+pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
 
-pub(super) fn endpoints<S>(state: AppState) -> Router<S> {
+pub fn endpoints<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/ws", get(handler::ws))
         .with_state(state)
@@ -19,7 +19,7 @@ pub(super) fn endpoints<S>(state: AppState) -> Router<S> {
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub(crate) enum Error {
+pub enum Error {
     #[error("missing user info")]
     MissingUserInfo,
     #[error("not a message owner")]

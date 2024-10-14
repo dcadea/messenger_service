@@ -48,11 +48,7 @@ impl EventService {
 }
 
 impl EventService {
-    pub(super) async fn handle_command(
-        &self,
-        ctx: &context::Ws,
-        command: Command,
-    ) -> super::Result<()> {
+    pub async fn handle_command(&self, ctx: &context::Ws, command: Command) -> super::Result<()> {
         debug!("handling command: {:?}", command);
         match ctx.get_user_info().await {
             None => {

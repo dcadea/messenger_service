@@ -8,13 +8,13 @@ use crate::{state::AppState, user};
 mod handler;
 mod markup;
 mod model;
-pub(crate) mod repository;
-pub(crate) mod service;
+pub mod repository;
+pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
-pub(crate) type Id = mongodb::bson::oid::ObjectId;
+pub type Id = mongodb::bson::oid::ObjectId;
 
-pub(crate) fn pages<S>(state: AppState) -> Router<S> {
+pub fn pages<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/", get(markup::home))
         .route("/chats", get(markup::all_chats))
@@ -22,7 +22,7 @@ pub(crate) fn pages<S>(state: AppState) -> Router<S> {
         .with_state(state)
 }
 
-pub(crate) fn resources<S>(state: AppState) -> Router<S> {
+pub fn resources<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/chats", get(handler::find_all))
         .route("/chats/:id", get(handler::find_one))
@@ -32,7 +32,7 @@ pub(crate) fn resources<S>(state: AppState) -> Router<S> {
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub(crate) enum Error {
+pub enum Error {
     #[error("chat not found: {0:?}")]
     NotFound(Option<Id>),
     #[error("chat already exists for members: {0:?}")]

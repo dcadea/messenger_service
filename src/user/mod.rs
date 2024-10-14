@@ -6,22 +6,22 @@ use serde::{Deserialize, Serialize};
 use crate::state::AppState;
 
 mod handler;
-pub(crate) mod markup;
-pub(crate) mod model;
-pub(crate) mod repository;
-pub(crate) mod service;
+pub mod markup;
+pub mod model;
+pub mod repository;
+pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
 type Id = mongodb::bson::oid::ObjectId;
 
-pub(crate) fn resources<S>(state: AppState) -> Router<S> {
+pub fn resources<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/users/search", post(handler::search))
         .with_state(state)
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) struct Sub(pub String); // TODO: remove pub
+pub struct Sub(pub String); // TODO: remove pub
 
 impl Display for Sub {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -50,7 +50,7 @@ impl<'de> Deserialize<'de> for Sub {
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub(crate) enum Error {
+pub enum Error {
     #[error("user not found: {:?}", 0)]
     NotFound(Sub),
 

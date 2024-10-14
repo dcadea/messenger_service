@@ -13,13 +13,13 @@ use super::service::MessageService;
 use super::{markup, Id};
 
 #[derive(Deserialize)]
-pub(super) struct Params {
+pub struct Params {
     chat_id: Option<chat::Id>,
     end_time: Option<i64>,
     limit: Option<usize>,
 }
 
-pub(super) async fn find_all(
+pub async fn find_all(
     user_info: Extension<UserInfo>,
     params: Query<Params>,
     chat_service: State<ChatService>,
@@ -38,7 +38,7 @@ pub(super) async fn find_all(
     Ok(markup::message_list(&messages, &user_info))
 }
 
-pub(super) async fn find_one(
+pub async fn find_one(
     id: Path<Id>,
     user_info: Extension<UserInfo>,
     message_service: State<MessageService>,

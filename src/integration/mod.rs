@@ -6,15 +6,15 @@ use dotenv::dotenv;
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, WriteLogger};
 
-pub(crate) mod amqp;
-pub(crate) mod cache;
-pub(crate) mod db;
-pub(crate) mod idp;
+pub mod amqp;
+pub mod cache;
+pub mod db;
+pub mod idp;
 
 type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone)]
-pub(crate) struct Config {
+pub struct Config {
     pub redis: cache::Config,
     pub mongo: db::Config,
     pub amqp: amqp::Config,
@@ -65,7 +65,7 @@ impl Default for Config {
     }
 }
 
-pub(crate) fn init_http_client() -> self::Result<reqwest::Client> {
+pub fn init_http_client() -> self::Result<reqwest::Client> {
     reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(2))
         .timeout(Duration::from_secs(5))
@@ -75,7 +75,7 @@ pub(crate) fn init_http_client() -> self::Result<reqwest::Client> {
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub(crate) enum Error {
+pub enum Error {
     _Var(#[from] std::env::VarError),
     _ParseInt(#[from] std::num::ParseIntError),
     _MongoDB(#[from] mongodb::error::Error),

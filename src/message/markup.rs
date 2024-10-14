@@ -25,7 +25,7 @@ pub fn message_input(chat_id: &chat::Id, recipient: &user::Sub) -> Markup {
     }
 }
 
-pub(super) fn message_list(messages: &Vec<MessageDto>, user_info: &UserInfo) -> Markup {
+pub fn message_list(messages: &Vec<MessageDto>, user_info: &UserInfo) -> Markup {
     html! {
         div class="message-list flex flex-col" {
             @for msg in messages {
@@ -35,7 +35,7 @@ pub(super) fn message_list(messages: &Vec<MessageDto>, user_info: &UserInfo) -> 
     }
 }
 
-pub(super) fn message_item(msg: &MessageDto, user_info: &UserInfo) -> Markup {
+pub fn message_item(msg: &MessageDto, user_info: &UserInfo) -> Markup {
     let belongs_to_user = msg.owner == user_info.sub;
     let message_timestamp =
         chrono::DateTime::from_timestamp(msg.timestamp, 0).map(|dt| dt.format("%H:%M"));

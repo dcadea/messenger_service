@@ -16,7 +16,7 @@ use serde::Deserialize;
 
 mod handler;
 mod markup;
-pub(crate) mod service;
+pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -27,13 +27,13 @@ struct TokenClaims {
     sub: user::Sub,
 }
 
-pub(crate) fn pages<S>(state: AppState) -> Router<S> {
+pub fn pages<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/login", get(markup::login))
         .with_state(state)
 }
 
-pub(crate) fn endpoints<S>(state: AppState) -> Router<S> {
+pub fn endpoints<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/sso/login", get(handler::login))
         .route("/logout", get(handler::logout))
@@ -41,7 +41,7 @@ pub(crate) fn endpoints<S>(state: AppState) -> Router<S> {
         .with_state(state)
 }
 
-pub(crate) async fn validate_token(
+pub async fn validate_token(
     auth_service: State<AuthService>,
     auth_header: Option<TypedHeader<Authorization<Bearer>>>,
     jar: CookieJar,
@@ -67,7 +67,7 @@ pub(crate) async fn validate_token(
     Ok(response)
 }
 
-pub(crate) async fn set_user_context(
+pub async fn set_user_context(
     user_service: State<UserService>,
     auth_service: State<AuthService>,
     mut request: Request,
@@ -100,7 +100,7 @@ pub(crate) async fn set_user_context(
     Ok(response)
 }
 
-pub(crate) async fn cache_user_friends(
+pub async fn cache_user_friends(
     user_service: State<UserService>,
     request: Request,
     next: Next,
@@ -118,7 +118,7 @@ pub(crate) async fn cache_user_friends(
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub(crate) enum Error {
+pub enum Error {
     #[error("unauthorized to access the resource")]
     Unauthorized,
     #[error("forbidden: {0}")]

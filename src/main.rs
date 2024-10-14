@@ -21,7 +21,7 @@ mod message;
 mod state;
 mod user;
 
-pub(crate) type Result<T> = std::result::Result<T, crate::error::Error>;
+pub type Result<T> = std::result::Result<T, crate::error::Error>;
 
 #[tokio::main]
 async fn main() {
