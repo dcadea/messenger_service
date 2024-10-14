@@ -1,4 +1,4 @@
-use super::{service::AuthService, SESSION_ID};
+use super::service::AuthService;
 use axum::{
     extract::State,
     response::{IntoResponse, Redirect},
@@ -22,7 +22,7 @@ pub async fn logout(
     auth_service: State<AuthService>,
     jar: CookieJar,
 ) -> crate::Result<impl IntoResponse> {
-    if let Some(sid) = jar.get(SESSION_ID) {
+    if let Some(sid) = jar.get(super::SESSION_ID) {
         auth_service.invalidate_token(sid.value()).await?;
         return Ok((CookieJar::new(), Redirect::to("/login")));
     }
@@ -42,7 +42,7 @@ pub async fn callback(
     let sid = uuid::Uuid::new_v4();
     auth_service.cache_token(&sid, token.secret()).await?;
 
-    let mut sid = Cookie::new(SESSION_ID, sid.to_string());
+    let mut sid = Cookie::new(super::SESSION_ID, sid.to_string());
     sid.set_secure(true);
     sid.set_http_only(true);
     sid.set_same_site(cookie::SameSite::Lax);

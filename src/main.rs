@@ -1,3 +1,4 @@
+use auth::middleware::{authorize, validate_sid};
 use axum::http::StatusCode;
 use axum::middleware::{from_fn_with_state, map_response};
 use axum::routing::get;
@@ -7,8 +8,8 @@ use messenger_service::markup::wrap_in_base;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
+use user::middleware::cache_user_friends;
 
-use crate::auth::{cache_user_friends, set_user_context, validate_token};
 use crate::state::AppState;
 
 mod auth;
@@ -56,8 +57,8 @@ fn app(app_state: AppState) -> Router {
         )
         .route_layer(
             ServiceBuilder::new()
-                .layer(from_fn_with_state(app_state.clone(), validate_token))
-                .layer(from_fn_with_state(app_state.clone(), set_user_context))
+                .layer(from_fn_with_state(app_state.clone(), validate_sid))
+                .layer(from_fn_with_state(app_state.clone(), authorize))
                 .layer(from_fn_with_state(app_state.clone(), cache_user_friends)),
         );
 
