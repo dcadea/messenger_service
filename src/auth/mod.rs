@@ -1,11 +1,10 @@
 use self::service::AuthService;
-use crate::markup::wrap_in_base;
 use crate::state::AppState;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 use crate::{integration, user};
 use axum::extract::{Request, State};
-use axum::middleware::{from_fn, Next};
+use axum::middleware::Next;
 use axum::response::Response;
 use axum::routing::get;
 use axum::Router;
@@ -30,10 +29,7 @@ struct TokenClaims {
 
 pub(crate) fn pages<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route(
-            "/login",
-            get(markup::login).route_layer(from_fn(wrap_in_base)),
-        )
+        .route("/login", get(markup::login))
         .with_state(state)
 }
 

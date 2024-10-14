@@ -1,8 +1,9 @@
 use axum::http::StatusCode;
-use axum::middleware::from_fn_with_state;
+use axum::middleware::{from_fn_with_state, map_response};
 use axum::routing::get;
 use axum::Router;
 use log::error;
+use markup::wrap_in_base;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
@@ -66,6 +67,7 @@ fn app(app_state: AppState) -> Router {
         .merge(auth::endpoints(app_state.clone()))
         .merge(event::endpoints(app_state.clone()))
         .merge(protected_router)
+        .route_layer(map_response(wrap_in_base))
         .route(
             "/health",
             get(|| async { (StatusCode::OK, "I'm good! Hbu?") }),

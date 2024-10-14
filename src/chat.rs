@@ -1,19 +1,16 @@
 use axum::{
-    middleware::from_fn,
     routing::{get, post},
     Router,
 };
 
 use crate::{state::AppState, user};
 
-use super::markup::wrap_in_base;
-
 type Result<T> = std::result::Result<T, Error>;
 pub(crate) type Id = mongodb::bson::oid::ObjectId;
 
 pub(crate) fn pages<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route("/", get(handler::home).route_layer(from_fn(wrap_in_base)))
+        .route("/", get(handler::home))
         .route("/chats", get(markup::all_chats))
         .route("/chats/:id", get(markup::active_chat))
         .with_state(state)

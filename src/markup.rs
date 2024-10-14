@@ -1,14 +1,13 @@
 use std::convert::Infallible;
 
 use axum::{
-    extract::Request,
-    middleware::Next,
-    response::{Html, IntoResponse, IntoResponseParts, Response, ResponseParts},
+    body::Body,
+    response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
 };
 use maud::{html, Markup, DOCTYPE};
 use reqwest::header::CONTENT_LENGTH;
 
-pub(crate) fn base(content: Markup) -> Markup {
+fn base(content: Markup) -> Markup {
     html! {
         (DOCTYPE)
         html {
@@ -50,17 +49,12 @@ impl IntoResponse for Wrappable {
     }
 }
 
-pub(crate) async fn wrap_in_base(request: Request, next: Next) -> Response {
-    let mut response = next.run(request).await;
-    if let Some(wrappable) = response.extensions_mut().remove::<Wrappable>() {
-        let wrapped = base(wrappable.0);
-
-        let (mut parts, _) = response.into_parts();
-        parts.headers.remove(CONTENT_LENGTH);
-
-        let html = Html(wrapped.into_string()); // FIXME: string is not escaped
-        return (parts, html).into_response();
+pub(crate) async fn wrap_in_base(mut resp: Response) -> impl IntoResponse {
+    if let Some(w) = resp.extensions_mut().remove::<Wrappable>() {
+        resp.headers_mut().remove(CONTENT_LENGTH);
+        *resp.body_mut() = Body::new(base(w.0).into_string());
+        return resp;
     }
 
-    response
+    resp
 }
