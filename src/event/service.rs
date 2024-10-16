@@ -17,8 +17,8 @@ use crate::message::model::{Message, MessageDto};
 use crate::message::service::MessageService;
 use crate::user::service::UserService;
 
+use super::context;
 use super::model::{Command, Event, EventStream, Queue};
-use super::{context, Result};
 
 #[derive(Clone)]
 pub struct EventService {
@@ -48,13 +48,13 @@ impl EventService {
 }
 
 impl EventService {
-    pub async fn handle_command(&self, ctx: &context::Ws, command: Command) -> Result<()> {
+    pub async fn handle_command(&self, ctx: &context::Ws, command: Command) -> super::Result<()> {
         debug!("handling command: {:?}", command);
         match ctx.get_user_info().await {
             None => {
                 if let Command::Auth { token } = command {
-                    let claims = self.auth_service.validate(&token).await?;
-                    let user_info = self.user_service.find_user_info(&claims.sub).await?;
+                    let sub = self.auth_service.validate(&token).await?;
+                    let user_info = self.user_service.find_user_info(&sub).await?;
                     ctx.set_user_info(user_info).await;
                     ctx.set_channel(self.create_channel().await?).await;
                     ctx.login.notify_one();
@@ -158,7 +158,7 @@ impl EventService {
 }
 
 impl EventService {
-    pub async fn read(&self, ctx: &context::Ws, q: &Queue) -> Result<EventStream> {
+    pub async fn read(&self, ctx: &context::Ws, q: &Queue) -> super::Result<EventStream> {
         self.ensure_queue_exists(ctx, q).await?;
 
         let consumer = ctx
@@ -184,24 +184,29 @@ impl EventService {
         Ok(Box::pin(stream))
     }
 
-    pub async fn close_channel(&self, ctx: &context::Ws) -> Result<()> {
+    pub async fn close_channel(&self, ctx: &context::Ws) -> super::Result<()> {
         let channel = ctx.get_channel().await?;
         channel.close(200, "OK").await.map_err(event::Error::from)
     }
 
-    pub async fn publish_event(&self, ctx: &context::Ws, q: &Queue, event: &Event) -> Result<()> {
+    pub async fn publish_event(
+        &self,
+        ctx: &context::Ws,
+        q: &Queue,
+        event: &Event,
+    ) -> super::Result<()> {
         let payload = serde_json::to_vec(event)?;
         self.publish(ctx, q, payload.as_slice()).await
     }
 }
 
 impl EventService {
-    async fn create_channel(&self) -> Result<Channel> {
+    async fn create_channel(&self) -> super::Result<Channel> {
         let conn = self.amqp_con.read().await;
         conn.create_channel().await.map_err(event::Error::from)
     }
 
-    async fn publish(&self, ctx: &context::Ws, q: &Queue, payload: &[u8]) -> Result<()> {
+    async fn publish(&self, ctx: &context::Ws, q: &Queue, payload: &[u8]) -> super::Result<()> {
         self.ensure_queue_exists(ctx, q).await?;
         ctx.get_channel()
             .await?
@@ -216,7 +221,7 @@ impl EventService {
         Ok(())
     }
 
-    async fn ensure_queue_exists(&self, ctx: &context::Ws, q: &Queue) -> Result<()> {
+    async fn ensure_queue_exists(&self, ctx: &context::Ws, q: &Queue) -> super::Result<()> {
         ctx.get_channel()
             .await?
             .queue_declare(

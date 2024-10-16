@@ -6,15 +6,14 @@ use futures::Stream;
 use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde::{Deserialize, Serialize};
 
-use crate::chat::model::ChatId;
-use crate::message::model::{MessageDto, MessageId};
-use crate::user::model::Sub;
+use crate::message::model::MessageDto;
+use crate::{chat, message, user};
 
-pub(crate) type EventStream = Pin<Box<dyn Stream<Item = crate::event::Result<Event>> + Send>>;
+pub type EventStream = Pin<Box<dyn Stream<Item = super::Result<Event>> + Send>>;
 
 #[derive(Clone)]
 pub enum Queue {
-    Messages(Sub),
+    Messages(user::Sub),
 }
 
 impl Display for Queue {
@@ -32,19 +31,19 @@ pub enum Command {
         token: String,
     },
     CreateMessage {
-        chat_id: ChatId,
-        recipient: Sub,
+        chat_id: chat::Id,
+        recipient: user::Sub,
         text: String,
     },
     UpdateMessage {
-        id: MessageId,
+        id: message::Id,
         text: String,
     },
     DeleteMessage {
-        id: MessageId,
+        id: message::Id,
     },
     MarkAsSeenMessage {
-        id: MessageId,
+        id: message::Id,
     },
 }
 
@@ -56,18 +55,18 @@ pub enum Event {
     },
     UpdatedMessage {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-        id: MessageId,
+        id: message::Id,
         text: String,
     },
     DeletedMessage {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-        id: MessageId,
+        id: message::Id,
     },
     SeenMessage {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-        id: MessageId,
+        id: message::Id,
     },
     OnlineUsers {
-        users: HashSet<Sub>,
+        users: HashSet<user::Sub>,
     },
 }

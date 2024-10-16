@@ -1,21 +1,21 @@
 use serde::{Deserialize, Serialize};
 
-use crate::user::model::Sub;
-use crate::util::serialize_object_id;
+use crate::user;
+use messenger_service::serde::serialize_object_id;
 
-type GroupId = mongodb::bson::oid::ObjectId;
+use super::Id;
 
 #[derive(Serialize, Deserialize)]
-pub struct Group {
+struct Group {
     #[serde(
         alias = "_id",
         serialize_with = "serialize_object_id",
         skip_serializing_if = "Option::is_none"
     )]
-    id: Option<GroupId>,
+    id: Option<Id>,
     name: String,
-    owner: Sub,
-    participants: Vec<Sub>,
+    owner: user::Sub,
+    participants: Vec<user::Sub>,
     picture: String,
     last_message: String,
 }

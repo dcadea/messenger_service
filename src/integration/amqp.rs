@@ -3,8 +3,6 @@ use std::env;
 use lapin::uri::{AMQPAuthority, AMQPQueryString, AMQPScheme, AMQPUri, AMQPUserInfo};
 use tokio::sync::RwLock;
 
-use crate::integration::Result;
-
 #[derive(Clone)]
 pub struct Config {
     host: String,
@@ -21,14 +19,14 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn env() -> Result<Self> {
+    pub fn env() -> super::Result<Self> {
         let host = env::var("AMQP_HOST")?;
         let port = env::var("AMQP_PORT")?.parse()?;
         Ok(Self { host, port })
     }
 }
 
-pub async fn init(config: &Config) -> Result<RwLock<lapin::Connection>> {
+pub async fn init(config: &Config) -> super::Result<RwLock<lapin::Connection>> {
     let amqp_uri = AMQPUri {
         scheme: AMQPScheme::AMQP,
         authority: AMQPAuthority {

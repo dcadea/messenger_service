@@ -1,11 +1,10 @@
 use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde::{Deserialize, Serialize};
 
-use crate::chat::model::ChatId;
-use crate::user::model::Sub;
-use crate::util::serialize_object_id;
+use crate::{chat, user};
+use messenger_service::serde::serialize_object_id;
 
-pub type MessageId = mongodb::bson::oid::ObjectId;
+use super::Id;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Message {
@@ -14,17 +13,17 @@ pub struct Message {
         serialize_with = "serialize_object_id",
         skip_serializing_if = "Option::is_none"
     )]
-    id: Option<MessageId>,
-    chat_id: ChatId,
-    pub owner: Sub,
-    pub recipient: Sub,
+    id: Option<Id>,
+    chat_id: chat::Id,
+    pub owner: user::Sub,
+    pub recipient: user::Sub,
     pub text: String,
     timestamp: i64,
     seen: bool,
 }
 
 impl Message {
-    pub fn new(chat_id: ChatId, owner: Sub, recipient: Sub, text: &str) -> Self {
+    pub fn new(chat_id: chat::Id, owner: user::Sub, recipient: user::Sub, text: &str) -> Self {
         Self {
             id: None,
             chat_id,
@@ -36,7 +35,7 @@ impl Message {
         }
     }
 
-    pub fn with_id(&self, id: MessageId) -> Self {
+    pub fn with_id(&self, id: Id) -> Self {
         Self {
             id: Some(id),
             ..self.clone()
@@ -47,14 +46,14 @@ impl Message {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MessageDto {
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-    id: MessageId,
+    pub id: Id,
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-    chat_id: ChatId,
-    owner: Sub,
-    recipient: Sub,
-    text: String,
-    timestamp: i64,
-    seen: bool,
+    chat_id: chat::Id,
+    pub owner: user::Sub,
+    pub recipient: user::Sub,
+    pub text: String,
+    pub timestamp: i64,
+    pub seen: bool,
 }
 
 impl From<Message> for MessageDto {
@@ -69,11 +68,4 @@ impl From<Message> for MessageDto {
             seen: message.seen,
         }
     }
-}
-
-#[derive(Deserialize)]
-pub struct MessageParams {
-    pub chat_id: Option<ChatId>,
-    pub end_time: Option<i64>,
-    pub limit: Option<usize>,
 }

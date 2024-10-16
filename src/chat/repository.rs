@@ -1,11 +1,10 @@
 use futures::stream::TryStreamExt;
 use mongodb::bson::doc;
 
-use crate::chat;
-use crate::user::model::Sub;
+use crate::{chat, user};
 
-use super::model::{Chat, ChatId};
-use super::Result;
+use super::model::Chat;
+use super::Id;
 
 const CHATS_COLLECTION: &str = "chats";
 
@@ -22,11 +21,7 @@ impl ChatRepository {
 }
 
 impl ChatRepository {
-    /**
-     * Insert a new chat into the database
-     * @param chat: The chat to insert
-     */
-    pub async fn insert(&self, chat: &Chat) -> Result<Chat> {
+    pub async fn insert(&self, chat: &Chat) -> super::Result<Chat> {
         let result = self.collection.insert_one(chat).await?;
         if let Some(id) = result.inserted_id.as_object_id() {
             return self.find_by_id(&id).await;
@@ -35,13 +30,7 @@ impl ChatRepository {
         Err(chat::Error::Unexpected("Failed to insert chat".to_owned()))
     }
 
-    /**
-     * Update the last message of a chat
-     * @param id: The id of the chat
-     * @param text: The text of the last message
-     * @param updated_at: The timestamp of the last message
-     */
-    pub async fn update_last_message(&self, id: &ChatId, text: &str) -> Result<()> {
+    pub async fn update_last_message(&self, id: &Id, text: &str) -> super::Result<()> {
         self.collection
             .update_one(
                 doc! { "_id": id },
@@ -54,7 +43,7 @@ impl ChatRepository {
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: &ChatId) -> Result<Chat> {
+    pub async fn find_by_id(&self, id: &Id) -> super::Result<Chat> {
         self.collection
             .find_one(doc! { "_id": id })
             .await?
@@ -65,7 +54,7 @@ impl ChatRepository {
      * Find a chat where the user sub is a member
      * @param sub: The user sub
      */
-    pub async fn find_by_sub(&self, sub: &Sub) -> Result<Vec<Chat>> {
+    pub async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Chat>> {
         let cursor = self
             .collection
             .find(doc! {"members": sub})
@@ -77,12 +66,7 @@ impl ChatRepository {
         Ok(chats)
     }
 
-    /**
-     * Find a chat by its id and the user sub
-     * @param id: The id of the chat
-     * @param sub: The user sub
-     */
-    pub async fn find_by_id_and_sub(&self, id: &ChatId, sub: &Sub) -> Result<Chat> {
+    pub async fn find_by_id_and_sub(&self, id: &Id, sub: &user::Sub) -> super::Result<Chat> {
         self.collection
             .find_one(doc! {
                 "_id": id,
@@ -92,11 +76,7 @@ impl ChatRepository {
             .ok_or(chat::Error::NotFound(Some(id.to_owned())))
     }
 
-    /**
-     * Find a chat id by its members
-     * @param members: The members of the chat
-     */
-    pub async fn find_id_by_members(&self, members: [Sub; 2]) -> Result<ChatId> {
+    pub async fn find_id_by_members(&self, members: [user::Sub; 2]) -> super::Result<Id> {
         let result = self
             .collection
             .find_one(doc! {

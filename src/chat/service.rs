@@ -4,15 +4,14 @@ use futures::future::try_join_all;
 use futures::TryFutureExt;
 use redis::AsyncCommands;
 
-use super::model::{Chat, ChatDto, ChatId, ChatRequest};
+use super::model::{Chat, ChatDto, ChatRequest};
 use super::repository::ChatRepository;
-use super::Result;
-use crate::chat;
-use crate::integration::model::CacheKey;
+use super::Id;
+use crate::integration::cache;
 use crate::message::model::Message;
-use crate::model::{AppEndpoints, LinkFactory};
-use crate::user::model::{Sub, UserInfo};
+use crate::user::model::UserInfo;
 use crate::user::service::UserService;
+use crate::{chat, user};
 
 const CHAT_TTL: i64 = 3600;
 
@@ -21,7 +20,6 @@ pub struct ChatService {
     repository: Arc<ChatRepository>,
     user_service: Arc<UserService>,
     redis_con: redis::aio::ConnectionManager,
-    link_factory: Arc<LinkFactory>,
 }
 
 impl ChatService {
@@ -29,19 +27,17 @@ impl ChatService {
         repository: ChatRepository,
         user_service: UserService,
         redis_con: redis::aio::ConnectionManager,
-        app_endpoints: AppEndpoints,
     ) -> Self {
         Self {
             repository: Arc::new(repository),
             user_service: Arc::new(user_service),
             redis_con,
-            link_factory: Arc::new(LinkFactory::new(&app_endpoints.api())),
         }
     }
 }
 
 impl ChatService {
-    pub async fn create(&self, req: &ChatRequest, user_info: &UserInfo) -> Result<ChatDto> {
+    pub async fn create(&self, req: &ChatRequest, user_info: &UserInfo) -> super::Result<ChatDto> {
         let owner = user_info.clone().sub;
         let recipient = req.clone().recipient;
 
@@ -65,7 +61,7 @@ impl ChatService {
         }
     }
 
-    pub async fn update_last_message(&self, message: &Message) -> Result<()> {
+    pub async fn update_last_message(&self, message: &Message) -> super::Result<()> {
         let chat_id = self
             .repository
             .find_id_by_members([message.owner.to_owned(), message.recipient.to_owned()])
@@ -76,7 +72,7 @@ impl ChatService {
             .await
     }
 
-    pub async fn find_by_id(&self, id: &ChatId, user_info: &UserInfo) -> Result<ChatDto> {
+    pub async fn find_by_id(&self, id: &Id, user_info: &UserInfo) -> super::Result<ChatDto> {
         match self.repository.find_by_id_and_sub(id, &user_info.sub).await {
             Ok(chat) => {
                 let chat_dto = self.chat_to_dto(chat, user_info).await?;
@@ -87,7 +83,7 @@ impl ChatService {
         }
     }
 
-    pub async fn find_all(&self, user_info: &UserInfo) -> Result<Vec<ChatDto>> {
+    pub async fn find_all(&self, user_info: &UserInfo) -> super::Result<Vec<ChatDto>> {
         let chats = self.repository.find_by_sub(&user_info.sub).await?;
 
         let chat_dtos = try_join_all(
@@ -103,7 +99,7 @@ impl ChatService {
 
 // validations
 impl ChatService {
-    pub async fn check_member(&self, chat_id: &ChatId, sub: &Sub) -> Result<()> {
+    pub async fn check_member(&self, chat_id: &Id, sub: &user::Sub) -> super::Result<()> {
         let members = self.find_members(chat_id).await?;
         let belongs_to_chat = members.contains(sub);
 
@@ -114,7 +110,7 @@ impl ChatService {
         Ok(())
     }
 
-    pub async fn check_members(&self, chat_id: &ChatId, members: [Sub; 2]) -> Result<()> {
+    pub async fn check_members(&self, chat_id: &Id, members: [user::Sub; 2]) -> super::Result<()> {
         let cached_members = self.find_members(chat_id).await?;
         let belongs_to_chat =
             cached_members.contains(&members[0]) && cached_members.contains(&members[1]);
@@ -129,11 +125,11 @@ impl ChatService {
 
 // cache operations
 impl ChatService {
-    pub async fn find_members(&self, chat_id: &ChatId) -> Result<[Sub; 2]> {
+    pub async fn find_members(&self, chat_id: &Id) -> super::Result<[user::Sub; 2]> {
         let mut con = self.redis_con.clone();
 
-        let cache_key = CacheKey::Chat(chat_id.to_owned());
-        let members: Option<Vec<Sub>> = con.smembers(cache_key.clone()).await?;
+        let cache_key = cache::Key::Chat(chat_id.to_owned());
+        let members: Option<Vec<user::Sub>> = con.smembers(cache_key.clone()).await?;
 
         if members.as_ref().is_some_and(|m| m.len() == 2) {
             let members = members.unwrap();
@@ -154,7 +150,7 @@ impl ChatService {
 }
 
 impl ChatService {
-    async fn chat_to_dto(&self, chat: Chat, user_info: &UserInfo) -> Result<ChatDto> {
+    async fn chat_to_dto(&self, chat: Chat, user_info: &UserInfo) -> super::Result<ChatDto> {
         let members = chat.members.to_owned();
 
         let recipient = members
@@ -166,12 +162,6 @@ impl ChatService {
 
         let chat_dto = ChatDto::new(chat, recipient.to_owned(), recipient_info.name);
 
-        let links = vec![
-            self.link_factory._self(&format!("chats/{}", &chat_dto.id)),
-            self.link_factory
-                .recipient(&format!("users?sub={recipient}")),
-        ];
-
-        Ok(chat_dto.with_links(links))
+        Ok(chat_dto)
     }
 }

@@ -1,8 +1,6 @@
 use std::env;
 use std::time::Duration;
 
-use crate::integration::Result;
-
 #[derive(Clone)]
 pub struct Config {
     host: String,
@@ -21,7 +19,7 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn env() -> Result<Self> {
+    pub fn env() -> super::Result<Self> {
         let host = env::var("MONGO_HOST")?;
         let port = env::var("MONGO_PORT")?.parse()?;
         let db = env::var("MONGO_DB")?;
@@ -29,7 +27,7 @@ impl Config {
     }
 }
 
-pub async fn init(config: &Config) -> Result<mongodb::Database> {
+pub async fn init(config: &Config) -> super::Result<mongodb::Database> {
     let options = mongodb::options::ClientOptions::builder()
         .hosts(vec![mongodb::options::ServerAddress::Tcp {
             host: config.host.to_owned(),
@@ -42,4 +40,10 @@ pub async fn init(config: &Config) -> Result<mongodb::Database> {
     let db = mongodb::Client::with_options(options).map(|client| client.database(&config.db))?;
 
     Ok(db)
+}
+
+impl From<crate::user::Sub> for mongodb::bson::Bson {
+    fn from(val: crate::user::Sub) -> Self {
+        mongodb::bson::Bson::String(val.0)
+    }
 }

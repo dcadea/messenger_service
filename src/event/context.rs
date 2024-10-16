@@ -3,15 +3,14 @@ use std::sync::Arc;
 
 use tokio::sync::{Notify, RwLock};
 
-use crate::event;
-use crate::event::Result;
-use crate::user::model::{Sub, UserInfo};
+use crate::user::model::UserInfo;
+use crate::{event, user};
 
 #[derive(Clone)]
 pub struct Ws {
     user_info: Arc<RwLock<Option<UserInfo>>>,
     channel: Arc<RwLock<Option<lapin::Channel>>>,
-    online_friends: Arc<RwLock<HashSet<Sub>>>,
+    online_friends: Arc<RwLock<HashSet<user::Sub>>>,
     pub login: Arc<Notify>,
     pub close: Arc<Notify>,
 }
@@ -41,7 +40,7 @@ impl Ws {
         *self.channel.write().await = Some(channel);
     }
 
-    pub async fn get_channel(&self) -> Result<lapin::Channel> {
+    pub async fn get_channel(&self) -> super::Result<lapin::Channel> {
         self.channel
             .read()
             .await
@@ -49,11 +48,11 @@ impl Ws {
             .ok_or(event::Error::MissingAmqpChannel)
     }
 
-    pub async fn set_online_friends(&self, friends: HashSet<Sub>) {
+    pub async fn set_online_friends(&self, friends: HashSet<user::Sub>) {
         *self.online_friends.write().await = friends;
     }
 
-    pub async fn same_online_friends(&self, friends: &HashSet<Sub>) -> bool {
+    pub async fn same_online_friends(&self, friends: &HashSet<user::Sub>) -> bool {
         let f = self.online_friends.read().await;
         f.symmetric_difference(friends).count() == 0
     }
