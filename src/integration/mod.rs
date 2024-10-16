@@ -54,6 +54,12 @@ impl Default for Config {
                 .split(',')
                 .map(String::from)
                 .collect::<Vec<String>>(),
+            Duration::from_secs(
+                std::env::var("TOKEN_TTL")
+                    .unwrap_or("3600".into())
+                    .parse()
+                    .expect("Failed to parse TOKEN_TTL"),
+            ),
         );
 
         Self {

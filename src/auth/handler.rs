@@ -35,12 +35,12 @@ pub async fn callback(
     auth_service: State<AuthService>,
     jar: CookieJar,
 ) -> crate::Result<impl IntoResponse> {
-    let token = auth_service
+    let (token, ttl) = auth_service
         .exchange_code(&params.code, &params.state)
         .await?;
 
     let sid = uuid::Uuid::new_v4();
-    auth_service.cache_token(&sid, token.secret()).await?;
+    auth_service.cache_token(&sid, token.secret(), &ttl).await?;
 
     let mut sid = Cookie::new(super::SESSION_ID, sid.to_string());
     sid.set_secure(true);

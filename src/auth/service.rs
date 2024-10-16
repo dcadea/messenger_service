@@ -20,8 +20,6 @@ use crate::user;
 use crate::user::model::UserInfo;
 
 const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
-// TODO: use ttl from token response
-const TOKEN_TTL: Duration = Duration::from_secs(36000);
 // TODO: use ttl from application config
 const EXCHANGE_TTL: Duration = Duration::from_secs(5);
 
@@ -88,7 +86,11 @@ impl AuthService {
         Ok(auth_url.to_string())
     }
 
-    pub async fn exchange_code(&self, code: &str, csrf: &str) -> super::Result<AccessToken> {
+    pub async fn exchange_code(
+        &self,
+        code: &str,
+        csrf: &str,
+    ) -> super::Result<(AccessToken, Duration)> {
         self.validate_state(csrf).await?;
 
         let code = AuthorizationCode::new(code.to_string());
@@ -100,7 +102,10 @@ impl AuthService {
             .await
             .map_err(|e| super::Error::Unexpected(e.to_string()))?;
 
-        Ok(token_result.access_token().to_owned())
+        let access_token = token_result.access_token().to_owned();
+        let expires_in = token_result.expires_in().unwrap_or(self.config.token_ttl);
+
+        Ok((access_token, expires_in))
     }
 
     pub async fn validate(&self, token: &str) -> super::Result<user::Sub> {
@@ -141,10 +146,15 @@ impl AuthService {
             .ok_or(super::Error::UnknownKid)
     }
 
-    pub async fn cache_token(&self, sid: &uuid::Uuid, token: &str) -> super::Result<()> {
+    pub async fn cache_token(
+        &self,
+        sid: &uuid::Uuid,
+        token: &str,
+        ttl: &Duration,
+    ) -> super::Result<()> {
         let mut con = self.redis_con.clone();
         let cache_key = cache::Key::Session(sid.to_string());
-        let _: () = con.set_ex(cache_key, token, TOKEN_TTL.as_secs()).await?;
+        let _: () = con.set_ex(cache_key, token, ttl.as_secs()).await?;
         Ok(())
     }
 

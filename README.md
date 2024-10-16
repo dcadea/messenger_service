@@ -57,6 +57,8 @@ REQUIRED_CLAIMS=iss,sub,aud,exp,permissions
 ```dotenv
 RUST_LOG=info
 
+TOKEN_TTL=3600
+
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use oauth2::{basic::BasicClient, AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
 
 #[derive(Clone)]
@@ -12,6 +14,7 @@ pub struct Config {
     pub issuer: String,
     pub audience: String,
     pub required_claims: Vec<String>,
+    pub token_ttl: Duration,
 }
 
 impl Config {
@@ -22,6 +25,7 @@ impl Config {
         issuer: String,
         audience: String,
         required_claims: Vec<String>,
+        token_ttl: Duration,
     ) -> Self {
         Self {
             client_id,
@@ -34,6 +38,7 @@ impl Config {
             issuer,
             audience,
             required_claims,
+            token_ttl,
         }
     }
 }
