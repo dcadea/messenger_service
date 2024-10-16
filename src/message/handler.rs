@@ -43,7 +43,7 @@ pub async fn find_one(
     user_info: Extension<UserInfo>,
     message_service: State<MessageService>,
 ) -> crate::Result<Markup> {
-    // TODO: chat_service.check_member(&chat_id, &user_info.sub).await?;
+    // TODO: validate user is a member of the chat
 
     let msg = message_service.find_by_id(&id).await?;
 
@@ -51,7 +51,7 @@ pub async fn find_one(
 }
 
 pub async fn delete(id: Path<Id>, message_service: State<MessageService>) -> crate::Result<()> {
-    // TODO: chat_service.check_member(&chat_id, &user_info.sub).await?;
+    // TODO: validate user is a member of the chat
 
     message_service.delete(&id).await?;
 

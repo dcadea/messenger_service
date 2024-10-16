@@ -20,7 +20,9 @@ use crate::user;
 use crate::user::model::UserInfo;
 
 const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
+// TODO: use ttl from token response
 const TOKEN_TTL: Duration = Duration::from_secs(36000);
+// TODO: use ttl from application config
 const EXCHANGE_TTL: Duration = Duration::from_secs(5);
 
 #[derive(Clone)]

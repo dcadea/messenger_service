@@ -65,7 +65,7 @@ impl Default for Config {
     }
 }
 
-pub fn init_http_client() -> self::Result<reqwest::Client> {
+pub fn init_http_client() -> Result<reqwest::Client> {
     reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(2))
         .timeout(Duration::from_secs(5))

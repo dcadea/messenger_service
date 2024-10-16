@@ -17,14 +17,14 @@ pub async fn validate_sid(
     next: Next,
 ) -> crate::Result<Response> {
     if let Some(sid) = jar.get(super::SESSION_ID) {
-        let token = auth_service
-            .find_token(sid.value())
-            .await
-            .ok_or(super::Error::Forbidden(String::from("invalid sid")))?;
-
-        let sub = auth_service.validate(&token).await?;
-        request.extensions_mut().insert(sub);
-        request.extensions_mut().insert(AccessToken::new(token));
+        match auth_service.find_token(sid.value()).await {
+            Some(token) => {
+                let sub = auth_service.validate(&token).await?;
+                request.extensions_mut().insert(sub);
+                request.extensions_mut().insert(AccessToken::new(token));
+            }
+            None => return Ok(Redirect::to("/logout").into_response()),
+        }
     }
 
     Ok(next.run(request).await)

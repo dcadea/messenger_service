@@ -9,6 +9,7 @@ use crate::user::model::{User, UserInfo};
 use super::repository::UserRepository;
 use super::Sub;
 
+// TODO: use ttl from token response
 const USER_INFO_TTL: u64 = 3600;
 
 #[derive(Clone)]
