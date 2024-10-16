@@ -20,8 +20,10 @@ use crate::user;
 use crate::user::model::UserInfo;
 
 const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
-// TODO: use ttl from application config
-const EXCHANGE_TTL: Duration = Duration::from_secs(5);
+
+/// Since most of IDPs don't provide a TTL through introspection endpoint,
+/// we set a limit of 30 seconds for client to exchange the code for a token.
+const EXCHANGE_TTL: Duration = Duration::from_secs(30);
 
 #[derive(Clone)]
 pub struct AuthService {
