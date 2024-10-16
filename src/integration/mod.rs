@@ -28,6 +28,10 @@ impl Default for Config {
 
         let rust_log = std::env::var("RUST_LOG").unwrap_or("info".into());
         let level = LevelFilter::from_str(&rust_log).unwrap_or(LevelFilter::Info);
+        let log_file = std::env::var("CARGO_PKG_NAME")
+            .map(|pkg| format!("{}.log", pkg))
+            .expect("CARGO_PKG_NAME must be set");
+
         CombinedLogger::init(vec![
             TermLogger::new(
                 level,
@@ -38,7 +42,7 @@ impl Default for Config {
             WriteLogger::new(
                 level,
                 simplelog::Config::default(),
-                File::create("api.log").expect("Failed to create log file"),
+                File::create(log_file).expect("Failed to create log file"),
             ),
         ])
         .expect("Failed to initialize logger");
