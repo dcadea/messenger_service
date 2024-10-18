@@ -48,7 +48,7 @@ pub struct MessageDto {
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     pub id: Id,
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-    chat_id: chat::Id,
+    pub chat_id: chat::Id,
     pub owner: user::Sub,
     pub recipient: user::Sub,
     pub text: String,

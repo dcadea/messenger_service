@@ -40,7 +40,7 @@ impl Render for UserSearch {
     }
 }
 
-pub fn search_result(users: &Vec<UserInfo>) -> Markup {
+pub fn search_result(users: &[UserInfo]) -> Markup {
     let search_result_class =
         "absolute w-full bg-white border border-gray-300 rounded-md shadow-lg";
     html! {

@@ -43,15 +43,20 @@ pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
                 src=(recipient.picture) alt="User avatar" {}
         }
 
-        div ."flex-grow overflow-y-auto mt-4 mb-4"
-            hx-get={ "/api/messages?limit=12&chat_id=" (id) }
-            hx-trigger="load" {}
+        div id="active-chat"
+            class="flex-grow overflow-y-auto mt-4 mb-4"
+        {
+            div class="message-list flex flex-col-reverse"
+                hx-get={ "/api/messages?limit=14&chat_id=" (id) }
+                hx-trigger="load"
+                hx-swap="innerHTML" {}
+        }
 
         (message_input(id, &recipient.sub))
     }
 }
 
-pub fn chat_list(chats: &Vec<ChatDto>) -> Markup {
+pub fn chat_list(chats: &[ChatDto]) -> Markup {
     html! {
         @for chat in chats {
             (chat)

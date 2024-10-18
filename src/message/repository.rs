@@ -42,7 +42,7 @@ impl MessageRepository {
         let cursor = self
             .collection
             .find(doc! {"chat_id": chat_id})
-            .sort(doc! {"timestamp": 1})
+            .sort(doc! {"timestamp": -1})
             .await?;
 
         let messages = cursor.try_collect::<Vec<Message>>().await?;
@@ -58,7 +58,7 @@ impl MessageRepository {
         let cursor = self
             .collection
             .find(doc! {"chat_id": chat_id})
-            .sort(doc! {"timestamp": 1})
+            .sort(doc! {"timestamp": -1})
             .limit(limit as i64)
             .await?;
 
@@ -78,7 +78,7 @@ impl MessageRepository {
                 "chat_id": chat_id,
                 "timestamp": {"$lt": before}
             })
-            .sort(doc! {"timestamp": 1})
+            .sort(doc! {"timestamp": -1})
             .await?;
 
         let messages = cursor.try_collect::<Vec<Message>>().await?;
@@ -98,7 +98,7 @@ impl MessageRepository {
                 "chat_id": chat_id,
                 "timestamp": {"$lt": before}
             })
-            .sort(doc! {"timestamp": 1})
+            .sort(doc! {"timestamp": -1})
             .limit(limit as i64)
             .await?;
 
