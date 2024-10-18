@@ -76,7 +76,7 @@ impl EventService {
                     let owner = user_info.sub;
 
                     self.chat_service
-                        .check_members(&chat_id, [owner.clone(), recipient.clone()])
+                        .check_members(&chat_id, [&owner.clone(), &recipient.clone()])
                         .await?;
 
                     let message = self

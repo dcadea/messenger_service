@@ -46,7 +46,8 @@ pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
         div id="active-chat"
             class="flex-grow overflow-y-auto mt-4 mb-4"
         {
-            div class="message-list flex flex-col-reverse"
+            div id="message-list"
+                class="flex flex-col-reverse"
                 hx-get={ "/api/messages?limit=14&chat_id=" (id) }
                 hx-trigger="load"
                 hx-swap="innerHTML" {}

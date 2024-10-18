@@ -110,10 +110,10 @@ impl ChatService {
         Ok(())
     }
 
-    pub async fn check_members(&self, chat_id: &Id, members: [user::Sub; 2]) -> super::Result<()> {
+    pub async fn check_members(&self, chat_id: &Id, members: [&user::Sub; 2]) -> super::Result<()> {
         let cached_members = self.find_members(chat_id).await?;
         let belongs_to_chat =
-            cached_members.contains(&members[0]) && cached_members.contains(&members[1]);
+            cached_members.contains(members[0]) && cached_members.contains(members[1]);
 
         if !belongs_to_chat {
             return Err(chat::Error::NotMember);

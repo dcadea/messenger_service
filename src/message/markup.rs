@@ -1,3 +1,4 @@
+use chrono::DateTime;
 use maud::{html, Markup};
 
 use crate::user::model::UserInfo;
@@ -7,7 +8,11 @@ use super::model::MessageDto;
 
 pub fn message_input(chat_id: &chat::Id, recipient: &user::Sub) -> Markup {
     html! {
-        form #message-input ."border-gray-200 flex"
+        form #message-input
+            ."border-gray-200 flex"
+            hx-post="/api/messages"
+            hx-target="#message-list"
+            hx-swap="afterbegin show:bottom"
         {
             input type="hidden" name="type" value="create_message" {}
             input type="hidden" name="chat_id" value=(chat_id) {}
@@ -73,8 +78,7 @@ fn last_message_item(msg: &MessageDto, user_info: &UserInfo) -> Markup {
 }
 
 fn message_bubble(msg: &MessageDto, belongs_to_user: bool) -> Markup {
-    let message_timestamp =
-        chrono::DateTime::from_timestamp(msg.timestamp, 0).map(|dt| dt.format("%M:%S"));
+    let message_timestamp = DateTime::from_timestamp(msg.timestamp, 0).map(|dt| dt.format("%H:%M"));
 
     html! {
         @if belongs_to_user {
