@@ -44,7 +44,7 @@ pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
         }
 
         div ."flex-grow overflow-y-auto mt-4 mb-4"
-            hx-get={ "/api/messages?limit=25&chat_id=" (id) }
+            hx-get={ "/api/messages?limit=12&chat_id=" (id) }
             hx-trigger="load" {}
 
         (message_input(id, &recipient.sub))
