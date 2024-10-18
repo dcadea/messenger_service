@@ -242,15 +242,16 @@ async fn remove_online_user(ctx: &context::Ws, user_service: UserService) {
 
 type OnlineStatusChangedStream = Pin<Box<dyn Stream<Item = super::Result<redis::Msg>> + Send>>;
 
-// FIXME
+// FIXME: implement online functionality properly
 async fn listen_online_status_change() -> super::Result<OnlineStatusChangedStream> {
     let config = crate::integration::cache::Config::env().unwrap_or_default();
     let client = crate::integration::cache::init_client(&config).await?;
-    let mut con = client.get_async_connection().await?;
+    let mut con = client.get_multiplexed_async_connection().await?;
 
     enable_keyspace_events(&mut con).await?;
 
-    let mut pubsub = con.into_pubsub();
+    let mut pubsub = client.get_async_pubsub().await?;
+
     pubsub
         .psubscribe(cache::Keyspace::new(cache::Key::UsersOnline))
         .await?;
@@ -266,7 +267,7 @@ async fn listen_online_status_change() -> super::Result<OnlineStatusChangedStrea
     Ok(Box::pin(stream))
 }
 
-async fn enable_keyspace_events(con: &mut redis::aio::Connection) -> super::Result<()> {
+async fn enable_keyspace_events(con: &mut redis::aio::MultiplexedConnection) -> super::Result<()> {
     redis::cmd("CONFIG")
         .arg("SET")
         .arg("notify-keyspace-events")

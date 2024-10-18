@@ -34,7 +34,7 @@ oauth2 = "4.4.2"
 maud = { version = "0.26.0", features = ["axum"] }
 
 mongodb = "3.1.0"
-redis = { version = "0.27.2", features = [
+redis = { version = "0.27.4", features = [
     "connection-manager",
     "tokio-comp",
     "json",
