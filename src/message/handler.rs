@@ -69,6 +69,7 @@ pub async fn create(
     );
 
     let msg = message_service.create(&msg).await?;
+    chat_service.update_last_message(&msg).await?;
 
     Ok(markup::message_item(&MessageDto::from(msg), &user_info))
 }
