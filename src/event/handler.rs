@@ -11,6 +11,7 @@ use super::model::{Command, Notification, Queue};
 use super::service::EventService;
 use crate::event::markup;
 use crate::integration::cache;
+use crate::user;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 use axum::extract::ws::Message::{Binary, Close, Text};
@@ -28,21 +29,19 @@ pub async fn ws(
     State(event_service): State<EventService>,
     State(user_service): State<UserService>,
 ) -> Response {
-    ws.on_upgrade(move |socket| {
-        handle_socket(user_info.clone(), socket, event_service, user_service)
-    })
+    ws.on_upgrade(move |socket| handle_socket(user_info.sub, socket, event_service, user_service))
 }
 
 async fn handle_socket(
-    user_info: UserInfo,
+    logged_sub: user::Sub,
     ws: WebSocket,
     event_service: EventService,
     user_service: UserService,
 ) {
     let ctx = match event_service.create_channel().await {
         Ok(channel) => {
-            let ctx = context::Ws::new(user_info.to_owned(), channel);
-            if let Err(e) = user_service.add_online_user(&user_info.sub).await {
+            let ctx = context::Ws::new(logged_sub.to_owned(), channel);
+            if let Err(e) = user_service.add_online_user(&logged_sub).await {
                 error!("Failed to add user to online users: {e}");
             }
             ctx
@@ -69,7 +68,7 @@ async fn handle_socket(
         Err(e) => error!("WS disconnected with error: {e}"),
     }
 
-    if let Err(e) = user_service.remove_online_user(&user_info.sub).await {
+    if let Err(e) = user_service.remove_online_user(&logged_sub).await {
         error!("Failed to remove user from online users: {e}");
     }
     match event_service.close_channel(&ctx).await {
@@ -134,7 +133,7 @@ async fn write(
     event_service: EventService,
     user_service: UserService,
 ) {
-    let messages_queue = Queue::Messages(ctx.user_info.sub.clone());
+    let messages_queue = Queue::Messages(ctx.logged_sub.clone());
 
     let mut noti_stream = match event_service.read(&ctx, &messages_queue).await {
         Ok(binding) => binding,
@@ -179,7 +178,7 @@ async fn write(
                         debug!("Sending notification: {:?}", noti);
 
                         let mut sender = sender.write().await;
-                        let noti_markup = markup::noti_item(&noti, &ctx.user_info);
+                        let noti_markup = markup::noti_item(&noti, &ctx.logged_sub);
 
                         if let Err(e) = sender.send(Text(noti_markup.into_string())).await {
                             error!("Failed to send notification to client: {e}");
@@ -196,8 +195,9 @@ async fn publish_online_users(
     user_service: UserService,
     event_service: EventService,
 ) {
-    let sub = ctx.user_info.sub.clone();
-    if let Ok(users) = user_service.get_online_friends(&sub).await {
+    let logged_sub = ctx.logged_sub.to_owned();
+
+    if let Ok(users) = user_service.get_online_friends(&logged_sub).await {
         if ctx.same_online_friends(&users).await {
             return;
         }
@@ -205,7 +205,7 @@ async fn publish_online_users(
         match event_service
             .publish_noti(
                 ctx,
-                &Queue::Messages(sub),
+                &Queue::Messages(logged_sub),
                 &Notification::OnlineUsers {
                     users: users.clone(),
                 },

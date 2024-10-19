@@ -4,20 +4,19 @@ use std::sync::Arc;
 use tokio::sync::{Notify, RwLock};
 
 use crate::user;
-use crate::user::model::UserInfo;
 
 #[derive(Clone)]
 pub struct Ws {
-    pub user_info: Arc<UserInfo>,
+    pub logged_sub: user::Sub,
     channel: Arc<RwLock<lapin::Channel>>,
     online_friends: Arc<RwLock<HashSet<user::Sub>>>,
     pub close: Arc<Notify>,
 }
 
 impl Ws {
-    pub fn new(user_info: UserInfo, channel: lapin::Channel) -> Self {
+    pub fn new(logged_sub: user::Sub, channel: lapin::Channel) -> Self {
         Self {
-            user_info: Arc::new(user_info),
+            logged_sub,
             channel: Arc::new(RwLock::new(channel)),
             online_friends: Arc::new(RwLock::new(HashSet::new())),
             close: Arc::new(Notify::new()),

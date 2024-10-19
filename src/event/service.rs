@@ -43,15 +43,13 @@ impl EventService {
     pub async fn handle_command(&self, ctx: &context::Ws, command: Command) -> super::Result<()> {
         debug!("handling command: {:?}", command);
 
-        let logged_sub = ctx.user_info.sub.clone();
-
         match command {
             Command::CreateMessage {
                 chat_id,
                 recipient,
                 text,
             } => {
-                let owner = logged_sub.clone();
+                let owner = ctx.logged_sub.clone();
 
                 self.chat_service
                     .check_members(&chat_id, [&owner.clone(), &recipient.clone()])
@@ -86,7 +84,7 @@ impl EventService {
             }
             Command::UpdateMessage { id, text } => {
                 let message = self.message_service.find_by_id(&id).await?;
-                if message.owner != logged_sub {
+                if message.owner != ctx.logged_sub {
                     return Err(event::Error::NotOwner);
                 }
 
@@ -104,7 +102,7 @@ impl EventService {
             }
             Command::DeleteMessage(id) => {
                 let message = self.message_service.find_by_id(&id).await?;
-                if message.owner != logged_sub {
+                if message.owner != ctx.logged_sub {
                     return Err(event::Error::NotOwner);
                 }
                 self.message_service.delete(&id).await?;
@@ -121,7 +119,7 @@ impl EventService {
             }
             Command::MarkAsSeen(id) => {
                 let message = self.message_service.find_by_id(&id).await?;
-                if message.recipient != logged_sub {
+                if message.recipient != ctx.logged_sub {
                     return Err(event::Error::NotRecipient);
                 }
                 self.message_service.mark_as_seen(&id).await?;

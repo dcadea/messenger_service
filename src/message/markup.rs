@@ -1,7 +1,6 @@
 use chrono::DateTime;
 use maud::{html, Markup};
 
-use crate::user::model::UserInfo;
 use crate::{chat, user};
 
 use super::model::MessageDto;
@@ -28,20 +27,20 @@ pub fn message_input(chat_id: &chat::Id, recipient: &user::Sub) -> Markup {
     }
 }
 
-pub fn message_list(messages: &[MessageDto], user_info: &UserInfo) -> Markup {
+pub fn message_list(messages: &[MessageDto], logged_sub: &user::Sub) -> Markup {
     html! {
         @for i in 0..messages.len() {
             @if i == messages.len() - 1 {
-                (last_message_item(&messages[i], &user_info))
+                (last_message_item(&messages[i], logged_sub))
             } @else {
-                (message_item(&messages[i], &user_info))
+                (message_item(&messages[i], logged_sub))
             }
         }
     }
 }
 
-pub fn message_item(msg: &MessageDto, user_info: &UserInfo) -> Markup {
-    let belongs_to_user = msg.owner == user_info.sub;
+pub fn message_item(msg: &MessageDto, sub: &user::Sub) -> Markup {
+    let belongs_to_user = msg.owner == *sub;
 
     html! {
         div id={"m-" (msg.id)}
@@ -54,8 +53,8 @@ pub fn message_item(msg: &MessageDto, user_info: &UserInfo) -> Markup {
 }
 
 /// Renders the last message in the list with a trigger to load more messages
-fn last_message_item(msg: &MessageDto, user_info: &UserInfo) -> Markup {
-    let belongs_to_user = msg.owner == user_info.sub;
+fn last_message_item(msg: &MessageDto, sub: &user::Sub) -> Markup {
+    let belongs_to_user = msg.owner == *sub;
 
     html! {
         div id={"m-" (msg.id)}
