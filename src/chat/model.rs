@@ -20,17 +20,6 @@ pub struct Chat {
     updated_at: i64,
 }
 
-impl Chat {
-    pub fn new(members: [user::Sub; 2]) -> Self {
-        Self {
-            id: None,
-            members,
-            last_message: None,
-            updated_at: 0,
-        }
-    }
-}
-
 #[derive(Serialize)]
 pub struct ChatDto {
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
@@ -53,9 +42,4 @@ impl ChatDto {
             updated_at: chat.updated_at,
         }
     }
-}
-
-#[derive(Deserialize, Clone)]
-pub struct ChatRequest {
-    pub recipient: user::Sub,
 }

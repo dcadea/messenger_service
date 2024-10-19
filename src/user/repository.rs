@@ -46,14 +46,6 @@ impl UserRepository {
         cursor.try_collect().await.map_err(super::Error::from)
     }
 
-    pub async fn add_friend(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
-        let filter = doc! { "sub": sub };
-        let update = doc! { "$push": { "friends": friend } };
-
-        self.users_col.update_one(filter, update).await?;
-        Ok(())
-    }
-
     pub async fn find_friends_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<user::Sub>> {
         let filter = doc! { "sub": sub };
         let projection = FindOneOptions::builder()

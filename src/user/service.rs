@@ -49,12 +49,6 @@ impl UserService {
         let users = self.repository.search_by_nickname(nickname).await?;
         Ok(users.into_iter().map(|user| user.into()).collect())
     }
-
-    pub async fn add_friend(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
-        self.repository.add_friend(sub, friend).await?;
-        self.cache_friend(sub, friend).await?;
-        Ok(())
-    }
 }
 
 // cache operations
@@ -85,14 +79,6 @@ impl UserService {
         let mut con = self.redis_con.clone();
         let _: () = con
             .sadd(cache::Key::Friends(sub.to_owned()), friends)
-            .await?;
-        Ok(())
-    }
-
-    async fn cache_friend(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
-        let mut con = self.redis_con.clone();
-        let _: () = con
-            .sadd(cache::Key::Friends(sub.to_owned()), friend)
             .await?;
         Ok(())
     }

@@ -1,7 +1,4 @@
-use axum::{
-    routing::{get, post},
-    Router,
-};
+use axum::{routing::get, Router};
 
 use crate::{state::AppState, user};
 
@@ -26,7 +23,6 @@ pub fn resources<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/chats", get(handler::find_all))
         .route("/chats/:id", get(handler::find_one))
-        .route("/chats", post(handler::create))
         .with_state(state)
 }
 

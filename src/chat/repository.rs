@@ -21,15 +21,6 @@ impl ChatRepository {
 }
 
 impl ChatRepository {
-    pub async fn insert(&self, chat: &Chat) -> super::Result<Chat> {
-        let result = self.collection.insert_one(chat).await?;
-        if let Some(id) = result.inserted_id.as_object_id() {
-            return self.find_by_id(&id).await;
-        }
-
-        Err(chat::Error::Unexpected("Failed to insert chat".to_owned()))
-    }
-
     pub async fn update_last_message(&self, id: &Id, text: &str) -> super::Result<()> {
         self.collection
             .update_one(

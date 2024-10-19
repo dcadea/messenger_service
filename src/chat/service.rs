@@ -4,7 +4,7 @@ use futures::future::try_join_all;
 use futures::TryFutureExt;
 use redis::AsyncCommands;
 
-use super::model::{Chat, ChatDto, ChatRequest};
+use super::model::{Chat, ChatDto};
 use super::repository::ChatRepository;
 use super::Id;
 use crate::integration::cache;
@@ -37,30 +37,6 @@ impl ChatService {
 }
 
 impl ChatService {
-    pub async fn create(&self, req: &ChatRequest, user_info: &UserInfo) -> super::Result<ChatDto> {
-        let owner = user_info.clone().sub;
-        let recipient = req.clone().recipient;
-
-        match self
-            .repository
-            .find_id_by_members([owner.to_owned(), recipient.to_owned()])
-            .await
-        {
-            Ok(_) => Err(chat::Error::AlreadyExists([owner, recipient])),
-            Err(chat::Error::NotFound(_)) => {
-                let chat = self
-                    .repository
-                    .insert(&Chat::new([owner.clone(), recipient.clone()]))
-                    .await?;
-
-                self.user_service.add_friend(&owner, &recipient).await?;
-
-                self.chat_to_dto(chat, user_info).await
-            }
-            Err(err) => Err(err),
-        }
-    }
-
     pub async fn update_last_message(&self, message: &Message) -> super::Result<()> {
         let chat_id = self
             .repository
