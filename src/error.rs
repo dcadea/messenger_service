@@ -53,9 +53,6 @@ impl IntoResponse for Error {
             Self::_Chat(chat::Error::AlreadyExists(_)) => (StatusCode::CONFLICT, error_message),
             Self::_Chat(chat::Error::NotMember) => (StatusCode::FORBIDDEN, error_message),
 
-            Self::_Event(event::Error::MissingUserInfo) => {
-                (StatusCode::UNAUTHORIZED, error_message)
-            }
             Self::_Event(event::Error::NotOwner) => (StatusCode::FORBIDDEN, error_message),
             Self::_Event(event::Error::NotRecipient) => (StatusCode::FORBIDDEN, error_message),
 

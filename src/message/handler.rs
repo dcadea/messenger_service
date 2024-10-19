@@ -1,5 +1,5 @@
 use axum::extract::{Path, State};
-use axum::{Extension, Form};
+use axum::Extension;
 use axum_extra::extract::Query;
 use maud::Markup;
 use serde::Deserialize;
@@ -9,7 +9,6 @@ use crate::chat::service::ChatService;
 use crate::error::Error;
 use crate::user::model::UserInfo;
 
-use super::model::{Message, MessageDto, MessageRequest};
 use super::service::MessageService;
 use super::{markup, Id};
 
@@ -42,36 +41,16 @@ pub async fn find_all(
 pub async fn find_one(
     id: Path<Id>,
     user_info: Extension<UserInfo>,
-    message_service: State<MessageService>,
-) -> crate::Result<Markup> {
-    // TODO: validate user is a member of the chat
-
-    let msg = message_service.find_by_id(&id).await?;
-
-    Ok(markup::message_item(&msg, &user_info))
-}
-
-pub async fn create(
-    user_info: Extension<UserInfo>,
     chat_service: State<ChatService>,
     message_service: State<MessageService>,
-    req: Form<MessageRequest>,
 ) -> crate::Result<Markup> {
+    let msg = message_service.find_by_id(&id).await?;
+
     chat_service
-        .check_members(&req.chat_id, [&user_info.sub, &req.recipient])
+        .check_member(&msg.chat_id, &user_info.sub)
         .await?;
 
-    let msg = Message::new(
-        req.chat_id,
-        user_info.sub.clone(),
-        req.recipient.clone(),
-        &req.text,
-    );
-
-    let msg = message_service.create(&msg).await?;
-    chat_service.update_last_message(&msg).await?;
-
-    Ok(markup::message_item(&MessageDto::from(msg), &user_info))
+    Ok(markup::message_item(&msg, &user_info))
 }
 
 pub async fn delete(id: Path<Id>, message_service: State<MessageService>) -> crate::Result<()> {

@@ -24,7 +24,7 @@ pub fn pages<S>(state: AppState) -> Router<S> {
         .with_state(state)
 }
 
-pub fn endpoints<S>(state: AppState) -> Router<S> {
+pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/sso/login", get(handler::login))
         .route("/logout", get(handler::logout))

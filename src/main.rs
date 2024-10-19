@@ -48,6 +48,7 @@ async fn main() {
 fn app(app_state: AppState) -> Router {
     let protected_router = Router::new()
         .merge(chat::pages(app_state.clone()))
+        .merge(event::api(app_state.clone()))
         .nest(
             "/api",
             Router::new()
@@ -64,8 +65,7 @@ fn app(app_state: AppState) -> Router {
 
     Router::new()
         .merge(auth::pages(app_state.clone()))
-        .merge(auth::endpoints(app_state.clone()))
-        .merge(event::endpoints(app_state.clone()))
+        .merge(auth::api(app_state.clone()))
         .merge(protected_router)
         .route_layer(map_response(wrap_in_base))
         .route(

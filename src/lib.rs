@@ -27,8 +27,6 @@ pub mod markup {
     use reqwest::header::CONTENT_LENGTH;
 
     fn base(content: Markup) -> Markup {
-        let htmx_config = r#"{"defaultFocusScroll":false,"scrollIntoViewOnBoost": false}"#;
-
         html! {
             (DOCTYPE)
             html {
@@ -41,7 +39,6 @@ pub mod markup {
                     script src="https://unpkg.com/htmx.org@2.0.3/dist/ext/ws.js" {}
                     script src="https://cdn.tailwindcss.com" {}
                     link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" {}
-                    meta name="htmx-config" content=(htmx_config) {}
                 }
                 body."h-screen bg-black flex items-center justify-center" {
                     ."max-w-lg h-3/5 md:h-4/5 md:w-4/5 bg-white rounded-2xl p-6" {

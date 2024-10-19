@@ -3,49 +3,31 @@ use std::sync::Arc;
 
 use tokio::sync::{Notify, RwLock};
 
+use crate::user;
 use crate::user::model::UserInfo;
-use crate::{event, user};
 
 #[derive(Clone)]
 pub struct Ws {
-    user_info: Arc<RwLock<Option<UserInfo>>>,
-    channel: Arc<RwLock<Option<lapin::Channel>>>,
+    pub user_info: Arc<UserInfo>,
+    channel: Arc<RwLock<lapin::Channel>>,
     online_friends: Arc<RwLock<HashSet<user::Sub>>>,
-    pub login: Arc<Notify>,
     pub close: Arc<Notify>,
 }
 
 impl Ws {
-    pub fn new() -> Self {
+    pub fn new(user_info: UserInfo, channel: lapin::Channel) -> Self {
         Self {
-            user_info: Arc::new(RwLock::new(None)),
-            channel: Arc::new(RwLock::new(None)),
+            user_info: Arc::new(user_info),
+            channel: Arc::new(RwLock::new(channel)),
             online_friends: Arc::new(RwLock::new(HashSet::new())),
-            login: Arc::new(Notify::new()),
             close: Arc::new(Notify::new()),
         }
     }
 }
 
 impl Ws {
-    pub async fn set_user_info(&self, user_info: UserInfo) {
-        *self.user_info.write().await = Some(user_info);
-    }
-
-    pub async fn get_user_info(&self) -> Option<UserInfo> {
-        self.user_info.read().await.clone()
-    }
-
-    pub async fn set_channel(&self, channel: lapin::Channel) {
-        *self.channel.write().await = Some(channel);
-    }
-
-    pub async fn get_channel(&self) -> super::Result<lapin::Channel> {
-        self.channel
-            .read()
-            .await
-            .clone()
-            .ok_or(event::Error::MissingAmqpChannel)
+    pub async fn get_channel(&self) -> lapin::Channel {
+        self.channel.read().await.clone()
     }
 
     pub async fn set_online_friends(&self, friends: HashSet<user::Sub>) {

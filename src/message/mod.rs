@@ -1,5 +1,5 @@
 use axum::{
-    routing::{delete, get, post},
+    routing::{delete, get},
     Router,
 };
 
@@ -18,7 +18,6 @@ pub fn resources<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/messages", get(handler::find_all))
         .route("/messages/:id", get(handler::find_one))
-        .route("/messages", post(handler::create))
         .route("/messages/:id", delete(handler::delete))
         .with_state(state)
 }

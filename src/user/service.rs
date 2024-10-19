@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use log::debug;
 use redis::AsyncCommands;
 
 use crate::integration::cache;
@@ -9,7 +10,7 @@ use crate::user::model::{User, UserInfo};
 use super::repository::UserRepository;
 use super::Sub;
 
-// TODO: use ttl from token response
+// TODO: make this configurable
 const USER_INFO_TTL: u64 = 3600;
 
 #[derive(Clone)]
@@ -54,6 +55,7 @@ impl UserService {
 // cache operations
 impl UserService {
     pub async fn add_online_user(&self, sub: &Sub) -> super::Result<()> {
+        debug!("Adding to online users: {:?}", sub);
         let mut con = self.redis_con.clone();
         let _: () = con.sadd(cache::Key::UsersOnline, sub).await?;
         Ok(())
@@ -68,6 +70,7 @@ impl UserService {
     }
 
     pub async fn remove_online_user(&self, sub: &Sub) -> super::Result<()> {
+        debug!("Removing from online users: {:?}", sub);
         let mut con = self.redis_con.clone();
         let _: () = con.srem(cache::Key::UsersOnline, sub).await?;
         Ok(())

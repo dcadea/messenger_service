@@ -69,10 +69,3 @@ impl From<Message> for MessageDto {
         }
     }
 }
-
-#[derive(Deserialize, Clone)]
-pub struct MessageRequest {
-    pub chat_id: chat::Id,
-    pub recipient: user::Sub,
-    pub text: String,
-}

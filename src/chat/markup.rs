@@ -15,7 +15,11 @@ pub async fn home(logged_user: Extension<UserInfo>) -> Wrappable {
 
 pub async fn all_chats(logged_user: Extension<UserInfo>) -> Markup {
     html! {
-        #chat-window ."flex flex-col h-full" {
+        div id="chat-window"
+            class="flex flex-col h-full"
+            hx-ext="ws"
+            ws-connect="/ws"
+        {
             (UserHeader{
                 name: &logged_user.name,
                 picture: &logged_user.picture,
@@ -23,7 +27,7 @@ pub async fn all_chats(logged_user: Extension<UserInfo>) -> Markup {
 
             (UserSearch{})
 
-            #chat-list
+            div id="chat-list"
                 hx-get="/api/chats"
                 hx-trigger="load"
                 hx-swap="outerHTML" {}
@@ -71,11 +75,13 @@ impl Render for ChatDto {
             div class="chat-item p-4 mb-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex justify-between"
                 id={"c-" (self.id)}
                 hx-get={"/chats/" (self.id)}
-                hx-target="#chat-window" {
-
-                span."chat-recipient font-bold" { (self.recipient) }
+                hx-target="#chat-window"
+            {
+                span class="chat-recipient font-bold" { (self.recipient) }
                 @if let Some(last_message) = &self.last_message {
-                    span class="chat-last-message text-sm text-gray-500 truncate" { (last_message) }
+                    span class="chat-last-message text-sm text-gray-500 truncate" {
+                        (last_message)
+                    }
                 }
             }
         }
