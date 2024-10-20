@@ -25,7 +25,7 @@ pub struct ChatDto {
     #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     pub id: Id,
     pub recipient: user::Sub,
-    recipient_name: String,
+    pub recipient_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_message: Option<String>,
     updated_at: i64,

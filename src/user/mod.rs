@@ -24,6 +24,21 @@ pub fn resources<S>(state: AppState) -> Router<S> {
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Sub(pub String);
 
+impl Sub {
+    fn parts(&self) -> (String, String) {
+        // split string by '|' and return array of 2 elements
+        let mut parts = self.0.splitn(2, '|');
+        let provider = parts.next().expect("provider must be present");
+        let id = parts.next().expect("id must be present");
+
+        (provider.to_string(), id.to_string())
+    }
+
+    pub fn id(&self) -> String {
+        self.parts().1
+    }
+}
+
 impl Display for Sub {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)

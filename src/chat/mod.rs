@@ -3,7 +3,7 @@ use axum::{routing::get, Router};
 use crate::{state::AppState, user};
 
 mod handler;
-mod markup;
+pub mod markup;
 mod model;
 pub mod repository;
 pub mod service;
