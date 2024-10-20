@@ -3,7 +3,6 @@ use maud::{html, Markup, Render};
 
 use crate::message::markup::message_input;
 use crate::user;
-use crate::user::markup::{UserHeader, UserSearch};
 use crate::user::model::UserInfo;
 use messenger_service::markup::Wrappable;
 
@@ -18,15 +17,10 @@ pub async fn all_chats(logged_user: Extension<UserInfo>) -> Markup {
     html! {
         div id="chat-window"
             class="flex flex-col h-full"
-            hx-ext="ws"
-            ws-connect="/ws"
         {
-            (UserHeader{
-                name: &logged_user.name,
-                picture: &logged_user.picture,
-            })
+            (user::markup::Header(&logged_user))
 
-            (UserSearch{})
+            (user::markup::Search{})
 
             div id="chat-list"
                 class="flex flex-col space-y-2"
@@ -38,12 +32,14 @@ pub async fn all_chats(logged_user: Extension<UserInfo>) -> Markup {
 
 pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
     html! {
-        header class="flex justify-between items-center" {
+        header id="recipient-header"
+            class="flex justify-between items-center relative" {
             a class="border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
                 hx-get="/chats"
                 hx-target="#chat-window"
                 hx-swap="outerHTML" { "X" }
             h2 class="text-2xl" { (recipient.name) }
+            span class="online-status absolute inset-12 flex items-center justify-center text-xs text-gray-500" { "offline" }
             img class="w-12 h-12 rounded-full"
                 src=(recipient.picture) alt="User avatar" {}
         }

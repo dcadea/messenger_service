@@ -13,6 +13,7 @@ use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 use crate::{chat, user};
 
+// TODO: Move to config
 const CHAT_TTL: i64 = 3600;
 
 #[derive(Clone)]

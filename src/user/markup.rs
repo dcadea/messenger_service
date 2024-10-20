@@ -2,32 +2,32 @@ use maud::{html, Markup, Render};
 
 use super::model::UserInfo;
 
-pub struct UserHeader<'a> {
-    pub name: &'a str,
-    pub picture: &'a str,
-}
+pub struct Header<'a>(pub &'a UserInfo);
 
-impl Render for UserHeader<'_> {
+impl Render for Header<'_> {
     fn render(&self) -> Markup {
         html! {
-            header."flex justify-between items-center mb-4" {
-                img."w-12 h-12 rounded-full mr-2"
-                    src=(self.picture)
+            header id="user-header"
+                class="flex justify-between items-center mb-4"
+            {
+                img class="w-12 h-12 rounded-full mr-2"
+                    src=(self.0.picture)
                     alt="User avatar" {}
-                h2.text-2xl {(self.name)}
-                a."bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                h2.text-2xl {(self.0.name)}
+                a class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
                     href="/logout" { "Logout" }
             }
         }
     }
 }
 
-pub struct UserSearch;
+pub struct Search;
 
-impl Render for UserSearch {
+impl Render for Search {
     fn render(&self) -> Markup {
         html! {
-            input."mb-4 w-full px-3 py-2 border border-gray-300 rounded-md"
+            input
+                class="mb-4 w-full px-3 py-2 border border-gray-300 rounded-md"
                 type="search"
                 name="nickname"
                 placeholder="Who do you want to chat with? Type here..."

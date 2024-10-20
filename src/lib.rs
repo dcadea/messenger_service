@@ -42,8 +42,12 @@ pub mod markup {
                     script src="https://cdn.tailwindcss.com" {}
                     link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" {}
                 }
-                body."h-screen bg-black flex items-center justify-center" {
-                    ."max-w-lg h-3/5 md:h-4/5 md:w-4/5 bg-white rounded-2xl p-6" {
+                body class="h-screen bg-black flex items-center justify-center"
+                    hx-ext="ws"
+                    ws-connect="/ws"
+                {
+                    div class="max-w-lg h-3/5 md:h-4/5 md:w-4/5 bg-white rounded-2xl p-6"
+                    {
                         (content)
                     }
                 }
