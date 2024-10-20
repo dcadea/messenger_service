@@ -165,7 +165,7 @@ async fn write(
                     None => continue,
                     Some(Err(e)) => error!("Failed to read online status change: {e}"),
                     Some(Ok(_)) => {
-                        publish_online_users(&ctx, user_service.clone(), event_service.clone()).await;
+                        publish_online_friends(&ctx, user_service.clone(), event_service.clone()).await;
                     }
                 }
             },
@@ -190,30 +190,29 @@ async fn write(
     }
 }
 
-async fn publish_online_users(
+async fn publish_online_friends(
     ctx: &context::Ws,
     user_service: UserService,
     event_service: EventService,
 ) {
     let logged_sub = ctx.logged_sub.to_owned();
 
-    if let Ok(users) = user_service.get_online_friends(&logged_sub).await {
-        if ctx.same_online_friends(&users).await {
+    if let Ok(friends) = user_service.get_online_friends(&logged_sub).await {
+        if friends.is_empty() {
             return;
         }
 
-        match event_service
+        if let Err(e) = event_service
             .publish_noti(
                 ctx,
                 &Queue::Messages(logged_sub),
-                &Notification::OnlineUsers {
-                    users: users.clone(),
+                &Notification::OnlineFriends {
+                    friends: friends.clone(),
                 },
             )
             .await
         {
-            Ok(_) => ctx.set_online_friends(users).await,
-            Err(e) => error!("Failed to publish online users notification: {e}"),
+            error!("Failed to publish online users notification: {e}");
         }
     }
 }

@@ -59,7 +59,7 @@ pub enum Notification {
         #[serde(serialize_with = "serialize_object_id_as_hex_string")]
         id: message::Id,
     },
-    OnlineUsers {
-        users: HashSet<user::Sub>,
+    OnlineFriends {
+        friends: HashSet<user::Sub>,
     },
 }

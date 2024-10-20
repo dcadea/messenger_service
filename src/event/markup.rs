@@ -18,10 +18,10 @@ pub fn noti_item(noti: &Notification, logged_sub: &user::Sub) -> Markup {
         Notification::UpdatedMessage { id: _, text: _ } => todo!(),
         Notification::DeletedMessage { id: _ } => todo!(),
         Notification::SeenMessage { id: _ } => todo!(),
-        Notification::OnlineUsers { users } => {
+        Notification::OnlineFriends { friends } => {
             html! {
-                @for user in users {
-                    (chat::markup::OnlineIcon { sub: user, swappable: true })
+                @for friend in friends {
+                    (chat::markup::OnlineIcon { sub: friend, swappable: true })
                 }
             }
         }
