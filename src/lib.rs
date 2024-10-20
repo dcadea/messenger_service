@@ -23,8 +23,10 @@ pub mod markup {
         body::Body,
         response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
     };
-    use maud::{html, Markup, DOCTYPE};
+    use maud::{html, Markup, PreEscaped, DOCTYPE};
     use reqwest::header::CONTENT_LENGTH;
+
+    pub const EMPTY: PreEscaped<&'static str> = PreEscaped("");
 
     fn base(content: Markup) -> Markup {
         html! {

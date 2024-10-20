@@ -30,34 +30,32 @@ impl Render for UserSearch {
             input."mb-4 w-full px-3 py-2 border border-gray-300 rounded-md"
                 type="search"
                 name="nickname"
-                placeholder="Search users..."
+                placeholder="Who do you want to chat with? Type here..."
                 hx-post="/api/users/search"
-                hx-trigger="input changed delay:500ms, search"
+                hx-trigger="input changed delay:500ms"
                 hx-target="#search-results" {}
 
-            #search-results ."relative" {}
+            div id="search-results" class="relative" {}
         }
     }
 }
 
 pub fn search_result(users: &[UserInfo]) -> Markup {
     let search_result_class =
-        "absolute w-full bg-white border border-gray-300 rounded-md shadow-lg";
+        "absolute w-full bg-white border border-gray-300 rounded-md shadow-lg cursor-pointer";
     html! {
         @if users.is_empty() {
             ul class=({search_result_class}) {
-                li."px-3 py-2" { "No users found" }
+                li class="px-3 py-2" { "No users found" }
             }
         } @else {
             ul class=({search_result_class}) {
                 @for user in users {
-                    li."px-3 py-2 hover:bg-gray-200 cursor-pointer flex items-center" {
-                        img."w-6 h-6 rounded-full mr-3"
+                    li class="px-3 py-2 hover:bg-gray-200" {
+                        img class="w-6 h-6 rounded-full float-left"
                             src=(user.picture)
                             alt="User avatar" {}
-                        div {
-                            strong {(user.name)} (user.nickname)
-                        }
+                        strong.px-3 {(user.name)} (user.nickname)
                     }
                 }
             }
