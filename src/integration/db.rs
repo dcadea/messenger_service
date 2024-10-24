@@ -1,6 +1,8 @@
 use std::env;
 use std::time::Duration;
 
+use crate::user;
+
 #[derive(Clone)]
 pub struct Config {
     host: String,
@@ -19,7 +21,7 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn env() -> super::Result<Self> {
+    pub fn env() -> anyhow::Result<Self> {
         let host = env::var("MONGO_HOST")?;
         let port = env::var("MONGO_PORT")?.parse()?;
         let db = env::var("MONGO_DB")?;
@@ -27,7 +29,7 @@ impl Config {
     }
 }
 
-pub async fn init(config: &Config) -> super::Result<mongodb::Database> {
+pub fn init(config: &Config) -> mongodb::Database {
     let options = mongodb::options::ClientOptions::builder()
         .hosts(vec![mongodb::options::ServerAddress::Tcp {
             host: config.host.to_owned(),
@@ -37,13 +39,14 @@ pub async fn init(config: &Config) -> super::Result<mongodb::Database> {
         .connect_timeout(Some(Duration::from_secs(5)))
         .build();
 
-    let db = mongodb::Client::with_options(options).map(|client| client.database(&config.db))?;
-
-    Ok(db)
+    match mongodb::Client::with_options(options).map(|client| client.database(&config.db)) {
+        Ok(db) => db,
+        Err(e) => panic!("Failed to connect to MongoDB: {}", e),
+    }
 }
 
-impl From<crate::user::Sub> for mongodb::bson::Bson {
-    fn from(val: crate::user::Sub) -> Self {
+impl From<user::Sub> for mongodb::bson::Bson {
+    fn from(val: user::Sub) -> Self {
         mongodb::bson::Bson::String(val.0)
     }
 }

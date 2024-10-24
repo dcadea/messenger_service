@@ -1,5 +1,5 @@
 use crate::state::AppState;
-use crate::{integration, user};
+use crate::user;
 use axum::routing::get;
 use axum::Router;
 use serde::Deserialize;
@@ -49,7 +49,6 @@ pub enum Error {
     InvalidState,
 
     _User(#[from] user::Error),
-    _Integration(#[from] integration::Error),
 
     _Reqwest(#[from] reqwest::Error),
     _ParseJson(#[from] serde_json::Error),

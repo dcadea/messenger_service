@@ -11,8 +11,6 @@ pub mod cache;
 pub mod db;
 pub mod idp;
 
-type Result<T> = std::result::Result<T, Error>;
-
 #[derive(Clone)]
 pub struct Config {
     pub redis: cache::Config,
@@ -75,21 +73,15 @@ impl Default for Config {
     }
 }
 
-pub fn init_http_client() -> Result<reqwest::Client> {
-    reqwest::Client::builder()
+pub fn init_http_client() -> reqwest::Client {
+    match reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(2))
         .timeout(Duration::from_secs(5))
         .build()
-        .map_err(Error::from)
-}
-
-#[derive(thiserror::Error, Debug)]
-#[error(transparent)]
-pub enum Error {
-    _Var(#[from] std::env::VarError),
-    _ParseInt(#[from] std::num::ParseIntError),
-    _MongoDB(#[from] mongodb::error::Error),
-    _Lapin(#[from] lapin::Error),
-    _Redis(#[from] redis::RedisError),
-    _Reqwest(#[from] reqwest::Error),
+    {
+        Ok(client) => client,
+        Err(e) => {
+            panic!("Failed to initialize HTTP client: {}", e)
+        }
+    }
 }

@@ -10,7 +10,7 @@ use super::context;
 use super::model::{Command, Notification, Queue};
 use super::service::EventService;
 use crate::event::markup;
-use crate::integration::cache;
+use crate::integration::{self, cache};
 use crate::user;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
@@ -221,8 +221,8 @@ type OnlineStatusChangedStream = Pin<Box<dyn Stream<Item = super::Result<redis::
 
 // FIXME: implement online functionality properly
 async fn listen_online_status_change() -> super::Result<OnlineStatusChangedStream> {
-    let config = crate::integration::cache::Config::env().unwrap_or_default();
-    let client = crate::integration::cache::init_client(&config).await?;
+    let config = integration::cache::Config::env().unwrap_or_default();
+    let client = integration::cache::init_client(&config);
     let mut con = client.get_multiplexed_async_connection().await?;
 
     enable_keyspace_events(&mut con).await?;

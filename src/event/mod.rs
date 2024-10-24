@@ -2,7 +2,7 @@ use axum::routing::get;
 use axum::Router;
 
 use crate::state::AppState;
-use crate::{auth, chat, integration, message, user};
+use crate::{auth, chat, message, user};
 
 mod context;
 mod handler;
@@ -28,7 +28,6 @@ pub enum Error {
 
     _Auth(#[from] auth::Error),
     _Chat(#[from] chat::Error),
-    _Integration(#[from] integration::Error),
     _Message(#[from] message::Error),
     _User(#[from] user::Error),
 

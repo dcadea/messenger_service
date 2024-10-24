@@ -20,24 +20,25 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn env() -> super::Result<Self> {
+    pub fn env() -> anyhow::Result<Self> {
         let host = env::var("REDIS_HOST")?;
         let port = env::var("REDIS_PORT")?.parse()?;
         Ok(Self { host, port })
     }
 }
 
-pub async fn init_client(config: &Config) -> super::Result<redis::Client> {
-    redis::Client::open(format!("redis://{}:{}", &config.host, &config.port))
-        .map_err(super::Error::from)
+pub fn init_client(config: &Config) -> redis::Client {
+    match redis::Client::open(format!("redis://{}:{}", &config.host, &config.port)) {
+        Ok(client) => client,
+        Err(e) => panic!("Failed to connect to Redis: {}", e),
+    }
 }
 
-pub async fn init(config: &Config) -> super::Result<redis::aio::ConnectionManager> {
-    init_client(config)
-        .await?
-        .get_connection_manager()
-        .await
-        .map_err(super::Error::from)
+pub async fn init(config: &Config) -> redis::aio::ConnectionManager {
+    match init_client(config).get_connection_manager().await {
+        Ok(con) => con,
+        Err(e) => panic!("Failed create Redis connection manager: {}", e),
+    }
 }
 
 #[derive(Clone)]

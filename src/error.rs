@@ -5,7 +5,7 @@ use axum::Json;
 use log::error;
 use serde::Serialize;
 
-use crate::{auth, chat, event, integration, message, user};
+use crate::{auth, chat, event, message, user};
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
@@ -18,7 +18,6 @@ pub enum Error {
     _Auth(#[from] auth::Error),
     _Chat(#[from] chat::Error),
     _Event(#[from] event::Error),
-    _Integration(#[from] integration::Error),
     _Message(#[from] message::Error),
     _User(#[from] user::Error),
 }

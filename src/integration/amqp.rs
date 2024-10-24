@@ -19,14 +19,14 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn env() -> super::Result<Self> {
+    pub fn env() -> anyhow::Result<Self> {
         let host = env::var("AMQP_HOST")?;
         let port = env::var("AMQP_PORT")?.parse()?;
         Ok(Self { host, port })
     }
 }
 
-pub async fn init(config: &Config) -> super::Result<RwLock<lapin::Connection>> {
+pub async fn init(config: &Config) -> RwLock<lapin::Connection> {
     let amqp_uri = AMQPUri {
         scheme: AMQPScheme::AMQP,
         authority: AMQPAuthority {
@@ -38,9 +38,8 @@ pub async fn init(config: &Config) -> super::Result<RwLock<lapin::Connection>> {
         query: AMQPQueryString::default(),
     };
 
-    let con = lapin::Connection::connect_uri(amqp_uri, lapin::ConnectionProperties::default())
-        .await
-        .map(|con| RwLock::new(con))?;
-
-    Ok(con)
+    match lapin::Connection::connect_uri(amqp_uri, lapin::ConnectionProperties::default()).await {
+        Ok(con) => RwLock::new(con),
+        Err(e) => panic!("Failed to connect to AMQP: {}", e),
+    }
 }

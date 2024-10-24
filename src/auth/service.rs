@@ -48,14 +48,14 @@ impl AuthService {
         let jwk_decoding_keys = Arc::new(RwLock::new(HashMap::new()));
         let service = Self {
             config: Arc::new(config.to_owned()),
-            http: Arc::new(integration::init_http_client()?),
+            http: Arc::new(integration::init_http_client()),
             oauth2: Arc::new(integration::idp::init(config)),
             redis_con,
             jwt_validator: Arc::new(jwt_validator),
             jwk_decoding_keys: jwk_decoding_keys.clone(),
         };
 
-        let http = integration::init_http_client()?;
+        let http = integration::init_http_client();
         let config_clone = config.clone();
         tokio::spawn(async move {
             loop {
