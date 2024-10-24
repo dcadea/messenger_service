@@ -1,18 +1,12 @@
-use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde::{Deserialize, Serialize};
 
 use crate::{chat, user};
-use messenger_service::serde::serialize_object_id;
 
 use super::Id;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Message {
-    #[serde(
-        alias = "_id",
-        serialize_with = "serialize_object_id",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(alias = "_id", skip_serializing_if = "Option::is_none")]
     id: Option<Id>,
     chat_id: chat::Id,
     pub owner: user::Sub,
@@ -45,9 +39,7 @@ impl Message {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MessageDto {
-    #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     pub id: Id,
-    #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     pub chat_id: chat::Id,
     pub owner: user::Sub,
     pub recipient: user::Sub,
@@ -59,8 +51,8 @@ pub struct MessageDto {
 impl From<Message> for MessageDto {
     fn from(message: Message) -> Self {
         Self {
-            id: message.id.expect("where is message id!?"),
-            chat_id: message.chat_id,
+            id: message.id.clone().expect("where is message id!?"),
+            chat_id: message.chat_id.clone(),
             owner: message.owner.clone(),
             recipient: message.recipient.clone(),
             text: message.clone().text,

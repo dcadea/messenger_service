@@ -49,7 +49,7 @@ pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
         {
             div id="message-list"
                 class="flex flex-col-reverse"
-                hx-get={ "/api/messages?limit=14&chat_id=" (id) }
+                hx-get={ "/api/messages?limit=14&chat_id=" (id.0) }
                 hx-trigger="load"
                 hx-swap="innerHTML" {}
         }
@@ -70,8 +70,8 @@ impl Render for ChatDto {
     fn render(&self) -> Markup {
         html! {
             div class="chat-item p-4 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center"
-                id={"c-" (self.id)}
-                hx-get={"/chats/" (self.id)}
+                id={"c-" (self.id.0)}
+                hx-get={"/chats/" (self.id.0)}
                 hx-target="#chat-window"
             {
                 (OfflineIcon { sub: &self.recipient, swappable: false })

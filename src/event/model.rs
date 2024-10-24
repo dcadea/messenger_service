@@ -3,7 +3,6 @@ use std::fmt::Display;
 use std::pin::Pin;
 
 use futures::Stream;
-use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde::{Deserialize, Serialize};
 
 use crate::message::model::MessageDto;
@@ -43,23 +42,9 @@ pub enum Command {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Notification {
-    NewMessage {
-        message: MessageDto,
-    },
-    UpdatedMessage {
-        #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-        id: message::Id,
-        text: String,
-    },
-    DeletedMessage {
-        #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-        id: message::Id,
-    },
-    SeenMessage {
-        #[serde(serialize_with = "serialize_object_id_as_hex_string")]
-        id: message::Id,
-    },
-    OnlineFriends {
-        friends: HashSet<user::Sub>,
-    },
+    NewMessage { message: MessageDto },
+    UpdatedMessage { id: message::Id, text: String },
+    DeletedMessage { id: message::Id },
+    SeenMessage { id: message::Id },
+    OnlineFriends { friends: HashSet<user::Sub> },
 }

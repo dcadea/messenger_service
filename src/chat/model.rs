@@ -1,5 +1,3 @@
-use messenger_service::serde::serialize_object_id;
-use mongodb::bson::serde_helpers::serialize_object_id_as_hex_string;
 use serde::{Deserialize, Serialize};
 
 use crate::user;
@@ -8,11 +6,7 @@ use super::Id;
 
 #[derive(Serialize, Deserialize)]
 pub struct Chat {
-    #[serde(
-        alias = "_id",
-        serialize_with = "serialize_object_id",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(alias = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<Id>,
     pub members: [user::Sub; 2],
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -22,7 +16,6 @@ pub struct Chat {
 
 #[derive(Serialize)]
 pub struct ChatDto {
-    #[serde(serialize_with = "serialize_object_id_as_hex_string")]
     pub id: Id,
     pub recipient: user::Sub,
     pub recipient_name: String,

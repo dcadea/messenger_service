@@ -12,7 +12,7 @@ pub fn message_input(chat_id: &chat::Id, recipient: &user::Sub) -> Markup {
             ws-send
         {
             input type="hidden" name="type" value="create_message" {}
-            input type="hidden" name="chat_id" value=(chat_id) {}
+            input type="hidden" name="chat_id" value=(chat_id.0) {}
             input type="hidden" name="recipient" value=(recipient) {}
 
             input class="border border-gray-300 rounded-l-md p-2 flex-1"
@@ -43,7 +43,7 @@ pub fn message_item(msg: &MessageDto, sub: &user::Sub) -> Markup {
     let belongs_to_user = msg.owner == *sub;
 
     html! {
-        div id={"m-" (msg.id)}
+        div id={"m-" (msg.id.0)}
             ."message-item flex items-center items-baseline"
             .justify-end[belongs_to_user]
         {
@@ -57,7 +57,7 @@ fn last_message_item(msg: &MessageDto, sub: &user::Sub) -> Markup {
     let belongs_to_user = msg.owner == *sub;
 
     html! {
-        div id={"m-" (msg.id)}
+        div id={"m-" (msg.id.0)}
 
             ."message-item flex items-center items-baseline"
             .justify-end[belongs_to_user]
@@ -66,7 +66,7 @@ fn last_message_item(msg: &MessageDto, sub: &user::Sub) -> Markup {
             // hx-trigger="intersect once"
             hx-trigger="click"
             hx-swap="afterend"
-            hx-get={ "/api/messages?limit=14&chat_id=" (msg.chat_id) "&end_time=" (msg.timestamp) }
+            hx-get={ "/api/messages?limit=14&chat_id=" (msg.chat_id.0) "&end_time=" (msg.timestamp) }
         {
             (message_bubble(msg, belongs_to_user))
         }
@@ -79,8 +79,8 @@ fn message_bubble(msg: &MessageDto, belongs_to_user: bool) -> Markup {
     html! {
         @if belongs_to_user {
             i class="fa-trash-can fa-solid text-red-700 cursor-pointer"
-                hx-delete={"/api/messages/" (msg.id)}
-                hx-target={"#m-" (msg.id)}
+                hx-delete={"/api/messages/" (msg.id.0)}
+                hx-target={"#m-" (msg.id.0)}
                 hx-swap="outerHTML" {}
 
             // TODO: Add edit handler

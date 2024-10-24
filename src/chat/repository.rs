@@ -38,7 +38,7 @@ impl ChatRepository {
         self.collection
             .find_one(doc! { "_id": id })
             .await?
-            .ok_or(chat::Error::NotFound(Some(*id)))
+            .ok_or(chat::Error::NotFound(Some(id.to_owned())))
     }
 
     /**

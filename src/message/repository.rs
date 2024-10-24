@@ -23,7 +23,7 @@ impl MessageRepository {
     pub async fn insert(&self, message: &Message) -> super::Result<Id> {
         let result = self.collection.insert_one(message).await?;
         if let Some(id) = result.inserted_id.as_object_id() {
-            return Ok(id.to_owned());
+            return Ok(Id(id.to_hex()));
         }
 
         Err(message::Error::Unexpected(

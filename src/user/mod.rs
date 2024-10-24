@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use axum::{routing::post, Router};
+use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
 use crate::state::AppState;
@@ -13,7 +14,9 @@ pub mod repository;
 pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
-type Id = mongodb::bson::oid::ObjectId;
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
 pub fn resources<S>(state: AppState) -> Router<S> {
     Router::new()

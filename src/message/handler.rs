@@ -21,7 +21,7 @@ pub struct Params {
 
 pub async fn find_all(
     user_info: Extension<UserInfo>,
-    params: Query<Params>,
+    Query(params): Query<Params>,
     chat_service: State<ChatService>,
     message_service: State<MessageService>,
 ) -> crate::Result<Markup> {
