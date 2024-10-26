@@ -1,8 +1,14 @@
-use axum::{routing::get, Router};
+use axum::http::StatusCode;
+use axum::{
+    response::{IntoResponse, Response},
+    routing::get,
+    Router,
+};
+use log::error;
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
-use crate::{state::AppState, user};
+use crate::state::AppState;
 
 mod handler;
 pub mod markup;
@@ -34,19 +40,26 @@ pub fn resources<S>(state: AppState) -> Router<S> {
 pub enum Error {
     #[error("chat not found: {0:?}")]
     NotFound(Option<Id>),
-    #[error("chat already exists for members: {0:?}")]
-    AlreadyExists([user::Sub; 2]),
     #[error("user is not a member of the chat")]
     NotMember,
 
     #[error(transparent)]
     Unexpected(#[from] anyhow::Error),
+}
 
-    #[error(transparent)]
-    _User(#[from] user::Error),
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        error!("{:?}", self);
 
-    #[error(transparent)]
-    _MongoDB(#[from] mongodb::error::Error),
-    #[error(transparent)]
-    _Redis(#[from] redis::RedisError),
+        let (status, message) = match self {
+            Self::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            Self::NotMember => (StatusCode::BAD_REQUEST, self.to_string()),
+            Self::Unexpected(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_owned(),
+            ),
+        };
+
+        (status, message).into_response()
+    }
 }

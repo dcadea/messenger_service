@@ -31,13 +31,10 @@ impl IntoResponse for Error {
         }
 
         let error_message = self.to_string();
-        error!("{error_message}");
 
         let (status, message) = match self {
             Self::_Auth(auth) => return auth.into_response(),
-            Self::_Chat(chat::Error::NotFound(_)) => (StatusCode::NOT_FOUND, error_message),
-            Self::_Chat(chat::Error::AlreadyExists(_)) => (StatusCode::CONFLICT, error_message),
-            Self::_Chat(chat::Error::NotMember) => (StatusCode::FORBIDDEN, error_message),
+            Self::_Chat(chat) => return chat.into_response(),
 
             Self::_Event(event::Error::NotOwner) => (StatusCode::FORBIDDEN, error_message),
             Self::_Event(event::Error::NotRecipient) => (StatusCode::FORBIDDEN, error_message),

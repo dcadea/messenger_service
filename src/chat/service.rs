@@ -132,7 +132,11 @@ impl ChatService {
             .find(|&m| m != &user_info.sub) // someone who is not a logged user :)
             .ok_or(chat::Error::NotMember)?;
 
-        let recipient_info = self.user_service.find_user_info(recipient).await?;
+        let recipient_info = self
+            .user_service
+            .find_user_info(recipient)
+            .await
+            .expect("recipient info should be present");
 
         let chat_dto = ChatDto::new(chat, recipient.to_owned(), recipient_info.name);
 

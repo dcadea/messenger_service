@@ -1,4 +1,5 @@
-use futures::stream::TryStreamExt;
+use anyhow::Context;
+use futures::TryStreamExt;
 use mongodb::bson::doc;
 
 use crate::{chat, user};
@@ -30,15 +31,19 @@ impl ChatRepository {
                     "updated_at": chrono::Utc::now().timestamp(),
                 }},
             )
-            .await?;
+            .await
+            .with_context(|| format!("Failed to update last message for chat: {id:?}"))?;
         Ok(())
     }
 
     pub async fn find_by_id(&self, id: &Id) -> super::Result<Chat> {
-        self.collection
+        let chat = self
+            .collection
             .find_one(doc! { "_id": id })
-            .await?
-            .ok_or(chat::Error::NotFound(Some(id.to_owned())))
+            .await
+            .with_context(|| format!("Failed to find chat by id: {id:?}"))?;
+
+        chat.ok_or(chat::Error::NotFound(Some(id.to_owned())))
     }
 
     /**
@@ -50,32 +55,40 @@ impl ChatRepository {
             .collection
             .find(doc! {"members": sub})
             .sort(doc! {"updated_at": -1})
-            .await?;
+            .await
+            .with_context(|| format!("Failed to find chats by sub: {sub:?}"))?;
 
-        let chats = cursor.try_collect::<Vec<Chat>>().await?;
+        let chats: Vec<Chat> = cursor
+            .try_collect()
+            .await
+            .with_context(|| format!("Failed to collect chats for sub: {sub:?}"))?;
 
         Ok(chats)
     }
 
     pub async fn find_by_id_and_sub(&self, id: &Id, sub: &user::Sub) -> super::Result<Chat> {
-        self.collection
+        let chat = self
+            .collection
             .find_one(doc! {
                 "_id": id,
                 "members": sub
             })
-            .await?
-            .ok_or(chat::Error::NotFound(Some(id.to_owned())))
+            .await
+            .with_context(|| format!("Failed to find chat by id: {id:?} and sub: {sub:?}"))?;
+
+        chat.ok_or(chat::Error::NotFound(Some(id.to_owned())))
     }
 
     pub async fn find_id_by_members(&self, members: [user::Sub; 2]) -> super::Result<Id> {
-        let result = self
+        let chat = self
             .collection
             .find_one(doc! {
                 "members": { "$all": members.to_vec() }
             })
-            .await?;
+            .await
+            .with_context(|| format!("Failed to find chat by members: {members:?}"))?;
 
-        if let Some(chat) = result {
+        if let Some(chat) = chat {
             if let Some(id) = chat.id {
                 return Ok(id);
             }

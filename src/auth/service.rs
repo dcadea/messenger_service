@@ -171,7 +171,7 @@ impl AuthService {
     }
 
     pub async fn find_token(&self, sid: &str) -> Option<String> {
-        if let Some(sid) = uuid::Uuid::parse_str(sid).ok() {
+        if let Ok(sid) = uuid::Uuid::parse_str(sid) {
             let token: Option<String> = self.redis.get(cache::Key::Session(sid)).await.ok();
             return token;
         }
