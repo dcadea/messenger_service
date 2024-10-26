@@ -5,7 +5,7 @@ use std::time::Duration;
 use anyhow::Context;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
-use log::warn;
+use log::{error, warn};
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
 use oauth2::{AccessToken, AuthorizationCode, CsrfToken, Scope, TokenResponse};
@@ -16,8 +16,8 @@ use super::TokenClaims;
 use crate::integration;
 use crate::integration::cache;
 use crate::integration::idp;
+use crate::user;
 use crate::user::model::UserInfo;
-use crate::{error, user};
 
 const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
 

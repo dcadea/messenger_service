@@ -13,7 +13,7 @@ pub struct Params {
     state: String,
 }
 
-pub async fn login(auth_service: State<AuthService>) -> crate::Result<impl IntoResponse> {
+pub async fn login(auth_service: State<AuthService>) -> super::Result<impl IntoResponse> {
     let auth_url = auth_service.authorize().await?;
     Ok(Redirect::to(&auth_url))
 }
@@ -21,7 +21,7 @@ pub async fn login(auth_service: State<AuthService>) -> crate::Result<impl IntoR
 pub async fn logout(
     auth_service: State<AuthService>,
     jar: CookieJar,
-) -> crate::Result<impl IntoResponse> {
+) -> super::Result<impl IntoResponse> {
     if let Some(sid) = jar.get(super::SESSION_ID) {
         auth_service.invalidate_token(sid.value()).await?;
         return Ok((CookieJar::new(), Redirect::to("/login")));
@@ -34,7 +34,7 @@ pub async fn callback(
     params: Query<Params>,
     auth_service: State<AuthService>,
     jar: CookieJar,
-) -> crate::Result<impl IntoResponse> {
+) -> super::Result<impl IntoResponse> {
     let (token, ttl) = auth_service
         .exchange_code(&params.code, &params.state)
         .await?;

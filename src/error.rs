@@ -25,8 +25,6 @@ pub enum Error {
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        error!("{:?}", self);
-
         #[derive(Serialize)]
         struct ErrorResponse {
             message: String,
@@ -36,13 +34,7 @@ impl IntoResponse for Error {
         error!("{error_message}");
 
         let (status, message) = match self {
-            Self::_Auth(auth::Error::Unauthorized) => (StatusCode::UNAUTHORIZED, error_message),
-            Self::_Auth(auth::Error::Forbidden) => (StatusCode::FORBIDDEN, "Forbidden".to_owned()),
-            Self::_Auth(auth::Error::UnknownKid) => (StatusCode::FORBIDDEN, "Forbidden".to_owned()),
-            Self::_Auth(auth::Error::TokenMalformed) => {
-                (StatusCode::BAD_REQUEST, "Token malformed".to_owned())
-            }
-
+            Self::_Auth(auth) => return auth.into_response(),
             Self::_Chat(chat::Error::NotFound(_)) => (StatusCode::NOT_FOUND, error_message),
             Self::_Chat(chat::Error::AlreadyExists(_)) => (StatusCode::CONFLICT, error_message),
             Self::_Chat(chat::Error::NotMember) => (StatusCode::FORBIDDEN, error_message),
@@ -60,6 +52,8 @@ impl IntoResponse for Error {
                 "Internal server error".to_owned(),
             ),
         };
+
+        error!("{:?}", self);
 
         (status, Json(ErrorResponse { message })).into_response()
     }

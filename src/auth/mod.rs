@@ -1,7 +1,10 @@
 use crate::state::AppState;
 use crate::user;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::Router;
+use log::error;
 use serde::Deserialize;
 
 mod handler;
@@ -47,4 +50,21 @@ pub enum Error {
 
     #[error(transparent)]
     Unexpected(#[from] anyhow::Error),
+}
+
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        error!("{:?}", self);
+
+        let (status, message) = match self {
+            Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
+            Self::Forbidden | Self::UnknownKid | Self::InvalidState => {
+                (StatusCode::FORBIDDEN, "Forbidden")
+            }
+            Self::TokenMalformed => (StatusCode::BAD_REQUEST, "Token malformed"),
+            Self::Unexpected(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
+        };
+
+        (status, message).into_response()
+    }
 }
