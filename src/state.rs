@@ -24,15 +24,15 @@ pub struct AppState {
 impl AppState {
     pub async fn init(config: integration::Config) -> crate::Result<Self> {
         let database = integration::db::init(&config.mongo);
-        let redis_con = integration::cache::init(&config.redis).await;
+        let redis = integration::cache::Redis::try_new(&config.redis).await;
         let amqp_con = integration::amqp::init(&config.amqp).await;
 
-        let auth_service = AuthService::try_new(&config.idp, redis_con.clone())?;
-        let user_service = UserService::new(UserRepository::new(&database), redis_con.clone());
+        let auth_service = AuthService::try_new(&config.idp, redis.clone())?;
+        let user_service = UserService::new(UserRepository::new(&database), redis.clone());
         let chat_service = ChatService::new(
             ChatRepository::new(&database),
             user_service.clone(),
-            redis_con.clone(),
+            redis.clone(),
         );
         let message_service = MessageService::new(MessageRepository::new(&database));
         let event_service =

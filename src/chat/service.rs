@@ -2,37 +2,36 @@ use std::sync::Arc;
 
 use futures::future::try_join_all;
 use futures::TryFutureExt;
-use redis::AsyncCommands;
 
 use super::model::{Chat, ChatDto};
 use super::repository::ChatRepository;
 use super::Id;
-use crate::integration::cache;
+use crate::integration::{self, cache};
 use crate::message::model::Message;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 use crate::{chat, user};
 
 // TODO: Move to config
-const CHAT_TTL: i64 = 3600;
+const CHAT_TTL: u64 = 3600;
 
 #[derive(Clone)]
 pub struct ChatService {
     repository: Arc<ChatRepository>,
     user_service: Arc<UserService>,
-    redis_con: redis::aio::ConnectionManager,
+    redis: integration::cache::Redis,
 }
 
 impl ChatService {
     pub fn new(
         repository: ChatRepository,
         user_service: UserService,
-        redis_con: redis::aio::ConnectionManager,
+        redis: integration::cache::Redis,
     ) -> Self {
         Self {
             repository: Arc::new(repository),
             user_service: Arc::new(user_service),
-            redis_con,
+            redis,
         }
     }
 }
@@ -103,23 +102,21 @@ impl ChatService {
 // cache operations
 impl ChatService {
     pub async fn find_members(&self, chat_id: &Id) -> super::Result<[user::Sub; 2]> {
-        let mut con = self.redis_con.clone();
-
         let cache_key = cache::Key::Chat(chat_id.to_owned());
-        let members: Option<Vec<user::Sub>> = con.smembers(cache_key.clone()).await?;
+        let members: Option<Vec<user::Sub>> = self.redis.smembers(cache_key.clone()).await?;
 
         if members.as_ref().is_some_and(|m| m.len() == 2) {
-            let members = members.unwrap();
+            let members = members.expect("members are present");
             return Ok([members[0].clone(), members[1].clone()]);
         }
 
         let chat = self.repository.find_by_id(chat_id).await?;
         let members = chat.members;
 
-        let _: () = con
-            .clone()
-            .sadd(&cache_key, &members.clone())
-            .and_then(|_: ()| con.expire(&cache_key, CHAT_TTL))
+        let _: () = self
+            .redis
+            .sadd(cache_key.clone(), &members.clone())
+            .and_then(|_: ()| self.redis.expire(cache_key, CHAT_TTL))
             .await?;
 
         Ok(members)

@@ -2,9 +2,8 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use log::debug;
-use redis::AsyncCommands;
 
-use crate::integration::cache;
+use crate::integration::{self, cache};
 use crate::user::model::{User, UserInfo};
 
 use super::repository::UserRepository;
@@ -16,14 +15,14 @@ const USER_INFO_TTL: u64 = 3600;
 #[derive(Clone)]
 pub struct UserService {
     repository: Arc<UserRepository>,
-    redis_con: redis::aio::ConnectionManager,
+    redis: integration::cache::Redis,
 }
 
 impl UserService {
-    pub fn new(repository: UserRepository, redis_con: redis::aio::ConnectionManager) -> Self {
+    pub fn new(repository: UserRepository, redis: integration::cache::Redis) -> Self {
         Self {
             repository: Arc::new(repository),
-            redis_con,
+            redis,
         }
     }
 }
@@ -56,47 +55,50 @@ impl UserService {
 impl UserService {
     pub async fn add_online_user(&self, sub: &Sub) -> super::Result<()> {
         debug!("Adding to online users: {:?}", sub);
-        let mut con = self.redis_con.clone();
-        let _: () = con.sadd(cache::Key::UsersOnline, sub).await?;
+        self.redis.sadd(cache::Key::UsersOnline, sub).await?;
         Ok(())
     }
 
     pub async fn get_online_friends(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
-        let mut con = self.redis_con.clone();
-        let online_users: HashSet<Sub> = con
-            .sinter(&[cache::Key::UsersOnline, cache::Key::Friends(sub.to_owned())])
+        let online_users: HashSet<Sub> = self
+            .redis
+            .sinter(vec![
+                cache::Key::UsersOnline,
+                cache::Key::Friends(sub.to_owned()),
+            ])
             .await?;
+
         Ok(online_users)
     }
 
     pub async fn remove_online_user(&self, sub: &Sub) -> super::Result<()> {
         debug!("Removing from online users: {:?}", sub);
-        let mut con = self.redis_con.clone();
-        let _: () = con.srem(cache::Key::UsersOnline, sub).await?;
+        self.redis.srem(cache::Key::UsersOnline, sub).await?;
         Ok(())
     }
 
     pub async fn cache_friends(&self, sub: &Sub) -> super::Result<()> {
         let friends = self.repository.find_friends_by_sub(sub).await?;
 
-        let mut con = self.redis_con.clone();
-        let _: () = con
+        let _: () = self
+            .redis
             .sadd(cache::Key::Friends(sub.to_owned()), friends)
             .await?;
+
         Ok(())
     }
 
     async fn cache_user_info(&self, user_info: &UserInfo) -> super::Result<()> {
-        let mut con = self.redis_con.clone();
         let cache_key = cache::Key::UserInfo(user_info.sub.to_owned());
-        let _: () = con.set_ex(cache_key, user_info, USER_INFO_TTL).await?;
+        self.redis
+            .set_ex(cache_key, user_info, USER_INFO_TTL)
+            .await?;
         Ok(())
     }
 
     async fn find_cached_user_info(&self, sub: &Sub) -> Option<UserInfo> {
-        let mut con = self.redis_con.clone();
-        let cache_key = cache::Key::UserInfo(sub.to_owned());
-        let cached_user_info: Option<UserInfo> = con.get(cache_key).await.ok();
+        let sub = cache::Key::UserInfo(sub.to_owned());
+        let cached_user_info: Option<UserInfo> = self.redis.get(sub).await.ok();
         cached_user_info
     }
 }

@@ -1,3 +1,5 @@
+#![feature(error_generic_member_access)]
+
 use auth::middleware::{authorize, validate_sid};
 use axum::http::StatusCode;
 use axum::middleware::{from_fn_with_state, map_response};

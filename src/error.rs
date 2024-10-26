@@ -1,4 +1,3 @@
-use axum::http::header::InvalidHeaderValue;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -8,28 +7,26 @@ use serde::Serialize;
 use crate::{auth, chat, event, message, user};
 
 #[derive(thiserror::Error, Debug)]
-#[error(transparent)]
 pub enum Error {
     #[error("Query parameter '{0}' is required")]
     QueryParamRequired(String),
-    #[error("unexpected api error {0}")]
-    Unexpected(String),
 
+    #[error(transparent)]
     _Auth(#[from] auth::Error),
+    #[error(transparent)]
     _Chat(#[from] chat::Error),
+    #[error(transparent)]
     _Event(#[from] event::Error),
+    #[error(transparent)]
     _Message(#[from] message::Error),
+    #[error(transparent)]
     _User(#[from] user::Error),
-}
-
-impl From<InvalidHeaderValue> for Error {
-    fn from(err: InvalidHeaderValue) -> Self {
-        Self::Unexpected(err.to_string())
-    }
 }
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
+        error!("{:?}", self);
+
         #[derive(Serialize)]
         struct ErrorResponse {
             message: String,
@@ -40,11 +37,9 @@ impl IntoResponse for Error {
 
         let (status, message) = match self {
             Self::_Auth(auth::Error::Unauthorized) => (StatusCode::UNAUTHORIZED, error_message),
-            Self::_Auth(auth::Error::Forbidden(_)) => {
-                (StatusCode::FORBIDDEN, "Forbidden".to_owned())
-            }
+            Self::_Auth(auth::Error::Forbidden) => (StatusCode::FORBIDDEN, "Forbidden".to_owned()),
             Self::_Auth(auth::Error::UnknownKid) => (StatusCode::FORBIDDEN, "Forbidden".to_owned()),
-            Self::_Auth(auth::Error::TokenMalformed(_)) => {
+            Self::_Auth(auth::Error::TokenMalformed) => {
                 (StatusCode::BAD_REQUEST, "Token malformed".to_owned())
             }
 

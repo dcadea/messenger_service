@@ -33,24 +33,18 @@ pub fn api<S>(state: AppState) -> Router<S> {
 }
 
 #[derive(thiserror::Error, Debug)]
-#[error(transparent)]
 pub enum Error {
     #[error("unauthorized to access the resource")]
     Unauthorized,
-    #[error("forbidden: {0}")]
-    Forbidden(String),
+    #[error("forbidden to access the resource")]
+    Forbidden,
     #[error("missing or unknown kid")]
     UnknownKid,
-    #[error("token is malformed: {0}")]
-    TokenMalformed(String),
-    #[error("unexpected auth error: {0}")]
-    Unexpected(String),
+    #[error("token is malformed")]
+    TokenMalformed,
     #[error("invalid state")]
     InvalidState,
 
-    _User(#[from] user::Error),
-
-    _Reqwest(#[from] reqwest::Error),
-    _ParseJson(#[from] serde_json::Error),
-    _Redis(#[from] redis::RedisError),
+    #[error(transparent)]
+    Unexpected(#[from] anyhow::Error),
 }

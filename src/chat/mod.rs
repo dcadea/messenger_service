@@ -31,7 +31,6 @@ pub fn resources<S>(state: AppState) -> Router<S> {
 }
 
 #[derive(thiserror::Error, Debug)]
-#[error(transparent)]
 pub enum Error {
     #[error("chat not found: {0:?}")]
     NotFound(Option<Id>),
@@ -39,11 +38,15 @@ pub enum Error {
     AlreadyExists([user::Sub; 2]),
     #[error("user is not a member of the chat")]
     NotMember,
-    #[error("unexpected chat error: {0}")]
-    Unexpected(String),
 
+    #[error(transparent)]
+    Unexpected(#[from] anyhow::Error),
+
+    #[error(transparent)]
     _User(#[from] user::Error),
 
+    #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
+    #[error(transparent)]
     _Redis(#[from] redis::RedisError),
 }

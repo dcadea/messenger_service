@@ -1,8 +1,131 @@
+use std::collections::HashSet;
 use std::env;
 use std::fmt::{Display, Formatter};
+use std::hash::Hash;
+
+use anyhow::Context;
+use redis::AsyncCommands;
 
 use crate::user::model::UserInfo;
 use crate::{chat, user};
+
+#[derive(Clone)]
+pub struct Redis {
+    con: redis::aio::ConnectionManager,
+}
+
+impl Redis {
+    pub async fn try_new(config: &Config) -> Self {
+        let con = match init_client(config).get_connection_manager().await {
+            Ok(con) => con,
+            Err(e) => panic!("Failed create Redis connection manager: {}", e),
+        };
+        Self { con }
+    }
+}
+
+impl Redis {
+    pub async fn set_ex<V>(&self, key: Key, value: V, seconds: u64) -> anyhow::Result<()>
+    where
+        V: redis::ToRedisArgs + Send + Sync,
+    {
+        let mut con = self.con.clone();
+        let _: () = con.set_ex(&key, value, seconds).await.with_context(|| {
+            format!("Failed to cache value for key: {key} with expiration: {seconds}")
+        })?;
+        Ok(())
+    }
+
+    pub async fn sadd<V>(&self, key: Key, value: V) -> anyhow::Result<()>
+    where
+        V: redis::ToRedisArgs + Send + Sync,
+    {
+        let mut con = self.con.clone();
+        let _: () = con
+            .sadd(&key, value)
+            .await
+            .with_context(|| format!("Failed to cache value for key: {key}"))?;
+        Ok(())
+    }
+
+    pub async fn get<V>(&self, key: Key) -> anyhow::Result<V>
+    where
+        V: redis::FromRedisValue,
+    {
+        let mut con = self.con.clone();
+        let value: V = con
+            .get(&key)
+            .await
+            .with_context(|| format!("Failed to get value from cache by key: {key}"))?;
+        Ok(value)
+    }
+
+    pub async fn get_del<V>(&self, key: Key) -> anyhow::Result<V>
+    where
+        V: redis::FromRedisValue,
+    {
+        let mut con = self.con.clone();
+        let value: V = con
+            .get_del(&key)
+            .await
+            .with_context(|| format!("Failed to get and remove value from cache by key: {key}"))?;
+        Ok(value)
+    }
+
+    pub async fn smembers<V>(&self, key: Key) -> anyhow::Result<Option<Vec<V>>>
+    where
+        V: redis::FromRedisValue + Hash + PartialEq + Eq,
+    {
+        let mut con = self.con.clone();
+        let values: Option<Vec<V>> = con
+            .smembers(&key)
+            .await
+            .with_context(|| format!("Failed to get values from cache by key: {key}"))?;
+        Ok(values)
+    }
+
+    pub async fn sinter<V>(&self, keys: Vec<Key>) -> anyhow::Result<HashSet<V>>
+    where
+        V: redis::FromRedisValue + Hash + PartialEq + Eq,
+    {
+        let mut con = self.con.clone();
+        let values: HashSet<V> = con
+            .sinter(&keys)
+            .await // find a way to concatenate keys into a single string
+            .with_context(|| "Failed to get common values from cache by keys")?;
+        Ok(values)
+    }
+
+    pub async fn del(&self, key: Key) -> anyhow::Result<()> {
+        let mut con = self.con.clone();
+        let _: () = con
+            .del(&key)
+            .await
+            .with_context(|| format!("Failed to remove value frm cache by key: {key}"))?;
+        Ok(())
+    }
+
+    pub async fn srem<V>(&self, key: Key, value: V) -> anyhow::Result<()>
+    where
+        V: redis::ToRedisArgs + Send + Sync,
+    {
+        let mut con = self.con.clone();
+        let _: () = con
+            .srem(&key, value)
+            .await
+            .with_context(|| format!("Failed to remove value from cache by key: {key}"))?;
+        Ok(())
+    }
+
+    pub async fn expire(&self, key: Key, seconds: u64) -> anyhow::Result<()> {
+        let mut con = self.con.clone();
+        let _: () = con
+            .expire(&key, seconds as i64)
+            .await
+            .with_context(|| format!("Failed to set expiration for key: {key}"))?;
+        Ok(())
+    }
+}
 
 #[derive(Clone)]
 pub struct Config {
@@ -34,20 +157,13 @@ pub fn init_client(config: &Config) -> redis::Client {
     }
 }
 
-pub async fn init(config: &Config) -> redis::aio::ConnectionManager {
-    match init_client(config).get_connection_manager().await {
-        Ok(con) => con,
-        Err(e) => panic!("Failed create Redis connection manager: {}", e),
-    }
-}
-
 #[derive(Clone)]
 pub enum Key {
     UserInfo(user::Sub),
     UsersOnline,
     Friends(user::Sub),
     Chat(chat::Id),
-    Session(String),
+    Session(uuid::Uuid),
     Csrf(String),
 }
 
