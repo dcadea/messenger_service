@@ -1,6 +1,7 @@
 use std::io;
 use std::sync::Arc;
 
+use anyhow::Context;
 use futures::TryStreamExt;
 use lapin::options::{
     BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions,
@@ -11,9 +12,10 @@ use log::debug;
 use tokio::sync::RwLock;
 
 use crate::chat::service::ChatService;
-use crate::event;
+use crate::integration::cache;
 use crate::message::model::{Message, MessageDto};
 use crate::message::service::MessageService;
+use crate::{event, integration};
 
 use super::context;
 use super::model::{Command, Notification, NotificationStream, Queue};
@@ -21,6 +23,7 @@ use super::model::{Command, Notification, NotificationStream, Queue};
 #[derive(Clone)]
 pub struct EventService {
     amqp_con: Arc<RwLock<Connection>>,
+    redis: integration::cache::Redis,
     chat_service: Arc<ChatService>,
     message_service: Arc<MessageService>,
 }
@@ -28,11 +31,13 @@ pub struct EventService {
 impl EventService {
     pub fn new(
         amqp_con: RwLock<Connection>,
+        redis: integration::cache::Redis,
         chat_service: ChatService,
         message_service: MessageService,
     ) -> Self {
         Self {
             amqp_con: Arc::new(amqp_con),
+            redis,
             chat_service: Arc::new(chat_service),
             message_service: Arc::new(message_service),
         }
@@ -210,5 +215,17 @@ impl EventService {
             .await
             .map(|_| ())
             .map_err(event::Error::from)
+    }
+}
+
+impl EventService {
+    pub async fn listen_online_status_change(&self) -> anyhow::Result<cache::UpdateStream> {
+        let stream = self
+            .redis
+            .subscribe(&cache::Keyspace::new(cache::Key::UsersOnline))
+            .await
+            .with_context(|| "Failed to subscribe to online status change")?;
+
+        Ok(stream)
     }
 }

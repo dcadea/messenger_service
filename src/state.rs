@@ -35,8 +35,12 @@ impl AppState {
             redis.clone(),
         );
         let message_service = MessageService::new(MessageRepository::new(&database));
-        let event_service =
-            EventService::new(amqp_con, chat_service.clone(), message_service.clone());
+        let event_service = EventService::new(
+            amqp_con,
+            redis.clone(),
+            chat_service.clone(),
+            message_service.clone(),
+        );
 
         Ok(Self {
             config,

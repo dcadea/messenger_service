@@ -10,7 +10,6 @@ use super::context;
 use super::model::{Command, Notification, Queue};
 use super::service::EventService;
 use crate::event::markup;
-use crate::integration::{self, cache};
 use crate::user;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
@@ -18,9 +17,8 @@ use axum::extract::ws::Message::{Binary, Close, Text};
 use tokio::try_join;
 
 use futures::stream::{SplitSink, SplitStream};
-use futures::{SinkExt, Stream, StreamExt};
+use futures::{SinkExt, StreamExt};
 
-use std::pin::Pin;
 use std::sync::Arc;
 
 pub async fn ws(
@@ -144,7 +142,7 @@ async fn write(
         }
     };
 
-    let mut online_status_changes = match listen_online_status_change().await {
+    let mut online_status_changes = match event_service.listen_online_status_change().await {
         Ok(stream) => stream,
         Err(e) => {
             error!("Failed to listen online status changes: {e}");
@@ -215,42 +213,4 @@ async fn publish_online_friends(
             error!("Failed to publish online users notification: {e}");
         }
     }
-}
-
-type OnlineStatusChangedStream = Pin<Box<dyn Stream<Item = super::Result<redis::Msg>> + Send>>;
-
-// FIXME: implement online functionality properly
-async fn listen_online_status_change() -> super::Result<OnlineStatusChangedStream> {
-    let config = integration::cache::Config::env().unwrap_or_default();
-    let client = integration::cache::init_client(&config);
-    let mut con = client.get_multiplexed_async_connection().await?;
-
-    enable_keyspace_events(&mut con).await?;
-
-    let mut pubsub = client.get_async_pubsub().await?;
-
-    pubsub
-        .psubscribe(cache::Keyspace::new(cache::Key::UsersOnline))
-        .await?;
-
-    let stream = pubsub
-        .into_on_message()
-        .map(|msg| {
-            debug!("Received keyspace message: {:?}", msg);
-            Ok(msg)
-        })
-        .boxed();
-
-    Ok(Box::pin(stream))
-}
-
-async fn enable_keyspace_events(con: &mut redis::aio::MultiplexedConnection) -> super::Result<()> {
-    redis::cmd("CONFIG")
-        .arg("SET")
-        .arg("notify-keyspace-events")
-        .arg("KEAg")
-        .query_async(con)
-        .await
-        .map(|_: ()| ())
-        .map_err(super::Error::from)
 }

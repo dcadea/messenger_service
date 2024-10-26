@@ -19,19 +19,26 @@ pub fn api<S>(state: AppState) -> Router<S> {
 }
 
 #[derive(thiserror::Error, Debug)]
-#[error(transparent)]
 pub enum Error {
     #[error("not a message owner")]
     NotOwner,
     #[error("not a message recipient")]
     NotRecipient,
 
+    #[error(transparent)]
+    Unexpected(#[from] anyhow::Error),
+
+    #[error(transparent)]
     _Auth(#[from] auth::Error),
+    #[error(transparent)]
     _Chat(#[from] chat::Error),
+    #[error(transparent)]
     _Message(#[from] message::Error),
+    #[error(transparent)]
     _User(#[from] user::Error),
 
+    #[error(transparent)]
     _ParseJson(#[from] serde_json::Error),
+    #[error(transparent)]
     _Lapin(#[from] lapin::Error),
-    _Redis(#[from] redis::RedisError),
 }

@@ -2,8 +2,11 @@ use std::collections::HashSet;
 use std::env;
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
+use std::pin::Pin;
 
 use anyhow::Context;
+use futures::{Stream, StreamExt};
+use log::debug;
 use redis::AsyncCommands;
 
 use crate::user::model::UserInfo;
@@ -11,16 +14,19 @@ use crate::{chat, user};
 
 #[derive(Clone)]
 pub struct Redis {
+    client: redis::Client,
     con: redis::aio::ConnectionManager,
 }
 
 impl Redis {
     pub async fn try_new(config: &Config) -> Self {
-        let con = match init_client(config).get_connection_manager().await {
+        let client = init_client(config);
+        let con = match client.get_connection_manager().await {
             Ok(con) => con,
             Err(e) => panic!("Failed create Redis connection manager: {}", e),
         };
-        Self { con }
+
+        Self { client, con }
     }
 }
 
@@ -127,6 +133,44 @@ impl Redis {
     }
 }
 
+pub type UpdateStream = Pin<Box<dyn Stream<Item = redis::RedisResult<redis::Msg>> + Send>>;
+
+impl Redis {
+    // TODO: move to container configuration
+    // async fn enable_keyspace_events(con: &mut redis::aio::MultiplexedConnection) -> super::Result<()> {
+    //     redis::cmd("CONFIG")
+    //         .arg("SET")
+    //         .arg("notify-keyspace-events")
+    //         .arg("KEAg")
+    //         .query_async(con)
+    //         .await
+    //         .map(|_: ()| ())
+    //         .map_err(super::Error::from)
+    // }
+    //
+    pub async fn subscribe(&self, keyspace: &Keyspace) -> anyhow::Result<UpdateStream> {
+        let mut pub_sub = self
+            .client
+            .get_async_pubsub()
+            .await
+            .with_context(|| "Failed to create Redis pubsub")?;
+
+        pub_sub.psubscribe(keyspace).await?;
+
+        debug!("Subscribed to keyspace: {keyspace}");
+
+        let stream = pub_sub
+            .into_on_message()
+            .map(|msg| {
+                debug!("Received keyspace event: {msg:?}");
+                Ok(msg)
+            })
+            .boxed();
+
+        Ok(Box::pin(stream))
+    }
+}
+
 #[derive(Clone)]
 pub struct Config {
     host: String,
@@ -153,7 +197,7 @@ impl Config {
 pub fn init_client(config: &Config) -> redis::Client {
     match redis::Client::open(format!("redis://{}:{}", &config.host, &config.port)) {
         Ok(client) => client,
-        Err(e) => panic!("Failed to connect to Redis: {}", e),
+        Err(e) => panic!("Failed to connect to Redis: {e:?}"),
     }
 }
 
