@@ -11,6 +11,7 @@ purposes.
 
 - :crab: [Rust](https://www.rust-lang.org/tools/install) installed on your machine.
 - :whale: [Docker](https://www.docker.com/get-started) to run dependant services.
+- :gear: [Make](https://www.gnu.org/software/make/) to run the project with `make` commands.
 - :closed_lock_with_key: Have a `Application` configured in the `Authorization Server` of your choice (ex. Auth0, Okta, Google, etc).<br>
 Check [configuration](#configuration) for further steps.
 
@@ -40,6 +41,13 @@ docker build -t messenger_service:latest .
 docker run -d -p 8000:8000 messenger_service:latest
 ```
 
+### With Make
+```bash
+make dev            # Run the service with hot-reload locally
+make image          # Build the Docker image
+make compose        # Run the service with Docker Compose (dev mode)
+```
+
 ### Configuration
 Application will not start without the **required** environment configuration. <br>
 **Optional** variables have default values, but it is highly recommended to override these once you have a working setup.
@@ -48,14 +56,17 @@ Application will not start without the **required** environment configuration. <
 # example with Auth0 as auth server
 CLIENT_ID={{your_client_id}}
 CLIENT_SECRET={{your_client_secret}}
-REDIRECT_URI=http://localhost:8000/callback
+REDIRECT_URL=http://localhost:8000/callback
 ISSUER=https://dcadea.auth0.com/
 AUDIENCE=https://messenger.angelwing.io/api/v1
 REQUIRED_CLAIMS=iss,sub,aud,exp,permissions
 ```
 - Optional environment variables:
 ```dotenv
+ENV=local
+
 RUST_LOG=info
+SERVICE_NAME=messenger_service
 
 TOKEN_TTL=3600
 

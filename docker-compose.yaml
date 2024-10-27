@@ -1,0 +1,72 @@
+name: messenger_release
+services:
+  messenger_service:
+    image: messenger_service:latest
+    container_name: awg.messenger_service
+    restart: always
+    ports:
+      - 8000:8000
+    environment:
+      ENV: docker
+
+      CLIENT_ID: /secrets/auth0/client_id
+      CLIENT_SECRET: /secrets/auth0/client_secret
+      REDIRECT_URL: http://localhost:8000/callback
+      ISSUER: ${ISSUER}
+      AUDIENCE: ${AUDIENCE}
+      REQUIRED_CLAIMS: iss,sub,aud,exp,permissions
+
+      REDIS_HOST: awg.redis
+      MONGO_HOST: awg.mongo
+      MONGO_DB: messenger
+      AMQP_HOST: awg.rabbitmq
+    volumes:
+      - ./docker-volumes/release/messenger_service/service.log:/usr/local/bin/service.log
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  mongo:
+    image: mongo:latest
+    container_name: awg.mongo
+    restart: always
+    ports:
+      - 27017:27017
+    volumes:
+      - ./docker-volumes/release/mongo/data/db:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:alpine
+    container_name: awg.redis
+    restart: always
+    ports:
+      - 6379:6379
+    volumes:
+      - ./conf/release/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf && redis-cli config set notify-keyspace-events KEAg
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:alpine
+    container_name: awg.rabbitmq
+    restart: always
+    ports:
+      - 5672:5672
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

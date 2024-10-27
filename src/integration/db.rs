@@ -25,8 +25,10 @@ impl Default for Config {
 impl Config {
     pub fn env() -> anyhow::Result<Self> {
         let host = env::var("MONGO_HOST")?;
-        let port = env::var("MONGO_PORT")?.parse()?;
-        let db = env::var("MONGO_DB")?;
+        let port = env::var("MONGO_PORT")
+            .unwrap_or("27017".to_string())
+            .parse()?;
+        let db = env::var("MONGO_DB").unwrap_or_else(|_e| String::from("messenger"));
         Ok(Self { host, port, db })
     }
 }

@@ -77,6 +77,7 @@ impl AuthService {
             .add_scopes([
                 Scope::new("openid".to_string()),
                 Scope::new("profile".to_string()),
+                Scope::new("email".to_string()),
             ])
             .url();
 

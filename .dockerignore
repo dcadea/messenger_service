@@ -1,7 +1,6 @@
 /.idea
 /.zed
-/requests
-/target
+/docker-volumes
 
 .DS_Store
 .env

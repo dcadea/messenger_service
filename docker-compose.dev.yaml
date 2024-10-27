@@ -1,0 +1,88 @@
+name: messenger_dev
+services:
+  messenger_service:
+    image: messenger_service:latest
+    container_name: awg.dev.messenger_service
+    restart: always
+    ports:
+      - 8000:8000
+    environment:
+      ENV: docker
+
+      RUST_LOG: debug
+      RUST_BACKTRACE: full
+
+      CLIENT_ID: /secrets/auth0/client_id
+      CLIENT_SECRET: /secrets/auth0/client_secret
+      REDIRECT_URL: http://localhost:8000/callback
+      ISSUER: https://dcadea.auth0.com/
+      AUDIENCE: https://messenger.angelwing.io/api/v1
+      REQUIRED_CLAIMS: iss,sub,aud,exp,permissions
+
+      REDIS_HOST: awg.dev.redis
+      MONGO_HOST: awg.dev.mongo
+      MONGO_DB: dev-messenger
+      AMQP_HOST: awg.dev.rabbitmq
+    volumes:
+      - ./docker-volumes/dev/messenger_service/service.log:/usr/local/bin/service.log
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  mongo:
+    image: mongo:latest
+    container_name: awg.dev.mongo
+    restart: always
+    ports:
+      - 27017:27017
+    volumes:
+      - ./docker-volumes/dev/mongo/data/db:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: awg.dev.mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://awg.dev.mongo:27017/
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  redis:
+    image: redis:alpine
+    container_name: awg.dev.redis
+    restart: always
+    ports:
+      - 6379:6379
+    volumes:
+      - ./conf/dev/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf && redis-cli config set notify-keyspace-events KEAg
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    container_name: awg.dev.rabbitmq
+    restart: always
+    ports:
+      - 5672:5672
+      - 15672:15672
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

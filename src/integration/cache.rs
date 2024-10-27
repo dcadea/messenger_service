@@ -136,18 +136,6 @@ impl Redis {
 pub type UpdateStream = Pin<Box<dyn Stream<Item = redis::RedisResult<redis::Msg>> + Send>>;
 
 impl Redis {
-    // TODO: move to container configuration
-    // async fn enable_keyspace_events(con: &mut redis::aio::MultiplexedConnection) -> super::Result<()> {
-    //     redis::cmd("CONFIG")
-    //         .arg("SET")
-    //         .arg("notify-keyspace-events")
-    //         .arg("KEAg")
-    //         .query_async(con)
-    //         .await
-    //         .map(|_: ()| ())
-    //         .map_err(super::Error::from)
-    // }
-    //
     pub async fn subscribe(&self, keyspace: &Keyspace) -> anyhow::Result<UpdateStream> {
         let mut pub_sub = self
             .client
@@ -189,7 +177,9 @@ impl Default for Config {
 impl Config {
     pub fn env() -> anyhow::Result<Self> {
         let host = env::var("REDIS_HOST")?;
-        let port = env::var("REDIS_PORT")?.parse()?;
+        let port = env::var("REDIS_PORT")
+            .unwrap_or("6379".to_string())
+            .parse()?;
         Ok(Self { host, port })
     }
 }

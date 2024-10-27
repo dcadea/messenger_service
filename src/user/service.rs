@@ -80,6 +80,10 @@ impl UserService {
     pub async fn cache_friends(&self, sub: &Sub) -> super::Result<()> {
         let friends = self.repository.find_friends_by_sub(sub).await?;
 
+        if friends.len() < 1 {
+            return Ok(());
+        }
+
         let _: () = self
             .redis
             .sadd(cache::Key::Friends(sub.to_owned()), friends)

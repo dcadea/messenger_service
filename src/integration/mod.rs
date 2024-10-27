@@ -12,7 +12,15 @@ pub mod db;
 pub mod idp;
 
 #[derive(Clone)]
+pub enum Environment {
+    Local,
+    Docker,
+}
+
+#[derive(Clone)]
 pub struct Config {
+    pub env: Environment,
+
     pub redis: cache::Config,
     pub mongo: db::Config,
     pub amqp: amqp::Config,
@@ -26,9 +34,9 @@ impl Default for Config {
 
         let rust_log = std::env::var("RUST_LOG").unwrap_or("info".into());
         let level = LevelFilter::from_str(&rust_log).unwrap_or(LevelFilter::Info);
-        let log_file = std::env::var("CARGO_PKG_NAME")
+        let log_file = std::env::var("SERVICE_NAME")
             .map(|pkg| format!("{}.log", pkg))
-            .expect("CARGO_PKG_NAME must be set");
+            .unwrap_or("service.log".into());
 
         CombinedLogger::init(vec![
             TermLogger::new(
@@ -44,6 +52,14 @@ impl Default for Config {
             ),
         ])
         .expect("Failed to initialize logger");
+
+        let env = std::env::var("ENV")
+            .map(|env| match env.as_str() {
+                "local" => Environment::Local,
+                "docker" => Environment::Docker,
+                _ => panic!("Invalid environment: {}", env),
+            })
+            .unwrap_or(Environment::Local);
 
         let idp_config = idp::Config::new(
             std::env::var("CLIENT_ID").expect("CLIENT_ID must be set"),
@@ -65,6 +81,7 @@ impl Default for Config {
         );
 
         Self {
+            env,
             redis: cache::Config::env().unwrap_or_default(),
             mongo: db::Config::env().unwrap_or_default(),
             amqp: amqp::Config::env().unwrap_or_default(),

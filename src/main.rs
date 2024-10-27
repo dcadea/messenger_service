@@ -1,5 +1,3 @@
-#![feature(error_generic_member_access)]
-
 use auth::middleware::{authorize, validate_sid};
 use axum::http::StatusCode;
 use axum::middleware::{from_fn_with_state, map_response};
@@ -29,6 +27,10 @@ pub type Result<T> = std::result::Result<T, crate::error::Error>;
 #[tokio::main]
 async fn main() {
     let config = integration::Config::default();
+    let addr = match config.env {
+        integration::Environment::Local => "127.0.0.1:8000",
+        integration::Environment::Docker => "0.0.0.0:8000",
+    };
     let app_state = match AppState::init(config).await {
         Ok(state) => state,
         Err(e) => {
@@ -39,7 +41,7 @@ async fn main() {
 
     let router = app(app_state.clone());
 
-    let listener = TcpListener::bind("127.0.0.1:8000")
+    let listener = TcpListener::bind(addr)
         .await
         .expect("Failed to bind to socket");
     axum::serve(listener, router)

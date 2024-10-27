@@ -21,7 +21,9 @@ impl Default for Config {
 impl Config {
     pub fn env() -> anyhow::Result<Self> {
         let host = env::var("AMQP_HOST")?;
-        let port = env::var("AMQP_PORT")?.parse()?;
+        let port = env::var("AMQP_PORT")
+            .unwrap_or("5672".to_string())
+            .parse()?;
         Ok(Self { host, port })
     }
 }
