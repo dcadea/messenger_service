@@ -45,8 +45,15 @@ impl UserService {
         }
     }
 
-    pub async fn search_user_info(&self, nickname: &str) -> super::Result<Vec<UserInfo>> {
-        let users = self.repository.search_by_nickname(nickname).await?;
+    pub async fn search_user_info(
+        &self,
+        nickname: &str,
+        logged_nickname: &str,
+    ) -> super::Result<Vec<UserInfo>> {
+        let users = self
+            .repository
+            .search_by_nickname(nickname, logged_nickname)
+            .await?;
         Ok(users.into_iter().map(|user| user.into()).collect())
     }
 }

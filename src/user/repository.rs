@@ -35,11 +35,18 @@ impl UserRepository {
         result.ok_or(super::Error::NotFound(sub.to_owned()))
     }
 
-    pub async fn search_by_nickname(&self, nickname: &str) -> super::Result<Vec<User>> {
-        let filter = doc! { "nickname":{
-            "$regex": nickname,
-            "$options": "i"
-        }};
+    // search users by nickname excluding the logged user
+    pub async fn search_by_nickname(
+        &self,
+        nickname: &str,
+        logged_nickname: &str,
+    ) -> super::Result<Vec<User>> {
+        let filter = doc! {
+            "$and": [
+                { "nickname": { "$ne": logged_nickname } },
+                { "nickname": { "$regex": nickname, "$options": "i" } },
+            ]
+        };
 
         let cursor = self.users_col.find(filter).await?;
 
