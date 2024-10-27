@@ -1,10 +1,15 @@
 /.idea
 /.zed
+
+/conf
 /docker-volumes
+/docker-compose.yaml
+/docker-compose.dev.yaml
 
 .DS_Store
 .env
 .gitignore
 
+Makefile
 README.md
 *.log

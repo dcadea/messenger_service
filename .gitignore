@@ -2,6 +2,9 @@
 /.idea
 /.zed
 
+/conf
+/docker-volumes
+
 .env
 
 .DS_Store
