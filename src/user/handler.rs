@@ -22,5 +22,5 @@ pub async fn search(
         .search_user_info(&params.nickname, &user_info.nickname)
         .await?;
 
-    Ok(markup::search_result(&users))
+    Ok(markup::search_result(&user_info.friends, &users))
 }

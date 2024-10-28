@@ -15,12 +15,12 @@ pub fn message_input(chat_id: &chat::Id, recipient: &user::Sub) -> Markup {
             input type="hidden" name="chat_id" value=(chat_id.0) {}
             input type="hidden" name="recipient" value=(recipient) {}
 
-            input class="border border-gray-300 rounded-l-md p-2 flex-1"
+            input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none"
                 type="text"
                 name="text"
                 placeholder="Type your message..." {}
 
-            input class="bg-blue-600 text-white px-4 rounded-r-md"
+            input class="bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700"
                 type="submit"
                 value="Send" {}
         }

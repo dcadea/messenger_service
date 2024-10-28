@@ -1,4 +1,5 @@
 use axum::http::StatusCode;
+use axum::routing::post;
 use axum::{
     response::{IntoResponse, Response},
     routing::get,
@@ -33,6 +34,7 @@ pub fn resources<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/chats", get(handler::find_all))
         .route("/chats/:id", get(handler::find_one))
+        .route("/chats", post(handler::create))
         .with_state(state)
 }
 
@@ -42,6 +44,10 @@ pub enum Error {
     NotFound(Option<Id>),
     #[error("user is not a member of the chat")]
     NotMember,
+    #[error("could not create chat")]
+    NotCreated,
+    #[error("chat already exists")]
+    AlreadyExists,
 
     #[error(transparent)]
     Unexpected(#[from] anyhow::Error),
@@ -54,6 +60,8 @@ impl IntoResponse for Error {
         let (status, message) = match self {
             Self::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             Self::NotMember => (StatusCode::BAD_REQUEST, self.to_string()),
+            Self::NotCreated => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+            Self::AlreadyExists => (StatusCode::CONFLICT, self.to_string()),
             Self::Unexpected(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_owned(),

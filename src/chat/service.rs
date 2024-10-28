@@ -71,6 +71,18 @@ impl ChatService {
 
         Ok(chat_dtos)
     }
+
+    pub async fn create(&self, members: [user::Sub; 2]) -> super::Result<Id> {
+        if self.repository.exists(&members).await? {
+            return Err(chat::Error::AlreadyExists);
+        }
+
+        // TODO: add in list of friends
+
+        let chat = Chat::new(members);
+        let chat_id = self.repository.create(chat).await?;
+        Ok(chat_id)
+    }
 }
 
 // validations

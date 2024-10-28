@@ -96,4 +96,30 @@ impl ChatRepository {
 
         Err(chat::Error::NotFound(None))
     }
+
+    pub async fn exists(&self, members: &[user::Sub; 2]) -> super::Result<bool> {
+        let number_of_chats = self
+            .collection
+            .count_documents(doc! {
+                "members": { "$all": members.to_vec() }
+            })
+            .await
+            .with_context(|| format!("Failed to find chat by members: {members:?}"))?;
+
+        Ok(number_of_chats > 0)
+    }
+
+    pub async fn create(&self, chat: Chat) -> super::Result<Id> {
+        let result = self
+            .collection
+            .insert_one(chat)
+            .await
+            .with_context(|| "Failed to create chat")?;
+
+        if let Some(chat_id) = result.inserted_id.as_object_id() {
+            return Ok(Id(chat_id.to_hex()));
+        }
+
+        Err(chat::Error::NotCreated)
+    }
 }

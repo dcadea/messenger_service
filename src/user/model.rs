@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 
 use super::{Id, Sub};
@@ -11,7 +13,7 @@ pub struct User {
     name: String,
     picture: String,
     email: String,
-    friends: Vec<Sub>,
+    friends: HashSet<Sub>,
 }
 
 #[derive(Deserialize)]
@@ -26,6 +28,8 @@ pub struct UserInfo {
     pub name: String,
     pub picture: String,
     email: String,
+    #[serde(skip)]
+    pub friends: HashSet<Sub>,
 }
 
 impl From<User> for UserInfo {
@@ -36,6 +40,7 @@ impl From<User> for UserInfo {
             name: user.name,
             picture: user.picture,
             email: user.email,
+            friends: user.friends,
         }
     }
 }
@@ -49,7 +54,7 @@ impl From<UserInfo> for User {
             name: info.name,
             picture: info.picture,
             email: info.email,
-            friends: vec![],
+            friends: HashSet::new(),
         }
     }
 }

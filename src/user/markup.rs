@@ -1,6 +1,8 @@
+use std::collections::HashSet;
+
 use maud::{html, Markup, Render};
 
-use super::model::UserInfo;
+use super::{model::UserInfo, Sub};
 
 pub struct Header<'a>(pub &'a UserInfo);
 
@@ -27,7 +29,7 @@ impl Render for Search {
     fn render(&self) -> Markup {
         html! {
             input
-                class="mb-4 w-full px-3 py-2 border border-gray-300 rounded-md"
+                class="mb-4 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none"
                 type="search"
                 name="nickname"
                 placeholder="Who do you want to chat with? Type here..."
@@ -40,9 +42,26 @@ impl Render for Search {
     }
 }
 
-pub fn search_result(users: &[UserInfo]) -> Markup {
+struct AddFriend<'a>(&'a Sub);
+
+impl Render for AddFriend<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            form class="float-right"
+                hx-post="/api/chats" {
+                input type="hidden" name="sub" value=(self.0) {}
+                input type="submit"
+                    value="Add friend"
+                    class="px-2 py-1 text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-xs focus:outline-none" {}
+            }
+        }
+    }
+}
+
+pub fn search_result(friends: &HashSet<Sub>, users: &[UserInfo]) -> Markup {
     let search_result_class =
-        "absolute w-full bg-white border border-gray-300 rounded-md shadow-lg cursor-pointer";
+        "absolute w-full bg-white border border-gray-300 rounded-md shadow-lg";
+
     html! {
         @if users.is_empty() {
             ul class=({search_result_class}) {
@@ -51,11 +70,15 @@ pub fn search_result(users: &[UserInfo]) -> Markup {
         } @else {
             ul class=({search_result_class}) {
                 @for user in users {
-                    li class="px-3 py-2 hover:bg-gray-200" {
+                    li class="px-3 py-2" {
                         img class="w-6 h-6 rounded-full float-left"
                             src=(user.picture)
                             alt="User avatar" {}
                         strong.px-3 {(user.name)} (user.nickname)
+
+                        @if !friends.contains(&user.sub) {
+                            (AddFriend(&user.sub))
+                        }
                     }
                 }
             }

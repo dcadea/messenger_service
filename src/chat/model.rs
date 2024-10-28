@@ -14,6 +14,17 @@ pub struct Chat {
     updated_at: i64,
 }
 
+impl Chat {
+    pub fn new(members: [user::Sub; 2]) -> Self {
+        Self {
+            id: None,
+            members,
+            last_message: None,
+            updated_at: chrono::Utc::now().timestamp(),
+        }
+    }
+}
+
 #[derive(Serialize)]
 pub struct ChatDto {
     pub id: Id,
