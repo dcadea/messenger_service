@@ -22,5 +22,10 @@ pub async fn search(
         .search_user_info(&params.nickname, &user_info.nickname)
         .await?;
 
-    Ok(markup::search_result(&user_info.friends, &users))
+    let friends = user_service
+        .find_cached_friends(&user_info.sub)
+        .await
+        .unwrap_or(user_info.friends.clone());
+
+    Ok(markup::search_result(&friends, &users))
 }

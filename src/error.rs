@@ -50,7 +50,7 @@ impl IntoResponse for Error {
             ),
         };
 
-        error!("{:?}", self);
+        error!("{self}");
 
         (status, Json(ErrorResponse { message })).into_response()
     }

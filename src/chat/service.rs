@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use futures::future::try_join_all;
 use futures::TryFutureExt;
 
@@ -77,7 +78,10 @@ impl ChatService {
             return Err(chat::Error::AlreadyExists);
         }
 
-        // TODO: add in list of friends
+        self.user_service
+            .create_friendship(&members)
+            .await
+            .with_context(|| "Failed to create friendship")?;
 
         let chat = Chat::new(members);
         let chat_id = self.repository.create(chat).await?;

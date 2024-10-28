@@ -56,6 +56,16 @@ impl UserService {
             .await?;
         Ok(users.into_iter().map(|user| user.into()).collect())
     }
+
+    pub async fn create_friendship(&self, subs: &[Sub; 2]) -> super::Result<()> {
+        tokio::try_join!(
+            self.repository.add_friend(&subs[0], &subs[1]),
+            self.repository.add_friend(&subs[1], &subs[0]),
+        )
+        .map(|_| ())?;
+
+        Ok(())
+    }
 }
 
 // cache operations
@@ -97,6 +107,18 @@ impl UserService {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn find_cached_friends(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
+        let friends: Option<HashSet<Sub>> = self
+            .redis
+            .smembers(cache::Key::Friends(sub.to_owned()))
+            .await?;
+
+        match friends {
+            Some(friends) => Ok(friends),
+            None => Err(super::Error::NoFriends(sub.to_owned())),
+        }
     }
 
     async fn cache_user_info(&self, user_info: &UserInfo) -> super::Result<()> {

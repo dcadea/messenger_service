@@ -55,7 +55,7 @@ pub enum Error {
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        error!("{:?}", self);
+        error!("{self}");
 
         let (status, message) = match self {
             Self::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),

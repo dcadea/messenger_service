@@ -69,4 +69,13 @@ impl UserRepository {
             .ok_or(super::Error::NotFound(sub.to_owned()))
             .map(|f| f.friends)
     }
+
+    pub async fn add_friend(&self, sub: &user::Sub, friend: &user::Sub) -> super::Result<()> {
+        let filter = doc! { "sub": sub };
+        let update = doc! { "$addToSet": { "friends": friend } };
+
+        self.friends_col.update_one(filter, update).await?;
+
+        Ok(())
+    }
 }

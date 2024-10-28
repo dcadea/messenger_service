@@ -69,8 +69,10 @@ impl<'de> Deserialize<'de> for Sub {
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("user not found: {:?}", 0)]
+    #[error("user not found: {0:?}")]
     NotFound(Sub),
+    #[error("you have no friends ;( man {0:?}")]
+    NoFriends(Sub),
 
     #[error(transparent)]
     Unexpected(#[from] anyhow::Error),

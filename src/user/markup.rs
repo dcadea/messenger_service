@@ -48,7 +48,9 @@ impl Render for AddFriend<'_> {
     fn render(&self) -> Markup {
         html! {
             form class="float-right"
-                hx-post="/api/chats" {
+                hx-post="/api/chats"
+                hx-target="#chat-window"
+            {
                 input type="hidden" name="sub" value=(self.0) {}
                 input type="submit"
                     value="Add friend"

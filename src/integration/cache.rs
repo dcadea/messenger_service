@@ -78,12 +78,13 @@ impl Redis {
         Ok(value)
     }
 
-    pub async fn smembers<V>(&self, key: Key) -> anyhow::Result<Option<Vec<V>>>
+    pub async fn smembers<V>(&self, key: Key) -> anyhow::Result<Option<V>>
     where
-        V: redis::FromRedisValue + Hash + PartialEq + Eq,
+        V: redis::FromRedisValue + IntoIterator,
+        V::Item: redis::FromRedisValue + Hash + PartialEq + Eq,
     {
         let mut con = self.con.clone();
-        let values: Option<Vec<V>> = con
+        let values: Option<V> = con
             .smembers(&key)
             .await
             .with_context(|| format!("Failed to get values from cache by key: {key}"))?;

@@ -2,7 +2,7 @@ use axum::{
     extract::{Path, State},
     Extension, Form,
 };
-use maud::{html, Markup, Render};
+use maud::{Markup, Render};
 use serde::Deserialize;
 
 use crate::user::{self, model::UserInfo, service::UserService};
@@ -32,12 +32,18 @@ pub struct CreateParams {
 }
 
 pub async fn create(
-    Extension(user_info): Extension<UserInfo>,
+    Extension(logged_user): Extension<UserInfo>,
     chat_service: State<ChatService>,
+    user_service: State<UserService>,
     Form(params): Form<CreateParams>,
 ) -> crate::Result<Markup> {
-    let _chat_id = chat_service.create([user_info.sub, params.sub]).await?;
-    Ok(html!()) // TODO: Return chat markup
+    let chat_id = chat_service
+        .create([logged_user.sub.clone(), params.sub])
+        .await?;
+    let chat = chat_service.find_by_id(&chat_id, &logged_user).await?;
+    let recipient = user_service.find_user_info(&chat.recipient).await?;
+
+    Ok(markup::active_chat(&chat.id, &recipient))
 }
 
 pub async fn open_chat(

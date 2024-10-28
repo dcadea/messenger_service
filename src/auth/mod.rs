@@ -54,7 +54,7 @@ pub enum Error {
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        error!("{:?}", self);
+        error!("{self}");
 
         let (status, message) = match self {
             Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
