@@ -32,10 +32,15 @@ impl Render for Search {
                 class="mb-4 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none"
                 type="search"
                 name="nickname"
-                placeholder="Who do you want to chat with? Type here..."
+                placeholder="Search users..."
                 hx-post="/api/users/search"
                 hx-trigger="input changed delay:500ms"
-                hx-target="#search-results" {}
+                hx-target="#search-results"
+                _=r#"on keyup
+                        if the event's key is 'Escape'
+                            set value of me to ''
+                            remove children of #search-results
+                    "# {}
 
             div id="search-results" class="relative" {}
         }

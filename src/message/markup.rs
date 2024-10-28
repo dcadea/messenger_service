@@ -10,6 +10,7 @@ pub fn message_input(chat_id: &chat::Id, recipient: &user::Sub) -> Markup {
         form id="message-input"
             class="border-gray-200 flex"
             ws-send
+            _="on htmx:wsAfterSend reset() me"
         {
             input type="hidden" name="type" value="create_message" {}
             input type="hidden" name="chat_id" value=(chat_id.0) {}
