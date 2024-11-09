@@ -1,8 +1,11 @@
 use std::sync::Arc;
 
-use crate::chat;
+use anyhow::Context;
+
+use crate::chat::service::ChatService;
 use crate::event::model::Notification;
 use crate::event::service::EventService;
+use crate::{chat, user};
 
 use super::model::{Message, MessageDto};
 use super::repository::MessageRepository;
@@ -11,13 +14,19 @@ use super::Id;
 #[derive(Clone)]
 pub struct MessageService {
     repository: Arc<MessageRepository>,
+    chat_service: Arc<ChatService>,
     event_service: Arc<EventService>,
 }
 
 impl MessageService {
-    pub fn new(repository: MessageRepository, event_service: EventService) -> Self {
+    pub fn new(
+        repository: MessageRepository,
+        chat_service: ChatService,
+        event_service: EventService,
+    ) -> Self {
         Self {
             repository: Arc::new(repository),
+            chat_service: Arc::new(chat_service),
             event_service: Arc::new(event_service),
         }
     }
@@ -25,37 +34,56 @@ impl MessageService {
 
 impl MessageService {
     pub async fn create(&self, message: &Message) -> super::Result<MessageDto> {
-        let message = self
+        let dto = self
             .repository
             .insert(message)
             .await
             .map(|id| message.with_id(id))
             .map(MessageDto::from)?;
 
+        self.chat_service
+            .update_last_message(message)
+            .await
+            .with_context(|| "Failed to update last message in chat")?;
+
         self.event_service
             .publish_noti(
-                &message.recipient.clone().into(),
-                &Notification::NewMessage {
-                    message: message.clone(),
-                },
+                &dto.recipient.clone().into(),
+                &Notification::NewMessage { dto: dto.clone() },
             )
             .await
-            .expect("TODO: handle error");
+            .with_context(|| "Failed to publish notification")?;
 
-        Ok(message)
+        Ok(dto)
     }
 
-    pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
-        self.repository.update(id, text).await
+    // pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
+    //     self.repository.update(id, text).await
+    // }
+
+    pub async fn delete(&self, owner: &user::Sub, id: &Id) -> super::Result<()> {
+        let msg = self.repository.find_by_id(id).await?;
+        self.chat_service
+            .check_member(&msg.chat_id, owner)
+            .await
+            .map_err(|_| super::Error::NotOwner)?;
+
+        self.repository.delete(id).await?;
+
+        self.event_service
+            .publish_noti(
+                &msg.recipient.clone().into(),
+                &Notification::DeletedMessage { id: id.to_owned() },
+            )
+            .await
+            .with_context(|| "Failed to publish notification")?;
+
+        Ok(())
     }
 
-    pub async fn delete(&self, id: &Id) -> super::Result<()> {
-        self.repository.delete(id).await
-    }
-
-    pub async fn mark_as_seen(&self, id: &Id) -> super::Result<()> {
-        self.repository.mark_as_seen(id).await
-    }
+    // pub async fn mark_as_seen(&self, id: &Id) -> super::Result<()> {
+    //     self.repository.mark_as_seen(id).await
+    // }
 }
 
 impl MessageService {

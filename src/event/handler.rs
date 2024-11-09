@@ -6,9 +6,10 @@ use log::{debug, error, warn};
 use serde_json::from_str;
 use tokio::sync::{Notify, RwLock};
 
-use super::model::{Command, Notification, Queue};
+use super::model::{Notification, Queue};
 use super::service::EventService;
 use crate::event::markup;
+use crate::event::model::Command;
 use crate::user;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;

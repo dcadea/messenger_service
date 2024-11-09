@@ -8,7 +8,7 @@ use super::Id;
 pub struct Message {
     #[serde(alias = "_id", skip_serializing_if = "Option::is_none")]
     id: Option<Id>,
-    chat_id: chat::Id,
+    pub chat_id: chat::Id,
     pub owner: user::Sub,
     pub recipient: user::Sub,
     pub text: String,

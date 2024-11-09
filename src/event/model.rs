@@ -6,7 +6,7 @@ use futures::Stream;
 use serde::{Deserialize, Serialize};
 
 use crate::message::model::MessageDto;
-use crate::{chat, message, user};
+use crate::{message, user};
 
 pub type NotificationStream = Pin<Box<dyn Stream<Item = Option<Notification>> + Send>>;
 
@@ -40,23 +40,13 @@ impl async_nats::subject::ToSubject for &Queue {
 #[derive(Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Command {
-    CreateMessage {
-        chat_id: chat::Id,
-        recipient: user::Sub,
-        text: String,
-    },
-    UpdateMessage {
-        id: message::Id,
-        text: String,
-    },
-    DeleteMessage(message::Id),
     MarkAsSeen(message::Id),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Notification {
-    NewMessage { message: MessageDto },
+    NewMessage { dto: MessageDto },
     UpdatedMessage { id: message::Id, text: String },
     DeletedMessage { id: message::Id },
     SeenMessage { id: message::Id },

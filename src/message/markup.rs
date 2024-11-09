@@ -60,7 +60,6 @@ fn last_message_item(msg: &MessageDto, sub: &user::Sub) -> Markup {
 
     html! {
         div id={"m-" (msg.id.0)}
-
             ."message-item flex items-center items-baseline"
             .justify-end[belongs_to_user]
             // FIXME: new messages are pushed into view

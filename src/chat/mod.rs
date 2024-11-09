@@ -30,7 +30,7 @@ pub fn pages<S>(state: AppState) -> Router<S> {
         .with_state(state)
 }
 
-pub fn resources<S>(state: AppState) -> Router<S> {
+pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/chats", get(handler::find_all))
         .route("/chats/:id", get(handler::find_one))

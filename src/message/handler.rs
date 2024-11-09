@@ -78,23 +78,11 @@ pub async fn find_one(
     Ok(markup::message_item(&msg, logged_sub))
 }
 
-#[derive(Deserialize)]
-pub struct DeleteParams {
-    chat_id: chat::Id,
-}
-
 pub async fn delete(
     user_info: Extension<UserInfo>,
     id: Path<Id>,
-    params: Query<DeleteParams>,
     message_service: State<MessageService>,
-    chat_service: State<ChatService>,
 ) -> crate::Result<()> {
-    chat_service
-        .check_member(&params.chat_id, &user_info.sub)
-        .await?;
-
-    message_service.delete(&id).await?;
-
+    message_service.delete(&user_info.sub, &id).await?;
     Ok(())
 }

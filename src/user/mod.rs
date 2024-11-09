@@ -18,7 +18,7 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
-pub fn resources<S>(state: AppState) -> Router<S> {
+pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/users/search", post(handler::search))
         .with_state(state)
@@ -29,7 +29,6 @@ pub struct Sub(pub String);
 
 impl Sub {
     fn parts(&self) -> (String, String) {
-        // split string by '|' and return array of 2 elements
         let mut parts = self.0.splitn(2, '|');
         let provider = parts.next().expect("provider must be present");
         let id = parts.next().expect("id must be present");

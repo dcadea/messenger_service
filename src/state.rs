@@ -35,8 +35,11 @@ impl AppState {
             redis.clone(),
         );
         let event_service = EventService::new(pubsub, redis.clone());
-        let message_service =
-            MessageService::new(MessageRepository::new(&database), event_service.clone());
+        let message_service = MessageService::new(
+            MessageRepository::new(&database),
+            chat_service.clone(),
+            event_service.clone(),
+        );
 
         Ok(Self {
             config,
