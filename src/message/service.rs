@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
 use crate::chat;
+use crate::event::model::Notification;
+use crate::event::service::EventService;
 
 use super::model::{Message, MessageDto};
 use super::repository::MessageRepository;
@@ -9,22 +11,38 @@ use super::Id;
 #[derive(Clone)]
 pub struct MessageService {
     repository: Arc<MessageRepository>,
+    event_service: Arc<EventService>,
 }
 
 impl MessageService {
-    pub fn new(repository: MessageRepository) -> Self {
+    pub fn new(repository: MessageRepository, event_service: EventService) -> Self {
         Self {
             repository: Arc::new(repository),
+            event_service: Arc::new(event_service),
         }
     }
 }
 
 impl MessageService {
-    pub async fn create(&self, message: &Message) -> super::Result<Message> {
-        self.repository
+    pub async fn create(&self, message: &Message) -> super::Result<MessageDto> {
+        let message = self
+            .repository
             .insert(message)
             .await
             .map(|id| message.with_id(id))
+            .map(MessageDto::from)?;
+
+        self.event_service
+            .publish_noti(
+                &message.recipient.clone().into(),
+                &Notification::NewMessage {
+                    message: message.clone(),
+                },
+            )
+            .await
+            .expect("TODO: handle error");
+
+        Ok(message)
     }
 
     pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {

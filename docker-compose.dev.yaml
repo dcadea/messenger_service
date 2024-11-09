@@ -30,8 +30,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      rabbitmq:
+      nats:
         condition: service_healthy
+      # rabbitmq:
+      #   condition: service_healthy
 
   mongo:
     image: mongo:latest
@@ -74,15 +76,27 @@ services:
       timeout: 5s
       retries: 5
 
-  rabbitmq:
-    image: rabbitmq:management-alpine
-    container_name: awg.dev.rabbitmq
+  nats:
+    image: nats:2-alpine
+    container_name: awg.dev.nats
     restart: always
     ports:
-      - 5672:5672
-      - 15672:15672
+      - 4222:4222
     healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
+      test: wget http://localhost:8222/healthz -q -S -O -
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # rabbitmq:
+  #   image: rabbitmq:management-alpine
+  #   container_name: awg.dev.rabbitmq
+  #   restart: always
+  #   ports:
+  #     - 5672:5672
+  #     - 15672:15672
+  #   healthcheck:
+  #     test: ["CMD", "rabbitmqctl", "status"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5

@@ -37,7 +37,7 @@ impl Message {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MessageDto {
     pub id: Id,
     pub chat_id: chat::Id,

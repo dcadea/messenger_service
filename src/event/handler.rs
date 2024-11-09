@@ -4,9 +4,8 @@ use axum::response::Response;
 use axum::Extension;
 use log::{debug, error, warn};
 use serde_json::from_str;
-use tokio::sync::RwLock;
+use tokio::sync::{Notify, RwLock};
 
-use super::context;
 use super::model::{Command, Notification, Queue};
 use super::service::EventService;
 use crate::event::markup;
@@ -36,26 +35,17 @@ async fn handle_socket(
     event_service: EventService,
     user_service: UserService,
 ) {
-    let ctx = match event_service.create_channel().await {
-        Ok(channel) => {
-            let ctx = context::Ws::new(logged_sub.to_owned(), channel);
-            if let Err(e) = user_service.add_online_user(&logged_sub).await {
-                error!("Failed to add user to online users: {e}");
-            }
-            ctx
-        }
-        Err(e) => {
-            error!("Failed to create AMQP channel. Aborting WS connection: {e}");
-            ws.close().await.expect("Failed to close WS connection");
-            return;
-        }
-    };
+    if let Err(e) = user_service.add_online_user(&logged_sub).await {
+        error!("Failed to add user to online users: {e}");
+    }
 
     let (sender, receiver) = ws.split();
 
-    let read_task = tokio::spawn(read(ctx.clone(), receiver, event_service.clone()));
+    let close = Arc::new(Notify::new());
+    let read_task = tokio::spawn(read(close.clone(), receiver, event_service.clone()));
     let write_task = tokio::spawn(write(
-        ctx.clone(),
+        close.clone(),
+        logged_sub.to_owned(),
         sender,
         event_service.clone(),
         user_service.clone(),
@@ -69,17 +59,17 @@ async fn handle_socket(
     if let Err(e) = user_service.remove_online_user(&logged_sub).await {
         error!("Failed to remove user from online users: {e}");
     }
-    match event_service.close_channel(&ctx).await {
-        Ok(_) => debug!("AMQP channel closed gracefully"),
-        Err(e) => error!("Failed to close AMQP channel: {e}"),
-    }
 }
 
-async fn read(ctx: context::Ws, mut receiver: SplitStream<WebSocket>, event_service: EventService) {
+async fn read(
+    close: Arc<Notify>,
+    mut receiver: SplitStream<WebSocket>,
+    event_service: EventService,
+) {
     loop {
         tokio::select! {
             // close is notified => stop 'read' task
-            _ = ctx.close.notified() => break,
+            _ = close.notified() => break,
 
             // read next frame from WS connection
             frame = receiver.next() => {
@@ -87,18 +77,18 @@ async fn read(ctx: context::Ws, mut receiver: SplitStream<WebSocket>, event_serv
                     match message {
                         Err(e) => {
                             error!("Failed to read WS frame: {e}");
-                            ctx.close.notify_one(); // notify 'write' task to stop
+                            close.notify_one(); // notify 'write' task to stop
                             break;
                         },
                         Ok(Close(frame)) => {
                             debug!("WS connection closed by client: {:?}", frame);
-                            ctx.close.notify_one(); // notify 'write' task to stop
+                            close.notify_one(); // notify 'write' task to stop
                             break;
                         },
                         Ok(Text(content)) => {
-                            if let Err(e) = handle_text_frame(&ctx, content, event_service.clone()).await {
+                            if let Err(e) = handle_text_frame(content, event_service.clone()).await {
                                 error!("Failed to handle text frame: {e}");
-                                ctx.close.notify_one(); // notify 'write' task to stop
+                                close.notify_one(); // notify 'write' task to stop
                                 break;
                             }
                         },
@@ -113,31 +103,28 @@ async fn read(ctx: context::Ws, mut receiver: SplitStream<WebSocket>, event_serv
     }
 }
 
-async fn handle_text_frame(
-    ctx: &context::Ws,
-    content: String,
-    event_service: EventService,
-) -> super::Result<()> {
+async fn handle_text_frame(content: String, event_service: EventService) -> super::Result<()> {
     if let Ok(command) = from_str::<Command>(content.as_str()) {
-        return event_service.handle_command(ctx, command).await;
+        return event_service.handle_command(command).await;
     }
     warn!("Skipping text frame, content is malformed: {content}");
     Ok(())
 }
 
 async fn write(
-    ctx: context::Ws,
+    close: Arc<Notify>,
+    logged_sub: user::Sub,
     sender: SplitSink<WebSocket, ws::Message>,
     event_service: EventService,
     user_service: UserService,
 ) {
-    let messages_queue = Queue::Messages(ctx.logged_sub.clone());
+    let messages_queue = Queue::Messages(logged_sub.clone());
 
-    let mut noti_stream = match event_service.read(&ctx, &messages_queue).await {
+    let mut noti_stream = match event_service.read(&messages_queue).await {
         Ok(binding) => binding,
         Err(e) => {
             error!("Failed to create AMQP consumer of notifications: {e}");
-            ctx.close.notify_one();
+            close.notify_one();
             return;
         }
     };
@@ -146,7 +133,7 @@ async fn write(
         Ok(stream) => stream,
         Err(e) => {
             error!("Failed to listen online status changes: {e}");
-            ctx.close.notify_one();
+            close.notify_one();
             return;
         }
     };
@@ -155,7 +142,7 @@ async fn write(
     loop {
         tokio::select! {
             // close is notified => stop 'write' task
-            _ = ctx.close.notified() => break,
+            _ = close.notified() => break,
 
             // push new list of online users when somebody logs in or out
             status = online_status_changes.next() => {
@@ -163,7 +150,7 @@ async fn write(
                     None => continue,
                     Some(Err(e)) => error!("Failed to read online status change: {e}"),
                     Some(Ok(_)) => {
-                        publish_online_friends(&ctx, user_service.clone(), event_service.clone()).await;
+                        publish_online_friends(&logged_sub, user_service.clone(), event_service.clone()).await;
                     }
                 }
             },
@@ -171,12 +158,12 @@ async fn write(
             item = noti_stream.next() => {
                 match item {
                     None => break,
-                    Some(Err(e)) => error!("Failed to read notification from queue: {e}"),
-                    Some(Ok(noti)) => {
+                    Some(None) => warn!("Looks like there was an issue reading from subject..."),
+                    Some(Some(noti)) => {
                         debug!("Sending notification: {:?}", noti);
 
                         let mut sender = sender.write().await;
-                        let noti_markup = markup::noti_item(&noti, &ctx.logged_sub);
+                        let noti_markup = markup::noti_item(&noti, &logged_sub);
 
                         if let Err(e) = sender.send(Text(noti_markup.into_string())).await {
                             error!("Failed to send notification to client: {e}");
@@ -189,21 +176,18 @@ async fn write(
 }
 
 async fn publish_online_friends(
-    ctx: &context::Ws,
+    logged_sub: &user::Sub,
     user_service: UserService,
     event_service: EventService,
 ) {
-    let logged_sub = ctx.logged_sub.to_owned();
-
-    if let Ok(friends) = user_service.get_online_friends(&logged_sub).await {
+    if let Ok(friends) = user_service.get_online_friends(logged_sub).await {
         if friends.is_empty() {
             return;
         }
 
         if let Err(e) = event_service
             .publish_noti(
-                ctx,
-                &Queue::Messages(logged_sub),
+                &Queue::Messages(logged_sub.clone()),
                 &Notification::OnlineFriends {
                     friends: friends.clone(),
                 },

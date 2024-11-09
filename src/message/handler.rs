@@ -1,16 +1,39 @@
 use axum::extract::{Path, State};
-use axum::Extension;
+use axum::{Extension, Form};
 use axum_extra::extract::Query;
 use maud::Markup;
 use serde::Deserialize;
 
-use crate::chat;
 use crate::chat::service::ChatService;
 use crate::error::Error;
 use crate::user::model::UserInfo;
+use crate::{chat, user};
 
+use super::model::Message;
 use super::service::MessageService;
 use super::{markup, Id};
+
+#[derive(Deserialize)]
+pub struct CreateParams {
+    chat_id: chat::Id,
+    recipient: user::Sub,
+    text: String,
+}
+
+pub async fn create(
+    user_info: Extension<UserInfo>,
+    message_service: State<MessageService>,
+    Form(params): Form<CreateParams>,
+) -> crate::Result<Markup> {
+    let msg = Message::new(
+        params.chat_id,
+        user_info.sub.clone(),
+        params.recipient,
+        &params.text,
+    );
+    let msg = message_service.create(&msg).await?;
+    Ok(markup::message_item(&msg, &user_info.sub))
+}
 
 #[derive(Deserialize)]
 pub struct Params {

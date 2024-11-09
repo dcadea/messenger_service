@@ -1,5 +1,5 @@
 use axum::{
-    routing::{delete, get},
+    routing::{delete, get, post},
     Router,
 };
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
@@ -20,6 +20,7 @@ pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
 pub fn resources<S>(state: AppState) -> Router<S> {
     Router::new()
+        .route("/messages", post(handler::create))
         .route("/messages", get(handler::find_all))
         .route("/messages/:id", get(handler::find_one))
         .route("/messages/:id", delete(handler::delete))
