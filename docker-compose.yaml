@@ -19,7 +19,7 @@ services:
       REDIS_HOST: awg.redis
       MONGO_HOST: awg.mongo
       MONGO_DB: messenger
-      AMQP_HOST: awg.rabbitmq
+      NATS_HOST: awg.nats
     volumes:
       - ./docker-volumes/release/messenger_service/service.log:/usr/local/bin/service.log
     depends_on:
@@ -27,7 +27,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      rabbitmq:
+      nats:
         condition: service_healthy
 
   mongo:
@@ -59,14 +59,14 @@ services:
       timeout: 5s
       retries: 5
 
-  rabbitmq:
-    image: rabbitmq:alpine
-    container_name: awg.rabbitmq
+  nats:
+    image: nats:2-alpine
+    container_name: awg.nats
     restart: always
     ports:
-      - 5672:5672
+      - 4222:4222
     healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
+      test: wget http://localhost:8222/healthz -q -S -O -
       interval: 10s
       timeout: 5s
       retries: 5

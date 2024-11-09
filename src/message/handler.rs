@@ -36,7 +36,7 @@ pub async fn create(
 }
 
 #[derive(Deserialize)]
-pub struct Params {
+pub struct FindAllParams {
     chat_id: Option<chat::Id>,
     end_time: Option<i64>,
     limit: Option<usize>,
@@ -44,7 +44,7 @@ pub struct Params {
 
 pub async fn find_all(
     user_info: Extension<UserInfo>,
-    Query(params): Query<Params>,
+    Query(params): Query<FindAllParams>,
     chat_service: State<ChatService>,
     message_service: State<MessageService>,
 ) -> crate::Result<Markup> {
@@ -66,8 +66,8 @@ pub async fn find_all(
 pub async fn find_one(
     id: Path<Id>,
     user_info: Extension<UserInfo>,
-    chat_service: State<ChatService>,
     message_service: State<MessageService>,
+    chat_service: State<ChatService>,
 ) -> crate::Result<Markup> {
     let msg = message_service.find_by_id(&id).await?;
 
@@ -78,8 +78,21 @@ pub async fn find_one(
     Ok(markup::message_item(&msg, logged_sub))
 }
 
-pub async fn delete(id: Path<Id>, message_service: State<MessageService>) -> crate::Result<()> {
-    // TODO: validate user is a member of the chat
+#[derive(Deserialize)]
+pub struct DeleteParams {
+    chat_id: chat::Id,
+}
+
+pub async fn delete(
+    user_info: Extension<UserInfo>,
+    id: Path<Id>,
+    params: Query<DeleteParams>,
+    message_service: State<MessageService>,
+    chat_service: State<ChatService>,
+) -> crate::Result<()> {
+    chat_service
+        .check_member(&params.chat_id, &user_info.sub)
+        .await?;
 
     message_service.delete(&id).await?;
 

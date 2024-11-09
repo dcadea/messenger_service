@@ -9,22 +9,13 @@ use super::model::{Command, Notification, NotificationStream, Queue};
 
 #[derive(Clone)]
 pub struct EventService {
-    // amqp_con: Arc<RwLock<Connection>>,
     pubsub: async_nats::Client,
     redis: integration::cache::Redis,
 }
 
 impl EventService {
-    pub fn new(
-        // amqp_con: RwLock<Connection>,
-        pubsub: async_nats::Client,
-        redis: integration::cache::Redis,
-    ) -> Self {
-        Self {
-            // amqp_con: Arc::new(amqp_con),
-            pubsub,
-            redis,
-        }
+    pub fn new(pubsub: async_nats::Client, redis: integration::cache::Redis) -> Self {
+        Self { pubsub, redis }
     }
 }
 

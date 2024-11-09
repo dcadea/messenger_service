@@ -123,7 +123,7 @@ async fn write(
     let mut noti_stream = match event_service.read(&messages_queue).await {
         Ok(binding) => binding,
         Err(e) => {
-            error!("Failed to create AMQP consumer of notifications: {e}");
+            error!("Failed to read from notifications stream: {e}");
             close.notify_one();
             return;
         }

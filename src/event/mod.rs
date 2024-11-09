@@ -39,8 +39,6 @@ pub enum Error {
     #[error(transparent)]
     _ParseJson(#[from] serde_json::Error),
     #[error(transparent)]
-    _Lapin(#[from] lapin::Error),
-    #[error(transparent)]
     _NatsPub(#[from] async_nats::PublishError),
     #[error(transparent)]
     _NatsSub(#[from] async_nats::SubscribeError),
