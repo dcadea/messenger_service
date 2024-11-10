@@ -57,25 +57,10 @@ pub async fn find_all(
     chat_service.check_member(&chat_id, logged_sub).await?;
 
     let messages = message_service
-        .find_by_chat_id_and_params(&chat_id, params.limit, params.end_time)
+        .find_by_chat_id_and_params(logged_sub, &chat_id, params.limit, params.end_time)
         .await?;
 
     Ok(markup::message_list(&messages, logged_sub))
-}
-
-pub async fn find_one(
-    id: Path<Id>,
-    user_info: Extension<UserInfo>,
-    message_service: State<MessageService>,
-    chat_service: State<ChatService>,
-) -> crate::Result<Markup> {
-    let msg = message_service.find_by_id(&id).await?;
-
-    let logged_sub = &user_info.sub;
-
-    chat_service.check_member(&msg.chat_id, logged_sub).await?;
-
-    Ok(markup::message_item(&msg, logged_sub))
 }
 
 pub async fn delete(

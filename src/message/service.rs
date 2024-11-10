@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
+use log::debug;
 
 use crate::chat::service::ChatService;
 use crate::event::model::Notification;
@@ -80,24 +81,20 @@ impl MessageService {
 
         Ok(())
     }
-
-    // pub async fn mark_as_seen(&self, id: &Id) -> super::Result<()> {
-    //     self.repository.mark_as_seen(id).await
-    // }
 }
 
 impl MessageService {
-    pub async fn find_by_id(&self, id: &Id) -> super::Result<MessageDto> {
-        self.repository.find_by_id(id).await.map(MessageDto::from)
-    }
-
+    // This method is designed to be callen when recipient requests messages related to selected chat.
+    // It also marks all messages as seen where logged user is recipient.
+    // Due to this side effect consider using other methods for read-only messages retrieval.
     pub async fn find_by_chat_id_and_params(
         &self,
+        logged_sub: &user::Sub,
         chat_id: &chat::Id,
         limit: Option<usize>,
         end_time: Option<i64>,
     ) -> super::Result<Vec<MessageDto>> {
-        let result = match (limit, end_time) {
+        let messages = match (limit, end_time) {
             (None, None) => self.repository.find_by_chat_id(chat_id).await?,
             (Some(limit), None) => {
                 self.repository
@@ -116,11 +113,56 @@ impl MessageService {
             }
         };
 
-        let result = result
+        self.mark_as_seen(logged_sub, &messages).await?;
+
+        let dtos = messages
             .iter()
             .map(|msg| MessageDto::from(msg.clone()))
             .collect::<Vec<_>>();
 
-        Ok(result)
+        Ok(dtos)
+    }
+
+    async fn mark_as_seen(
+        &self,
+        logged_sub: &user::Sub,
+        messages: &[Message],
+    ) -> super::Result<()> {
+        if messages.is_empty() {
+            debug!("attempting to mark as seen but messages list is empty");
+            return Ok(());
+        }
+
+        let owner = messages
+            .iter()
+            .find(|msg| msg.recipient.eq(logged_sub))
+            .map(|msg| msg.owner.clone());
+
+        if owner.is_none() {
+            debug!("all messages belong to logged user, skipping mark as seen");
+            return Ok(());
+        }
+
+        let ids = messages
+            .iter()
+            .filter(|msg| msg.recipient.eq(logged_sub))
+            .filter(|msg| !msg.seen)
+            .filter_map(|msg| msg.id.clone())
+            .collect::<Vec<_>>();
+
+        if ids.is_empty() {
+            debug!("all messages are already seen, skipping mark as seen");
+            return Ok(());
+        }
+
+        self.repository.mark_as_seen(&ids).await?;
+        self.event_service
+            .publish_noti(
+                &owner.expect("no owner present").into(),
+                &Notification::SeenMessages { ids },
+            )
+            .await
+            .with_context(|| "Failed to publish notification")?;
+        Ok(())
     }
 }

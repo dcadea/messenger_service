@@ -22,7 +22,6 @@ pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/messages", post(handler::create))
         .route("/messages", get(handler::find_all))
-        .route("/messages/:id", get(handler::find_one))
         .route("/messages/:id", delete(handler::delete))
         .with_state(state)
 }

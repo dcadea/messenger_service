@@ -49,8 +49,8 @@ pub fn init(config: &Config) -> mongodb::Database {
     }
 }
 
-impl From<&chat::Id> for mongodb::bson::Bson {
-    fn from(val: &chat::Id) -> Self {
+impl From<chat::Id> for mongodb::bson::Bson {
+    fn from(val: chat::Id) -> Self {
         match oid::ObjectId::from_str(&val.0) {
             Ok(oid) => mongodb::bson::Bson::ObjectId(oid),
             Err(_) => mongodb::bson::Bson::String(val.0.clone()),
@@ -58,8 +58,8 @@ impl From<&chat::Id> for mongodb::bson::Bson {
     }
 }
 
-impl From<&message::Id> for mongodb::bson::Bson {
-    fn from(val: &message::Id) -> Self {
+impl From<message::Id> for mongodb::bson::Bson {
+    fn from(val: message::Id) -> Self {
         match oid::ObjectId::from_str(&val.0) {
             Ok(oid) => mongodb::bson::Bson::ObjectId(oid),
             Err(_) => mongodb::bson::Bson::String(val.0.clone()),
@@ -67,8 +67,8 @@ impl From<&message::Id> for mongodb::bson::Bson {
     }
 }
 
-impl From<&user::Id> for mongodb::bson::Bson {
-    fn from(val: &user::Id) -> Self {
+impl From<user::Id> for mongodb::bson::Bson {
+    fn from(val: user::Id) -> Self {
         match oid::ObjectId::from_str(&val.0) {
             Ok(oid) => mongodb::bson::Bson::ObjectId(oid),
             Err(_) => mongodb::bson::Bson::String(val.0.clone()),

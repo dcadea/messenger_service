@@ -117,10 +117,13 @@ impl MessageRepository {
         Ok(())
     }
 
-    // pub async fn mark_as_seen(&self, id: &Id) -> super::Result<()> {
-    //     self.collection
-    //         .update_one(doc! {"_id": id}, doc! {"$set": {"seen": true}})
-    //         .await?;
-    //     Ok(())
-    // }
+    pub async fn mark_as_seen(&self, ids: &Vec<Id>) -> super::Result<()> {
+        self.collection
+            .update_many(
+                doc! {"_id": {"$in": ids}, "seen": false},
+                doc! {"$set": {"seen": true}},
+            )
+            .await?;
+        Ok(())
+    }
 }

@@ -7,13 +7,13 @@ use super::Id;
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Message {
     #[serde(alias = "_id", skip_serializing_if = "Option::is_none")]
-    id: Option<Id>,
+    pub id: Option<Id>,
     pub chat_id: chat::Id,
     pub owner: user::Sub,
     pub recipient: user::Sub,
     pub text: String,
-    timestamp: i64,
-    seen: bool,
+    pub timestamp: i64,
+    pub seen: bool,
 }
 
 impl Message {

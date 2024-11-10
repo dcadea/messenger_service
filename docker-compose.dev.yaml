@@ -80,6 +80,7 @@ services:
     restart: always
     ports:
       - 4222:4222
+      - 8222:8222
     healthcheck:
       test: wget http://localhost:8222/healthz -q -S -O -
       interval: 10s
