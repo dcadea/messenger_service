@@ -1,5 +1,5 @@
 use chrono::DateTime;
-use maud::{html, Markup};
+use maud::{html, Markup, Render};
 
 use crate::{chat, user};
 
@@ -46,7 +46,7 @@ pub fn message_item(msg: &MessageDto, sub: &user::Sub) -> Markup {
 
     html! {
         div id={"m-" (msg.id.0)}
-            ."message-item flex items-center items-baseline"
+            ."message-item flex items-center items-baseline relative"
             .justify-end[belongs_to_user]
         {
             (message_bubble(msg, belongs_to_user))
@@ -60,7 +60,7 @@ fn last_message_item(msg: &MessageDto, sub: &user::Sub) -> Markup {
 
     html! {
         div id={"m-" (msg.id.0)}
-            ."message-item flex items-center items-baseline"
+            ."message-item flex items-center items-baseline relative"
             .justify-end[belongs_to_user]
             // FIXME: new messages are pushed into view
             // which results in a loop of requests
@@ -70,6 +70,26 @@ fn last_message_item(msg: &MessageDto, sub: &user::Sub) -> Markup {
             hx-get={ "/api/messages?limit=14&chat_id=" (msg.chat_id.0) "&end_time=" (msg.timestamp) }
         {
             (message_bubble(msg, belongs_to_user))
+        }
+    }
+}
+
+pub struct SeenIcon;
+
+impl Render for SeenIcon {
+    fn render(&self) -> Markup {
+        html! {
+            i class="fa-solid fa-check absolute bottom-1 right-2.5 text-white opacity-65" {}
+        }
+    }
+}
+
+struct SentIcon;
+
+impl Render for SentIcon {
+    fn render(&self) -> Markup {
+        html! {
+            i class="fa-solid fa-check absolute bottom-1 right-1 text-white opacity-65" {}
         }
     }
 }
@@ -86,23 +106,21 @@ fn message_bubble(msg: &MessageDto, belongs_to_user: bool) -> Markup {
 
             // TODO: Add edit handler
             i class="fa-pen fa-solid ml-2 text-green-700 cursor-pointer" {}
+
+            (SentIcon)
+
+            @if msg.seen {
+                (SeenIcon)
+            }
         }
 
-        div ."message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs relative"
+        div ."message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs"
             ."bg-blue-600 text-white ml-2"[belongs_to_user]
             ."bg-gray-300 text-gray-600"[!belongs_to_user] {
 
             p class="message-text mr-3 whitespace-normal font-light" { (msg.text) }
             @if let Some(mt) = message_timestamp {
                 span class="message-timestamp text-xs" { (mt) }
-            }
-
-            @if belongs_to_user {
-                i class="fa-solid fa-check absolute bottom-1 right-1 opacity-65" {}
-
-                @if msg.seen {
-                    i class="fa-solid fa-check absolute bottom-1 right-2.5 opacity-65" {}
-                }
             }
         }
     }

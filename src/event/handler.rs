@@ -188,7 +188,7 @@ async fn publish_online_friends(
 
         if let Err(e) = event_service
             .publish_noti(
-                &Queue::Messages(logged_sub.clone()),
+                &logged_sub.clone().into(),
                 &Notification::OnlineFriends {
                     friends: friends.clone(),
                 },

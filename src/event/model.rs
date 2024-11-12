@@ -50,6 +50,5 @@ pub enum Notification {
     UpdatedMessage { id: message::Id, text: String },
     DeletedMessage { id: message::Id },
     SeenMessage { id: message::Id },
-    SeenMessages { ids: Vec<message::Id> },
     OnlineFriends { friends: HashSet<user::Sub> },
 }

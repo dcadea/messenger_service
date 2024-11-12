@@ -27,17 +27,10 @@ pub fn noti_item(noti: &Notification, logged_sub: &user::Sub) -> Markup {
                 }
             }
         }
-        Notification::SeenMessage { id: _ } => todo!(),
-        Notification::SeenMessages { ids } => {
+        Notification::SeenMessage { id } => {
             html! {
-                // FIXME: seen icon is not appended
-                @for id in ids {
-                    div
-                        hx-target={"#m-" (id.0)}
-                        hx-swap-oob="beforeend"
-                    {
-                        i class="fa-solid fa-check absolute bottom-1 right-2.5 opacity-65" {}
-                    }
+                div id={"m-" (id.0)} hx-swap-oob="beforeend" {
+                    (message::markup::SeenIcon)
                 }
             }
         }

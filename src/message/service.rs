@@ -156,13 +156,18 @@ impl MessageService {
         }
 
         self.repository.mark_as_seen(&ids).await?;
-        self.event_service
-            .publish_noti(
-                &owner.expect("no owner present").into(),
-                &Notification::SeenMessages { ids },
-            )
-            .await
-            .with_context(|| "Failed to publish notification")?;
+
+        let owner = owner.expect("no owner present");
+        for id in &ids {
+            self.event_service
+                .publish_noti(
+                    &owner.clone().into(),
+                    &Notification::SeenMessage { id: id.clone() },
+                )
+                .await
+                .with_context(|| "Failed to publish notification")?;
+        }
+
         Ok(())
     }
 }
