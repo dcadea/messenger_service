@@ -12,7 +12,8 @@ pub fn message_input(chat_id: &chat::Id, recipient: &user::Sub) -> Markup {
             hx-post="/api/messages"
             hx-target="#message-list"
             hx-swap="afterbegin"
-            _="on htmx:afterRequest reset() me"
+            _="on htmx:afterRequest reset() me
+               on htmx:afterRequest go to the bottom of the #message-list"
         {
             input type="hidden" name="chat_id" value=(chat_id.0) {}
             input type="hidden" name="recipient" value=(recipient) {}
@@ -62,10 +63,7 @@ fn last_message_item(msg: &MessageDto, sub: &user::Sub) -> Markup {
         div id={"m-" (msg.id.0)}
             ."message-item flex items-center items-baseline relative"
             .justify-end[belongs_to_user]
-            // FIXME: new messages are pushed into view
-            // which results in a loop of requests
-            // hx-trigger="intersect once"
-            hx-trigger="click"
+            hx-trigger="intersect once"
             hx-swap="afterend"
             hx-get={ "/api/messages?limit=14&chat_id=" (msg.chat_id.0) "&end_time=" (msg.timestamp) }
         {

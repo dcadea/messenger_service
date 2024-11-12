@@ -29,6 +29,7 @@ pub mod markup {
                 body class="h-screen bg-black flex items-center justify-center"
                     hx-ext="ws"
                     ws-connect="/ws"
+                    _="on htmx:wsAfterMessage go to the bottom of the #message-list"
                 {
                     div class="max-w-lg h-3/5 md:h-4/5 md:w-4/5 bg-white rounded-2xl p-6"
                     {

@@ -50,8 +50,8 @@ pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
             div id="message-list"
                 class="flex flex-col-reverse"
                 hx-get={ "/api/messages?limit=14&chat_id=" (id.0) }
-                hx-trigger="load"
-                hx-swap="innerHTML" {}
+                hx-trigger="load" // FIXME: always scrolls to the bottom on next page
+                _="on htmx:afterOnLoad go to the bottom of the #message-list" {}
         }
 
         (message_input(id, &recipient.sub))
