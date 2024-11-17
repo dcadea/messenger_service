@@ -22,13 +22,11 @@ impl MessageRepository {
 impl MessageRepository {
     pub async fn insert(&self, message: &Message) -> super::Result<Id> {
         let result = self.collection.insert_one(message).await?;
-        if let Some(id) = result.inserted_id.as_object_id() {
-            return Ok(Id(id.to_hex()));
-        }
-
-        Err(message::Error::Unexpected(
-            "Failed to insert message".to_owned(),
-        ))
+        let id = result
+            .inserted_id
+            .as_object_id()
+            .ok_or(super::Error::IdNotPresent)?;
+        Ok(Id(id.to_hex()))
     }
 
     pub async fn find_by_id(&self, id: &Id) -> super::Result<Message> {
@@ -107,21 +105,24 @@ impl MessageRepository {
         Ok(messages)
     }
 
-    pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
-        self.collection
-            .update_one(doc! {"_id": id}, doc! {"$set": {"text": text}})
-            .await?;
-        Ok(())
-    }
+    // pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
+    //     self.collection
+    //         .update_one(doc! {"_id": id}, doc! {"$set": {"text": text}})
+    //         .await?;
+    //     Ok(())
+    // }
 
     pub async fn delete(&self, id: &Id) -> super::Result<()> {
         self.collection.delete_one(doc! {"_id": id}).await?;
         Ok(())
     }
 
-    pub async fn mark_as_seen(&self, id: &Id) -> super::Result<()> {
+    pub async fn mark_as_seen(&self, ids: &Vec<Id>) -> super::Result<()> {
         self.collection
-            .update_one(doc! {"_id": id}, doc! {"$set": {"seen": true}})
+            .update_many(
+                doc! {"_id": {"$in": ids}, "seen": false},
+                doc! {"$set": {"seen": true}},
+            )
             .await?;
         Ok(())
     }

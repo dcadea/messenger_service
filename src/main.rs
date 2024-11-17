@@ -56,9 +56,9 @@ fn app(app_state: AppState) -> Router {
         .nest(
             "/api",
             Router::new()
-                .merge(chat::resources(app_state.clone()))
-                .merge(message::resources(app_state.clone()))
-                .merge(user::resources(app_state.clone())),
+                .merge(chat::api(app_state.clone()))
+                .merge(message::api(app_state.clone()))
+                .merge(user::api(app_state.clone())),
         )
         .route_layer(
             ServiceBuilder::new()

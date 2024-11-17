@@ -1,6 +1,12 @@
 use std::sync::Arc;
 
-use crate::chat;
+use anyhow::Context;
+use log::debug;
+
+use crate::chat::service::ChatService;
+use crate::event::model::Notification;
+use crate::event::service::EventService;
+use crate::{chat, user};
 
 use super::model::{Message, MessageDto};
 use super::repository::MessageRepository;
@@ -9,49 +15,86 @@ use super::Id;
 #[derive(Clone)]
 pub struct MessageService {
     repository: Arc<MessageRepository>,
+    chat_service: Arc<ChatService>,
+    event_service: Arc<EventService>,
 }
 
 impl MessageService {
-    pub fn new(repository: MessageRepository) -> Self {
+    pub fn new(
+        repository: MessageRepository,
+        chat_service: ChatService,
+        event_service: EventService,
+    ) -> Self {
         Self {
             repository: Arc::new(repository),
+            chat_service: Arc::new(chat_service),
+            event_service: Arc::new(event_service),
         }
     }
 }
 
 impl MessageService {
-    pub async fn create(&self, message: &Message) -> super::Result<Message> {
-        self.repository
+    pub async fn create(&self, message: &Message) -> super::Result<MessageDto> {
+        let dto = self
+            .repository
             .insert(message)
             .await
             .map(|id| message.with_id(id))
+            .map(MessageDto::from)?;
+
+        self.chat_service
+            .update_last_message(message)
+            .await
+            .with_context(|| "Failed to update last message in chat")?;
+
+        self.event_service
+            .publish_noti(
+                &dto.recipient.clone().into(),
+                &Notification::NewMessage { dto: dto.clone() },
+            )
+            .await
+            .with_context(|| "Failed to publish notification")?;
+
+        Ok(dto)
     }
 
-    pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
-        self.repository.update(id, text).await
-    }
+    // pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
+    //     self.repository.update(id, text).await
+    // }
 
-    pub async fn delete(&self, id: &Id) -> super::Result<()> {
-        self.repository.delete(id).await
-    }
+    pub async fn delete(&self, owner: &user::Sub, id: &Id) -> super::Result<()> {
+        let msg = self.repository.find_by_id(id).await?;
+        self.chat_service
+            .check_member(&msg.chat_id, owner)
+            .await
+            .map_err(|_| super::Error::NotOwner)?;
 
-    pub async fn mark_as_seen(&self, id: &Id) -> super::Result<()> {
-        self.repository.mark_as_seen(id).await
+        self.repository.delete(id).await?;
+
+        self.event_service
+            .publish_noti(
+                &msg.recipient.clone().into(),
+                &Notification::DeletedMessage { id: id.to_owned() },
+            )
+            .await
+            .with_context(|| "Failed to publish notification")?;
+
+        Ok(())
     }
 }
 
 impl MessageService {
-    pub async fn find_by_id(&self, id: &Id) -> super::Result<MessageDto> {
-        self.repository.find_by_id(id).await.map(MessageDto::from)
-    }
-
+    // This method is designed to be callen when recipient requests messages related to selected chat.
+    // It also marks all messages as seen where logged user is recipient.
+    // Due to this side effect consider using other methods for read-only messages retrieval.
     pub async fn find_by_chat_id_and_params(
         &self,
+        logged_sub: &user::Sub,
         chat_id: &chat::Id,
         limit: Option<usize>,
         end_time: Option<i64>,
     ) -> super::Result<Vec<MessageDto>> {
-        let result = match (limit, end_time) {
+        let messages = match (limit, end_time) {
             (None, None) => self.repository.find_by_chat_id(chat_id).await?,
             (Some(limit), None) => {
                 self.repository
@@ -70,11 +113,61 @@ impl MessageService {
             }
         };
 
-        let result = result
+        self.mark_as_seen(logged_sub, &messages).await?;
+
+        let dtos = messages
             .iter()
             .map(|msg| MessageDto::from(msg.clone()))
             .collect::<Vec<_>>();
 
-        Ok(result)
+        Ok(dtos)
+    }
+
+    async fn mark_as_seen(
+        &self,
+        logged_sub: &user::Sub,
+        messages: &[Message],
+    ) -> super::Result<()> {
+        if messages.is_empty() {
+            debug!("attempting to mark as seen but messages list is empty");
+            return Ok(());
+        }
+
+        let owner = messages
+            .iter()
+            .find(|msg| msg.recipient.eq(logged_sub))
+            .map(|msg| msg.owner.clone());
+
+        if owner.is_none() {
+            debug!("all messages belong to logged user, skipping mark as seen");
+            return Ok(());
+        }
+
+        let ids = messages
+            .iter()
+            .filter(|msg| msg.recipient.eq(logged_sub))
+            .filter(|msg| !msg.seen)
+            .filter_map(|msg| msg.id.clone())
+            .collect::<Vec<_>>();
+
+        if ids.is_empty() {
+            debug!("all messages are already seen, skipping mark as seen");
+            return Ok(());
+        }
+
+        self.repository.mark_as_seen(&ids).await?;
+
+        let owner = owner.expect("no owner present");
+        for id in &ids {
+            self.event_service
+                .publish_noti(
+                    &owner.clone().into(),
+                    &Notification::SeenMessage { id: id.clone() },
+                )
+                .await
+                .with_context(|| "Failed to publish notification")?;
+        }
+
+        Ok(())
     }
 }

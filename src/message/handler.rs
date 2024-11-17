@@ -1,19 +1,42 @@
 use axum::extract::{Path, State};
-use axum::Extension;
+use axum::{Extension, Form};
 use axum_extra::extract::Query;
 use maud::Markup;
 use serde::Deserialize;
 
-use crate::chat;
 use crate::chat::service::ChatService;
 use crate::error::Error;
 use crate::user::model::UserInfo;
+use crate::{chat, user};
 
+use super::model::Message;
 use super::service::MessageService;
 use super::{markup, Id};
 
 #[derive(Deserialize)]
-pub struct Params {
+pub struct CreateParams {
+    chat_id: chat::Id,
+    recipient: user::Sub,
+    text: String,
+}
+
+pub async fn create(
+    user_info: Extension<UserInfo>,
+    message_service: State<MessageService>,
+    Form(params): Form<CreateParams>,
+) -> crate::Result<Markup> {
+    let msg = Message::new(
+        params.chat_id,
+        user_info.sub.clone(),
+        params.recipient,
+        &params.text,
+    );
+    let msg = message_service.create(&msg).await?;
+    Ok(markup::message_item(&msg, &user_info.sub))
+}
+
+#[derive(Deserialize)]
+pub struct FindAllParams {
     chat_id: Option<chat::Id>,
     end_time: Option<i64>,
     limit: Option<usize>,
@@ -21,7 +44,7 @@ pub struct Params {
 
 pub async fn find_all(
     user_info: Extension<UserInfo>,
-    Query(params): Query<Params>,
+    Query(params): Query<FindAllParams>,
     chat_service: State<ChatService>,
     message_service: State<MessageService>,
 ) -> crate::Result<Markup> {
@@ -34,31 +57,17 @@ pub async fn find_all(
     chat_service.check_member(&chat_id, logged_sub).await?;
 
     let messages = message_service
-        .find_by_chat_id_and_params(&chat_id, params.limit, params.end_time)
+        .find_by_chat_id_and_params(logged_sub, &chat_id, params.limit, params.end_time)
         .await?;
 
     Ok(markup::message_list(&messages, logged_sub))
 }
 
-pub async fn find_one(
-    id: Path<Id>,
+pub async fn delete(
     user_info: Extension<UserInfo>,
-    chat_service: State<ChatService>,
+    id: Path<Id>,
     message_service: State<MessageService>,
-) -> crate::Result<Markup> {
-    let msg = message_service.find_by_id(&id).await?;
-
-    let logged_sub = &user_info.sub;
-
-    chat_service.check_member(&msg.chat_id, logged_sub).await?;
-
-    Ok(markup::message_item(&msg, logged_sub))
-}
-
-pub async fn delete(id: Path<Id>, message_service: State<MessageService>) -> crate::Result<()> {
-    // TODO: validate user is a member of the chat
-
-    message_service.delete(&id).await?;
-
+) -> crate::Result<()> {
+    message_service.delete(&user_info.sub, &id).await?;
     Ok(())
 }

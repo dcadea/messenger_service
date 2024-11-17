@@ -4,10 +4,9 @@ use axum::Router;
 use crate::state::AppState;
 use crate::{auth, chat, message, user};
 
-mod context;
 mod handler;
 mod markup;
-mod model;
+pub mod model;
 pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
@@ -40,5 +39,7 @@ pub enum Error {
     #[error(transparent)]
     _ParseJson(#[from] serde_json::Error),
     #[error(transparent)]
-    _Lapin(#[from] lapin::Error),
+    _NatsPub(#[from] async_nats::PublishError),
+    #[error(transparent)]
+    _NatsSub(#[from] async_nats::SubscribeError),
 }

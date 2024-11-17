@@ -77,8 +77,8 @@ MONGO_HOST=127.0.0.1
 MONGO_PORT=27017
 MONGO_DB=messenger
 
-AMQP_HOST=127.0.0.1
-AMQP_PORT=5672
+NATS_HOST=127.0.0.1
+NATS_PORT=4222
 ```
 
 ## Built With
@@ -91,7 +91,7 @@ AMQP_PORT=5672
 - [maud](https://maud.lambda.xyz/) - HTML template engine
 - [MongoDB](https://www.mongodb.com/) - Database
 - [Redis](https://redis.io/) - In-memory data structure store
-- [Lapin](https://docs.rs/lapin/2.3.4/lapin/) - AMQP client library
+- [NATS](https://nats.io) - Pub/Sub messaging system and not only :)
 
 ## Authors
 

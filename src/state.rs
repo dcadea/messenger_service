@@ -25,7 +25,7 @@ impl AppState {
     pub async fn init(config: integration::Config) -> crate::Result<Self> {
         let database = integration::db::init(&config.mongo);
         let redis = integration::cache::Redis::try_new(&config.redis).await;
-        let amqp_con = integration::amqp::init(&config.amqp).await;
+        let pubsub = integration::pubsub::init(&config.pubsub).await;
 
         let auth_service = AuthService::try_new(&config.idp, redis.clone())?;
         let user_service = UserService::new(UserRepository::new(&database), redis.clone());
@@ -34,12 +34,11 @@ impl AppState {
             user_service.clone(),
             redis.clone(),
         );
-        let message_service = MessageService::new(MessageRepository::new(&database));
-        let event_service = EventService::new(
-            amqp_con,
-            redis.clone(),
+        let event_service = EventService::new(pubsub, redis.clone());
+        let message_service = MessageService::new(
+            MessageRepository::new(&database),
             chat_service.clone(),
-            message_service.clone(),
+            event_service.clone(),
         );
 
         Ok(Self {

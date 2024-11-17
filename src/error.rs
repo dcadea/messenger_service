@@ -40,6 +40,7 @@ impl IntoResponse for Error {
             Self::_Event(event::Error::NotRecipient) => (StatusCode::FORBIDDEN, error_message),
 
             Self::_Message(message::Error::NotFound(_)) => (StatusCode::NOT_FOUND, error_message),
+            Self::_Message(message::Error::NotOwner) => (StatusCode::BAD_REQUEST, error_message),
 
             Self::_User(user::Error::NotFound(_)) => (StatusCode::NOT_FOUND, error_message),
 

@@ -6,10 +6,10 @@ use dotenv::dotenv;
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, WriteLogger};
 
-pub mod amqp;
 pub mod cache;
 pub mod db;
 pub mod idp;
+pub mod pubsub;
 
 #[derive(Clone)]
 pub enum Environment {
@@ -23,7 +23,7 @@ pub struct Config {
 
     pub redis: cache::Config,
     pub mongo: db::Config,
-    pub amqp: amqp::Config,
+    pub pubsub: pubsub::Config,
 
     pub idp: idp::Config,
 }
@@ -84,7 +84,7 @@ impl Default for Config {
             env,
             redis: cache::Config::env().unwrap_or_default(),
             mongo: db::Config::env().unwrap_or_default(),
-            amqp: amqp::Config::env().unwrap_or_default(),
+            pubsub: pubsub::Config::env().unwrap_or_default(),
             idp: idp_config,
         }
     }

@@ -1,5 +1,5 @@
 use axum::{
-    routing::{delete, get},
+    routing::{delete, get, post},
     Router,
 };
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
@@ -18,10 +18,10 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
-pub fn resources<S>(state: AppState) -> Router<S> {
+pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
+        .route("/messages", post(handler::create))
         .route("/messages", get(handler::find_all))
-        .route("/messages/:id", get(handler::find_one))
         .route("/messages/:id", delete(handler::delete))
         .with_state(state)
 }
@@ -31,8 +31,12 @@ pub fn resources<S>(state: AppState) -> Router<S> {
 pub enum Error {
     #[error("message not found: {0:?}")]
     NotFound(Option<Id>),
-    #[error("unexpected message error: {0}")]
-    Unexpected(String),
+    #[error("not owner of message")]
+    NotOwner,
+    #[error("message id not present")]
+    IdNotPresent,
 
     _MongoDB(#[from] mongodb::error::Error),
+    #[error(transparent)]
+    Unexpected(#[from] anyhow::Error),
 }
