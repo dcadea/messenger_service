@@ -1,12 +1,17 @@
 use maud::{html, Markup};
 
-use crate::{chat, message, user};
+use crate::{
+    chat,
+    message::{self, model::MessageDto},
+    user,
+};
 
 use super::model::Notification;
 
 pub fn noti_item(noti: &Notification, logged_sub: &user::Sub) -> Markup {
     match noti {
-        Notification::NewMessage { dto } => {
+        Notification::NewMessage { msg } => {
+            let dto = MessageDto::from(msg);
             html! {
                 div id="message-list"
                     hx-swap-oob="afterbegin"

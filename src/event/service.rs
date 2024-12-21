@@ -1,11 +1,10 @@
 use anyhow::Context;
-use log::debug;
 use tokio_stream::StreamExt;
 
 use crate::integration;
 use crate::integration::cache;
 
-use super::model::{Command, Notification, NotificationStream, Queue};
+use super::model::{Notification, NotificationStream, Queue};
 
 #[derive(Clone)]
 pub struct EventService {
@@ -16,27 +15,6 @@ pub struct EventService {
 impl EventService {
     pub fn new(pubsub: async_nats::Client, redis: integration::cache::Redis) -> Self {
         Self { pubsub, redis }
-    }
-}
-
-impl EventService {
-    pub async fn handle_command(&self, command: Command) -> super::Result<()> {
-        debug!("handling command: {:?}", command);
-
-        match command {
-            Command::MarkAsSeen(_id) => {
-                // let message = self.message_service.find_by_id(&id).await?;
-                // if message.recipient != ctx.logged_sub {
-                //     return Err(event::Error::NotRecipient);
-                // }
-                // self.message_service.mark_as_seen(&id).await?;
-
-                // let owner_messages = Queue::Messages(message.owner);
-                // self.publish_noti(&owner_messages, &Notification::SeenMessage { id })
-                //     .await
-                todo!()
-            }
-        }
     }
 }
 

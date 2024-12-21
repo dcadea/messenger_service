@@ -35,22 +35,22 @@ impl MessageService {
 
 impl MessageService {
     pub async fn create(&self, message: &Message) -> super::Result<MessageDto> {
-        let dto = self
+        let msg = self
             .repository
             .insert(message)
             .await
-            .map(|id| message.with_id(id))
-            .map(MessageDto::from)?;
+            .map(|id| message.with_id(id))?;
 
         self.chat_service
             .update_last_message(message)
             .await
             .with_context(|| "Failed to update last message in chat")?;
 
+        let dto = MessageDto::from(&msg);
         self.event_service
             .publish_noti(
-                &dto.recipient.clone().into(),
-                &Notification::NewMessage { dto: dto.clone() },
+                &msg.recipient.clone().into(),
+                &Notification::NewMessage { msg },
             )
             .await
             .with_context(|| "Failed to publish notification")?;
@@ -115,15 +115,12 @@ impl MessageService {
 
         self.mark_as_seen(logged_sub, &messages).await?;
 
-        let dtos = messages
-            .iter()
-            .map(|msg| MessageDto::from(msg.clone()))
-            .collect::<Vec<_>>();
+        let dtos = messages.iter().map(MessageDto::from).collect::<Vec<_>>();
 
         Ok(dtos)
     }
 
-    async fn mark_as_seen(
+    pub async fn mark_as_seen(
         &self,
         logged_sub: &user::Sub,
         messages: &[Message],

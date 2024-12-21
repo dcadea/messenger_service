@@ -3,17 +3,16 @@ use axum::extract::{State, WebSocketUpgrade};
 use axum::response::Response;
 use axum::Extension;
 use log::{debug, error, warn};
-use serde_json::from_str;
 use tokio::sync::{Notify, RwLock};
 
 use super::model::{Notification, Queue};
 use super::service::EventService;
 use crate::event::markup;
-use crate::event::model::Command;
+use crate::message::service::MessageService;
 use crate::user;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
-use axum::extract::ws::Message::{Binary, Close, Text};
+use axum::extract::ws::Message::{Close, Text};
 use tokio::try_join;
 
 use futures::stream::{SplitSink, SplitStream};
@@ -26,8 +25,17 @@ pub async fn ws(
     ws: WebSocketUpgrade,
     State(event_service): State<EventService>,
     State(user_service): State<UserService>,
+    State(message_service): State<MessageService>,
 ) -> Response {
-    ws.on_upgrade(move |socket| handle_socket(user_info.sub, socket, event_service, user_service))
+    ws.on_upgrade(move |socket| {
+        handle_socket(
+            user_info.sub,
+            socket,
+            event_service,
+            user_service,
+            message_service,
+        )
+    })
 }
 
 async fn handle_socket(
@@ -35,6 +43,7 @@ async fn handle_socket(
     ws: WebSocket,
     event_service: EventService,
     user_service: UserService,
+    message_service: MessageService,
 ) {
     if let Err(e) = user_service.add_online_user(&logged_sub).await {
         error!("Failed to add user to online users: {e}");
@@ -43,13 +52,14 @@ async fn handle_socket(
     let (sender, receiver) = ws.split();
 
     let close = Arc::new(Notify::new());
-    let read_task = tokio::spawn(read(close.clone(), receiver, event_service.clone()));
+    let read_task = tokio::spawn(read(close.clone(), receiver));
     let write_task = tokio::spawn(write(
         close.clone(),
         logged_sub.to_owned(),
         sender,
         event_service.clone(),
         user_service.clone(),
+        message_service.clone(),
     ));
 
     match try_join!(tokio::spawn(read_task), tokio::spawn(write_task)) {
@@ -62,11 +72,7 @@ async fn handle_socket(
     }
 }
 
-async fn read(
-    close: Arc<Notify>,
-    mut receiver: SplitStream<WebSocket>,
-    event_service: EventService,
-) {
+async fn read(close: Arc<Notify>, mut receiver: SplitStream<WebSocket>) {
     loop {
         tokio::select! {
             // close is notified => stop 'read' task
@@ -86,30 +92,12 @@ async fn read(
                             close.notify_one(); // notify 'write' task to stop
                             break;
                         },
-                        Ok(Text(content)) => {
-                            if let Err(e) = handle_text_frame(content, event_service.clone()).await {
-                                error!("Failed to handle text frame: {e}");
-                                close.notify_one(); // notify 'write' task to stop
-                                break;
-                            }
-                        },
-                        Ok(Binary(content)) => {
-                            warn!("Received binary WS frame: {:?}", content);
-                        }
-                        Ok(wtf) => warn!("Received non-text WS frame: {:?}", wtf)
+                        Ok(frame) => warn!("Received WS frame: {:?}", frame)
                     }
                 }
             }
         }
     }
-}
-
-async fn handle_text_frame(content: String, event_service: EventService) -> super::Result<()> {
-    if let Ok(command) = from_str::<Command>(content.as_str()) {
-        return event_service.handle_command(command).await;
-    }
-    warn!("Skipping text frame, content is malformed: {content}");
-    Ok(())
 }
 
 async fn write(
@@ -118,6 +106,7 @@ async fn write(
     sender: SplitSink<WebSocket, ws::Message>,
     event_service: EventService,
     user_service: UserService,
+    message_service: MessageService,
 ) {
     let messages_queue = Queue::Messages(logged_sub.clone());
 
@@ -168,6 +157,12 @@ async fn write(
 
                         if let Err(e) = sender.send(Text(noti_markup.into_string())).await {
                             error!("Failed to send notification to client: {e}");
+                        }
+
+                        if let Notification::NewMessage { msg } = noti {
+                            if let Err(e) = message_service.mark_as_seen(&logged_sub, &[msg]).await {
+                                error!("Failed to mark message as seen: {e}");
+                            }
                         }
                     }
                 }

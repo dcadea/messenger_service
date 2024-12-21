@@ -4,7 +4,7 @@ use crate::{chat, user};
 
 use super::Id;
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Message {
     #[serde(alias = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<Id>,
@@ -48,8 +48,8 @@ pub struct MessageDto {
     pub seen: bool,
 }
 
-impl From<Message> for MessageDto {
-    fn from(message: Message) -> Self {
+impl From<&Message> for MessageDto {
+    fn from(message: &Message) -> Self {
         Self {
             id: message.id.clone().expect("where is message id!?"),
             chat_id: message.chat_id.clone(),
