@@ -51,7 +51,9 @@ pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
                 class="flex flex-col-reverse"
                 hx-get={ "/api/messages?limit=14&chat_id=" (id.0) }
                 hx-trigger="load" // FIXME: always scrolls to the bottom on next page
-                _="on htmx:afterOnLoad go to the bottom of the #message-list" {}
+                // _="on htmx:afterOnLoad go to the bottom of the #message-list" {}
+                // FIXME: custom event doesn't behave as expected
+                _="on msg:firstBatch go to the bottom of the #message-list" {}
         }
 
         (message_input(id, &recipient.sub))

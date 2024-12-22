@@ -1,4 +1,6 @@
 use axum::extract::{Path, State};
+use axum::http::{HeaderMap, HeaderValue};
+use axum::response::IntoResponse;
 use axum::{Extension, Form};
 use axum_extra::extract::Query;
 use maud::Markup;
@@ -47,7 +49,7 @@ pub async fn find_all(
     Query(params): Query<FindAllParams>,
     chat_service: State<ChatService>,
     message_service: State<MessageService>,
-) -> crate::Result<Markup> {
+) -> crate::Result<impl IntoResponse> {
     let chat_id = params
         .chat_id
         .ok_or(Error::QueryParamRequired("chat_id".to_owned()))?;
@@ -60,7 +62,15 @@ pub async fn find_all(
         .find_by_chat_id_and_params(logged_sub, &chat_id, params.limit, params.end_time)
         .await?;
 
-    Ok(markup::message_list(&messages, logged_sub))
+    let mut header_map = HeaderMap::new();
+    if params.end_time.is_none() {
+        let trigger_value = HeaderValue::from_str("msg:firstBatch")
+            .expect("invalid header value");
+
+        header_map.insert("HX-Trigger", trigger_value);
+    }
+
+    Ok((header_map, markup::message_list(&messages, logged_sub)))
 }
 
 pub async fn delete(
