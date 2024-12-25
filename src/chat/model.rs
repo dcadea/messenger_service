@@ -29,6 +29,7 @@ impl Chat {
         }
     }
 
+    #[allow(dead_code)] // TODO
     pub fn group(owner: user::Sub, members: Vec<user::Sub>) -> Self {
         Self {
             id: None,

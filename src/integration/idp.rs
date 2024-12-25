@@ -1,14 +1,17 @@
 use std::time::Duration;
 
-use oauth2::{basic::BasicClient, AuthUrl, ClientId, ClientSecret, RedirectUrl, TokenUrl};
+use oauth2::{
+    basic::BasicClient, AuthUrl, ClientId, ClientSecret, RedirectUrl, RevocationUrl, TokenUrl,
+};
 
 #[derive(Clone)]
 pub struct Config {
-    pub client_id: String,
-    pub client_secret: String,
-    pub auth_url: String,
-    pub token_url: String,
-    pub redirect_url: String,
+    client_id: String,
+    client_secret: String,
+    auth_url: String,
+    token_url: String,
+    revocation_url: String,
+    redirect_url: String,
     pub userinfo_url: String,
     pub jwks_url: String,
     pub issuer: String,
@@ -32,6 +35,7 @@ impl Config {
             client_secret,
             auth_url: format!("{issuer}authorize"),
             token_url: format!("{issuer}oauth/token"),
+            revocation_url: format!("{issuer}oauth/revoke"),
             redirect_url,
             userinfo_url: format!("{issuer}userinfo"),
             jwks_url: format!("{issuer}.well-known/jwks.json"),
@@ -51,6 +55,10 @@ pub fn init(config: &Config) -> BasicClient {
     let redirect_url =
         RedirectUrl::new(config.redirect_url.to_owned()).expect("Invalid redirect URL");
 
+    let revocation_url =
+        RevocationUrl::new(config.revocation_url.to_owned()).expect("Invalid revocation URL");
+
     BasicClient::new(client_id, Some(client_secret), auth_url, Some(token_url))
         .set_redirect_uri(redirect_url)
+        .set_revocation_uri(revocation_url)
 }

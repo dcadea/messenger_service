@@ -66,12 +66,13 @@ impl Redis {
         Ok(value)
     }
 
-    pub async fn get_del<V>(&self, key: Key) -> anyhow::Result<V>
+    pub async fn get_del<V>(&self, key: Key) -> anyhow::Result<Option<V>>
     where
         V: redis::FromRedisValue,
     {
         let mut con = self.con.clone();
-        let value: V = con
+
+        let value: Option<V> = con
             .get_del(&key)
             .await
             .with_context(|| format!("Failed to get and remove value from cache by key: {key}"))?;
@@ -103,6 +104,7 @@ impl Redis {
         Ok(values)
     }
 
+    #[allow(dead_code)]
     pub async fn del(&self, key: Key) -> anyhow::Result<()> {
         let mut con = self.con.clone();
         let _: () = con

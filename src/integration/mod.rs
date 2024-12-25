@@ -38,7 +38,7 @@ impl Default for Config {
             .map(|pkg| format!("{}.log", pkg))
             .unwrap_or("service.log".into());
 
-        let _ = CombinedLogger::init(vec![
+        CombinedLogger::init(vec![
             TermLogger::new(
                 level,
                 simplelog::Config::default(),

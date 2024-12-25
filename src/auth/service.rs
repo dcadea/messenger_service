@@ -8,7 +8,9 @@ use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use log::{error, warn};
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;
-use oauth2::{AccessToken, AuthorizationCode, CsrfToken, Scope, TokenResponse};
+use oauth2::{
+    AccessToken, AuthorizationCode, CsrfToken, Scope, StandardRevocableToken, TokenResponse,
+};
 use tokio::sync::RwLock;
 
 use super::TokenClaims;
@@ -167,7 +169,14 @@ impl AuthService {
         let sid = uuid::Uuid::parse_str(sid).with_context(|| {
             format!("Could not invalidate token. SID is not in uuid format: {sid}")
         })?;
-        self.redis.del(cache::Key::Session(sid)).await?;
+        let token: Option<String> = self.redis.get_del(cache::Key::Session(sid)).await?;
+
+        if let Some(token) = token {
+            self.oauth2
+                .revoke_token(StandardRevocableToken::AccessToken(AccessToken::new(token)))
+                .with_context(|| format!("Could not revoke token for SID: {sid}"))?;
+        }
+
         Ok(())
     }
 
