@@ -64,8 +64,7 @@ pub async fn find_all(
 
     let mut header_map = HeaderMap::new();
     if params.end_time.is_none() {
-        let trigger_value = HeaderValue::from_str("msg:firstBatch")
-            .expect("invalid header value");
+        let trigger_value = HeaderValue::from_str("msg:firstBatch").expect("invalid header value");
 
         header_map.insert("HX-Trigger", trigger_value);
     }

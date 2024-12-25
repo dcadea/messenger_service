@@ -3,21 +3,37 @@ use serde::{Deserialize, Serialize};
 use crate::user;
 
 use super::Id;
+use super::Kind;
 
 #[derive(Serialize, Deserialize)]
 pub struct Chat {
     #[serde(alias = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<Id>,
-    pub members: [user::Sub; 2],
+    pub kind: Kind,
+    pub owner: Option<user::Sub>,
+    pub members: Vec<user::Sub>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_message: Option<String>,
     updated_at: i64,
 }
 
 impl Chat {
-    pub fn new(members: [user::Sub; 2]) -> Self {
+    pub fn private(members: [user::Sub; 2]) -> Self {
         Self {
             id: None,
+            kind: Kind::Private,
+            owner: None,
+            members: members.to_vec(),
+            last_message: None,
+            updated_at: chrono::Utc::now().timestamp(),
+        }
+    }
+
+    pub fn group(owner: user::Sub, members: Vec<user::Sub>) -> Self {
+        Self {
+            id: None,
+            kind: Kind::Group,
+            owner: Some(owner),
             members,
             last_message: None,
             updated_at: chrono::Utc::now().timestamp(),

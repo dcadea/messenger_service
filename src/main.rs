@@ -16,7 +16,6 @@ mod auth;
 mod chat;
 mod error;
 mod event;
-mod group;
 mod integration;
 mod message;
 mod state;

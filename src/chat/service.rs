@@ -39,13 +39,8 @@ impl ChatService {
 
 impl ChatService {
     pub async fn update_last_message(&self, message: &Message) -> super::Result<()> {
-        let chat_id = self
-            .repository
-            .find_id_by_members([message.owner.to_owned(), message.recipient.to_owned()])
-            .await?;
-
         self.repository
-            .update_last_message(&chat_id, &message.text)
+            .update_last_message(&message.chat_id, &message.text)
             .await
     }
 
@@ -83,7 +78,7 @@ impl ChatService {
             .await
             .with_context(|| "Failed to create friendship")?;
 
-        let chat = Chat::new(members);
+        let chat = Chat::private(members);
         let chat_id = self.repository.create(chat).await?;
         Ok(chat_id)
     }
@@ -105,13 +100,12 @@ impl ChatService {
 
 // cache operations
 impl ChatService {
-    pub async fn find_members(&self, chat_id: &Id) -> super::Result<[user::Sub; 2]> {
+    pub async fn find_members(&self, chat_id: &Id) -> super::Result<Vec<user::Sub>> {
         let cache_key = cache::Key::Chat(chat_id.to_owned());
         let members: Option<Vec<user::Sub>> = self.redis.smembers(cache_key.clone()).await?;
 
-        if members.as_ref().is_some_and(|m| m.len() == 2) {
-            let members = members.expect("members are present");
-            return Ok([members[0].clone(), members[1].clone()]);
+        if let Some(m) = members {
+            return Ok(m);
         }
 
         let chat = self.repository.find_by_id(chat_id).await?;
@@ -128,6 +122,7 @@ impl ChatService {
 }
 
 impl ChatService {
+    // FIXME: this is for private chat only
     async fn chat_to_dto(&self, chat: Chat, user_info: &UserInfo) -> super::Result<ChatDto> {
         let members = chat.members.to_owned();
 

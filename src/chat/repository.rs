@@ -79,24 +79,6 @@ impl ChatRepository {
         chat.ok_or(chat::Error::NotFound(Some(id.to_owned())))
     }
 
-    pub async fn find_id_by_members(&self, members: [user::Sub; 2]) -> super::Result<Id> {
-        let chat = self
-            .collection
-            .find_one(doc! {
-                "members": { "$all": members.to_vec() }
-            })
-            .await
-            .with_context(|| format!("Failed to find chat by members: {members:?}"))?;
-
-        if let Some(chat) = chat {
-            if let Some(id) = chat.id {
-                return Ok(id);
-            }
-        }
-
-        Err(chat::Error::NotFound(None))
-    }
-
     pub async fn exists(&self, members: &[user::Sub; 2]) -> super::Result<bool> {
         let number_of_chats = self
             .collection

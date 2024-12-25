@@ -22,6 +22,12 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
+#[derive(Serialize, Deserialize)]
+pub enum Kind {
+    Private,
+    Group,
+}
+
 pub fn pages<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/", get(markup::home))
