@@ -40,7 +40,7 @@ services:
     ports:
       - 27017:27017
     volumes:
-      - ./docker-volumes/dev/mongo/data/db:/data/db
+      - ./docker-volumes/dev/mongo/data:/data
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -67,7 +67,8 @@ services:
       - 6379:6379
     volumes:
       - ./conf/dev/redis.conf:/usr/local/etc/redis/redis.conf
-    command: redis-server /usr/local/etc/redis/redis.conf && redis-cli config set notify-keyspace-events KEAg
+      - ./docker-volumes/dev/redis/data:/data
+    command: redis-server /usr/local/etc/redis/redis.conf
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
