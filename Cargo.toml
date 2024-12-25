@@ -4,35 +4,35 @@ version = "0.2.0"
 edition = "2021"
 
 [dependencies]
-log = "0.4"
-simplelog = "0.12"
-dotenv = "0.15"
-chrono = "0.4"
-uuid = { version = "1.11", features = ["serde", "v4"] }
-thiserror = "2.0"
-anyhow = "1.0"
+log = "0.4.22"
+simplelog = "0.12.2"
+dotenv = "0.15.0"
+chrono = "0.4.39"
+uuid = { version = "1.11.0", features = ["serde", "v4"] }
+thiserror = "2.0.9"
+anyhow = "1.0.95"
 
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde = { version = "1.0.216", features = ["derive"] }
+serde_json = "1.0.134"
 
-tokio = { version = "1.42", features = ["macros", "sync", "rt-multi-thread"] }
-tokio-stream = "0.1"
-futures = { version = "0.3", default-features = false }
+tokio = { version = "1.42.0", features = ["macros", "sync", "rt-multi-thread"] }
+tokio-stream = "0.1.17"
+futures = { version = "0.3.31", default-features = false }
 
-axum = { version = "0.7", features = ["ws", "macros"] }
-axum-extra = { version = "0.9", features = ["cookie", "query", "typed-header"] }
-tower = "0.5"
-tower-http = { version = "0.6", features = ["cors"] }
-reqwest = { version = "0.12", features = ["json"] }
-url = "2.5"
-jsonwebtoken = "9.3"
-oauth2 = "4.4"
-maud = { version = "0.26", features = ["axum"] }
+axum = { version = "0.7.9", features = ["ws", "macros"] }
+axum-extra = { version = "0.9.6", features = ["cookie", "query", "typed-header"] }
+tower = "0.5.2"
+tower-http = { version = "0.6.2", features = ["cors"] }
+reqwest = { version = "0.12.9", features = ["json"] }
+url = "2.5.4"
+jsonwebtoken = "9.3.0"
+oauth2 = "4.4.2"
+maud = { version = "0.26.0", features = ["axum"] }
 
-mongodb = "3.1"
-redis = { version = "0.27", features = [
+mongodb = "3.1.1"
+redis = { version = "0.27.6", features = [
     "connection-manager",
     "tokio-comp",
     "json",
 ] }
-async-nats = "0.38"
+async-nats = "0.38.0"
