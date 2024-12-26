@@ -1,4 +1,5 @@
 use anyhow::Context;
+use serde::Serialize;
 use tokio_stream::StreamExt;
 
 use crate::integration;
@@ -35,8 +36,8 @@ impl EventService {
         Ok(Box::pin(stream))
     }
 
-    pub async fn publish_noti(&self, q: &Queue, noti: &Notification) -> super::Result<()> {
-        let payload = serde_json::to_vec(noti)?;
+    pub async fn publish<T: Serialize>(&self, q: &Queue, payload: &T) -> super::Result<()> {
+        let payload = serde_json::to_vec(payload)?;
         self.pubsub.publish(q, payload.into()).await?;
         Ok(())
     }

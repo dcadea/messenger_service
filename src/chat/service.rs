@@ -80,6 +80,7 @@ impl ChatService {
 
         let chat = Chat::private(members);
         let chat_id = self.repository.create(chat).await?;
+        // TODO: publish to nats
         Ok(chat_id)
     }
 }

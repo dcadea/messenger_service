@@ -4,7 +4,7 @@ use anyhow::Context;
 use log::debug;
 
 use crate::chat::service::ChatService;
-use crate::event::model::Notification;
+use crate::event::model::{Notification, Queue};
 use crate::event::service::EventService;
 use crate::{chat, user};
 
@@ -48,8 +48,8 @@ impl MessageService {
 
         let dto = MessageDto::from(&msg);
         self.event_service
-            .publish_noti(
-                &msg.recipient.clone().into(),
+            .publish(
+                &Queue::Messages(msg.recipient.clone()),
                 &Notification::NewMessage { msg },
             )
             .await
@@ -72,8 +72,8 @@ impl MessageService {
         self.repository.delete(id).await?;
 
         self.event_service
-            .publish_noti(
-                &msg.recipient.clone().into(),
+            .publish(
+                &Queue::Messages(msg.recipient.clone()),
                 &Notification::DeletedMessage { id: id.to_owned() },
             )
             .await
@@ -157,8 +157,8 @@ impl MessageService {
         let owner = owner.expect("no owner present");
         for id in &ids {
             self.event_service
-                .publish_noti(
-                    &owner.clone().into(),
+                .publish(
+                    &Queue::Messages(owner.clone()),
                     &Notification::SeenMessage { id: id.clone() },
                 )
                 .await

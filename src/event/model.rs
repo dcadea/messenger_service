@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::fmt::Display;
 use std::pin::Pin;
 
 use futures::Stream;
@@ -13,26 +12,14 @@ pub type NotificationStream = Pin<Box<dyn Stream<Item = Option<Notification>> + 
 #[derive(Clone)]
 pub enum Queue {
     Messages(user::Sub),
-}
-
-impl From<user::Sub> for Queue {
-    fn from(sub: user::Sub) -> Self {
-        Queue::Messages(sub)
-    }
-}
-
-impl Display for Queue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Queue::Messages(sub) => write!(f, "messages:{sub}"),
-        }
-    }
+    Notifications(user::Sub),
 }
 
 impl async_nats::subject::ToSubject for &Queue {
     fn to_subject(&self) -> async_nats::Subject {
         match self {
             Queue::Messages(sub) => async_nats::Subject::from(format!("messages:{sub}")),
+            Queue::Notifications(sub) => async_nats::Subject::from(format!("notifications:{sub}")),
         }
     }
 }
