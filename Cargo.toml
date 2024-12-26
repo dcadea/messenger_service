@@ -22,7 +22,7 @@ futures = { version = "0.3.31", default-features = false }
 axum = { version = "0.7.9", features = ["ws", "macros"] }
 axum-extra = { version = "0.9.6", features = ["cookie", "query", "typed-header"] }
 tower = "0.5.2"
-tower-http = { version = "0.6.2", features = ["cors"] }
+tower-http = { version = "0.6.2", features = ["cors", "fs"] }
 reqwest = { version = "0.12.9", features = ["json"] }
 url = "2.5.4"
 jsonwebtoken = "9.3.0"

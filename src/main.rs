@@ -8,6 +8,7 @@ use messenger_service::markup::wrap_in_base;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::services::ServeDir;
 use user::middleware::cache_user_friends;
 
 use crate::state::AppState;
@@ -67,6 +68,7 @@ fn app(app_state: AppState) -> Router {
         );
 
     Router::new()
+        .nest_service("/assets", ServeDir::new("assets"))
         .merge(auth::pages(app_state.clone()))
         .merge(auth::api(app_state.clone()))
         .merge(protected_router)
