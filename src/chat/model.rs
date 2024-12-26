@@ -5,11 +5,12 @@ use crate::user;
 use super::Id;
 use super::Kind;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Chat {
     #[serde(alias = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<Id>,
     pub kind: Kind,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub owner: Option<user::Sub>,
     pub members: Vec<user::Sub>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -40,9 +41,14 @@ impl Chat {
             updated_at: chrono::Utc::now().timestamp(),
         }
     }
+
+    pub fn with_id(mut self, id: Id) -> Self {
+        self.id = Some(id);
+        self
+    }
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ChatDto {
     pub id: Id,
     pub recipient: user::Sub,

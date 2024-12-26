@@ -29,12 +29,13 @@ impl AppState {
 
         let auth_service = AuthService::try_new(&config.idp, redis.clone())?;
         let user_service = UserService::new(UserRepository::new(&database), redis.clone());
+        let event_service = EventService::new(pubsub, redis.clone());
         let chat_service = ChatService::new(
             ChatRepository::new(&database),
             user_service.clone(),
+            event_service.clone(),
             redis.clone(),
         );
-        let event_service = EventService::new(pubsub, redis.clone());
         let message_service = MessageService::new(
             MessageRepository::new(&database),
             chat_service.clone(),

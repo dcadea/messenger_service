@@ -49,8 +49,8 @@ impl MessageService {
         let dto = MessageDto::from(&msg);
         self.event_service
             .publish(
-                &Queue::Messages(msg.recipient.clone()),
-                &Notification::NewMessage { msg },
+                Queue::Notifications(msg.recipient.clone()),
+                Notification::NewMessage { msg },
             )
             .await
             .with_context(|| "Failed to publish notification")?;
@@ -73,8 +73,8 @@ impl MessageService {
 
         self.event_service
             .publish(
-                &Queue::Messages(msg.recipient.clone()),
-                &Notification::DeletedMessage { id: id.to_owned() },
+                Queue::Notifications(msg.recipient.clone()),
+                Notification::DeletedMessage { id: id.to_owned() },
             )
             .await
             .with_context(|| "Failed to publish notification")?;
@@ -158,8 +158,8 @@ impl MessageService {
         for id in &ids {
             self.event_service
                 .publish(
-                    &Queue::Messages(owner.clone()),
-                    &Notification::SeenMessage { id: id.clone() },
+                    Queue::Notifications(owner.clone()),
+                    Notification::SeenMessage { id: id.clone() },
                 )
                 .await
                 .with_context(|| "Failed to publish notification")?;

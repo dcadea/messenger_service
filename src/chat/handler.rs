@@ -37,10 +37,7 @@ pub async fn create(
     user_service: State<UserService>,
     Form(params): Form<CreateParams>,
 ) -> crate::Result<Markup> {
-    let chat_id = chat_service
-        .create([logged_user.sub.clone(), params.sub])
-        .await?;
-    let chat = chat_service.find_by_id(&chat_id, &logged_user).await?;
+    let chat = chat_service.create(&logged_user, &params.sub).await?;
     let recipient = user_service.find_user_info(&chat.recipient).await?;
 
     Ok(markup::active_chat(&chat.id, &recipient))

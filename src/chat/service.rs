@@ -3,10 +3,13 @@ use std::sync::Arc;
 use anyhow::Context;
 use futures::future::try_join_all;
 use futures::TryFutureExt;
+use log::warn;
 
 use super::model::{Chat, ChatDto};
 use super::repository::ChatRepository;
 use super::Id;
+use crate::event::model::{Notification, Queue};
+use crate::event::service::EventService;
 use crate::integration::{self, cache};
 use crate::message::model::Message;
 use crate::user::model::UserInfo;
@@ -20,6 +23,7 @@ const CHAT_TTL: u64 = 3600;
 pub struct ChatService {
     repository: Arc<ChatRepository>,
     user_service: Arc<UserService>,
+    event_service: Arc<EventService>,
     redis: integration::cache::Redis,
 }
 
@@ -27,11 +31,13 @@ impl ChatService {
     pub fn new(
         repository: ChatRepository,
         user_service: UserService,
+        event_service: EventService,
         redis: integration::cache::Redis,
     ) -> Self {
         Self {
             repository: Arc::new(repository),
             user_service: Arc::new(user_service),
+            event_service: Arc::new(event_service),
             redis,
         }
     }
@@ -68,7 +74,12 @@ impl ChatService {
         Ok(chat_dtos)
     }
 
-    pub async fn create(&self, members: [user::Sub; 2]) -> super::Result<Id> {
+    pub async fn create(
+        &self,
+        user_info: &UserInfo,
+        recipient: &user::Sub,
+    ) -> super::Result<ChatDto> {
+        let members = [user_info.sub.clone(), recipient.clone()];
         if self.repository.exists(&members).await? {
             return Err(chat::Error::AlreadyExists);
         }
@@ -79,9 +90,28 @@ impl ChatService {
             .with_context(|| "Failed to create friendship")?;
 
         let chat = Chat::private(members);
-        let chat_id = self.repository.create(chat).await?;
-        // TODO: publish to nats
-        Ok(chat_id)
+        let chat = self
+            .repository
+            .create(chat.clone())
+            .await
+            .map(|id| chat.with_id(id))?;
+
+        let chat_dto = self.chat_to_dto(chat, user_info).await?;
+
+        if let Err(e) = self
+            .event_service
+            .publish(
+                Queue::Notifications(recipient.clone()),
+                Notification::NewFriend {
+                    chat_dto: chat_dto.clone(),
+                },
+            )
+            .await
+        {
+            warn!("Failed to publish new friend notification: {:?}", e);
+        }
+
+        Ok(chat_dto)
     }
 }
 
@@ -105,20 +135,21 @@ impl ChatService {
         let cache_key = cache::Key::Chat(chat_id.to_owned());
         let members: Option<Vec<user::Sub>> = self.redis.smembers(cache_key.clone()).await?;
 
-        if let Some(m) = members {
-            return Ok(m);
+        match members {
+            Some(m) if !m.is_empty() => Ok(m),
+            _ => {
+                let chat = self.repository.find_by_id(chat_id).await?;
+                let members = chat.members;
+
+                let _: () = self
+                    .redis
+                    .sadd(cache_key.clone(), &members.clone())
+                    .and_then(|_: ()| self.redis.expire(cache_key, CHAT_TTL))
+                    .await?;
+
+                Ok(members)
+            }
         }
-
-        let chat = self.repository.find_by_id(chat_id).await?;
-        let members = chat.members;
-
-        let _: () = self
-            .redis
-            .sadd(cache_key.clone(), &members.clone())
-            .and_then(|_: ()| self.redis.expire(cache_key, CHAT_TTL))
-            .await?;
-
-        Ok(members)
     }
 }
 

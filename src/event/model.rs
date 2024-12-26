@@ -4,6 +4,7 @@ use std::pin::Pin;
 use futures::Stream;
 use serde::{Deserialize, Serialize};
 
+use crate::chat::model::ChatDto;
 use crate::message::model::Message;
 use crate::{message, user};
 
@@ -11,20 +12,18 @@ pub type NotificationStream = Pin<Box<dyn Stream<Item = Option<Notification>> + 
 
 #[derive(Clone)]
 pub enum Queue {
-    Messages(user::Sub),
     Notifications(user::Sub),
 }
 
-impl async_nats::subject::ToSubject for &Queue {
+impl async_nats::subject::ToSubject for Queue {
     fn to_subject(&self) -> async_nats::Subject {
         match self {
-            Queue::Messages(sub) => async_nats::Subject::from(format!("messages:{sub}")),
-            Queue::Notifications(sub) => async_nats::Subject::from(format!("notifications:{sub}")),
+            Queue::Notifications(sub) => format!("noti:{sub}").into(),
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Notification {
     NewMessage { msg: Message },
@@ -32,4 +31,5 @@ pub enum Notification {
     DeletedMessage { id: message::Id },
     SeenMessage { id: message::Id },
     OnlineFriends { friends: HashSet<user::Sub> },
+    NewFriend { chat_dto: ChatDto },
 }

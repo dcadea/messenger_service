@@ -13,7 +13,7 @@ use crate::state::AppState;
 
 mod handler;
 pub mod markup;
-mod model;
+pub mod model;
 pub mod repository;
 pub mod service;
 
@@ -22,7 +22,7 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum Kind {
     Private,
     Group,

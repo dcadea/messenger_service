@@ -52,17 +52,17 @@ async fn handle_socket(
     let (sender, receiver) = ws.split();
 
     let close = Arc::new(Notify::new());
-    let read_task = tokio::spawn(read(close.clone(), receiver));
-    let write_task = tokio::spawn(write(
+    let read = read(close.clone(), receiver);
+    let write = write(
         close.clone(),
         logged_sub.to_owned(),
         sender,
         event_service.clone(),
         user_service.clone(),
         message_service.clone(),
-    ));
+    );
 
-    match try_join!(tokio::spawn(read_task), tokio::spawn(write_task)) {
+    match try_join!(tokio::spawn(read), tokio::spawn(write)) {
         Ok(_) => debug!("WS disconnected gracefully"),
         Err(e) => error!("WS disconnected with error: {e}"),
     }
@@ -108,9 +108,9 @@ async fn write(
     user_service: UserService,
     message_service: MessageService,
 ) {
-    let messages_queue = Queue::Messages(logged_sub.clone());
+    let noti_queue = Queue::Notifications(logged_sub.clone());
 
-    let mut noti_stream = match event_service.read(&messages_queue).await {
+    let mut noti_stream = match event_service.read(noti_queue).await {
         Ok(binding) => binding,
         Err(e) => {
             error!("Failed to read from notifications stream: {e}");
@@ -150,8 +150,6 @@ async fn write(
                     None => break,
                     Some(None) => warn!("Looks like there was an issue reading from subject..."),
                     Some(Some(noti)) => {
-                        debug!("Sending notification: {:?}", noti);
-
                         let mut sender = sender.write().await;
                         let noti_markup = markup::noti_item(&noti, &logged_sub);
 
@@ -183,8 +181,8 @@ async fn publish_online_friends(
 
         if let Err(e) = event_service
             .publish(
-                &Queue::Notifications(logged_sub.clone()),
-                &Notification::OnlineFriends {
+                Queue::Notifications(logged_sub.clone()),
+                Notification::OnlineFriends {
                     friends: friends.clone(),
                 },
             )

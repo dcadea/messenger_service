@@ -46,5 +46,12 @@ pub fn noti_item(noti: &Notification, logged_sub: &user::Sub) -> Markup {
                 }
             }
         }
+        Notification::NewFriend { chat_dto } => {
+            html! {
+                div id="chat-list" hx-swap-oob="afterbegin" {
+                    (chat_dto)
+                }
+            }
+        }
     }
 }
