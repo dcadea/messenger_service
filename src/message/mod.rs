@@ -33,6 +33,9 @@ pub enum Error {
     NotFound(Option<Id>),
     #[error("not owner of message")]
     NotOwner,
+    #[error("message text is empty")]
+    EmptyText,
+
     #[error("message id not present")]
     IdNotPresent,
 

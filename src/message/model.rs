@@ -35,6 +35,13 @@ impl Message {
             ..self.clone()
         }
     }
+
+    pub fn with_text(&self, text: &str) -> Self {
+        Self {
+            text: text.to_string(),
+            ..self.clone()
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

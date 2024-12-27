@@ -3,7 +3,7 @@ use axum::http::{HeaderMap, HeaderValue};
 use axum::response::IntoResponse;
 use axum::{Extension, Form};
 use axum_extra::extract::Query;
-use maud::{html, Markup};
+use maud::Markup;
 use serde::Deserialize;
 
 use crate::chat::service::ChatService;
@@ -31,10 +31,12 @@ pub async fn create(
         params.chat_id,
         user_info.sub.clone(),
         params.recipient,
-        &params.text,
+        params.text.trim(),
     );
-    let msg = message_service.create(&msg).await?;
-    Ok(html! {(markup::MessageItem::new(&msg, &user_info.sub))})
+
+    let messages = message_service.create(&msg).await?;
+
+    Ok(markup::message_list(&messages, &user_info.sub))
 }
 
 #[derive(Deserialize)]

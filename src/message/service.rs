@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use log::debug;
+use text_splitter::{Characters, TextSplitter};
 
 use crate::chat::service::ChatService;
 use crate::event::model::{Notification, Queue};
@@ -12,11 +13,14 @@ use super::model::{Message, MessageDto};
 use super::repository::MessageRepository;
 use super::Id;
 
+const MAX_MESSAGE_LENGTH: usize = 1000;
+
 #[derive(Clone)]
 pub struct MessageService {
     repository: Arc<MessageRepository>,
     chat_service: Arc<ChatService>,
     event_service: Arc<EventService>,
+    splitter: Arc<TextSplitter<Characters>>,
 }
 
 impl MessageService {
@@ -29,12 +33,26 @@ impl MessageService {
             repository: Arc::new(repository),
             chat_service: Arc::new(chat_service),
             event_service: Arc::new(event_service),
+            splitter: Arc::new(TextSplitter::new(MAX_MESSAGE_LENGTH)),
         }
     }
 }
 
 impl MessageService {
-    pub async fn create(&self, message: &Message) -> super::Result<MessageDto> {
+    pub async fn create(&self, message: &Message) -> super::Result<Vec<MessageDto>> {
+        if message.text.is_empty() {
+            return Err(super::Error::EmptyText);
+        }
+
+        // TODO: len is not the same as count of characters
+        if message.text.len() <= MAX_MESSAGE_LENGTH {
+            self.create_one(message).await.map(|msg| vec![msg])
+        } else {
+            self.create_many(message).await
+        }
+    }
+
+    async fn create_one(&self, message: &Message) -> super::Result<MessageDto> {
         let msg = self
             .repository
             .insert(message)
@@ -56,6 +74,22 @@ impl MessageService {
             .with_context(|| "Failed to publish notification")?;
 
         Ok(dto)
+    }
+
+    async fn create_many(&self, message: &Message) -> super::Result<Vec<MessageDto>> {
+        let chunks = self.splitter.chunks(&message.text);
+
+        let messages = chunks
+            .map(|text| message.with_text(text))
+            .collect::<Vec<Message>>();
+
+        let mut with_ids = Vec::with_capacity(messages.len());
+        for msg in &messages {
+            // TODO: maybe use insert_many (find a way to batch notifications through ws)
+            self.create_one(msg).await.map(|m| with_ids.push(m))?
+        }
+
+        Ok(with_ids)
     }
 
     // pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
