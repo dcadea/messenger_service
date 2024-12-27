@@ -1,7 +1,7 @@
 use axum::Extension;
 use maud::{html, Markup, Render};
 
-use crate::message::markup::message_input;
+use crate::message::markup::MessageInput;
 use crate::user;
 use crate::user::model::UserInfo;
 use messenger_service::markup::Wrappable;
@@ -56,7 +56,7 @@ pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
                 _="on msg:firstBatch go to the bottom of the #message-list" {}
         }
 
-        (message_input(id, &recipient.sub))
+        (MessageInput::new(id, &recipient.sub))
     }
 }
 

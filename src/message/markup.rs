@@ -5,27 +5,40 @@ use crate::{chat, user};
 
 use super::model::MessageDto;
 
-pub fn message_input(chat_id: &chat::Id, recipient: &user::Sub) -> Markup {
-    html! {
-        form id="message-input"
-            class="border-gray-200 flex"
-            hx-post="/api/messages"
-            hx-target="#message-list"
-            hx-swap="afterbegin"
-            _="on htmx:afterRequest reset() me
-               on htmx:afterRequest go to the bottom of the #message-list"
-        {
-            input type="hidden" name="chat_id" value=(chat_id.0) {}
-            input type="hidden" name="recipient" value=(recipient) {}
+pub struct MessageInput<'a> {
+    chat_id: &'a chat::Id,
+    recipient: &'a user::Sub,
+}
 
-            input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none"
-                type="text"
-                name="text"
-                placeholder="Type your message..." {}
+impl<'a> MessageInput<'a> {
+    pub fn new(chat_id: &'a chat::Id, recipient: &'a user::Sub) -> Self {
+        Self { chat_id, recipient }
+    }
+}
 
-            input class="bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700"
-                type="submit"
-                value="Send" {}
+impl Render for MessageInput<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            form id="message-input"
+                class="border-gray-200 flex"
+                hx-post="/api/messages"
+                hx-target="#message-list"
+                hx-swap="afterbegin"
+                _="on htmx:afterRequest reset() me
+                   on htmx:afterRequest go to the bottom of the #message-list"
+            {
+                input type="hidden" name="chat_id" value=(self.chat_id.0) {}
+                input type="hidden" name="recipient" value=(self.recipient) {}
+
+                input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none"
+                    type="text"
+                    name="text"
+                    placeholder="Type your message..." {}
+
+                input class="bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700"
+                    type="submit"
+                    value="Send" {}
+            }
         }
     }
 }
@@ -66,7 +79,7 @@ impl<'a> MessageItem<'a> {
 impl Render for MessageItem<'_> {
     fn render(&self) -> Markup {
         let belongs_to_user = self.msg.owner == *self.sub;
-        let message_class = "message-item flex items-center items-baseline relative";
+        let message_class = "message-item flex items-end relative";
         let hyperscript = r#"
             on mouseover remove .hidden from my.querySelector('.message-controls')
             on mouseout add .hidden to my.querySelector('.message-controls')
@@ -123,7 +136,7 @@ fn message_bubble(msg: &MessageDto, belongs_to_user: bool) -> Markup {
 
     html! {
         @if belongs_to_user {
-            div class="message-controls hidden" {
+            div class="message-controls hidden pb-2" {
                 i class="fa-trash-can fa-solid text-red-700 cursor-pointer"
                     hx-delete={"/api/messages/" (msg.id.0)}
                     hx-target={"#m-" (msg.id.0)}
@@ -144,9 +157,9 @@ fn message_bubble(msg: &MessageDto, belongs_to_user: bool) -> Markup {
             ."bg-blue-600 text-white ml-2"[belongs_to_user]
             ."bg-gray-300 text-gray-600"[!belongs_to_user] {
 
-            p class="message-text mr-3 whitespace-normal font-light" { (msg.text) }
+            p class="message-text break-words overflow-hidden mr-2 whitespace-normal font-light" lang="en" { (msg.text) }
             @if let Some(mt) = message_timestamp {
-                span class="message-timestamp text-xs" { (mt) }
+                span class="message-timestamp text-xs opacity-65" { (mt) }
             }
         }
     }
