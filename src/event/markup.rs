@@ -16,7 +16,7 @@ pub fn noti_item(noti: &Notification, logged_sub: &user::Sub) -> Markup {
                 div id="message-list"
                     hx-swap-oob="afterbegin"
                 {
-                    (message::markup::message_item(&dto, logged_sub))
+                    (message::markup::MessageItem::new(&dto, logged_sub))
                 }
             }
         }

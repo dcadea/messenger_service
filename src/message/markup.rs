@@ -34,40 +34,66 @@ pub fn message_list(messages: &[MessageDto], logged_sub: &user::Sub) -> Markup {
     html! {
         @for i in 0..messages.len() {
             @if i == messages.len() - 1 {
-                (last_message_item(&messages[i], logged_sub))
+                (MessageItem::new(&messages[i], logged_sub).as_last())
             } @else {
-                (message_item(&messages[i], logged_sub))
+                (MessageItem::new(&messages[i], logged_sub))
             }
         }
     }
 }
 
-pub fn message_item(msg: &MessageDto, sub: &user::Sub) -> Markup {
-    let belongs_to_user = msg.owner == *sub;
+pub struct MessageItem<'a> {
+    msg: &'a MessageDto,
+    sub: &'a user::Sub,
+    is_last: bool,
+}
 
-    html! {
-        div id={"m-" (msg.id.0)}
-            ."message-item flex items-center items-baseline relative"
-            .justify-end[belongs_to_user]
-        {
-            (message_bubble(msg, belongs_to_user))
+impl<'a> MessageItem<'a> {
+    pub fn new(msg: &'a MessageDto, sub: &'a user::Sub) -> Self {
+        Self {
+            msg,
+            sub,
+            is_last: false,
         }
+    }
+
+    pub fn as_last(&'a mut self) -> &'a Self {
+        self.is_last = true;
+        self
     }
 }
 
-/// Renders the last message in the list with a trigger to load more messages
-fn last_message_item(msg: &MessageDto, sub: &user::Sub) -> Markup {
-    let belongs_to_user = msg.owner == *sub;
+impl Render for MessageItem<'_> {
+    fn render(&self) -> Markup {
+        let belongs_to_user = self.msg.owner == *self.sub;
+        let message_class = "message-item flex items-center items-baseline relative";
+        let hyperscript = r#"
+            on mouseover remove .hidden from my.querySelector('.message-controls')
+            on mouseout add .hidden to my.querySelector('.message-controls')
+            "#;
 
-    html! {
-        div id={"m-" (msg.id.0)}
-            ."message-item flex items-center items-baseline relative"
-            .justify-end[belongs_to_user]
-            hx-trigger="intersect once"
-            hx-swap="afterend"
-            hx-get={ "/api/messages?limit=14&chat_id=" (msg.chat_id.0) "&end_time=" (msg.timestamp) }
-        {
-            (message_bubble(msg, belongs_to_user))
+        html! {
+
+            @if self.is_last {
+                div id={"m-" (self.msg.id.0)}
+                    .{(message_class)}
+                    .justify-end[belongs_to_user]
+                    hx-trigger="intersect once"
+                    hx-swap="afterend"
+                    hx-get={ "/api/messages?limit=14&chat_id=" (self.msg.chat_id.0) "&end_time=" (self.msg.timestamp) }
+                    _=(hyperscript)
+                {
+                    (message_bubble(self.msg, belongs_to_user))
+                }
+            } @else {
+                div id={"m-" (self.msg.id.0)}
+                    .{(message_class)}
+                    .justify-end[belongs_to_user]
+                    _=(hyperscript)
+                {
+                    (message_bubble(self.msg, belongs_to_user))
+                }
+            }
         }
     }
 }
@@ -97,13 +123,15 @@ fn message_bubble(msg: &MessageDto, belongs_to_user: bool) -> Markup {
 
     html! {
         @if belongs_to_user {
-            i class="fa-trash-can fa-solid text-red-700 cursor-pointer"
-                hx-delete={"/api/messages/" (msg.id.0)}
-                hx-target={"#m-" (msg.id.0)}
-                hx-swap="outerHTML" {}
+            div class="message-controls hidden" {
+                i class="fa-trash-can fa-solid text-red-700 cursor-pointer"
+                    hx-delete={"/api/messages/" (msg.id.0)}
+                    hx-target={"#m-" (msg.id.0)}
+                    hx-swap="outerHTML" {}
 
-            // TODO: Add edit handler
-            i class="fa-pen fa-solid ml-2 text-green-700 cursor-pointer" {}
+                // TODO: Add edit handler
+                i class="fa-pen fa-solid ml-2 text-green-700 cursor-pointer" {}
+            }
 
             (SentIcon)
 
