@@ -58,9 +58,7 @@ pub mod markup {
                 (Head { title: "AWG Messenger" })
 
                 @if w.ws {
-                    body class=(body_class) hx-ext="ws" ws-connect="/ws"
-                        _="on htmx:wsAfterMessage go to the bottom of the #message-list"
-                    {
+                    body class=(body_class) hx-ext="ws" ws-connect="/ws" {
                         (content)
                     }
                 } @else {
