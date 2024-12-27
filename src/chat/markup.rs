@@ -10,7 +10,7 @@ use super::model::ChatDto;
 use super::Id;
 
 pub async fn home(logged_user: Extension<UserInfo>) -> Wrappable {
-    Wrappable(all_chats(logged_user).await)
+    Wrappable::new(all_chats(logged_user).await).with_ws()
 }
 
 pub async fn all_chats(logged_user: Extension<UserInfo>) -> Markup {
