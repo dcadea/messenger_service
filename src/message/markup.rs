@@ -43,13 +43,39 @@ impl Render for MessageInput<'_> {
     }
 }
 
-pub fn message_list(messages: &[MessageDto], logged_sub: &user::Sub) -> Markup {
-    html! {
-        @for i in 0..messages.len() {
-            @if i == messages.len() - 1 {
-                (MessageItem::new(&messages[i], logged_sub).as_last())
-            } @else {
-                (MessageItem::new(&messages[i], logged_sub))
+pub struct MessageList<'a> {
+    messages: &'a [MessageDto],
+    sub: &'a user::Sub,
+    append: bool,
+}
+
+impl<'a> MessageList<'a> {
+    pub fn prepend(messages: &'a [MessageDto], sub: &'a user::Sub) -> Self {
+        Self {
+            messages,
+            sub,
+            append: false,
+        }
+    }
+
+    pub fn append(messages: &'a [MessageDto], sub: &'a user::Sub) -> Self {
+        Self {
+            messages,
+            sub,
+            append: true,
+        }
+    }
+}
+
+impl Render for MessageList<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            @for i in 0..self.messages.len() {
+                @if self.append && i == self.messages.len() - 1 {
+                    (MessageItem::new(&self.messages[i], self.sub).as_last())
+                } @else {
+                    (MessageItem::new(&self.messages[i], self.sub))
+                }
             }
         }
     }
@@ -93,7 +119,7 @@ impl Render for MessageItem<'_> {
                     .justify-end[belongs_to_user]
                     hx-trigger="intersect once"
                     hx-swap="afterend"
-                    hx-get={ "/api/messages?limit=14&chat_id=" (self.msg.chat_id.0) "&end_time=" (self.msg.timestamp) }
+                    hx-get={ "/api/messages?limit=20&chat_id=" (self.msg.chat_id.0) "&end_time=" (self.msg.timestamp) }
                     _=(hyperscript)
                 {
                     (message_bubble(self.msg, belongs_to_user))

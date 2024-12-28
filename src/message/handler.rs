@@ -3,7 +3,7 @@ use axum::http::{HeaderMap, HeaderValue};
 use axum::response::IntoResponse;
 use axum::{Extension, Form};
 use axum_extra::extract::Query;
-use maud::Markup;
+use maud::{Markup, Render};
 use serde::Deserialize;
 
 use crate::chat::service::ChatService;
@@ -36,7 +36,7 @@ pub async fn create(
 
     let messages = message_service.create(&msg).await?;
 
-    Ok(markup::message_list(&messages, &user_info.sub))
+    Ok(markup::MessageList::prepend(&messages, &user_info.sub).render())
 }
 
 #[derive(Deserialize)]
@@ -64,14 +64,19 @@ pub async fn find_all(
         .find_by_chat_id_and_params(logged_sub, &chat_id, params.limit, params.end_time)
         .await?;
 
+    let trigger_value = match params.end_time {
+        Some(_) => "msg:nextPage",
+        None => "msg:firstPage",
+    };
+    let trigger_value = HeaderValue::from_str(trigger_value).expect("invalid header value");
+
     let mut header_map = HeaderMap::new();
-    if params.end_time.is_none() {
-        let trigger_value = HeaderValue::from_str("msg:firstBatch").expect("invalid header value");
+    header_map.insert("HX-Trigger", trigger_value);
 
-        header_map.insert("HX-Trigger", trigger_value);
-    }
-
-    Ok((header_map, markup::message_list(&messages, logged_sub)))
+    Ok((
+        header_map,
+        markup::MessageList::append(&messages, logged_sub).render(),
+    ))
 }
 
 pub async fn delete(
