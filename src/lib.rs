@@ -28,6 +28,8 @@ pub mod markup {
 
                     script src="https://cdn.tailwindcss.com" {}
                     link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" {}
+
+                    meta name="htmx-config" content=r#"{"responseHandling": [{"code":".*", "swap": true}]}"# {}
                 }
             }
         }
@@ -42,6 +44,7 @@ pub mod markup {
             html! {
                 div class="max-w-lg h-3/5 md:h-4/5 md:w-4/5 bg-white rounded-2xl p-6"
                 {
+                    div id="errors" {}
                     (self.content)
                 }
             }

@@ -33,7 +33,8 @@ impl Render for MessageInput<'_> {
                 input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none"
                     type="text"
                     name="text"
-                    placeholder="Type your message..." {}
+                    placeholder="Type your message..."
+                    _="on keyup if the event's key is 'Escape' set value of me to ''" {}
 
                 input class="bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700"
                     type="submit"
