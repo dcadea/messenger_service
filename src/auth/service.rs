@@ -23,10 +23,6 @@ use crate::user::model::UserInfo;
 
 const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
 
-/// Since most of IDPs don't provide a TTL through introspection endpoint,
-/// we set a limit of 30 seconds for client to exchange the code for a token.
-const EXCHANGE_TTL: Duration = Duration::from_secs(30);
-
 #[derive(Clone)]
 pub struct AuthService {
     config: Arc<idp::Config>,
@@ -159,8 +155,9 @@ impl AuthService {
         token: &str,
         ttl: &Duration,
     ) -> super::Result<()> {
+        self.redis.set(cache::Key::Session(*sid), token).await?;
         self.redis
-            .set_ex(cache::Key::Session(*sid), token, ttl.as_secs())
+            .expire(cache::Key::Session(*sid), ttl.as_secs())
             .await?;
         Ok(())
     }
@@ -192,9 +189,7 @@ impl AuthService {
 
     async fn cache_csrf(&self, csrf: &str) -> super::Result<()> {
         let cache_key = cache::Key::Csrf(csrf.to_string());
-        self.redis
-            .set_ex(cache_key, csrf, EXCHANGE_TTL.as_secs())
-            .await?;
+        self.redis.set_ex(cache_key, csrf).await?;
         Ok(())
     }
 

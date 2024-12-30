@@ -16,9 +16,6 @@ use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 use crate::{chat, user};
 
-// TODO: Move to config
-const CHAT_TTL: u64 = 3600;
-
 #[derive(Clone)]
 pub struct ChatService {
     repository: Arc<ChatRepository>,
@@ -141,10 +138,12 @@ impl ChatService {
                 let chat = self.repository.find_by_id(chat_id).await?;
                 let members = chat.members;
 
+                let ttl = cache_key.ttl();
+
                 let _: () = self
                     .redis
                     .sadd(cache_key.clone(), &members.clone())
-                    .and_then(|_: ()| self.redis.expire(cache_key, CHAT_TTL))
+                    .and_then(|_: ()| self.redis.expire(cache_key, ttl))
                     .await?;
 
                 Ok(members)

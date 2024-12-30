@@ -9,9 +9,6 @@ use crate::user::model::{User, UserInfo};
 use super::repository::UserRepository;
 use super::Sub;
 
-// TODO: make this configurable
-const USER_INFO_TTL: u64 = 3600;
-
 #[derive(Clone)]
 pub struct UserService {
     repository: Arc<UserRepository>,
@@ -123,9 +120,7 @@ impl UserService {
 
     async fn cache_user_info(&self, user_info: &UserInfo) -> super::Result<()> {
         let cache_key = cache::Key::UserInfo(user_info.sub.to_owned());
-        self.redis
-            .set_ex(cache_key, user_info, USER_INFO_TTL)
-            .await?;
+        self.redis.set_ex(cache_key, user_info).await?;
         Ok(())
     }
 

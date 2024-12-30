@@ -31,14 +31,27 @@ impl Redis {
 }
 
 impl Redis {
-    pub async fn set_ex<V>(&self, key: Key, value: V, seconds: u64) -> anyhow::Result<()>
+    pub async fn set<V>(&self, key: Key, value: V) -> anyhow::Result<()>
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        let _: () = con.set_ex(&key, value, seconds).await.with_context(|| {
-            format!("Failed to cache value for key: {key} with expiration: {seconds}")
-        })?;
+        let _: () = con
+            .set(&key, value)
+            .await
+            .with_context(|| format!("Failed to cache value for key: {key}"))?;
+        Ok(())
+    }
+
+    pub async fn set_ex<V>(&self, key: Key, value: V) -> anyhow::Result<()>
+    where
+        V: redis::ToRedisArgs + Send + Sync,
+    {
+        let mut con = self.con.clone();
+        let _: () = con
+            .set_ex(&key, value, key.ttl())
+            .await
+            .with_context(|| format!("Failed to cache value for key: {key} with expiration"))?;
         Ok(())
     }
 
@@ -202,6 +215,24 @@ pub enum Key {
     Chat(chat::Id),
     Session(uuid::Uuid),
     Csrf(String),
+}
+
+impl Key {
+    /// Returns a time-to-live value in seconds for the key.
+    pub fn ttl(&self) -> u64 {
+        match self {
+            Key::UserInfo(_) => 3600,
+            Key::UsersOnline => u64::MAX,
+            Key::Friends(_) => u64::MAX,
+            Key::Chat(_) => 3600,
+            // Just in case if token response does not provide an expiration claim
+            // fallback with this value
+            Key::Session(_) => 3600,
+            // Since most of IDPs don't provide a code exchange TTL through
+            // introspection endpoint - we set a limit of 30 seconds.
+            Key::Csrf(_) => 30,
+        }
+    }
 }
 
 impl Display for Key {
