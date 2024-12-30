@@ -64,7 +64,7 @@ impl Render for ErrorResponse {
     fn render(&self) -> Markup {
         html! {
             div id="error"
-                class="animate-bounce z-10 bg-red-100 border border-red-400 text-red-700 p-4 h-14 -mb-14 rounded relative"
+                class="z-10 bg-red-100 border border-red-400 text-red-700 p-4 h-14 -mb-14 rounded relative"
                 role="alert"
             {
                 strong class="font-bold" { "Holy smokes! " }
