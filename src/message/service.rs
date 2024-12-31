@@ -9,7 +9,7 @@ use crate::event::model::{Notification, Queue};
 use crate::event::service::EventService;
 use crate::{chat, user};
 
-use super::model::{Message, MessageDto};
+use super::model::Message;
 use super::repository::MessageRepository;
 use super::Id;
 
@@ -39,57 +39,41 @@ impl MessageService {
 }
 
 impl MessageService {
-    pub async fn create(&self, message: &Message) -> super::Result<Vec<MessageDto>> {
-        if message.text.is_empty() {
+    pub async fn create(&self, msg: &Message) -> super::Result<Vec<Message>> {
+        if msg.text.is_empty() {
             return Err(super::Error::EmptyText);
         }
 
-        // TODO: len is not the same as count of characters
-        if message.text.len() <= MAX_MESSAGE_LENGTH {
-            self.create_one(message).await.map(|msg| vec![msg])
-        } else {
-            self.create_many(message).await
+        let messages = match msg.text.len() {
+            text_length if text_length <= MAX_MESSAGE_LENGTH => {
+                self.repository.insert(msg).await?;
+                vec![msg.clone()]
+            }
+            _ => {
+                let messages = self.split_message(msg);
+                self.repository.insert_many(&messages).await?;
+                messages
+            }
+        };
+
+        if let Some(last_message) = messages.last() {
+            self.chat_service
+                .update_last_message(last_message)
+                .await
+                .with_context(|| "Failed to update last message in chat")?;
         }
-    }
 
-    async fn create_one(&self, message: &Message) -> super::Result<MessageDto> {
-        let msg = self
-            .repository
-            .insert(message)
-            .await
-            .map(|id| message.with_id(id))?;
-
-        self.chat_service
-            .update_last_message(message)
-            .await
-            .with_context(|| "Failed to update last message in chat")?;
-
-        let dto = MessageDto::from(&msg);
-        self.event_service
-            .publish(
-                Queue::Notifications(msg.recipient.clone()),
-                Notification::NewMessage { msg },
-            )
-            .await
-            .with_context(|| "Failed to publish notification")?;
-
-        Ok(dto)
-    }
-
-    async fn create_many(&self, message: &Message) -> super::Result<Vec<MessageDto>> {
-        let chunks = self.splitter.chunks(&message.text);
-
-        let messages = chunks
-            .map(|text| message.with_text(text))
-            .collect::<Vec<Message>>();
-
-        let mut with_ids = Vec::with_capacity(messages.len());
         for msg in &messages {
-            // TODO: maybe use insert_many (find a way to batch notifications through ws)
-            self.create_one(msg).await.map(|m| with_ids.push(m))?
+            self.event_service
+                .publish(
+                    Queue::Notifications(msg.recipient.clone()),
+                    Notification::NewMessage { msg: msg.clone() },
+                )
+                .await
+                .with_context(|| "Failed to publish notification")?;
         }
 
-        Ok(with_ids)
+        Ok(messages)
     }
 
     // pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
@@ -118,6 +102,16 @@ impl MessageService {
 }
 
 impl MessageService {
+    fn split_message(&self, msg: &Message) -> Vec<Message> {
+        let chunks = self.splitter.chunks(&msg.text);
+
+        chunks
+            .map(|text| msg.with_random_id().with_text(text))
+            .collect::<Vec<Message>>()
+    }
+}
+
+impl MessageService {
     // This method is designed to be callen when recipient requests messages related to selected chat.
     // It also marks all messages as seen where logged user is recipient.
     // Due to this side effect consider using other methods for read-only messages retrieval.
@@ -127,7 +121,7 @@ impl MessageService {
         chat_id: &chat::Id,
         limit: Option<usize>,
         end_time: Option<i64>,
-    ) -> super::Result<Vec<MessageDto>> {
+    ) -> super::Result<Vec<Message>> {
         let messages = match (limit, end_time) {
             (None, None) => self.repository.find_by_chat_id(chat_id).await?,
             (Some(limit), None) => {
@@ -149,9 +143,7 @@ impl MessageService {
 
         self.mark_as_seen(logged_sub, &messages).await?;
 
-        let dtos = messages.iter().map(MessageDto::from).collect::<Vec<_>>();
-
-        Ok(dtos)
+        Ok(messages)
     }
 
     pub async fn mark_as_seen(
@@ -178,7 +170,7 @@ impl MessageService {
             .iter()
             .filter(|msg| msg.recipient.eq(logged_sub))
             .filter(|msg| !msg.seen)
-            .filter_map(|msg| msg.id.clone())
+            .map(|msg| msg.id.clone())
             .collect::<Vec<_>>();
 
         if ids.is_empty() {

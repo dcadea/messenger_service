@@ -3,7 +3,7 @@ use maud::{html, Markup, Render};
 
 use crate::{chat, user};
 
-use super::model::MessageDto;
+use super::model::Message;
 
 pub struct MessageInput<'a> {
     chat_id: &'a chat::Id,
@@ -45,13 +45,13 @@ impl Render for MessageInput<'_> {
 }
 
 pub struct MessageList<'a> {
-    messages: &'a [MessageDto],
+    messages: &'a [Message],
     sub: &'a user::Sub,
     append: bool,
 }
 
 impl<'a> MessageList<'a> {
-    pub fn prepend(messages: &'a [MessageDto], sub: &'a user::Sub) -> Self {
+    pub fn prepend(messages: &'a [Message], sub: &'a user::Sub) -> Self {
         Self {
             messages,
             sub,
@@ -59,7 +59,7 @@ impl<'a> MessageList<'a> {
         }
     }
 
-    pub fn append(messages: &'a [MessageDto], sub: &'a user::Sub) -> Self {
+    pub fn append(messages: &'a [Message], sub: &'a user::Sub) -> Self {
         Self {
             messages,
             sub,
@@ -83,13 +83,13 @@ impl Render for MessageList<'_> {
 }
 
 pub struct MessageItem<'a> {
-    msg: &'a MessageDto,
+    msg: &'a Message,
     sub: &'a user::Sub,
     is_last: bool,
 }
 
 impl<'a> MessageItem<'a> {
-    pub fn new(msg: &'a MessageDto, sub: &'a user::Sub) -> Self {
+    pub fn new(msg: &'a Message, sub: &'a user::Sub) -> Self {
         Self {
             msg,
             sub,
@@ -158,7 +158,7 @@ impl Render for SentIcon {
     }
 }
 
-fn message_bubble(msg: &MessageDto, belongs_to_user: bool) -> Markup {
+fn message_bubble(msg: &Message, belongs_to_user: bool) -> Markup {
     let message_timestamp = DateTime::from_timestamp(msg.timestamp, 0).map(|dt| dt.format("%H:%M"));
 
     html! {

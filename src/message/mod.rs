@@ -18,6 +18,12 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
+impl Id {
+    pub fn random() -> Self {
+        Self(mongodb::bson::oid::ObjectId::new().to_hex())
+    }
+}
+
 pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/messages", post(handler::create))

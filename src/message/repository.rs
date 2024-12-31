@@ -1,4 +1,5 @@
 use futures::TryStreamExt;
+use log::error;
 use mongodb::bson::doc;
 use mongodb::Database;
 
@@ -20,13 +21,23 @@ impl MessageRepository {
 }
 
 impl MessageRepository {
-    pub async fn insert(&self, message: &Message) -> super::Result<Id> {
+    pub async fn insert(&self, message: &Message) -> super::Result<()> {
         let result = self.collection.insert_one(message).await?;
-        let id = result
+        result
             .inserted_id
             .as_object_id()
             .ok_or(super::Error::IdNotPresent)?;
-        Ok(Id(id.to_hex()))
+        Ok(())
+    }
+
+    pub async fn insert_many(&self, messages: &Vec<Message>) -> super::Result<()> {
+        let result = self.collection.insert_many(messages).await?;
+
+        if result.inserted_ids.len() != messages.len() {
+            error!("not all messages persisted")
+        }
+
+        Ok(())
     }
 
     pub async fn find_by_id(&self, id: &Id) -> super::Result<Message> {
