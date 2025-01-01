@@ -30,19 +30,29 @@ pub async fn all_chats(logged_user: Extension<UserInfo>) -> Markup {
     }
 }
 
+struct Header<'a>(&'a UserInfo);
+
+impl Render for Header<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            header id="recipient-header"
+                class="flex justify-between items-center relative" {
+                a class="cursor-pointer border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
+                    hx-get="/chats"
+                    hx-target="#chat-window"
+                    hx-swap="outerHTML" { "X" }
+                h2 class="text-2xl" { (self.0.name) }
+                span class="online-status absolute inset-12 flex items-center justify-center text-xs text-gray-500" { "offline" }
+                img class="w-12 h-12 rounded-full"
+                    src=(self.0.picture) alt="User avatar" {}
+            }
+        }
+    }
+}
+
 pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
     html! {
-        header id="recipient-header"
-            class="flex justify-between items-center relative" {
-            a class="cursor-pointer border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
-                hx-get="/chats"
-                hx-target="#chat-window"
-                hx-swap="outerHTML" { "X" }
-            h2 class="text-2xl" { (recipient.name) }
-            span class="online-status absolute inset-12 flex items-center justify-center text-xs text-gray-500" { "offline" }
-            img class="w-12 h-12 rounded-full"
-                src=(recipient.picture) alt="User avatar" {}
-        }
+        (Header(recipient))
 
         div id="active-chat"
             class="flex-grow overflow-auto mt-4 mb-4"
