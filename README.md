@@ -46,6 +46,7 @@ docker run -d -p 8000:8000 messenger_service:latest
 make dev            # Run the service with hot-reload locally
 make image          # Build the Docker image
 make compose        # Run the service with Docker Compose (dev mode)
+make prod           # Run the service with Docker Compose (prod mode)
 ```
 
 ### Configuration
@@ -64,6 +65,10 @@ REQUIRED_CLAIMS=iss,sub,aud,exp,permissions
 - Optional environment variables:
 ```dotenv
 ENV=local
+
+# required for ENV=prod
+SSL_CERT_FILE=/etc/ssl/certs/messenger_service_cert.pem
+SSL_KEY_FILE=/etc/ssl/private/messenger_service.pem
 
 RUST_LOG=info
 SERVICE_NAME=messenger_service
