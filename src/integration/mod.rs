@@ -1,7 +1,8 @@
-use std::fs::File;
 use std::str::FromStr;
 use std::time::Duration;
+use std::{fs::File, net::SocketAddr};
 
+use axum_server::tls_openssl::OpenSSLConfig;
 use dotenv::dotenv;
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, WriteLogger};
@@ -16,6 +17,31 @@ pub enum Environment {
     Local,
     Docker,
     Production,
+}
+
+impl Environment {
+    pub fn addr(&self) -> SocketAddr {
+        match self {
+            Environment::Local => SocketAddr::from(([127, 0, 0, 1], 8000)),
+            Environment::Docker => SocketAddr::from(([0, 0, 0, 0], 8000)),
+            Environment::Production => SocketAddr::from(([0, 0, 0, 0], 8443)),
+        }
+    }
+
+    pub fn ssl_config(&self) -> Option<OpenSSLConfig> {
+        match self {
+            Environment::Local => None,
+            Environment::Docker => None,
+            Environment::Production => {
+                let ssl_config = OpenSSLConfig::from_pem_file(
+                    std::env::var("SSL_CERT_FILE").expect("SSL_CERT_FILE must be set"),
+                    std::env::var("SSL_KEY_FILE").expect("SSL_KEY_FILE must be set"),
+                )
+                .expect("cert should be present and have read permission");
+                Some(ssl_config)
+            }
+        }
+    }
 }
 
 #[derive(Clone)]

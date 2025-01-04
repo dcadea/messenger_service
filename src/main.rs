@@ -1,11 +1,8 @@
-use std::net::SocketAddr;
-
 use auth::middleware::{authorize, validate_sid};
 use axum::http::StatusCode;
 use axum::middleware::{from_fn, from_fn_with_state, map_response};
 use axum::routing::get;
 use axum::Router;
-use axum_server::tls_openssl::OpenSSLConfig;
 use log::error;
 use messenger_service::markup::wrap_in_base;
 use messenger_service::middleware::attach_request_id;
@@ -39,34 +36,22 @@ async fn main() {
     };
     let router = app(app_state.clone());
 
-    match config.env {
-        integration::Environment::Local => {
-            let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
-            axum_server::bind(addr)
-                .serve(router.into_make_service())
-                .await
-        }
-        integration::Environment::Docker => {
-            let addr = SocketAddr::from(([0, 0, 0, 0], 8000));
-            axum_server::bind(addr)
-                .serve(router.into_make_service())
-                .await
-        }
-        integration::Environment::Production => {
-            let addr = SocketAddr::from(([0, 0, 0, 0], 8443));
-            // TODO: make ssl configurable
-            let config = OpenSSLConfig::from_pem_file(
-                "/etc/ssl/certs/messenger_service_cert.pem",
-                "/etc/ssl/certs/messenger_service.pem",
-            )
-            .expect("cert should be present and have read permission");
+    let addr = config.env.addr();
+    let ssl_config = config.env.ssl_config();
 
-            axum_server::bind_openssl(addr, config)
+    match ssl_config {
+        Some(ssl_config) => {
+            axum_server::bind_openssl(addr, ssl_config)
+                .serve(router.into_make_service())
+                .await
+        }
+        None => {
+            axum_server::bind(addr)
                 .serve(router.into_make_service())
                 .await
         }
     }
-    .expect("Failed to start server");
+    .expect("Failed to start server")
 }
 
 fn app(app_state: AppState) -> Router {

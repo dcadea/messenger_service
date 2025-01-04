@@ -9,11 +9,14 @@ services:
     environment:
       ENV: prod
 
+      SSL_CERT_FILE: /etc/ssl/certs/messenger_service_cert.pem
+      SSL_KEY_FILE: /etc/ssl/private/messenger_service.pem
+
       CLIENT_ID: /secrets/auth0/client_id
       CLIENT_SECRET: /secrets/auth0/client_secret
-      REDIRECT_URL: http://localhost:8000/callback
-      ISSUER: ${ISSUER}
-      AUDIENCE: ${AUDIENCE}
+      REDIRECT_URL: https://localhost:8443/callback
+      ISSUER: https://dcadea.auth0.com/
+      AUDIENCE: https://messenger.angelwing.io/api/v1
       REQUIRED_CLAIMS: iss,sub,aud,exp,permissions
 
       REDIS_HOST: awg.redis
@@ -21,6 +24,8 @@ services:
       MONGO_DB: messenger
       NATS_HOST: awg.nats
     volumes:
+      - ./conf/prod/messenger_service_cert.pem:/etc/ssl/certs/messenger_service_cert.pem
+      - ./conf/prod/messenger_service.pem:/etc/ssl/private/messenger_service.pem
       - ./docker-volumes/prod/messenger_service/service.log:/usr/local/bin/service.log
     depends_on:
       mongo:
