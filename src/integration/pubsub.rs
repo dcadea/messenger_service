@@ -23,11 +23,11 @@ impl Config {
             .parse()?;
         Ok(Self { host, port })
     }
-}
 
-pub async fn init(config: &Config) -> async_nats::Client {
-    match async_nats::connect(&format!("{}:{}", config.host, config.port)).await {
-        Ok(con) => con,
-        Err(e) => panic!("Failed to connect to NATS: {}", e),
+    pub async fn connect(&self) -> async_nats::Client {
+        match async_nats::connect(&format!("{}:{}", self.host, self.port)).await {
+            Ok(con) => con,
+            Err(e) => panic!("Failed to connect to NATS: {}", e),
+        }
     }
 }

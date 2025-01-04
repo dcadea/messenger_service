@@ -19,18 +19,6 @@ pub struct Redis {
 }
 
 impl Redis {
-    pub async fn try_new(config: &Config) -> Self {
-        let client = init_client(config);
-        let con = match client.get_connection_manager().await {
-            Ok(con) => con,
-            Err(e) => panic!("Failed create Redis connection manager: {}", e),
-        };
-
-        Self { client, con }
-    }
-}
-
-impl Redis {
     pub async fn set<V>(&self, key: Key, value: V) -> anyhow::Result<()>
     where
         V: redis::ToRedisArgs + Send + Sync,
@@ -198,12 +186,18 @@ impl Config {
             .parse()?;
         Ok(Self { host, port })
     }
-}
 
-pub fn init_client(config: &Config) -> redis::Client {
-    match redis::Client::open(format!("redis://{}:{}", &config.host, &config.port)) {
-        Ok(client) => client,
-        Err(e) => panic!("Failed to connect to Redis: {e:?}"),
+    pub async fn connect(&self) -> Redis {
+        let client = match redis::Client::open(format!("redis://{}:{}", self.host, self.port)) {
+            Ok(client) => client,
+            Err(e) => panic!("Failed to connect to Redis: {e:?}"),
+        };
+        let con = match client.get_connection_manager().await {
+            Ok(con) => con,
+            Err(e) => panic!("Failed create Redis connection manager: {}", e),
+        };
+
+        Redis { client, con }
     }
 }
 

@@ -23,9 +23,9 @@ pub struct AppState {
 
 impl AppState {
     pub async fn init(config: integration::Config) -> crate::Result<Self> {
-        let database = integration::db::init(&config.mongo);
-        let redis = integration::cache::Redis::try_new(&config.redis).await;
-        let pubsub = integration::pubsub::init(&config.pubsub).await;
+        let database = config.mongo.connect();
+        let redis = config.redis.connect().await;
+        let pubsub = config.pubsub.connect().await;
 
         let auth_service = AuthService::try_new(&config.idp, redis.clone())?;
         let user_service = UserService::new(UserRepository::new(&database), redis.clone());
