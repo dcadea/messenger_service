@@ -15,6 +15,7 @@ pub mod pubsub;
 pub enum Environment {
     Local,
     Docker,
+    Production,
 }
 
 #[derive(Clone)]
@@ -57,6 +58,7 @@ impl Default for Config {
             .map(|env| match env.as_str() {
                 "local" => Environment::Local,
                 "docker" => Environment::Docker,
+                "prod" => Environment::Production,
                 _ => panic!("Invalid environment: {}", env),
             })
             .unwrap_or(Environment::Local);

@@ -21,6 +21,7 @@ tokio-stream = "0.1.17"
 futures = { version = "0.3.31", default-features = false }
 
 axum = { version = "0.7.9", features = ["ws", "macros"] }
+axum-server = { version = "0.7.1", features = ["tls-openssl"] }
 axum-extra = { version = "0.9.6", features = [
     "cookie",
     "query",

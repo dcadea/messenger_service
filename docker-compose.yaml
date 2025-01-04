@@ -1,13 +1,13 @@
-name: messenger_release
+name: messenger_prod
 services:
   messenger_service:
     image: messenger_service:latest
     container_name: awg.messenger_service
     restart: always
     ports:
-      - 8000:8000
+      - 8443:8443
     environment:
-      ENV: docker
+      ENV: prod
 
       CLIENT_ID: /secrets/auth0/client_id
       CLIENT_SECRET: /secrets/auth0/client_secret
@@ -21,7 +21,7 @@ services:
       MONGO_DB: messenger
       NATS_HOST: awg.nats
     volumes:
-      - ./docker-volumes/release/messenger_service/service.log:/usr/local/bin/service.log
+      - ./docker-volumes/prod/messenger_service/service.log:/usr/local/bin/service.log
     depends_on:
       mongo:
         condition: service_healthy
@@ -34,8 +34,6 @@ services:
     image: mongo:latest
     container_name: awg.mongo
     restart: always
-    ports:
-      - 27017:27017
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -46,10 +44,8 @@ services:
     image: redis:alpine
     container_name: awg.redis
     restart: always
-    ports:
-      - 6379:6379
     volumes:
-      - ./conf/release/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./conf/prod/redis.conf:/usr/local/etc/redis/redis.conf
     command: redis-server /usr/local/etc/redis/redis.conf
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -61,8 +57,6 @@ services:
     image: nats:2-alpine
     container_name: awg.nats
     restart: always
-    ports:
-      - 4222:4222
     healthcheck:
       test: wget http://localhost:8222/healthz -q -S -O -
       interval: 10s

@@ -10,7 +10,7 @@ services:
       ENV: docker
 
       RUST_LOG: debug
-      RUST_BACKTRACE: full
+      RUST_BACKTRACE: 1
 
       CLIENT_ID: /secrets/auth0/client_id
       CLIENT_SECRET: /secrets/auth0/client_secret
