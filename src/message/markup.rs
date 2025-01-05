@@ -115,7 +115,7 @@ impl Render for MessageItem<'_> {
         html! {
 
             @if self.is_last {
-                div id={"m-" (self.msg.id.0)}
+                div id={"m-" (self.msg._id.0)}
                     .{(message_class)}
                     .justify-end[belongs_to_user]
                     hx-trigger="intersect once"
@@ -126,7 +126,7 @@ impl Render for MessageItem<'_> {
                     (message_bubble(self.msg, belongs_to_user))
                 }
             } @else {
-                div id={"m-" (self.msg.id.0)}
+                div id={"m-" (self.msg._id.0)}
                     .{(message_class)}
                     .justify-end[belongs_to_user]
                     _=(hyperscript)
@@ -165,8 +165,8 @@ fn message_bubble(msg: &Message, belongs_to_user: bool) -> Markup {
         @if belongs_to_user {
             div class="message-controls hidden pb-2" {
                 i class="fa-trash-can fa-solid text-red-700 cursor-pointer"
-                    hx-delete={"/api/messages/" (msg.id.0)}
-                    hx-target={"#m-" (msg.id.0)}
+                    hx-delete={"/api/messages/" (msg._id.0)}
+                    hx-target={"#m-" (msg._id.0)}
                     hx-swap="outerHTML" {}
 
                 // TODO: Add edit handler

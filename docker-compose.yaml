@@ -14,7 +14,7 @@ services:
 
       CLIENT_ID: /secrets/auth0/client_id
       CLIENT_SECRET: /secrets/auth0/client_secret
-      REDIRECT_URL: https://localhost:8443/callback
+      REDIRECT_URL: https://192.168.100.3:8443/callback
       ISSUER: https://dcadea.auth0.com/
       AUDIENCE: https://messenger.angelwing.io/api/v1
       REQUIRED_CLAIMS: iss,sub,aud,exp,permissions

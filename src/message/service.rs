@@ -170,7 +170,7 @@ impl MessageService {
             .iter()
             .filter(|msg| msg.recipient.eq(logged_sub))
             .filter(|msg| !msg.seen)
-            .map(|msg| msg.id.clone())
+            .map(|msg| msg._id.clone())
             .collect::<Vec<_>>();
 
         if ids.is_empty() {
