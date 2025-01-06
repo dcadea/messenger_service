@@ -1,5 +1,19 @@
 name: messenger_dev
 services:
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: awg.dev.ngrok
+    restart: unless-stopped
+    ports:
+      - 4040:4040
+    volumes:
+      - ./conf/dev/ngrok.yml:/etc/ngrok.yml
+    command:
+      - "start"
+      - "awg_dev_edge"
+      - "--config"
+      - "/etc/ngrok.yml"
+
   messenger_service:
     image: messenger_service:latest
     container_name: awg.dev.messenger_service
