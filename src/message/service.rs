@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use anyhow::Context;
 use log::debug;
 use text_splitter::{Characters, TextSplitter};
 
@@ -57,10 +56,7 @@ impl MessageService {
         };
 
         if let Some(last_message) = messages.last() {
-            self.chat_service
-                .update_last_message(last_message)
-                .await
-                .with_context(|| "Failed to update last message in chat")?;
+            self.chat_service.update_last_message(last_message).await?;
         }
 
         for msg in &messages {
@@ -69,8 +65,7 @@ impl MessageService {
                     Queue::Notifications(msg.recipient.clone()),
                     Notification::NewMessage { msg: msg.clone() },
                 )
-                .await
-                .with_context(|| "Failed to publish notification")?;
+                .await?;
         }
 
         Ok(messages)
@@ -94,8 +89,7 @@ impl MessageService {
                 Queue::Notifications(msg.recipient.clone()),
                 Notification::DeletedMessage { id: id.to_owned() },
             )
-            .await
-            .with_context(|| "Failed to publish notification")?;
+            .await?;
 
         Ok(())
     }
@@ -187,8 +181,7 @@ impl MessageService {
                     Queue::Notifications(owner.clone()),
                     Notification::SeenMessage { id: id.clone() },
                 )
-                .await
-                .with_context(|| "Failed to publish notification")?;
+                .await?;
         }
 
         Ok(())

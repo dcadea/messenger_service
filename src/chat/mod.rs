@@ -10,6 +10,7 @@ use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
 use crate::state::AppState;
+use crate::{integration, user};
 
 mod handler;
 pub mod markup;
@@ -21,6 +22,12 @@ type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
+
+impl Id {
+    pub fn random() -> Self {
+        Self(mongodb::bson::oid::ObjectId::new().to_hex())
+    }
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Kind {
@@ -56,7 +63,13 @@ pub enum Error {
     AlreadyExists,
 
     #[error(transparent)]
-    Unexpected(#[from] anyhow::Error),
+    _User(#[from] user::Error),
+
+    #[error(transparent)]
+    _Integration(#[from] integration::Error),
+
+    #[error(transparent)]
+    _MongoDB(#[from] mongodb::error::Error),
 }
 
 impl IntoResponse for Error {
@@ -68,7 +81,8 @@ impl IntoResponse for Error {
             Self::NotMember => (StatusCode::BAD_REQUEST, self.to_string()),
             Self::NotCreated => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             Self::AlreadyExists => (StatusCode::CONFLICT, self.to_string()),
-            Self::Unexpected(_) => (
+
+            Self::_User(_) | Self::_Integration(_) | Self::_MongoDB(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_owned(),
             ),

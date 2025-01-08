@@ -42,3 +42,20 @@ impl Message {
         }
     }
 }
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct LastMessage {
+    pub id: Id,
+    pub text: String,
+    pub timestamp: i64,
+}
+
+impl From<&Message> for LastMessage {
+    fn from(msg: &Message) -> Self {
+        Self {
+            id: msg._id.clone(),
+            text: msg.text.clone(),
+            timestamp: msg.timestamp,
+        }
+    }
+}

@@ -1,7 +1,7 @@
-use anyhow::Context;
 use futures::TryStreamExt;
 use mongodb::bson::doc;
 
+use crate::message::model::{LastMessage, Message};
 use crate::{chat, user};
 
 use super::model::Chat;
@@ -22,26 +22,21 @@ impl ChatRepository {
 }
 
 impl ChatRepository {
-    pub async fn update_last_message(&self, id: &Id, text: &str) -> super::Result<()> {
+    pub async fn update_last_message(&self, msg: &Message) -> super::Result<()> {
+        let chat_id = &msg.chat_id;
         self.collection
             .update_one(
-                doc! { "_id": id },
+                doc! { "_id": chat_id },
                 doc! {"$set": {
-                    "last_message": text,
-                    "updated_at": chrono::Utc::now().timestamp(),
+                    "last_message": LastMessage::from(msg),
                 }},
             )
-            .await
-            .with_context(|| format!("Failed to update last message for chat: {id:?}"))?;
+            .await?;
         Ok(())
     }
 
     pub async fn find_by_id(&self, id: &Id) -> super::Result<Chat> {
-        let chat = self
-            .collection
-            .find_one(doc! { "_id": id })
-            .await
-            .with_context(|| format!("Failed to find chat by id: {id:?}"))?;
+        let chat = self.collection.find_one(doc! { "_id": id }).await?;
 
         chat.ok_or(chat::Error::NotFound(Some(id.to_owned())))
     }
@@ -54,14 +49,10 @@ impl ChatRepository {
         let cursor = self
             .collection
             .find(doc! {"members": sub})
-            .sort(doc! {"updated_at": -1})
-            .await
-            .with_context(|| format!("Failed to find chats by sub: {sub:?}"))?;
+            .sort(doc! {"last_message.timestamp": -1})
+            .await?;
 
-        let chats: Vec<Chat> = cursor
-            .try_collect()
-            .await
-            .with_context(|| format!("Failed to collect chats for sub: {sub:?}"))?;
+        let chats: Vec<Chat> = cursor.try_collect().await?;
 
         Ok(chats)
     }
@@ -73,8 +64,7 @@ impl ChatRepository {
                 "_id": id,
                 "members": sub
             })
-            .await
-            .with_context(|| format!("Failed to find chat by id: {id:?} and sub: {sub:?}"))?;
+            .await?;
 
         chat.ok_or(chat::Error::NotFound(Some(id.to_owned())))
     }
@@ -85,18 +75,13 @@ impl ChatRepository {
             .count_documents(doc! {
                 "members": { "$all": members.to_vec() }
             })
-            .await
-            .with_context(|| format!("Failed to find chat by members: {members:?}"))?;
+            .await?;
 
         Ok(number_of_chats > 0)
     }
 
     pub async fn create(&self, chat: Chat) -> super::Result<Id> {
-        let result = self
-            .collection
-            .insert_one(chat)
-            .await
-            .with_context(|| "Failed to create chat")?;
+        let result = self.collection.insert_one(chat).await?;
 
         if let Some(chat_id) = result.inserted_id.as_object_id() {
             return Ok(Id(chat_id.to_hex()));

@@ -87,7 +87,7 @@ impl Render for ChatDto {
                 span class="chat-recipient font-bold" { (self.recipient_name) }
                 @if let Some(last_message) = &self.last_message {
                     span class="chat-last-message flex-grow text-sm text-gray-500 text-right truncate" {
-                        (last_message)
+                        (last_message.text)
                     }
                 }
             }

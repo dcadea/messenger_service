@@ -4,7 +4,7 @@ use axum::{routing::post, Router};
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
-use crate::state::AppState;
+use crate::{integration, state::AppState};
 
 mod handler;
 pub mod markup;
@@ -74,7 +74,7 @@ pub enum Error {
     NoFriends(Sub),
 
     #[error(transparent)]
-    Unexpected(#[from] anyhow::Error),
+    _Integration(#[from] integration::Error),
 
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),

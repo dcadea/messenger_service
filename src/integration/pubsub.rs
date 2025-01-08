@@ -16,7 +16,7 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn env() -> anyhow::Result<Self> {
+    pub fn env() -> super::Result<Self> {
         let host = env::var("NATS_HOST")?;
         let port = env::var("NATS_PORT")
             .unwrap_or("4222".to_string())

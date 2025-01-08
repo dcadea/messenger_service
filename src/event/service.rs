@@ -1,4 +1,3 @@
-use anyhow::Context;
 use tokio_stream::StreamExt;
 
 use crate::integration;
@@ -43,12 +42,11 @@ impl EventService {
 }
 
 impl EventService {
-    pub async fn listen_online_status_change(&self) -> anyhow::Result<cache::UpdateStream> {
+    pub async fn listen_online_status_change(&self) -> super::Result<cache::UpdateStream> {
         let stream = self
             .redis
             .subscribe(&cache::Keyspace::new(cache::Key::UsersOnline))
-            .await
-            .with_context(|| "Failed to subscribe to online status change")?;
+            .await?;
 
         Ok(stream)
     }

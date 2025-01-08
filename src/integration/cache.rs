@@ -4,10 +4,10 @@ use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 use std::pin::Pin;
 
-use anyhow::Context;
 use futures::{Stream, StreamExt};
 use log::debug;
-use redis::AsyncCommands;
+use redis::{AsyncCommands, JsonAsyncCommands};
+use serde::Serialize;
 
 use crate::user::model::UserInfo;
 use crate::{chat, user};
@@ -19,120 +19,116 @@ pub struct Redis {
 }
 
 impl Redis {
-    pub async fn set<V>(&self, key: Key, value: V) -> anyhow::Result<()>
+    pub async fn set<V>(&self, key: Key, value: V) -> super::Result<()>
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        let _: () = con
-            .set(&key, value)
-            .await
-            .with_context(|| format!("Failed to cache value for key: {key}"))?;
+        let _: () = con.set(&key, value).await?;
         Ok(())
     }
 
-    pub async fn set_ex<V>(&self, key: Key, value: V) -> anyhow::Result<()>
+    pub async fn set_ex<V>(&self, key: Key, value: V) -> super::Result<()>
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        let _: () = con
-            .set_ex(&key, value, key.ttl())
-            .await
-            .with_context(|| format!("Failed to cache value for key: {key} with expiration"))?;
+        let _: () = con.set_ex(&key, value, key.ttl()).await?;
         Ok(())
     }
 
-    pub async fn sadd<V>(&self, key: Key, value: V) -> anyhow::Result<()>
+    pub async fn json_set_ex<V>(&self, key: Key, value: V) -> super::Result<()>
+    where
+        V: Send + Sync + Serialize,
+    {
+        let mut con = self.con.clone();
+        let _: () = con.json_set(&key, "$", &value).await?;
+
+        self.expire(key).await
+    }
+
+    pub async fn sadd<V>(&self, key: Key, value: V) -> super::Result<()>
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        let _: () = con
-            .sadd(&key, value)
-            .await
-            .with_context(|| format!("Failed to cache value for key: {key}"))?;
+        let _: () = con.sadd(&key, value).await?;
         Ok(())
     }
 
-    pub async fn get<V>(&self, key: Key) -> anyhow::Result<V>
+    pub async fn get<V>(&self, key: Key) -> super::Result<V>
     where
         V: redis::FromRedisValue,
     {
         let mut con = self.con.clone();
-        let value: V = con
-            .get(&key)
-            .await
-            .with_context(|| format!("Failed to get value from cache by key: {key}"))?;
+        let value: V = con.get(&key).await?;
         Ok(value)
     }
 
-    pub async fn get_del<V>(&self, key: Key) -> anyhow::Result<Option<V>>
+    pub async fn json_get<V>(&self, key: Key) -> super::Result<V>
+    where
+        V: redis::FromRedisValue,
+    {
+        let mut con = self.con.clone();
+        let value: V = con.json_get(&key, "&").await?;
+        Ok(value)
+    }
+
+    pub async fn get_del<V>(&self, key: Key) -> super::Result<Option<V>>
     where
         V: redis::FromRedisValue,
     {
         let mut con = self.con.clone();
 
-        let value: Option<V> = con
-            .get_del(&key)
-            .await
-            .with_context(|| format!("Failed to get and remove value from cache by key: {key}"))?;
+        let value: Option<V> = con.get_del(&key).await?;
         Ok(value)
     }
 
-    pub async fn smembers<V>(&self, key: Key) -> anyhow::Result<Option<V>>
+    pub async fn smembers<V>(&self, key: Key) -> super::Result<Option<V>>
     where
         V: redis::FromRedisValue + IntoIterator,
         V::Item: redis::FromRedisValue + Hash + PartialEq + Eq,
     {
         let mut con = self.con.clone();
-        let values: Option<V> = con
-            .smembers(&key)
-            .await
-            .with_context(|| format!("Failed to get values from cache by key: {key}"))?;
+        let values: Option<V> = con.smembers(&key).await?;
         Ok(values)
     }
 
-    pub async fn sinter<V>(&self, keys: Vec<Key>) -> anyhow::Result<HashSet<V>>
+    pub async fn sinter<V>(&self, keys: Vec<Key>) -> super::Result<HashSet<V>>
     where
         V: redis::FromRedisValue + Hash + PartialEq + Eq,
     {
         let mut con = self.con.clone();
-        let values: HashSet<V> = con
-            .sinter(&keys)
-            .await // find a way to concatenate keys into a single string
-            .with_context(|| "Failed to get common values from cache by keys")?;
+        // TODO: find a way to concatenate keys into a single string
+        let values: HashSet<V> = con.sinter(&keys).await?;
         Ok(values)
     }
 
     #[allow(dead_code)]
-    pub async fn del(&self, key: Key) -> anyhow::Result<()> {
+    pub async fn del(&self, key: Key) -> super::Result<()> {
         let mut con = self.con.clone();
-        let _: () = con
-            .del(&key)
-            .await
-            .with_context(|| format!("Failed to remove value frm cache by key: {key}"))?;
+        let _: () = con.del(&key).await?;
         Ok(())
     }
 
-    pub async fn srem<V>(&self, key: Key, value: V) -> anyhow::Result<()>
+    pub async fn srem<V>(&self, key: Key, value: V) -> super::Result<()>
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        let _: () = con
-            .srem(&key, value)
-            .await
-            .with_context(|| format!("Failed to remove value from cache by key: {key}"))?;
+        let _: () = con.srem(&key, value).await?;
         Ok(())
     }
 
-    pub async fn expire(&self, key: Key, seconds: u64) -> anyhow::Result<()> {
+    pub async fn expire_after(&self, key: Key, seconds: u64) -> super::Result<()> {
         let mut con = self.con.clone();
-        let _: () = con
-            .expire(&key, seconds as i64)
-            .await
-            .with_context(|| format!("Failed to set expiration for key: {key}"))?;
+        let _: () = con.expire(&key, seconds as i64).await?;
+        Ok(())
+    }
+
+    pub async fn expire(&self, key: Key) -> super::Result<()> {
+        let mut con = self.con.clone();
+        let _: () = con.expire(&key, key.ttl() as i64).await?;
         Ok(())
     }
 }
@@ -140,12 +136,8 @@ impl Redis {
 pub type UpdateStream = Pin<Box<dyn Stream<Item = redis::RedisResult<redis::Msg>> + Send>>;
 
 impl Redis {
-    pub async fn subscribe(&self, keyspace: &Keyspace) -> anyhow::Result<UpdateStream> {
-        let mut pub_sub = self
-            .client
-            .get_async_pubsub()
-            .await
-            .with_context(|| "Failed to create Redis pubsub")?;
+    pub async fn subscribe(&self, keyspace: &Keyspace) -> super::Result<UpdateStream> {
+        let mut pub_sub = self.client.get_async_pubsub().await?;
 
         pub_sub.psubscribe(keyspace).await?;
 
@@ -179,7 +171,7 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn env() -> anyhow::Result<Self> {
+    pub fn env() -> super::Result<Self> {
         let host = env::var("REDIS_HOST")?;
         let port = env::var("REDIS_PORT")
             .unwrap_or("6379".to_string())

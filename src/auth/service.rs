@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Context;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use log::{error, warn};
@@ -97,22 +96,24 @@ impl AuthService {
             .oauth2
             .exchange_code(auth_code)
             .request_async(async_http_client)
-            .await
-            .with_context(|| format!("could not exchange code for token: {code:?}"))?;
+            .await;
 
-        let access_token = token_result.access_token().to_owned();
-        let expires_in = token_result.expires_in().unwrap_or(self.config.token_ttl);
+        match token_result {
+            Ok(response) => {
+                let access_token = response.access_token().to_owned();
+                let expires_in = response.expires_in().unwrap_or(self.config.token_ttl);
 
-        Ok((access_token, expires_in))
+                Ok((access_token, expires_in))
+            }
+            Err(e) => Err(super::Error::_Unexpected(e.to_string())),
+        }
     }
 
     pub async fn validate(&self, token: &str) -> super::Result<user::Sub> {
-        let jwt_header = decode_header(token)
-            .with_context(|| format!("could not decode jwt_header from token: {token}"))
-            .map_err(|e| {
-                warn!("{e:?}");
-                super::Error::TokenMalformed
-            })?;
+        let jwt_header = decode_header(token).map_err(|e| {
+            warn!("{e:?}");
+            super::Error::TokenMalformed
+        })?;
 
         let kid = jwt_header.kid.ok_or(super::Error::UnknownKid)?;
         let decoding_keys_guard = self.jwk_decoding_keys.read().await;
@@ -123,7 +124,6 @@ impl AuthService {
         decode::<TokenClaims>(token, decoding_key, &self.jwt_validator)
             .map(|data| data.claims)
             .map(|claims| claims.sub)
-            .with_context(|| format!("could not decode token: {token}"))
             .map_err(|e| {
                 warn!("{e:?}");
                 super::Error::Forbidden
@@ -136,13 +136,9 @@ impl AuthService {
             .get(&self.config.userinfo_url)
             .bearer_auth(token)
             .send()
-            .await
-            .with_context(|| "could not fetch user info")?;
+            .await?;
 
-        let user_info: UserInfo = response
-            .json()
-            .await
-            .with_context(|| "could not parse user info")?;
+        let user_info: UserInfo = response.json().await?;
 
         Ok(user_info)
     }
@@ -157,21 +153,18 @@ impl AuthService {
     ) -> super::Result<()> {
         self.redis.set(cache::Key::Session(*sid), token).await?;
         self.redis
-            .expire(cache::Key::Session(*sid), ttl.as_secs())
+            .expire_after(cache::Key::Session(*sid), ttl.as_secs())
             .await?;
         Ok(())
     }
 
     pub async fn invalidate_token(&self, sid: &str) -> super::Result<()> {
-        let sid = uuid::Uuid::parse_str(sid).with_context(|| {
-            format!("Could not invalidate token. SID is not in uuid format: {sid}")
-        })?;
+        let sid = uuid::Uuid::parse_str(sid)?;
         let token: Option<String> = self.redis.get_del(cache::Key::Session(sid)).await?;
 
         if let Some(token) = token {
             self.oauth2
-                .revoke_token(StandardRevocableToken::AccessToken(AccessToken::new(token)))
-                .with_context(|| format!("Could not revoke token for SID: {sid}"))?;
+                .revoke_token(StandardRevocableToken::AccessToken(AccessToken::new(token)))?;
         }
 
         Ok(())
@@ -204,22 +197,14 @@ async fn fetch_jwk_decoding_keys(
     config: &idp::Config,
     http: &reqwest::Client,
 ) -> super::Result<HashMap<String, DecodingKey>> {
-    let jwk_response = http
-        .get(&config.jwks_url)
-        .send()
-        .await
-        .with_context(|| format!("could not fetch jwk_set from url: {}", &config.jwks_url))?;
-    let jwk_set: JwkSet = jwk_response
-        .json()
-        .await
-        .with_context(|| "could not deserialize jwk_set")?;
+    let jwk_response = http.get(&config.jwks_url).send().await?;
+    let jwk_set: JwkSet = jwk_response.json().await?;
 
     let mut jwk_decoding_keys = HashMap::new();
 
     for jwk in jwk_set.keys.iter() {
         if let Some(kid) = jwk.clone().common.key_id {
-            let key = DecodingKey::from_jwk(jwk)
-                .with_context(|| format!("could not create decoding key from jwk: {jwk:?}"))?;
+            let key = DecodingKey::from_jwk(jwk)?;
             jwk_decoding_keys.insert(kid, key);
         }
     }

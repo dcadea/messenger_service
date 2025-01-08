@@ -1,7 +1,7 @@
 use std::time::Duration;
 use std::{env, str::FromStr};
 
-use mongodb::bson::oid;
+use mongodb::bson::{doc, oid};
 
 use crate::{chat, message, user};
 
@@ -23,7 +23,7 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn env() -> anyhow::Result<Self> {
+    pub fn env() -> super::Result<Self> {
         let host = env::var("MONGO_HOST")?;
         let port = env::var("MONGO_PORT")
             .unwrap_or("27017".to_string())
@@ -79,5 +79,15 @@ impl From<user::Id> for mongodb::bson::Bson {
 impl From<user::Sub> for mongodb::bson::Bson {
     fn from(val: user::Sub) -> Self {
         mongodb::bson::Bson::String(val.0)
+    }
+}
+
+impl From<message::model::LastMessage> for mongodb::bson::Bson {
+    fn from(lm: message::model::LastMessage) -> Self {
+        Self::Document(doc! {
+            "id": lm.id,
+            "text": lm.text,
+            "timestamp": lm.timestamp
+        })
     }
 }

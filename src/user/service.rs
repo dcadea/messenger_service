@@ -120,13 +120,13 @@ impl UserService {
 
     async fn cache_user_info(&self, user_info: &UserInfo) -> super::Result<()> {
         let cache_key = cache::Key::UserInfo(user_info.sub.to_owned());
-        self.redis.set_ex(cache_key, user_info).await?;
+        self.redis.json_set_ex(cache_key, user_info).await?;
         Ok(())
     }
 
     async fn find_cached_user_info(&self, sub: &Sub) -> Option<UserInfo> {
         let sub = cache::Key::UserInfo(sub.to_owned());
-        let cached_user_info: Option<UserInfo> = self.redis.get(sub).await.ok();
+        let cached_user_info: Option<UserInfo> = self.redis.json_get(sub).await.ok();
         cached_user_info
     }
 }

@@ -1,5 +1,5 @@
 use crate::state::AppState;
-use crate::user;
+use crate::{integration, user};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
@@ -49,7 +49,22 @@ pub enum Error {
     InvalidState,
 
     #[error(transparent)]
-    Unexpected(#[from] anyhow::Error),
+    _Integration(#[from] integration::Error),
+
+    #[error(transparent)]
+    _Configuration(#[from] oauth2::ConfigurationError),
+
+    #[error(transparent)]
+    _JsonWebtoken(#[from] jsonwebtoken::errors::Error),
+
+    #[error(transparent)]
+    _Uuid(#[from] uuid::Error),
+
+    #[error(transparent)]
+    _Reqwest(#[from] reqwest::Error),
+
+    #[error("unexpected error happened: {0}")]
+    _Unexpected(String),
 }
 
 impl IntoResponse for Error {
@@ -62,7 +77,12 @@ impl IntoResponse for Error {
                 (StatusCode::FORBIDDEN, "Forbidden")
             }
             Self::TokenMalformed => (StatusCode::BAD_REQUEST, "Token malformed"),
-            Self::Unexpected(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
+            Self::_Integration(_)
+            | Self::_Configuration(_)
+            | Self::_JsonWebtoken(_)
+            | Self::_Uuid(_)
+            | Self::_Reqwest(_)
+            | Self::_Unexpected(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
         };
 
         (status, message).into_response()

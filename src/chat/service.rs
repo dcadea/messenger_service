@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use anyhow::Context;
 use futures::future::try_join_all;
 use futures::TryFutureExt;
 use log::warn;
@@ -42,9 +41,7 @@ impl ChatService {
 
 impl ChatService {
     pub async fn update_last_message(&self, message: &Message) -> super::Result<()> {
-        self.repository
-            .update_last_message(&message.chat_id, &message.text)
-            .await
+        self.repository.update_last_message(message).await
     }
 
     pub async fn find_by_id(&self, id: &Id, user_info: &UserInfo) -> super::Result<ChatDto> {
@@ -73,27 +70,20 @@ impl ChatService {
 
     pub async fn create(
         &self,
-        user_info: &UserInfo,
+        logged_user: &UserInfo,
         recipient: &user::Sub,
     ) -> super::Result<ChatDto> {
-        let members = [user_info.sub.clone(), recipient.clone()];
+        let members = [logged_user.sub.clone(), recipient.clone()];
         if self.repository.exists(&members).await? {
             return Err(chat::Error::AlreadyExists);
         }
 
-        self.user_service
-            .create_friendship(&members)
-            .await
-            .with_context(|| "Failed to create friendship")?;
+        self.user_service.create_friendship(&members).await?;
 
         let chat = Chat::private(members);
-        let chat = self
-            .repository
-            .create(chat.clone())
-            .await
-            .map(|id| chat.with_id(id))?;
+        _ = self.repository.create(chat.clone()).await?;
 
-        let chat_dto = self.chat_to_dto(chat, user_info).await?;
+        let chat_dto = self.chat_to_dto(chat, logged_user).await?;
 
         if let Err(e) = self
             .event_service
@@ -138,12 +128,10 @@ impl ChatService {
                 let chat = self.repository.find_by_id(chat_id).await?;
                 let members = chat.members;
 
-                let ttl = cache_key.ttl();
-
                 let _: () = self
                     .redis
                     .sadd(cache_key.clone(), &members.clone())
-                    .and_then(|_: ()| self.redis.expire(cache_key, ttl))
+                    .and_then(|_: ()| self.redis.expire(cache_key))
                     .await?;
 
                 Ok(members)
