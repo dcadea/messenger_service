@@ -1,7 +1,7 @@
 use futures::TryStreamExt;
 use mongodb::bson::doc;
 
-use crate::message::model::{LastMessage, Message};
+use crate::message::model::LastMessage;
 use crate::{chat, user};
 
 use super::model::Chat;
@@ -22,13 +22,16 @@ impl ChatRepository {
 }
 
 impl ChatRepository {
-    pub async fn update_last_message(&self, msg: &Message) -> super::Result<()> {
-        let chat_id = &msg.chat_id;
+    pub async fn update_last_message(
+        &self,
+        id: &Id,
+        msg: Option<LastMessage>,
+    ) -> super::Result<()> {
         self.collection
             .update_one(
-                doc! { "_id": chat_id },
+                doc! { "_id": id },
                 doc! {"$set": {
-                    "last_message": LastMessage::from(msg),
+                    "last_message": msg,
                 }},
             )
             .await?;

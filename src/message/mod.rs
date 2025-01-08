@@ -15,7 +15,7 @@ pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
 impl Id {
