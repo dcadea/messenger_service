@@ -116,6 +116,19 @@ impl MessageRepository {
         Ok(messages)
     }
 
+    pub async fn find_most_recent(&self, chat_id: &chat::Id) -> super::Result<Option<Message>> {
+        let mut cursor = self
+            .collection
+            .find(doc! {"chat_id": chat_id})
+            .sort(doc! {"timestamp": -1})
+            .limit(1)
+            .await?;
+
+        let most_recent = cursor.try_next().await?;
+
+        Ok(most_recent)
+    }
+
     // pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
     //     self.collection
     //         .update_one(doc! {"_id": id}, doc! {"$set": {"text": text}})

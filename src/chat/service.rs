@@ -10,7 +10,7 @@ use super::Id;
 use crate::event::model::{Notification, Queue};
 use crate::event::service::EventService;
 use crate::integration::{self, cache};
-use crate::message::model::Message;
+use crate::message::model::{LastMessage, Message};
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
 use crate::{chat, user};
@@ -40,8 +40,22 @@ impl ChatService {
 }
 
 impl ChatService {
-    pub async fn update_last_message(&self, message: &Message) -> super::Result<()> {
-        self.repository.update_last_message(message).await
+    pub async fn update_last_message(
+        &self,
+        id: &Id,
+        msg: Option<LastMessage>,
+    ) -> super::Result<()> {
+        self.repository.update_last_message(id, msg).await
+    }
+
+    pub async fn is_last_message(&self, message: &Message) -> super::Result<bool> {
+        let chat = self.repository.find_by_id(&message.chat_id).await?;
+
+        if let Some(last_message) = chat.last_message {
+            return Ok(last_message.id == message._id);
+        }
+
+        Ok(false)
     }
 
     pub async fn find_by_id(&self, id: &Id, user_info: &UserInfo) -> super::Result<ChatDto> {

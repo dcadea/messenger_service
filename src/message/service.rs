@@ -8,7 +8,7 @@ use crate::event::model::{Notification, Queue};
 use crate::event::service::EventService;
 use crate::{chat, user};
 
-use super::model::Message;
+use super::model::{LastMessage, Message};
 use super::repository::MessageRepository;
 use super::Id;
 
@@ -55,8 +55,11 @@ impl MessageService {
             }
         };
 
-        if let Some(last_message) = messages.last() {
-            self.chat_service.update_last_message(last_message).await?;
+        if let Some(last_msg) = messages.last() {
+            let last_message = LastMessage::from(last_msg);
+            self.chat_service
+                .update_last_message(&last_msg.chat_id, Some(last_message))
+                .await?;
         }
 
         for msg in &messages {
@@ -77,12 +80,26 @@ impl MessageService {
 
     pub async fn delete(&self, owner: &user::Sub, id: &Id) -> super::Result<()> {
         let msg = self.repository.find_by_id(id).await?;
+        let chat_id = &msg.chat_id;
         self.chat_service
-            .check_member(&msg.chat_id, owner)
+            .check_member(chat_id, owner)
             .await
             .map_err(|_| super::Error::NotOwner)?;
 
         self.repository.delete(id).await?;
+
+        let is_last = self.chat_service.is_last_message(&msg).await?;
+        if is_last {
+            let last_message = self
+                .repository
+                .find_most_recent(chat_id)
+                .await?
+                .map(|msg| LastMessage::from(&msg));
+
+            self.chat_service
+                .update_last_message(chat_id, last_message)
+                .await?;
+        }
 
         self.event_service
             .publish(
