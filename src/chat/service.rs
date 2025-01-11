@@ -7,13 +7,12 @@ use log::warn;
 use super::model::{Chat, ChatDto};
 use super::repository::ChatRepository;
 use super::Id;
-use crate::event::model::{Notification, Queue};
 use crate::event::service::EventService;
 use crate::integration::{self, cache};
 use crate::message::model::{LastMessage, Message};
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
-use crate::{chat, user};
+use crate::{chat, event, user};
 
 #[derive(Clone)]
 pub struct ChatService {
@@ -40,24 +39,6 @@ impl ChatService {
 }
 
 impl ChatService {
-    pub async fn update_last_message(
-        &self,
-        id: &Id,
-        msg: Option<LastMessage>,
-    ) -> super::Result<()> {
-        self.repository.update_last_message(id, msg).await
-    }
-
-    pub async fn is_last_message(&self, message: &Message) -> super::Result<bool> {
-        let chat = self.repository.find_by_id(&message.chat_id).await?;
-
-        if let Some(last_message) = chat.last_message {
-            return Ok(last_message.id == message._id);
-        }
-
-        Ok(false)
-    }
-
     pub async fn find_by_id(&self, id: &Id, user_info: &UserInfo) -> super::Result<ChatDto> {
         match self.repository.find_by_id_and_sub(id, &user_info.sub).await {
             Ok(chat) => {
@@ -102,8 +83,8 @@ impl ChatService {
         if let Err(e) = self
             .event_service
             .publish(
-                Queue::Notifications(recipient.clone()),
-                Notification::NewFriend {
+                event::Queue::Notifications(recipient.clone()),
+                event::Notification::NewFriend {
                     chat_dto: chat_dto.clone(),
                 },
             )
@@ -113,6 +94,30 @@ impl ChatService {
         }
 
         Ok(chat_dto)
+    }
+}
+
+impl ChatService {
+    pub async fn update_last_message(
+        &self,
+        id: &Id,
+        msg: Option<LastMessage>,
+    ) -> super::Result<()> {
+        self.repository.update_last_message(id, msg).await
+    }
+
+    pub async fn is_last_message(&self, message: &Message) -> super::Result<bool> {
+        let chat = self.repository.find_by_id(&message.chat_id).await?;
+
+        if let Some(last_message) = chat.last_message {
+            return Ok(last_message.id == message._id);
+        }
+
+        Ok(false)
+    }
+
+    pub async fn mark_as_seen(&self, id: &Id) -> super::Result<()> {
+        self.repository.mark_as_seen(id).await
     }
 }
 
@@ -159,6 +164,11 @@ impl ChatService {
     async fn chat_to_dto(&self, chat: Chat, user_info: &UserInfo) -> super::Result<ChatDto> {
         let members = chat.members.to_owned();
 
+        let sender = members
+            .iter()
+            .find(|&m| m == &user_info.sub)
+            .ok_or(chat::Error::NotMember)?;
+
         let recipient = members
             .iter()
             .find(|&m| m != &user_info.sub) // someone who is not a logged user :)
@@ -170,7 +180,12 @@ impl ChatService {
             .await
             .expect("recipient info should be present");
 
-        let chat_dto = ChatDto::new(chat, recipient.to_owned(), recipient_info.name);
+        let chat_dto = ChatDto::new(
+            chat,
+            sender.to_owned(),
+            recipient.to_owned(),
+            recipient_info.name,
+        );
 
         Ok(chat_dto)
     }

@@ -87,7 +87,9 @@ impl From<message::model::LastMessage> for mongodb::bson::Bson {
         Self::Document(doc! {
             "id": lm.id,
             "text": lm.text,
-            "timestamp": lm.timestamp
+            "recipient": lm.recipient,
+            "timestamp": lm.timestamp,
+            "seen": lm.seen
         })
     }
 }

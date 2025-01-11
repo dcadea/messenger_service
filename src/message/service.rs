@@ -4,9 +4,8 @@ use log::debug;
 use text_splitter::{Characters, TextSplitter};
 
 use crate::chat::service::ChatService;
-use crate::event::model::{Notification, Queue};
 use crate::event::service::EventService;
-use crate::{chat, user};
+use crate::{chat, event, user};
 
 use super::model::{LastMessage, Message};
 use super::repository::MessageRepository;
@@ -62,11 +61,12 @@ impl MessageService {
                 .await?;
         }
 
+        // TODO: publish_all
         for msg in &messages {
             self.event_service
                 .publish(
-                    Queue::Notifications(msg.recipient.clone()),
-                    Notification::NewMessage { msg: msg.clone() },
+                    event::Queue::Messages(msg.recipient.clone(), msg.chat_id.clone()),
+                    event::Message::New { msg: msg.clone() },
                 )
                 .await?;
         }
@@ -103,8 +103,8 @@ impl MessageService {
 
         self.event_service
             .publish(
-                Queue::Notifications(msg.recipient.clone()),
-                Notification::DeletedMessage { id: id.to_owned() },
+                event::Queue::Messages(msg.recipient.clone(), chat_id.clone()),
+                event::Message::Deleted { id: id.to_owned() },
             )
             .await?;
 
@@ -152,7 +152,11 @@ impl MessageService {
             }
         };
 
-        self.mark_as_seen(logged_sub, &messages).await?;
+        let seen_qty = self.mark_as_seen(logged_sub, &messages).await?;
+
+        if seen_qty > 0 {
+            self.chat_service.mark_as_seen(chat_id).await?;
+        }
 
         Ok(messages)
     }
@@ -161,10 +165,10 @@ impl MessageService {
         &self,
         logged_sub: &user::Sub,
         messages: &[Message],
-    ) -> super::Result<()> {
+    ) -> super::Result<usize> {
         if messages.is_empty() {
             debug!("attempting to mark as seen but messages list is empty");
-            return Ok(());
+            return Ok(0);
         }
 
         let owner = messages
@@ -174,33 +178,38 @@ impl MessageService {
 
         if owner.is_none() {
             debug!("all messages belong to logged user, skipping mark as seen");
-            return Ok(());
+            return Ok(0);
+        }
+
+        let messages = messages
+            .iter()
+            .filter(|msg| msg.recipient.eq(logged_sub))
+            .filter(|msg| !msg.seen)
+            .collect::<Vec<_>>();
+
+        if messages.is_empty() {
+            debug!("all messages are already seen, skipping mark as seen");
+            return Ok(0);
         }
 
         let ids = messages
             .iter()
-            .filter(|msg| msg.recipient.eq(logged_sub))
-            .filter(|msg| !msg.seen)
             .map(|msg| msg._id.clone())
             .collect::<Vec<_>>();
-
-        if ids.is_empty() {
-            debug!("all messages are already seen, skipping mark as seen");
-            return Ok(());
-        }
 
         self.repository.mark_as_seen(&ids).await?;
 
         let owner = owner.expect("no owner present");
-        for id in &ids {
+        let seen_qty = messages.len();
+        for msg in messages {
             self.event_service
                 .publish(
-                    Queue::Notifications(owner.clone()),
-                    Notification::SeenMessage { id: id.clone() },
+                    event::Queue::Messages(owner.clone(), msg.chat_id.clone()),
+                    event::Message::Seen { msg: msg.clone() },
                 )
                 .await?;
         }
 
-        Ok(())
+        Ok(seen_qty)
     }
 }

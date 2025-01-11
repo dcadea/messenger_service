@@ -1,18 +1,18 @@
+use super::service::EventService;
+use super::{Message, Notification, Queue};
+
+use crate::message::service::MessageService;
+use crate::user::model::UserInfo;
+use crate::user::service::UserService;
+use crate::{chat, user};
+use axum::extract::ws::Message::{Close, Text};
 use axum::extract::ws::{self, WebSocket};
-use axum::extract::{State, WebSocketUpgrade};
+use axum::extract::{Path, State, WebSocketUpgrade};
 use axum::response::Response;
 use axum::Extension;
 use log::{debug, error, warn};
+use maud::Render;
 use tokio::sync::{Notify, RwLock};
-
-use super::model::{Notification, Queue};
-use super::service::EventService;
-use crate::event::markup;
-use crate::message::service::MessageService;
-use crate::user;
-use crate::user::model::UserInfo;
-use crate::user::service::UserService;
-use axum::extract::ws::Message::{Close, Text};
 use tokio::try_join;
 
 use futures::stream::{SplitSink, SplitStream};
@@ -25,25 +25,59 @@ pub async fn ws(
     ws: WebSocketUpgrade,
     State(event_service): State<EventService>,
     State(user_service): State<UserService>,
+) -> Response {
+    ws.on_upgrade(move |socket| handle_global(user_info.sub, socket, event_service, user_service))
+}
+
+pub async fn ws_chat(
+    Extension(user_info): Extension<UserInfo>,
+    ws: WebSocketUpgrade,
+    Path(chat_id): Path<chat::Id>,
+    State(event_service): State<EventService>,
     State(message_service): State<MessageService>,
 ) -> Response {
     ws.on_upgrade(move |socket| {
-        handle_socket(
+        handle_chat(
             user_info.sub,
+            chat_id,
             socket,
             event_service,
-            user_service,
             message_service,
         )
     })
 }
 
-async fn handle_socket(
+async fn handle_chat(
+    logged_sub: user::Sub,
+    chat_id: chat::Id,
+    ws: WebSocket,
+    event_service: EventService,
+    message_service: MessageService,
+) {
+    let (sender, receiver) = ws.split();
+
+    let close = Arc::new(Notify::new());
+    let read = read(close.clone(), receiver);
+    let write = write_chat(
+        close.clone(),
+        logged_sub,
+        chat_id,
+        sender,
+        event_service,
+        message_service,
+    );
+
+    match try_join!(tokio::spawn(read), tokio::spawn(write)) {
+        Ok(_) => debug!("WS chat disconnected gracefully"),
+        Err(e) => error!("WS chat disconnected with error: {e}"),
+    }
+}
+
+async fn handle_global(
     logged_sub: user::Sub,
     ws: WebSocket,
     event_service: EventService,
     user_service: UserService,
-    message_service: MessageService,
 ) {
     if let Err(e) = user_service.add_online_user(&logged_sub).await {
         error!("Failed to add user to online users: {e}");
@@ -53,13 +87,12 @@ async fn handle_socket(
 
     let close = Arc::new(Notify::new());
     let read = read(close.clone(), receiver);
-    let write = write(
+    let write = write_global(
         close.clone(),
         logged_sub.to_owned(),
         sender,
         event_service.clone(),
         user_service.clone(),
-        message_service.clone(),
     );
 
     match try_join!(tokio::spawn(read), tokio::spawn(write)) {
@@ -100,20 +133,20 @@ async fn read(close: Arc<Notify>, mut receiver: SplitStream<WebSocket>) {
     }
 }
 
-async fn write(
+async fn write_global(
     close: Arc<Notify>,
     logged_sub: user::Sub,
     sender: SplitSink<WebSocket, ws::Message>,
     event_service: EventService,
     user_service: UserService,
-    message_service: MessageService,
 ) {
-    let noti_queue = Queue::Notifications(logged_sub.clone());
-
-    let mut noti_stream = match event_service.read(noti_queue).await {
-        Ok(binding) => binding,
+    let mut noti_stream = match event_service
+        .subscribe::<Notification>(Queue::Notifications(logged_sub.clone()))
+        .await
+    {
+        Ok(stream) => stream,
         Err(e) => {
-            error!("Failed to read from notifications stream: {e}");
+            error!("Failed to subscribe to queue: {e}");
             close.notify_one();
             return;
         }
@@ -145,19 +178,64 @@ async fn write(
                 }
             },
             // new notification is received from queue => send it to the client
-            item = noti_stream.next() => {
-                match item {
+            noti = noti_stream.next() => {
+                match noti {
                     None => break,
                     Some(None) => warn!("Looks like there was an issue reading from subject..."),
                     Some(Some(noti)) => {
                         let mut sender = sender.write().await;
-                        let noti_markup = markup::noti_item(&noti, &logged_sub);
 
-                        if let Err(e) = sender.send(Text(noti_markup.into_string())).await {
+                        let markup = noti.render();
+                        if let Err(e) = sender.send(Text(markup.into_string())).await {
+                            error!("Failed to send notification to client: {e}");
+                        }
+                    }
+                }
+            },
+        }
+    }
+}
+
+async fn write_chat(
+    close: Arc<Notify>,
+    logged_sub: user::Sub,
+    chat_id: chat::Id,
+    sender: SplitSink<WebSocket, ws::Message>,
+    event_service: EventService,
+    message_service: MessageService,
+) {
+    let mut messages_stream = match event_service
+        .subscribe::<Message>(Queue::Messages(logged_sub.clone(), chat_id))
+        .await
+    {
+        Ok(stream) => stream,
+        Err(e) => {
+            error!("Failed to subscribe to queue: {e}");
+            close.notify_one();
+            return;
+        }
+    };
+
+    let sender = Arc::new(RwLock::new(sender));
+    loop {
+        tokio::select! {
+            // close is notified => stop 'write' task
+            _ = close.notified() => break,
+
+            // new message is received from queue => send it to the client
+            msg = messages_stream.next() => {
+                match msg {
+                    None => break,
+                    Some(None) => warn!("Looks like there was an issue reading from subject..."),
+                    Some(Some(msg)) => {
+                        let mut sender = sender.write().await;
+
+                        let markup = msg.render();
+                        if let Err(e) = sender.send(Text(markup.into_string())).await {
                             error!("Failed to send notification to client: {e}");
                         }
 
-                        if let Notification::NewMessage { msg } = noti {
+                        if let Message::New { msg } = msg {
                             if let Err(e) = message_service.mark_as_seen(&logged_sub, &[msg]).await {
                                 error!("Failed to mark message as seen: {e}");
                             }

@@ -56,6 +56,7 @@ pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
 
         div id="active-chat"
             class="flex-grow overflow-auto mt-4 mb-4"
+            ws-connect={ "/ws/" (id.0) }
         {
             div id="message-list"
                 class="sticky flex flex-col-reverse overflow-auto h-full"
@@ -85,9 +86,14 @@ impl Render for ChatDto {
             {
                 (OfflineIcon { sub: &self.recipient, swappable: false })
                 span class="chat-recipient font-bold" { (self.recipient_name) }
+
                 @if let Some(last_message) = &self.last_message {
                     span class="chat-last-message flex-grow text-sm text-gray-500 text-right truncate" {
                         (last_message.text)
+                    }
+
+                    @if !last_message.seen && last_message.recipient == self.sender {
+                        i class="fa-solid fa-envelope text-green-600 ml-2" {}
                     }
                 }
             }

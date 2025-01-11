@@ -1,9 +1,10 @@
+use serde::{de::DeserializeOwned, Serialize};
 use tokio_stream::StreamExt;
 
 use crate::integration;
 use crate::integration::cache;
 
-use super::model::{Notification, NotificationStream, Queue};
+use super::{PayloadStream, Queue};
 
 #[derive(Clone)]
 pub struct EventService {
@@ -18,11 +19,14 @@ impl EventService {
 }
 
 impl EventService {
-    pub async fn read(&self, q: Queue) -> super::Result<NotificationStream> {
+    pub async fn subscribe<T: DeserializeOwned>(
+        &self,
+        q: Queue,
+    ) -> super::Result<PayloadStream<T>> {
         let subscriber = self.pubsub.subscribe(q).await?;
 
         let stream = subscriber.then(|msg| async move {
-            match serde_json::from_slice::<Notification>(&msg.payload) {
+            match serde_json::from_slice::<T>(&msg.payload) {
                 Ok(noti) => Some(noti),
                 Err(e) => {
                     log::error!("failed to deserialize notification: {:?}", e);
@@ -34,8 +38,8 @@ impl EventService {
         Ok(Box::pin(stream))
     }
 
-    pub async fn publish(&self, q: Queue, noti: Notification) -> super::Result<()> {
-        let payload = serde_json::to_vec(&noti)?;
+    pub async fn publish<T: Serialize>(&self, q: Queue, payload: T) -> super::Result<()> {
+        let payload = serde_json::to_vec(&payload)?;
         self.pubsub.publish(q, payload.into()).await?;
         Ok(())
     }

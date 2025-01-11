@@ -47,7 +47,9 @@ impl Message {
 pub struct LastMessage {
     pub id: Id,
     pub text: String,
+    pub recipient: user::Sub,
     pub timestamp: i64,
+    pub seen: bool,
 }
 
 impl From<&Message> for LastMessage {
@@ -55,7 +57,9 @@ impl From<&Message> for LastMessage {
         Self {
             id: msg._id.clone(),
             text: msg.text.clone(),
+            recipient: msg.recipient.clone(),
             timestamp: msg.timestamp,
+            seen: msg.seen,
         }
     }
 }

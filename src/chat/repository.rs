@@ -22,22 +22,6 @@ impl ChatRepository {
 }
 
 impl ChatRepository {
-    pub async fn update_last_message(
-        &self,
-        id: &Id,
-        msg: Option<LastMessage>,
-    ) -> super::Result<()> {
-        self.collection
-            .update_one(
-                doc! { "_id": id },
-                doc! {"$set": {
-                    "last_message": msg,
-                }},
-            )
-            .await?;
-        Ok(())
-    }
-
     pub async fn find_by_id(&self, id: &Id) -> super::Result<Chat> {
         let chat = self.collection.find_one(doc! { "_id": id }).await?;
 
@@ -91,5 +75,35 @@ impl ChatRepository {
         }
 
         Err(chat::Error::NotCreated)
+    }
+}
+
+impl ChatRepository {
+    pub async fn update_last_message(
+        &self,
+        id: &Id,
+        msg: Option<LastMessage>,
+    ) -> super::Result<()> {
+        self.collection
+            .update_one(
+                doc! { "_id": id },
+                doc! {"$set": {
+                    "last_message": msg,
+                }},
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn mark_as_seen(&self, id: &Id) -> super::Result<()> {
+        self.collection
+            .update_one(
+                doc! { "_id": id },
+                doc! {"$set": {
+                    "last_message.seen": true,
+                }},
+            )
+            .await?;
+        Ok(())
     }
 }

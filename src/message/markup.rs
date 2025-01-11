@@ -70,12 +70,13 @@ impl<'a> MessageList<'a> {
 
 impl Render for MessageList<'_> {
     fn render(&self) -> Markup {
+        let sub = Some(self.sub);
         html! {
             @for i in 0..self.messages.len() {
                 @if self.append && i == self.messages.len() - 1 {
-                    (MessageItem::new(&self.messages[i], self.sub).as_last())
+                    (MessageItem::new(&self.messages[i], sub).as_last())
                 } @else {
-                    (MessageItem::new(&self.messages[i], self.sub))
+                    (MessageItem::new(&self.messages[i], sub))
                 }
             }
         }
@@ -84,12 +85,12 @@ impl Render for MessageList<'_> {
 
 pub struct MessageItem<'a> {
     msg: &'a Message,
-    sub: &'a user::Sub,
+    sub: Option<&'a user::Sub>,
     is_last: bool,
 }
 
 impl<'a> MessageItem<'a> {
-    pub fn new(msg: &'a Message, sub: &'a user::Sub) -> Self {
+    pub fn new(msg: &'a Message, sub: Option<&'a user::Sub>) -> Self {
         Self {
             msg,
             sub,
@@ -105,7 +106,11 @@ impl<'a> MessageItem<'a> {
 
 impl Render for MessageItem<'_> {
     fn render(&self) -> Markup {
-        let belongs_to_user = self.msg.owner == *self.sub;
+        let belongs_to_user = match self.sub {
+            Some(sub) => self.msg.owner == *sub,
+            None => false,
+        };
+
         let message_class = "message-item flex items-end relative";
         let hyperscript = r#"
             on mouseover remove .hidden from my.querySelector('.message-controls')

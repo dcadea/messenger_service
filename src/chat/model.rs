@@ -43,6 +43,7 @@ impl Chat {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ChatDto {
     pub id: Id,
+    pub sender: user::Sub,
     pub recipient: user::Sub,
     pub recipient_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -50,9 +51,15 @@ pub struct ChatDto {
 }
 
 impl ChatDto {
-    pub fn new(chat: Chat, recipient: user::Sub, recipient_name: String) -> Self {
+    pub fn new(
+        chat: Chat,
+        sender: user::Sub,
+        recipient: user::Sub,
+        recipient_name: String,
+    ) -> Self {
         Self {
             id: chat._id,
+            sender,
             recipient,
             recipient_name,
             last_message: chat.last_message,
