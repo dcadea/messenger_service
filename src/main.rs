@@ -3,11 +3,12 @@ use axum::http::StatusCode;
 use axum::middleware::{from_fn, from_fn_with_state, map_response};
 use axum::routing::get;
 use axum::Router;
+use integration::Environment;
 use log::error;
 use messenger_service::markup::wrap_in_base;
 use messenger_service::middleware::attach_request_id;
 use tower::ServiceBuilder;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 use user::middleware::cache_user_friends;
 
@@ -34,7 +35,7 @@ async fn main() {
             return;
         }
     };
-    let router = app(app_state.clone());
+    let router = app(app_state.clone(), &config.env);
 
     let addr = config.env.addr();
     let ssl_config = config.env.ssl_config();
@@ -54,7 +55,7 @@ async fn main() {
     .expect("Failed to start server")
 }
 
-fn app(app_state: AppState) -> Router {
+fn app(app_state: AppState, env: &Environment) -> Router {
     let protected_router = Router::new()
         .merge(chat::pages(app_state.clone()))
         .merge(event::api(app_state.clone()))
@@ -87,9 +88,9 @@ fn app(app_state: AppState) -> Router {
                 .layer(from_fn(attach_request_id))
                 .layer(
                     CorsLayer::new()
-                        .allow_origin(Any)
-                        .allow_methods(Any)
-                        .allow_headers(Any),
+                        .allow_origin(env.allow_origin())
+                        .allow_methods(env.allow_methods())
+                        .allow_headers(env.allow_headers()),
                 )
                 .layer(map_response(wrap_in_base)),
         )

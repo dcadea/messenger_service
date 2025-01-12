@@ -2,10 +2,12 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::{fs::File, net::SocketAddr};
 
+use axum::http::HeaderValue;
 use axum_server::tls_openssl::OpenSSLConfig;
 use dotenv::dotenv;
 use log::LevelFilter;
 use simplelog::{ColorChoice, CombinedLogger, TermLogger, TerminalMode, WriteLogger};
+use tower_http::cors::{AllowHeaders, AllowMethods, AllowOrigin};
 
 pub mod cache;
 pub mod db;
@@ -42,6 +44,35 @@ impl Environment {
                 .expect("cert should be present and have read permission");
                 Some(ssl_config)
             }
+        }
+    }
+
+    pub fn allow_origin(&self) -> AllowOrigin {
+        match self {
+            Environment::Local | Environment::Dev => AllowOrigin::any(),
+            Environment::Stage | Environment::Production => {
+                let origins = std::env::var("ALLOWED_ORIGIN")
+                    .expect("ALLOWED_ORIGIN must be set")
+                    .split(',')
+                    .map(HeaderValue::from_str)
+                    .map(|r| r.expect("invalid ALLOWED_ORIGIN value"))
+                    .collect::<Vec<HeaderValue>>();
+                AllowOrigin::list(origins)
+            }
+        }
+    }
+
+    pub fn allow_methods(&self) -> AllowMethods {
+        match self {
+            Environment::Local | Environment::Dev => AllowMethods::any(),
+            Environment::Stage | Environment::Production => todo!(),
+        }
+    }
+
+    pub fn allow_headers(&self) -> AllowHeaders {
+        match self {
+            Environment::Local | Environment::Dev => AllowHeaders::any(),
+            Environment::Stage | Environment::Production => todo!(),
         }
     }
 }
