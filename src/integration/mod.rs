@@ -17,7 +17,8 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Clone)]
 pub enum Environment {
     Local,
-    Docker,
+    Dev,
+    Stage,
     Production,
 }
 
@@ -25,15 +26,14 @@ impl Environment {
     pub fn addr(&self) -> SocketAddr {
         match self {
             Environment::Local => SocketAddr::from(([127, 0, 0, 1], 8000)),
-            Environment::Docker => SocketAddr::from(([0, 0, 0, 0], 8000)),
+            Environment::Dev | Environment::Stage => SocketAddr::from(([0, 0, 0, 0], 8000)),
             Environment::Production => SocketAddr::from(([0, 0, 0, 0], 8443)),
         }
     }
 
     pub fn ssl_config(&self) -> Option<OpenSSLConfig> {
         match self {
-            Environment::Local => None,
-            Environment::Docker => None,
+            Environment::Local | Environment::Dev | Environment::Stage => None,
             Environment::Production => {
                 let ssl_config = OpenSSLConfig::from_pem_file(
                     std::env::var("SSL_CERT_FILE").expect("SSL_CERT_FILE must be set"),
@@ -85,7 +85,8 @@ impl Default for Config {
         let env = std::env::var("ENV")
             .map(|env| match env.as_str() {
                 "local" => Environment::Local,
-                "docker" => Environment::Docker,
+                "dev" => Environment::Dev,
+                "stg" => Environment::Stage,
                 "prod" => Environment::Production,
                 _ => panic!("Invalid environment: {}", env),
             })

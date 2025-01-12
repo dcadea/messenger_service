@@ -1,0 +1,78 @@
+name: messenger_stg
+services:
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: awg.stg.ngrok
+    restart: unless-stopped
+    ports:
+      - 4040:4040
+    volumes:
+      - ./conf/stg/ngrok.yml:/etc/ngrok.yml
+    command:
+      - "start"
+      - "awg_stg_edge"
+      - "--config"
+      - "/etc/ngrok.yml"
+
+  messenger_service:
+    image: messenger_service:latest
+    container_name: awg.stg.messenger_service
+    restart: always
+    environment:
+      ENV: stage
+
+      CLIENT_ID: /secrets/auth0/client_id
+      CLIENT_SECRET: /secrets/auth0/client_secret
+      REDIRECT_URL: https://privately-pet-lark.ngrok-free.app/callback
+      ISSUER: https://dcadea.auth0.com/
+      AUDIENCE: https://messenger.angelwing.io/api/v1
+      REQUIRED_CLAIMS: iss,sub,aud,exp,permissions
+
+      REDIS_HOST: awg.stg.redis
+      MONGO_HOST: awg.stg.mongo
+      MONGO_DB: stg-messenger
+      NATS_HOST: awg.stg.nats
+    volumes:
+      - ./docker-volumes/stg/messenger_service/service.log:/usr/local/bin/service.log
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  mongo:
+    image: mongo:latest
+    container_name: awg.stg.mongo
+    restart: always
+    volumes:
+      - ./docker-volumes/stg/mongo/data:/data
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis/redis-stack-server:latest
+    container_name: awg.stg.redis
+    restart: always
+    volumes:
+      - ./conf/stg/redis.conf:/usr/local/etc/redis/redis.conf
+      - ./docker-volumes/stg/redis/data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2-alpine
+    container_name: awg.stg.nats
+    restart: always
+    healthcheck:
+      test: wget http://localhost:8222/healthz -q -S -O -
+      interval: 10s
+      timeout: 5s
+      retries: 5
