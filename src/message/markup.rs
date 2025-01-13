@@ -112,13 +112,17 @@ impl Render for MessageItem<'_> {
         };
 
         let message_class = "message-item flex items-end relative";
-        let hyperscript = r#"
-            on mouseover remove .hidden from my.querySelector('.message-controls')
-            on mouseout add .hidden to my.querySelector('.message-controls')
-            "#;
+        let hyperscript = if belongs_to_user {
+            r#"
+            on mouseover remove .hidden from the first <div.message-controls/> in me
+            on mouseout add .hidden to the first <div.message-controls/> in me
+            "#
+        } else {
+            // maud does not support conditional attributes
+            ""
+        };
 
         html! {
-
             @if self.is_last {
                 div id={"m-" (self.msg._id.0)}
                     .{(message_class)}
