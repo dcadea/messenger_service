@@ -51,11 +51,11 @@ impl Environment {
         match self {
             Environment::Local | Environment::Dev => AllowOrigin::any(),
             Environment::Stage | Environment::Production => {
-                let origins = std::env::var("ALLOWED_ORIGIN")
-                    .expect("ALLOWED_ORIGIN must be set")
+                let origins = std::env::var("ALLOW_ORIGIN")
+                    .expect("ALLOW_ORIGIN must be set")
                     .split(',')
                     .map(HeaderValue::from_str)
-                    .map(|r| r.expect("invalid ALLOWED_ORIGIN value"))
+                    .map(|r| r.expect("invalid ALLOW_ORIGIN value"))
                     .collect::<Vec<HeaderValue>>();
                 AllowOrigin::list(origins)
             }
