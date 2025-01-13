@@ -40,9 +40,10 @@ impl ChatService {
 
 impl ChatService {
     pub async fn find_by_id(&self, id: &Id, user_info: &UserInfo) -> super::Result<ChatDto> {
-        match self.repository.find_by_id_and_sub(id, &user_info.sub).await {
+        let sub = &user_info.sub;
+        match self.repository.find_by_id_and_sub(id, sub).await {
             Ok(chat) => {
-                let chat_dto = self.chat_to_dto(chat, user_info).await?;
+                let chat_dto = self.chat_to_dto(chat, sub).await?;
                 Ok(chat_dto)
             }
             Err(chat::Error::NotFound(_)) => Err(chat::Error::NotMember),
@@ -51,12 +52,13 @@ impl ChatService {
     }
 
     pub async fn find_all(&self, user_info: &UserInfo) -> super::Result<Vec<ChatDto>> {
-        let chats = self.repository.find_by_sub(&user_info.sub).await?;
+        let sub = &user_info.sub;
+        let chats = self.repository.find_by_sub(sub).await?;
 
         let chat_dtos = try_join_all(
             chats
                 .into_iter()
-                .map(|chat| async { self.chat_to_dto(chat, user_info).await }),
+                .map(|chat| async { self.chat_to_dto(chat, sub).await }),
         )
         .await?;
 
@@ -78,7 +80,7 @@ impl ChatService {
         let chat = Chat::private(members);
         _ = self.repository.create(chat.clone()).await?;
 
-        let chat_dto = self.chat_to_dto(chat, logged_user).await?;
+        let chat_dto = self.chat_to_dto(chat, recipient).await?;
 
         if let Err(e) = self
             .event_service
@@ -103,7 +105,23 @@ impl ChatService {
         id: &Id,
         msg: Option<LastMessage>,
     ) -> super::Result<()> {
-        self.repository.update_last_message(id, msg).await
+        self.repository.update_last_message(id, &msg).await?;
+        if let Some(last_message) = msg {
+            if let Err(e) = self
+                .event_service
+                .publish(
+                    event::Queue::Notifications(last_message.recipient.clone()),
+                    event::Notification::NewMessage {
+                        chat_id: id.clone(),
+                        last_message,
+                    },
+                )
+                .await
+            {
+                warn!("Failed to publish new message notification: {:?}", e);
+            }
+        }
+        Ok(())
     }
 
     pub async fn is_last_message(&self, message: &Message) -> super::Result<bool> {
@@ -161,17 +179,17 @@ impl ChatService {
 
 impl ChatService {
     // FIXME: this is for private chat only
-    async fn chat_to_dto(&self, chat: Chat, user_info: &UserInfo) -> super::Result<ChatDto> {
+    async fn chat_to_dto(&self, chat: Chat, sub: &user::Sub) -> super::Result<ChatDto> {
         let members = chat.members.to_owned();
 
         let sender = members
             .iter()
-            .find(|&m| m == &user_info.sub)
+            .find(|&m| m == sub)
             .ok_or(chat::Error::NotMember)?;
 
         let recipient = members
             .iter()
-            .find(|&m| m != &user_info.sub) // someone who is not a logged user :)
+            .find(|&m| m != sub)
             .ok_or(chat::Error::NotMember)?;
 
         let recipient_info = self

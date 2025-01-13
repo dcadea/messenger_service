@@ -82,7 +82,7 @@ impl ChatRepository {
     pub async fn update_last_message(
         &self,
         id: &Id,
-        msg: Option<LastMessage>,
+        msg: &Option<LastMessage>,
     ) -> super::Result<()> {
         self.collection
             .update_one(

@@ -3,7 +3,7 @@ use maud::{html, Markup, Render};
 
 use crate::{chat, user};
 
-use super::model::Message;
+use super::model::{LastMessage, Message};
 
 pub struct MessageInput<'a> {
     chat_id: &'a chat::Id,
@@ -192,6 +192,16 @@ fn message_bubble(msg: &Message, belongs_to_user: bool) -> Markup {
             p class="message-text break-words overflow-hidden mr-2 whitespace-normal font-light" lang="en" { (msg.text) }
             @if let Some(mt) = message_timestamp {
                 span class="message-timestamp text-xs opacity-65" { (mt) }
+            }
+        }
+    }
+}
+
+impl Render for LastMessage {
+    fn render(&self) -> Markup {
+        html! {
+            span class="last-message flex-grow text-sm text-gray-500 text-right truncate" {
+                (self.text)
             }
         }
     }

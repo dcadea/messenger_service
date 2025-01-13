@@ -42,8 +42,16 @@ impl async_nats::subject::ToSubject for Queue {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Notification {
-    OnlineFriends { friends: HashSet<user::Sub> },
-    NewFriend { chat_dto: chat::model::ChatDto },
+    OnlineFriends {
+        friends: HashSet<user::Sub>,
+    },
+    NewFriend {
+        chat_dto: chat::model::ChatDto,
+    },
+    NewMessage {
+        chat_id: chat::Id,
+        last_message: message::model::LastMessage,
+    },
 }
 
 impl Render for Notification {
@@ -55,6 +63,10 @@ impl Render for Notification {
                     (chat_dto)
                 }
             },
+            Notification::NewMessage {
+                chat_id: _chat_id,
+                last_message: _last_message,
+            } => todo!(),
         }
     }
 }

@@ -91,15 +91,23 @@ impl Render for ChatDto {
                 span class="chat-recipient font-bold mx-2" { (self.recipient_name) }
 
                 @if let Some(last_message) = &self.last_message {
-                    span class="chat-last-message flex-grow text-sm text-gray-500 text-right truncate" {
-                        (last_message.text)
-                    }
+                    (last_message)
 
                     @if !last_message.seen && last_message.recipient == self.sender {
-                        i class="fa-solid fa-envelope text-green-600 ml-2" {}
+                        (UnseenIcon)
                     }
                 }
             }
+        }
+    }
+}
+
+pub struct UnseenIcon;
+
+impl Render for UnseenIcon {
+    fn render(&self) -> Markup {
+        html! {
+            i class="fa-solid fa-envelope text-green-600 ml-2" {}
         }
     }
 }
