@@ -45,6 +45,7 @@ pub struct ChatDto {
     pub id: Id,
     pub sender: user::Sub,
     pub recipient: user::Sub,
+    pub recipient_picture: String,
     pub recipient_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_message: Option<LastMessage>,
@@ -55,12 +56,14 @@ impl ChatDto {
         chat: Chat,
         sender: user::Sub,
         recipient: user::Sub,
+        recipient_picture: String,
         recipient_name: String,
     ) -> Self {
         Self {
             id: chat._id,
             sender,
             recipient,
+            recipient_picture,
             recipient_name,
             last_message: chat.last_message,
         }

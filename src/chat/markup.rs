@@ -23,7 +23,7 @@ pub async fn all_chats(logged_user: Extension<UserInfo>) -> Markup {
             (user::markup::Search{})
 
             div id="chat-list"
-                class="flex flex-col space-y-2"
+                class="flex flex-col space-y-2 h-full overflow-y-auto"
                 hx-get="/api/chats"
                 hx-trigger="load" {}
         }
@@ -79,13 +79,16 @@ pub fn chat_list(chats: &[ChatDto]) -> Markup {
 impl Render for ChatDto {
     fn render(&self) -> Markup {
         html! {
-            div class="chat-item p-4 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center"
+            div class="chat-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center"
                 id={"c-" (self.id.0)}
                 hx-get={"/chats/" (self.id.0)}
                 hx-target="#chat-window"
             {
-                (OfflineIcon { sub: &self.recipient, swappable: false })
-                span class="chat-recipient font-bold" { (self.recipient_name) }
+                // TODO: wrap in green circle when online
+                img class="w-8 h-8 rounded-full"
+                    src=(self.recipient_picture) alt="Recipient avatar" {}
+
+                span class="chat-recipient font-bold mx-2" { (self.recipient_name) }
 
                 @if let Some(last_message) = &self.last_message {
                     span class="chat-last-message flex-grow text-sm text-gray-500 text-right truncate" {
@@ -98,45 +101,5 @@ impl Render for ChatDto {
                 }
             }
         }
-    }
-}
-
-struct OnlineStatusIcon<'a> {
-    sub: &'a user::Sub,
-    icon: &'a str,
-    swappable: bool,
-}
-pub struct OnlineIcon<'a> {
-    pub sub: &'a user::Sub,
-    pub swappable: bool,
-}
-pub struct OfflineIcon<'a> {
-    pub sub: &'a user::Sub,
-    pub swappable: bool,
-}
-
-impl Render for OnlineStatusIcon<'_> {
-    fn render(&self) -> Markup {
-        let i_class = format!("online-status fa-circle text-green-600 mr-2 {}", self.icon);
-
-        html! {
-            @if self.swappable {
-                i id={"os-" (self.sub.id()) } hx-swap-oob="true" class=(i_class)  {}
-            } @else {
-                i id={"os-" (self.sub.id()) } class=(i_class) {}
-            }
-        }
-    }
-}
-
-impl Render for OnlineIcon<'_> {
-    fn render(&self) -> Markup {
-        html! {(OnlineStatusIcon { sub: self.sub, icon: "fa-solid", swappable: self.swappable })}
-    }
-}
-
-impl Render for OfflineIcon<'_> {
-    fn render(&self) -> Markup {
-        html! {(OnlineStatusIcon { sub: self.sub, icon: "fa-regular", swappable: self.swappable })}
     }
 }

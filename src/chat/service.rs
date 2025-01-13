@@ -184,6 +184,7 @@ impl ChatService {
             chat,
             sender.to_owned(),
             recipient.to_owned(),
+            recipient_info.picture,
             recipient_info.name,
         );
 

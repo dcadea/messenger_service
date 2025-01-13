@@ -49,11 +49,7 @@ pub enum Notification {
 impl Render for Notification {
     fn render(&self) -> Markup {
         match self {
-            Notification::OnlineFriends { friends } => html! {
-                @for friend in friends {
-                    (chat::markup::OnlineIcon { sub: friend, swappable: true })
-                }
-            },
+            Notification::OnlineFriends { friends: _friends } => todo!(),
             Notification::NewFriend { chat_dto } => html! {
                 div id="chat-list" hx-swap-oob="afterbegin" {
                     (chat_dto)
