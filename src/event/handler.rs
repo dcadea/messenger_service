@@ -1,6 +1,7 @@
 use super::service::EventService;
 use super::{Message, Notification, Queue};
 
+use crate::chat::service::ChatService;
 use crate::message::service::MessageService;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
@@ -27,50 +28,6 @@ pub async fn ws(
     State(user_service): State<UserService>,
 ) -> Response {
     ws.on_upgrade(move |socket| handle_global(user_info.sub, socket, event_service, user_service))
-}
-
-pub async fn ws_chat(
-    Extension(user_info): Extension<UserInfo>,
-    ws: WebSocketUpgrade,
-    Path(chat_id): Path<chat::Id>,
-    State(event_service): State<EventService>,
-    State(message_service): State<MessageService>,
-) -> Response {
-    ws.on_upgrade(move |socket| {
-        handle_chat(
-            user_info.sub,
-            chat_id,
-            socket,
-            event_service,
-            message_service,
-        )
-    })
-}
-
-async fn handle_chat(
-    logged_sub: user::Sub,
-    chat_id: chat::Id,
-    ws: WebSocket,
-    event_service: EventService,
-    message_service: MessageService,
-) {
-    let (sender, receiver) = ws.split();
-
-    let close = Arc::new(Notify::new());
-    let read = read(close.clone(), receiver);
-    let write = write_chat(
-        close.clone(),
-        logged_sub,
-        chat_id,
-        sender,
-        event_service,
-        message_service,
-    );
-
-    match try_join!(tokio::spawn(read), tokio::spawn(write)) {
-        Ok(_) => debug!("WS chat disconnected gracefully"),
-        Err(e) => error!("WS chat disconnected with error: {e}"),
-    }
 }
 
 async fn handle_global(
@@ -102,34 +59,6 @@ async fn handle_global(
 
     if let Err(e) = user_service.remove_online_user(&logged_sub).await {
         error!("Failed to remove user from online users: {e}");
-    }
-}
-
-async fn read(close: Arc<Notify>, mut receiver: SplitStream<WebSocket>) {
-    loop {
-        tokio::select! {
-            // close is notified => stop 'read' task
-            _ = close.notified() => break,
-
-            // read next frame from WS connection
-            frame = receiver.next() => {
-                if let Some(message) = frame {
-                    match message {
-                        Err(e) => {
-                            error!("Failed to read WS frame: {e}");
-                            close.notify_one(); // notify 'write' task to stop
-                            break;
-                        },
-                        Ok(Close(frame)) => {
-                            debug!("WS connection closed by client: {:?}", frame);
-                            close.notify_one(); // notify 'write' task to stop
-                            break;
-                        },
-                        Ok(frame) => warn!("Received WS frame: {:?}", frame)
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -196,6 +125,53 @@ async fn write_global(
     }
 }
 
+pub async fn ws_chat(
+    Extension(user_info): Extension<UserInfo>,
+    ws: WebSocketUpgrade,
+    Path(chat_id): Path<chat::Id>,
+    State(chat_service): State<ChatService>,
+    State(event_service): State<EventService>,
+    State(message_service): State<MessageService>,
+) -> crate::Result<Response> {
+    chat_service.check_member(&chat_id, &user_info.sub).await?;
+
+    Ok(ws.on_upgrade(move |socket| {
+        handle_chat(
+            user_info.sub,
+            chat_id,
+            socket,
+            event_service,
+            message_service,
+        )
+    }))
+}
+
+async fn handle_chat(
+    logged_sub: user::Sub,
+    chat_id: chat::Id,
+    ws: WebSocket,
+    event_service: EventService,
+    message_service: MessageService,
+) {
+    let (sender, receiver) = ws.split();
+
+    let close = Arc::new(Notify::new());
+    let read = read(close.clone(), receiver);
+    let write = write_chat(
+        close.clone(),
+        logged_sub,
+        chat_id,
+        sender,
+        event_service,
+        message_service,
+    );
+
+    match try_join!(tokio::spawn(read), tokio::spawn(write)) {
+        Ok(_) => debug!("WS chat disconnected gracefully"),
+        Err(e) => error!("WS chat disconnected with error: {e}"),
+    }
+}
+
 async fn write_chat(
     close: Arc<Notify>,
     logged_sub: user::Sub,
@@ -243,6 +219,34 @@ async fn write_chat(
                     }
                 }
             },
+        }
+    }
+}
+
+async fn read(close: Arc<Notify>, mut receiver: SplitStream<WebSocket>) {
+    loop {
+        tokio::select! {
+            // close is notified => stop 'read' task
+            _ = close.notified() => break,
+
+            // read next frame from WS connection
+            frame = receiver.next() => {
+                if let Some(message) = frame {
+                    match message {
+                        Err(e) => {
+                            error!("Failed to read WS frame: {e}");
+                            close.notify_one(); // notify 'write' task to stop
+                            break;
+                        },
+                        Ok(Close(frame)) => {
+                            debug!("WS connection closed by client: {:?}", frame);
+                            close.notify_one(); // notify 'write' task to stop
+                            break;
+                        },
+                        Ok(frame) => warn!("Received WS frame: {:?}", frame)
+                    }
+                }
+            }
         }
     }
 }
