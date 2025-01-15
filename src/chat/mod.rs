@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use axum::http::StatusCode;
-use axum::routing::post;
+use axum::routing::{delete, post};
 use axum::{
     response::{IntoResponse, Response},
     routing::get,
@@ -56,6 +56,7 @@ pub fn api<S>(state: AppState) -> Router<S> {
         .route("/chats", get(handler::find_all))
         .route("/chats/:id", get(handler::find_one))
         .route("/chats", post(handler::create))
+        .route("/chats/:id", delete(handler::delete))
         .with_state(state)
 }
 

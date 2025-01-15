@@ -147,26 +147,6 @@ impl Render for MessageItem<'_> {
     }
 }
 
-pub struct SeenIcon;
-
-impl Render for SeenIcon {
-    fn render(&self) -> Markup {
-        html! {
-            i class="fa-solid fa-check absolute bottom-1 right-2.5 text-white opacity-65" {}
-        }
-    }
-}
-
-struct SentIcon;
-
-impl Render for SentIcon {
-    fn render(&self) -> Markup {
-        html! {
-            i class="fa-solid fa-check absolute bottom-1 right-1 text-white opacity-65" {}
-        }
-    }
-}
-
 fn message_bubble(msg: &Message, belongs_to_user: bool) -> Markup {
     let message_timestamp = DateTime::from_timestamp(msg.timestamp, 0).map(|dt| dt.format("%H:%M"));
 
@@ -182,10 +162,10 @@ fn message_bubble(msg: &Message, belongs_to_user: bool) -> Markup {
                 i class="fa-pen fa-solid ml-2 text-green-700 cursor-pointer" {}
             }
 
-            (SentIcon)
+            (icon::Sent)
 
             @if msg.seen {
-                (SeenIcon)
+                (icon::Seen)
             }
         }
 
@@ -206,6 +186,30 @@ impl Render for LastMessage {
         html! {
             span class="last-message flex-grow text-sm text-gray-500 text-right truncate" {
                 (self.text)
+            }
+        }
+    }
+}
+
+pub mod icon {
+    use maud::{html, Markup, Render};
+
+    pub struct Seen;
+
+    impl Render for Seen {
+        fn render(&self) -> Markup {
+            html! {
+                i class="fa-solid fa-check absolute bottom-1 right-2.5 text-white opacity-65" {}
+            }
+        }
+    }
+
+    pub struct Sent;
+
+    impl Render for Sent {
+        fn render(&self) -> Markup {
+            html! {
+                i class="fa-solid fa-check absolute bottom-1 right-1 text-white opacity-65" {}
             }
         }
     }

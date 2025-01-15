@@ -1,5 +1,6 @@
 use axum::{
     extract::{Path, State},
+    response::IntoResponse,
     Extension, Form,
 };
 use maud::{Markup, Render};
@@ -37,10 +38,21 @@ pub async fn create(
     user_service: State<UserService>,
     Form(params): Form<CreateParams>,
 ) -> crate::Result<Markup> {
-    let chat = chat_service.create(&logged_user, &params.sub).await?;
-    let recipient = user_service.find_user_info(&chat.recipient).await?;
+    let recipient = &params.sub;
+    let chat = chat_service.create(&logged_user, recipient).await?;
+    let recipient = user_service.find_user_info(recipient).await?;
 
     Ok(markup::active_chat(&chat.id, &recipient))
+}
+
+pub async fn delete(
+    chat_id: Path<Id>,
+    logged_user: Extension<UserInfo>,
+    chat_service: State<ChatService>,
+) -> crate::Result<impl IntoResponse> {
+    chat_service.delete(&chat_id, &logged_user).await?;
+
+    Ok([("HX-Redirect", "/")])
 }
 
 pub async fn open_chat(

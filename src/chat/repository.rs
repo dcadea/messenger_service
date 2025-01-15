@@ -76,6 +76,11 @@ impl ChatRepository {
 
         Err(chat::Error::NotCreated)
     }
+
+    pub async fn delete(&self, id: &Id) -> super::Result<()> {
+        self.collection.delete_one(doc! {"_id": id}).await?;
+        Ok(())
+    }
 }
 
 impl ChatRepository {

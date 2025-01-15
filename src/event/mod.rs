@@ -103,7 +103,7 @@ impl Render for Message {
             },
             Message::Seen { msg } => html! {
                 div id={"m-" (msg._id.0)} hx-swap-oob="beforeend" {
-                    (message::markup::SeenIcon)
+                    (message::markup::icon::Seen)
                 }
             },
         }

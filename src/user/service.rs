@@ -58,8 +58,17 @@ impl UserService {
         tokio::try_join!(
             self.repository.add_friend(&subs[0], &subs[1]),
             self.repository.add_friend(&subs[1], &subs[0]),
-        )
-        .map(|_| ())?;
+        )?;
+
+        Ok(())
+    }
+
+    pub async fn delete_friendship(&self, subs: &[Sub; 2]) -> super::Result<()> {
+        tokio::try_join!(
+            self.repository.remove_friend(&subs[0], &subs[1]),
+            self.repository.remove_friend(&subs[1], &subs[0]),
+            self.invalidate_friends(subs.into())
+        )?;
 
         Ok(())
     }
@@ -116,6 +125,14 @@ impl UserService {
             Some(friends) => Ok(friends),
             None => Err(super::Error::NoFriends(sub.to_owned())),
         }
+    }
+
+    async fn invalidate_friends(&self, subs: Vec<Sub>) -> super::Result<()> {
+        for sub in subs {
+            let _: () = self.redis.del(cache::Key::Friends(sub)).await?;
+        }
+
+        Ok(())
     }
 
     async fn cache_user_info(&self, user_info: &UserInfo) -> super::Result<()> {

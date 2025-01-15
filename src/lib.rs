@@ -42,7 +42,10 @@ pub mod markup {
     impl Render for MainContent {
         fn render(&self) -> Markup {
             html! {
-                div class="max-w-lg h-3/5 md:h-4/5 md:w-4/5 w-full h-full bg-white rounded-2xl p-6"
+                div ."main-content"
+                    ."max-w-lg h-3/5 md:h-4/5 md:w-4/5 w-full h-full"
+                    ."bg-white rounded-2xl p-6"
+                    ."relative overflow-hidden"
                 {
                     div id="errors" {}
                     (self.content)

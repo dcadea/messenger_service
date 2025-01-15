@@ -78,4 +78,13 @@ impl UserRepository {
 
         Ok(())
     }
+
+    pub async fn remove_friend(&self, sub: &user::Sub, friend: &user::Sub) -> super::Result<()> {
+        let filter = doc! { "sub": sub };
+        let update = doc! { "$pull": { "friends": friend } };
+
+        self.friends_col.update_one(filter, update).await?;
+
+        Ok(())
+    }
 }

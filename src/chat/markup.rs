@@ -43,8 +43,7 @@ impl Render for Header<'_> {
                     hx-swap="outerHTML" { "X" }
                 h2 class="text-2xl" { (self.0.name) }
                 span class="online-status absolute inset-12 flex items-center justify-center text-xs text-gray-500" { "offline" }
-                img class="w-12 h-12 rounded-full"
-                    src=(self.0.picture) alt="User avatar" {}
+                (icon::ChatControls)
             }
         }
     }
@@ -65,6 +64,30 @@ pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
         }
 
         (MessageInput::new(id, &recipient.sub))
+
+        (ChatControls(id))
+    }
+}
+
+struct ChatControls<'a>(&'a Id);
+
+impl Render for ChatControls<'_> {
+    fn render(&self) -> Markup {
+        let controls_item_class = "text-lg py-3 cursor-pointer hover:bg-gray-300";
+
+        html! {
+            div id="chat-controls"
+                ."flex flex-row h-full w-full absolute top-0 left-0 invisible" {
+                div class="chat-controls-overlay w-2/3 bg-gray-300 bg-opacity-50"
+                    _="on click add .invisible to #chat-controls" {}
+
+                div class="flex flex-col bg-white h-full w-1/3 py-4 text-center" {
+                    div class="text-2xl py-3" { "Settings" }
+                    div class=(controls_item_class)
+                        hx-delete={"/api/chats/" (self.0)} { "Delete chat" }
+                }
+            }
+        }
     }
 }
 
@@ -94,7 +117,7 @@ impl Render for ChatDto {
                     (last_message)
 
                     @if !last_message.seen && last_message.recipient == self.sender {
-                        (UnseenIcon)
+                        (icon::Unseen)
                     }
                 }
             }
@@ -102,12 +125,27 @@ impl Render for ChatDto {
     }
 }
 
-pub struct UnseenIcon;
+mod icon {
+    use maud::{html, Markup, Render};
 
-impl Render for UnseenIcon {
-    fn render(&self) -> Markup {
-        html! {
-            i class="fa-solid fa-envelope text-green-600 ml-2" {}
+    pub struct ChatControls;
+
+    impl Render for ChatControls {
+        fn render(&self) -> Markup {
+            html! {
+                i class="fa-solid fa-bars text-2xl cursor-pointer"
+                    _="on click toggle .invisible on #chat-controls" {}
+            }
+        }
+    }
+
+    pub struct Unseen;
+
+    impl Render for Unseen {
+        fn render(&self) -> Markup {
+            html! {
+                i class="fa-solid fa-envelope text-green-600 ml-2" {}
+            }
         }
     }
 }

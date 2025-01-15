@@ -97,6 +97,20 @@ impl ChatService {
 
         Ok(chat_dto)
     }
+
+    pub async fn delete(&self, id: &Id, logged_user: &UserInfo) -> super::Result<()> {
+        self.check_member(id, &logged_user.sub).await?;
+
+        let chat = self.find_by_id(id, logged_user).await?;
+
+        // todo: delete related messages
+        self.repository.delete(id).await?;
+
+        let friends = [chat.sender, chat.recipient];
+        self.user_service.delete_friendship(&friends).await?;
+
+        Ok(())
+    }
 }
 
 impl ChatService {
