@@ -19,7 +19,7 @@ services:
     container_name: awg.stg.messenger_service
     restart: always
     environment:
-      ENV: stage
+      ENV: stg
 
       ALLOW_ORIGIN: https://privately-pet-lark.ngrok-free.app,https://dcadea.auth0.com
 

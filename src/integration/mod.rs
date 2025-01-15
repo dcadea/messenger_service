@@ -65,14 +65,14 @@ impl Environment {
     pub fn allow_methods(&self) -> AllowMethods {
         match self {
             Environment::Local | Environment::Dev => AllowMethods::any(),
-            Environment::Stage | Environment::Production => todo!(),
+            Environment::Stage | Environment::Production => AllowMethods::any(),
         }
     }
 
     pub fn allow_headers(&self) -> AllowHeaders {
         match self {
             Environment::Local | Environment::Dev => AllowHeaders::any(),
-            Environment::Stage | Environment::Production => todo!(),
+            Environment::Stage | Environment::Production => AllowHeaders::any(),
         }
     }
 }

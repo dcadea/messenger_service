@@ -1,13 +1,16 @@
 all: image compose
 
+image:
+	docker build -t messenger_service:latest .
+
 dev:
 	cargo watch -x "run --bin messenger_service" -w src
 
 prod: image
-	docker-compose -f docker-compose.yaml up
+	docker-compose -f docker-compose.yaml up -d
 
-image:
-	docker build -t messenger_service:latest .
+stg: image
+	docker-compose -f docker-compose.stg.yaml up -d
 
 compose:
-	docker-compose -f docker-compose.dev.yaml up
+	docker-compose -f docker-compose.dev.yaml up -d

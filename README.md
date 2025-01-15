@@ -64,6 +64,7 @@ REQUIRED_CLAIMS=iss,sub,aud,exp,permissions
 ```
 - Optional environment variables:
 ```dotenv
+# supported values: local, dev, stg, prod
 ENV=local
 
 # required for ENV=prod
