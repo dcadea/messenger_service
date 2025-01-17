@@ -1,7 +1,7 @@
 use super::service::EventService;
 use super::{Message, Notification, Queue};
 
-use crate::chat::service::ChatService;
+use crate::chat::service::ChatValidator;
 use crate::message::service::MessageService;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
@@ -129,11 +129,13 @@ pub async fn ws_chat(
     Extension(user_info): Extension<UserInfo>,
     ws: WebSocketUpgrade,
     Path(chat_id): Path<chat::Id>,
-    State(chat_service): State<ChatService>,
+    State(chat_validator): State<ChatValidator>,
     State(event_service): State<EventService>,
     State(message_service): State<MessageService>,
 ) -> crate::Result<Response> {
-    chat_service.check_member(&chat_id, &user_info.sub).await?;
+    chat_validator
+        .check_member(&chat_id, &user_info.sub)
+        .await?;
 
     Ok(ws.on_upgrade(move |socket| {
         handle_chat(

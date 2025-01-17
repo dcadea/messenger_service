@@ -1,5 +1,7 @@
 use axum::extract::FromRef;
 
+use crate::chat::service::ChatValidator;
+
 use super::auth::service::AuthService;
 use super::chat::repository::ChatRepository;
 use super::chat::service::ChatService;
@@ -16,6 +18,7 @@ pub struct AppState {
 
     pub auth_service: AuthService,
     pub user_service: UserService,
+    pub chat_validator: ChatValidator,
     pub chat_service: ChatService,
     pub message_service: MessageService,
     pub event_service: EventService,
@@ -30,15 +33,22 @@ impl AppState {
         let auth_service = AuthService::try_new(&config.idp, redis.clone())?;
         let user_service = UserService::new(UserRepository::new(&database), redis.clone());
         let event_service = EventService::new(pubsub, redis.clone());
+
+        let chat_repository = ChatRepository::new(&database);
+        let message_repository = MessageRepository::new(&database);
+
+        let chat_validator = ChatValidator::new(chat_repository.clone(), redis.clone());
         let chat_service = ChatService::new(
-            ChatRepository::new(&database),
+            chat_repository.clone(),
+            chat_validator.clone(),
+            message_repository.clone(),
             user_service.clone(),
             event_service.clone(),
-            redis.clone(),
         );
+
         let message_service = MessageService::new(
-            MessageRepository::new(&database),
-            chat_service.clone(),
+            message_repository.clone(),
+            chat_validator.clone(),
             event_service.clone(),
         );
 
@@ -46,6 +56,7 @@ impl AppState {
             config,
             auth_service,
             user_service,
+            chat_validator,
             chat_service,
             message_service,
             event_service,
@@ -68,6 +79,12 @@ impl FromRef<AppState> for AuthService {
 impl FromRef<AppState> for UserService {
     fn from_ref(app_state: &AppState) -> Self {
         app_state.user_service.clone()
+    }
+}
+
+impl FromRef<AppState> for ChatValidator {
+    fn from_ref(app_state: &AppState) -> Self {
+        app_state.chat_validator.clone()
     }
 }
 

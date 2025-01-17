@@ -3,11 +3,11 @@ use std::sync::Arc;
 use log::debug;
 use text_splitter::{Characters, TextSplitter};
 
-use crate::chat::service::ChatService;
+use crate::chat::service::ChatValidator;
 use crate::event::service::EventService;
 use crate::{chat, event, user};
 
-use super::model::{LastMessage, Message};
+use super::model::Message;
 use super::repository::MessageRepository;
 use super::Id;
 
@@ -16,7 +16,7 @@ const MAX_MESSAGE_LENGTH: usize = 1000;
 #[derive(Clone)]
 pub struct MessageService {
     repository: Arc<MessageRepository>,
-    chat_service: Arc<ChatService>,
+    chat_validator: Arc<ChatValidator>,
     event_service: Arc<EventService>,
     splitter: Arc<TextSplitter<Characters>>,
 }
@@ -24,12 +24,12 @@ pub struct MessageService {
 impl MessageService {
     pub fn new(
         repository: MessageRepository,
-        chat_service: ChatService,
+        chat_validator: ChatValidator,
         event_service: EventService,
     ) -> Self {
         Self {
             repository: Arc::new(repository),
-            chat_service: Arc::new(chat_service),
+            chat_validator: Arc::new(chat_validator),
             event_service: Arc::new(event_service),
             splitter: Arc::new(TextSplitter::new(MAX_MESSAGE_LENGTH)),
         }
@@ -54,13 +54,6 @@ impl MessageService {
             }
         };
 
-        if let Some(last_msg) = messages.last() {
-            let last_message = LastMessage::from(last_msg);
-            self.chat_service
-                .update_last_message(&last_msg.chat_id, Some(last_message))
-                .await?;
-        }
-
         // TODO: publish_all
         for msg in &messages {
             self.event_service
@@ -74,32 +67,23 @@ impl MessageService {
         Ok(messages)
     }
 
+    pub async fn find_most_recent(&self, chat_id: &chat::Id) -> super::Result<Option<Message>> {
+        self.repository.find_most_recent(chat_id).await
+    }
+
     // pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
     //     self.repository.update(id, text).await
     // }
 
-    pub async fn delete(&self, owner: &user::Sub, id: &Id) -> super::Result<()> {
+    pub async fn delete(&self, owner: &user::Sub, id: &Id) -> super::Result<Option<Message>> {
         let msg = self.repository.find_by_id(id).await?;
         let chat_id = &msg.chat_id;
-        self.chat_service
+        self.chat_validator
             .check_member(chat_id, owner)
             .await
             .map_err(|_| super::Error::NotOwner)?;
 
-        self.repository.delete(id).await?;
-
-        let is_last = self.chat_service.is_last_message(&msg).await?;
-        if is_last {
-            let last_message = self
-                .repository
-                .find_most_recent(chat_id)
-                .await?
-                .map(|msg| LastMessage::from(&msg));
-
-            self.chat_service
-                .update_last_message(chat_id, last_message)
-                .await?;
-        }
+        let deleted_count = self.repository.delete(id).await?;
 
         self.event_service
             .publish(
@@ -108,7 +92,11 @@ impl MessageService {
             )
             .await?;
 
-        Ok(())
+        if deleted_count > 0 {
+            return Ok(Some(msg));
+        }
+
+        Ok(None)
     }
 }
 
@@ -132,7 +120,7 @@ impl MessageService {
         chat_id: &chat::Id,
         limit: Option<usize>,
         end_time: Option<i64>,
-    ) -> super::Result<Vec<Message>> {
+    ) -> super::Result<(Vec<Message>, usize)> {
         let messages = match (limit, end_time) {
             (None, None) => self.repository.find_by_chat_id(chat_id).await?,
             (Some(limit), None) => {
@@ -154,11 +142,7 @@ impl MessageService {
 
         let seen_qty = self.mark_as_seen(logged_sub, &messages).await?;
 
-        if seen_qty > 0 {
-            self.chat_service.mark_as_seen(chat_id).await?;
-        }
-
-        Ok(messages)
+        Ok((messages, seen_qty))
     }
 
     pub async fn mark_as_seen(

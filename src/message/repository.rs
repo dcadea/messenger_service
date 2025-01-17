@@ -8,6 +8,7 @@ use crate::{chat, message};
 
 const MESSAGES_COLLECTION: &str = "messages";
 
+#[derive(Clone)]
 pub struct MessageRepository {
     collection: mongodb::Collection<Message>,
 }
@@ -136,8 +137,21 @@ impl MessageRepository {
     //     Ok(())
     // }
 
-    pub async fn delete(&self, id: &Id) -> super::Result<()> {
-        self.collection.delete_one(doc! {"_id": id}).await?;
+    pub async fn delete(&self, id: &Id) -> super::Result<u64> {
+        let deleted_count = self
+            .collection
+            .delete_one(doc! {"_id": id})
+            .await?
+            .deleted_count;
+
+        Ok(deleted_count)
+    }
+
+    pub async fn delete_by_chat_id(&self, chat_id: &chat::Id) -> super::Result<()> {
+        self.collection
+            .delete_many(doc! {"chat_id": chat_id})
+            .await?;
+
         Ok(())
     }
 

@@ -9,6 +9,7 @@ use super::Id;
 
 const CHATS_COLLECTION: &str = "chats";
 
+#[derive(Clone)]
 pub struct ChatRepository {
     collection: mongodb::Collection<Chat>,
 }
