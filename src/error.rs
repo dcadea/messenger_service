@@ -63,9 +63,11 @@ struct ErrorResponse {
 impl Render for ErrorResponse {
     fn render(&self) -> Markup {
         html! {
-            div id="error"
-                class="z-10 bg-red-100 border border-red-400 text-red-700 p-4 h-14 -mb-14 rounded relative"
-                role="alert"
+            div id="error" role="alert"
+                ."z-10 bg-red-100 border border-red-400"
+                ."text-red-700 p-4 h-14 -mb-14"
+                ."rounded relative"
+                _="on load wait 3s then transition my opacity to 0 then remove me"
             {
                 strong class="font-bold" { "Holy smokes! " }
                 span class="block sm:inline" { (self.message) }

@@ -156,7 +156,7 @@ fn message_bubble(msg: &Message, belongs_to_user: bool) -> Markup {
                 i class="fa-trash-can fa-solid text-red-700 cursor-pointer"
                     hx-delete={"/api/messages/" (msg._id.0)}
                     hx-target={"#m-" (msg._id.0)}
-                    hx-swap="outerHTML" {}
+                    hx-swap="outerHTML swap:200ms" {}
 
                 // TODO: Add edit handler
                 i class="fa-pen fa-solid ml-2 text-green-700 cursor-pointer" {}
