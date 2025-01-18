@@ -58,7 +58,7 @@ impl MessageService {
         for msg in &messages {
             self.event_service
                 .publish(
-                    event::Queue::Messages(msg.recipient.clone(), msg.chat_id.clone()),
+                    &event::Queue::Messages(msg.recipient.clone(), msg.chat_id.clone()),
                     event::Message::New { msg: msg.clone() },
                 )
                 .await?;
@@ -87,7 +87,7 @@ impl MessageService {
 
         self.event_service
             .publish(
-                event::Queue::Messages(msg.recipient.clone(), chat_id.clone()),
+                &event::Queue::Messages(msg.recipient.clone(), chat_id.clone()),
                 event::Message::Deleted { id: id.to_owned() },
             )
             .await?;
@@ -188,7 +188,7 @@ impl MessageService {
         for msg in messages {
             self.event_service
                 .publish(
-                    event::Queue::Messages(owner.clone(), msg.chat_id.clone()),
+                    &event::Queue::Messages(owner.clone(), msg.chat_id.clone()),
                     event::Message::Seen { msg: msg.clone() },
                 )
                 .await?;

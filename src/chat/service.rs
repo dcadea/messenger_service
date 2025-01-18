@@ -89,7 +89,7 @@ impl ChatService {
         if let Err(e) = self
             .event_service
             .publish(
-                event::Queue::Notifications(recipient.clone()),
+                &event::Queue::Notifications(recipient.clone()),
                 event::Notification::NewFriend {
                     chat_dto: chat_dto.clone(),
                 },
@@ -131,7 +131,7 @@ impl ChatService {
             if let Err(e) = self
                 .event_service
                 .publish(
-                    event::Queue::Notifications(last_message.recipient.clone()),
+                    &event::Queue::Notifications(last_message.recipient.clone()),
                     event::Notification::NewMessage {
                         chat_id: id.clone(),
                         last_message,

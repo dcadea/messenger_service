@@ -2,8 +2,8 @@ use axum::Extension;
 use maud::{html, Markup, Render};
 
 use crate::message::markup::MessageInput;
-use crate::user;
 use crate::user::model::UserInfo;
+use crate::{message, user};
 use messenger_service::markup::Wrappable;
 
 use super::model::ChatDto;
@@ -20,7 +20,7 @@ pub async fn all_chats(logged_user: Extension<UserInfo>) -> Markup {
         {
             (user::markup::Header(&logged_user))
 
-            (user::markup::Search{})
+            (user::markup::Search)
 
             div id="chat-list"
                 class="flex flex-col space-y-2 h-full overflow-y-auto"
@@ -38,9 +38,7 @@ impl Render for Header<'_> {
             header id="recipient-header"
                 class="flex justify-between items-center relative" {
                 a class="cursor-pointer border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
-                    hx-get="/chats"
-                    hx-target="#chat-window"
-                    hx-swap="outerHTML" { "X" }
+                    href="/" { "X" }
                 h2 class="text-2xl" { (self.0.name) }
                 span class="online-status absolute inset-12 flex items-center justify-center text-xs text-gray-500" { "offline" }
                 (icon::ChatControls)
@@ -103,8 +101,8 @@ impl Render for ChatDto {
     fn render(&self) -> Markup {
         html! {
             div class="chat-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center"
-                id={"c-" (self.id.0)}
-                hx-get={"/chats/" (self.id.0)}
+                id={"c-" (self.id)}
+                hx-get={"/chats/" (self.id)}
                 hx-target="#chat-window"
             {
                 // TODO: wrap in green circle when online
@@ -113,19 +111,13 @@ impl Render for ChatDto {
 
                 span class="chat-recipient font-bold mx-2" { (self.recipient_name) }
 
-                @if let Some(last_message) = &self.last_message {
-                    (last_message)
-
-                    @if !last_message.seen && last_message.recipient == self.sender {
-                        (icon::Unseen)
-                    }
-                }
+                (message::markup::last_message(self.last_message.as_ref(), &self.id, Some(&self.sender)))
             }
         }
     }
 }
 
-mod icon {
+pub mod icon {
     use maud::{html, Markup, Render};
 
     pub struct ChatControls;

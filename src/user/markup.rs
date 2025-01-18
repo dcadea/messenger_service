@@ -33,6 +33,7 @@ impl Render for Search {
                 type="search"
                 name="nickname"
                 placeholder="Search users..."
+                autocomplete="off"
                 hx-post="/api/users/search"
                 hx-trigger="input changed delay:500ms"
                 hx-target="#search-results"

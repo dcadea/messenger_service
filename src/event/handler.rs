@@ -1,7 +1,7 @@
 use super::service::EventService;
 use super::{Message, Notification, Queue};
 
-use crate::chat::service::ChatValidator;
+use crate::chat::service::{ChatService, ChatValidator};
 use crate::message::service::MessageService;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
@@ -70,7 +70,7 @@ async fn write_global(
     user_service: UserService,
 ) {
     let mut noti_stream = match event_service
-        .subscribe::<Notification>(Queue::Notifications(logged_sub.clone()))
+        .subscribe::<Notification>(&Queue::Notifications(logged_sub.clone()))
         .await
     {
         Ok(stream) => stream,
@@ -132,6 +132,7 @@ pub async fn ws_chat(
     State(chat_validator): State<ChatValidator>,
     State(event_service): State<EventService>,
     State(message_service): State<MessageService>,
+    State(chat_service): State<ChatService>,
 ) -> crate::Result<Response> {
     chat_validator
         .check_member(&chat_id, &user_info.sub)
@@ -144,6 +145,7 @@ pub async fn ws_chat(
             socket,
             event_service,
             message_service,
+            chat_service,
         )
     }))
 }
@@ -154,6 +156,7 @@ async fn handle_chat(
     ws: WebSocket,
     event_service: EventService,
     message_service: MessageService,
+    chat_service: ChatService,
 ) {
     let (sender, receiver) = ws.split();
 
@@ -166,6 +169,7 @@ async fn handle_chat(
         sender,
         event_service,
         message_service,
+        chat_service,
     );
 
     match try_join!(tokio::spawn(read), tokio::spawn(write)) {
@@ -181,9 +185,10 @@ async fn write_chat(
     sender: SplitSink<WebSocket, ws::Message>,
     event_service: EventService,
     message_service: MessageService,
+    chat_service: ChatService,
 ) {
     let mut messages_stream = match event_service
-        .subscribe::<Message>(Queue::Messages(logged_sub.clone(), chat_id))
+        .subscribe::<Message>(&Queue::Messages(logged_sub.clone(), chat_id))
         .await
     {
         Ok(stream) => stream,
@@ -214,8 +219,16 @@ async fn write_chat(
                         }
 
                         if let Message::New { msg } = msg {
-                            if let Err(e) = message_service.mark_as_seen(&logged_sub, &[msg]).await {
-                                error!("Failed to mark message as seen: {e}");
+                            let chat_id = msg.chat_id.clone();
+                            match message_service.mark_as_seen(&logged_sub, &[msg]).await {
+                                Ok(seen_qty) => {
+                                    if seen_qty > 0 {
+                                        if let Err(e) = chat_service.mark_as_seen(&chat_id).await {
+                                            error!("Failed to mark chat as seen: {e}");
+                                        }
+                                    }
+                                }
+                                Err(e) => error!("Failed to mark message as seen: {e}"),
                             }
                         }
                     }
@@ -240,8 +253,8 @@ async fn read(close: Arc<Notify>, mut receiver: SplitStream<WebSocket>) {
                             close.notify_one(); // notify 'write' task to stop
                             break;
                         },
-                        Ok(Close(frame)) => {
-                            debug!("WS connection closed by client: {:?}", frame);
+                        Ok(Close(_)) => {
+                            debug!("WS connection closed by client");
                             close.notify_one(); // notify 'write' task to stop
                             break;
                         },
@@ -265,7 +278,7 @@ async fn publish_online_friends(
 
         if let Err(e) = event_service
             .publish(
-                Queue::Notifications(logged_sub.clone()),
+                &Queue::Notifications(logged_sub.clone()),
                 Notification::OnlineFriends {
                     friends: friends.clone(),
                 },

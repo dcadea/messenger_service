@@ -30,7 +30,7 @@ pub enum Queue {
     Messages(user::Sub, chat::Id),
 }
 
-impl async_nats::subject::ToSubject for Queue {
+impl async_nats::subject::ToSubject for &Queue {
     fn to_subject(&self) -> async_nats::Subject {
         match self {
             Queue::Notifications(sub) => format!("noti.{sub}").into(),
@@ -64,9 +64,11 @@ impl Render for Notification {
                 }
             },
             Notification::NewMessage {
-                chat_id: _chat_id,
-                last_message: _last_message,
-            } => todo!(),
+                chat_id,
+                last_message,
+            } => html! {
+                (message::markup::last_message(Some(last_message), chat_id, None))
+            },
         }
     }
 }

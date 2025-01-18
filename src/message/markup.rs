@@ -34,6 +34,7 @@ impl Render for MessageInput<'_> {
                     type="text"
                     name="text"
                     placeholder="Type your message..."
+                    autocomplete="off"
                     _="on keyup if the event's key is 'Escape' set value of me to ''" {}
 
                 input class="bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700"
@@ -181,11 +182,34 @@ fn message_bubble(msg: &Message, belongs_to_user: bool) -> Markup {
     }
 }
 
-impl Render for LastMessage {
-    fn render(&self) -> Markup {
-        html! {
-            span class="last-message flex-grow text-sm text-gray-500 text-right truncate" {
-                (self.text)
+const MAX_LEN: usize = 25;
+
+pub fn last_message(
+    lm: Option<&LastMessage>,
+    chat_id: &chat::Id,
+    sub: Option<&user::Sub>,
+) -> Markup {
+    html! {
+        div id={"lm-"(chat_id)} class="flex-grow text-right truncate" {
+            @if let Some(last_message) = lm {
+                span class="last-message text-sm text-gray-500" {
+                    ({
+                        let mut text = last_message.text.clone();
+                        if text.len() > MAX_LEN {
+                            text.truncate(MAX_LEN);
+                            text.push_str("...");
+                        }
+                        text
+                    })
+                }
+
+                @if let Some(sender) = sub {
+                    @if !last_message.seen && last_message.recipient == *sender {
+                        (chat::markup::icon::Unseen)
+                    }
+                } @else {
+                    (chat::markup::icon::Unseen)
+                }
             }
         }
     }
