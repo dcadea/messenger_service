@@ -53,11 +53,11 @@ pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
 
         div id="active-chat"
             class="flex-grow overflow-auto mt-4 mb-4"
-            ws-connect={ "/ws/" (id.0) }
+            ws-connect={ "/ws/" (id) }
         {
             div id="message-list"
                 class="sticky flex flex-col-reverse overflow-auto h-full"
-                hx-get={ "/api/messages?limit=20&chat_id=" (id.0) }
+                hx-get={ "/api/messages?limit=20&chat_id=" (id) }
                 hx-trigger="load" {}
         }
 

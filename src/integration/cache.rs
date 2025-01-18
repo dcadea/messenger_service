@@ -227,7 +227,7 @@ impl Display for Key {
             Key::UserInfo(sub) => write!(f, "userinfo:{sub}"),
             Key::UsersOnline => write!(f, "users:online"),
             Key::Friends(sub) => write!(f, "friends:{sub}"),
-            Key::Chat(id) => write!(f, "chat:{}", id.0),
+            Key::Chat(id) => write!(f, "chat:{}", id),
             Key::Session(id) => write!(f, "session:{id}"),
             Key::Csrf(csrf) => write!(f, "csrf:{csrf}"),
         }

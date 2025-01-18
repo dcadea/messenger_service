@@ -25,16 +25,16 @@ pub fn api<S>(state: AppState) -> Router<S> {
 pub type PayloadStream<T> = Pin<Box<dyn Stream<Item = Option<T>> + Send>>;
 
 #[derive(Clone)]
-pub enum Queue {
+pub enum Subject {
     Notifications(user::Sub),
     Messages(user::Sub, chat::Id),
 }
 
-impl async_nats::subject::ToSubject for &Queue {
+impl async_nats::subject::ToSubject for &Subject {
     fn to_subject(&self) -> async_nats::Subject {
         match self {
-            Queue::Notifications(sub) => format!("noti.{sub}").into(),
-            Queue::Messages(sub, chat_id) => format!("messages.{sub}.{chat_id}").into(),
+            Subject::Notifications(sub) => format!("noti.{sub}").into(),
+            Subject::Messages(sub, chat_id) => format!("messages.{sub}.{chat_id}").into(),
         }
     }
 }
@@ -76,16 +76,16 @@ impl Render for Notification {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Message {
-    New { msg: message::model::Message },
+    New(message::model::Message),
     Updated { id: message::Id, text: String },
-    Deleted { id: message::Id },
-    Seen { msg: message::model::Message },
+    Deleted(message::Id),
+    Seen(message::model::Message),
 }
 
 impl Render for Message {
     fn render(&self) -> Markup {
         match self {
-            Message::New { msg } => html! {
+            Message::New(msg) => html! {
                 div id="message-list" hx-swap-oob="afterbegin" {
                     (message::markup::MessageItem::new(&msg, None))
                 }
@@ -94,8 +94,8 @@ impl Render for Message {
                 id: _id,
                 text: _text,
             } => todo!(),
-            Message::Deleted { id } => html! {
-                div id={"m-" (id.0)}
+            Message::Deleted(id) => html! {
+                div id={"m-" (id)}
                     ."message-item flex items-center items-baseline" {
                     div ."message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs"
                         ."bg-gray-300 text-gray-600 italic" {
@@ -103,8 +103,8 @@ impl Render for Message {
                     }
                 }
             },
-            Message::Seen { msg } => html! {
-                div id={"m-" (msg._id.0)} hx-swap-oob="beforeend" {
+            Message::Seen(msg) => html! {
+                div id={"m-" (msg._id)} hx-swap-oob="beforeend" {
                     (message::markup::icon::Seen)
                 }
             },

@@ -1,5 +1,5 @@
 use super::service::EventService;
-use super::{Message, Notification, Queue};
+use super::{Message, Notification, Subject};
 
 use crate::chat::service::{ChatService, ChatValidator};
 use crate::message::service::MessageService;
@@ -70,12 +70,12 @@ async fn write_global(
     user_service: UserService,
 ) {
     let mut noti_stream = match event_service
-        .subscribe::<Notification>(&Queue::Notifications(logged_sub.clone()))
+        .subscribe::<Notification>(&Subject::Notifications(logged_sub.clone()))
         .await
     {
         Ok(stream) => stream,
         Err(e) => {
-            error!("Failed to subscribe to queue: {e}");
+            error!("Failed to subscribe to subject: {e}");
             close.notify_one();
             return;
         }
@@ -106,7 +106,7 @@ async fn write_global(
                     }
                 }
             },
-            // new notification is received from queue => send it to the client
+            // new notification is received from subject => send it to the client
             noti = noti_stream.next() => {
                 match noti {
                     None => break,
@@ -188,12 +188,12 @@ async fn write_chat(
     chat_service: ChatService,
 ) {
     let mut messages_stream = match event_service
-        .subscribe::<Message>(&Queue::Messages(logged_sub.clone(), chat_id))
+        .subscribe::<Message>(&Subject::Messages(logged_sub.clone(), chat_id))
         .await
     {
         Ok(stream) => stream,
         Err(e) => {
-            error!("Failed to subscribe to queue: {e}");
+            error!("Failed to subscribe to subject: {e}");
             close.notify_one();
             return;
         }
@@ -205,7 +205,7 @@ async fn write_chat(
             // close is notified => stop 'write' task
             _ = close.notified() => break,
 
-            // new message is received from queue => send it to the client
+            // new message is received from subject => send it to the client
             msg = messages_stream.next() => {
                 match msg {
                     None => break,
@@ -218,7 +218,7 @@ async fn write_chat(
                             error!("Failed to send notification to client: {e}");
                         }
 
-                        if let Message::New { msg } = msg {
+                        if let Message::New(msg) = msg {
                             let chat_id = msg.chat_id.clone();
                             match message_service.mark_as_seen(&logged_sub, &[msg]).await {
                                 Ok(seen_qty) => {
@@ -278,7 +278,7 @@ async fn publish_online_friends(
 
         if let Err(e) = event_service
             .publish(
-                &Queue::Notifications(logged_sub.clone()),
+                &Subject::Notifications(logged_sub.clone()),
                 Notification::OnlineFriends {
                     friends: friends.clone(),
                 },

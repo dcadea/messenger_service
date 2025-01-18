@@ -4,7 +4,7 @@ use tokio_stream::StreamExt;
 use crate::integration;
 use crate::integration::cache;
 
-use super::{PayloadStream, Queue};
+use super::{PayloadStream, Subject};
 
 #[derive(Clone)]
 pub struct EventService {
@@ -21,7 +21,7 @@ impl EventService {
 impl EventService {
     pub async fn subscribe<T: DeserializeOwned>(
         &self,
-        q: &Queue,
+        q: &Subject,
     ) -> super::Result<PayloadStream<T>> {
         let subscriber = self.pubsub.subscribe(q).await?;
 
@@ -38,9 +38,9 @@ impl EventService {
         Ok(Box::pin(stream))
     }
 
-    pub async fn publish<T: Serialize>(&self, q: &Queue, payload: T) -> super::Result<()> {
+    pub async fn publish<T: Serialize>(&self, s: &Subject, payload: T) -> super::Result<()> {
         let payload = serde_json::to_vec(&payload)?;
-        self.pubsub.publish(q, payload.into()).await?;
+        self.pubsub.publish(s, payload.into()).await?;
         Ok(())
     }
 }

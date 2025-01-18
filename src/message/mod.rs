@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use axum::{
     routing::{delete, get, post},
     Router,
@@ -21,6 +23,12 @@ pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 impl Id {
     pub fn random() -> Self {
         Self(mongodb::bson::oid::ObjectId::new().to_hex())
+    }
+}
+
+impl Display for Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

@@ -27,7 +27,7 @@ impl Render for MessageInput<'_> {
                 _="on htmx:afterRequest reset() me
                    on htmx:afterRequest go to the bottom of the #message-list"
             {
-                input type="hidden" name="chat_id" value=(self.chat_id.0) {}
+                input type="hidden" name="chat_id" value=(self.chat_id) {}
                 input type="hidden" name="recipient" value=(self.recipient) {}
 
                 input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none"
@@ -125,18 +125,18 @@ impl Render for MessageItem<'_> {
 
         html! {
             @if self.is_last {
-                div id={"m-" (self.msg._id.0)}
+                div id={"m-" (self.msg._id)}
                     .{(message_class)}
                     .justify-end[belongs_to_user]
                     hx-trigger="intersect once"
                     hx-swap="afterend"
-                    hx-get={ "/api/messages?limit=20&chat_id=" (self.msg.chat_id.0) "&end_time=" (self.msg.timestamp) }
+                    hx-get={ "/api/messages?limit=20&chat_id=" (self.msg.chat_id) "&end_time=" (self.msg.timestamp) }
                     _=(hyperscript)
                 {
                     (message_bubble(self.msg, belongs_to_user))
                 }
             } @else {
-                div id={"m-" (self.msg._id.0)}
+                div id={"m-" (self.msg._id)}
                     .{(message_class)}
                     .justify-end[belongs_to_user]
                     _=(hyperscript)
@@ -155,8 +155,8 @@ fn message_bubble(msg: &Message, belongs_to_user: bool) -> Markup {
         @if belongs_to_user {
             div class="message-controls hidden pb-2" {
                 i class="fa-trash-can fa-solid text-red-700 cursor-pointer"
-                    hx-delete={"/api/messages/" (msg._id.0)}
-                    hx-target={"#m-" (msg._id.0)}
+                    hx-delete={"/api/messages/" (msg._id)}
+                    hx-target={"#m-" (msg._id)}
                     hx-swap="outerHTML swap:200ms" {}
 
                 // TODO: Add edit handler
