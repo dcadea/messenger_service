@@ -215,8 +215,8 @@ impl Key {
             // fallback with this value
             Key::Session(_) => 3600,
             // Since most of IDPs don't provide a code exchange TTL through
-            // introspection endpoint - we set a limit of 30 seconds.
-            Key::Csrf(_) => 30,
+            // introspection endpoint - we set a limit of 120 seconds.
+            Key::Csrf(_) => 120,
         }
     }
 }
