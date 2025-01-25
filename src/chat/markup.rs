@@ -94,6 +94,12 @@ pub fn chat_list(chats: &[ChatDto]) -> Markup {
         @for chat in chats {
             (chat)
         }
+
+        i id="noti-bell"
+            ."fa-regular fa-bell-slash"
+            ."text-green-700 text-3xl"
+            ."absolute right-5 bottom-5"
+            _="on click askNotificationPermission()"{}
     }
 }
 

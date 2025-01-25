@@ -73,11 +73,11 @@ impl Redis {
 
     pub async fn json_get<V>(&self, key: Key) -> Option<V>
     where
-        V: redis::FromRedisValue,
+        V: redis::FromRedisValue + Clone,
     {
         let mut con = self.con.clone();
-        match con.json_get::<&Key, &str, V>(&key, "&").await {
-            Ok(value) => Some(value),
+        match con.json_get::<&Key, &str, Vec<V>>(&key, ".").await {
+            Ok(result) => result.first().cloned(),
             Err(e) => {
                 error!("Failed to json_get key {key}. Reason: {e:?}");
                 None
