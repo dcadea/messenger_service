@@ -1,5 +1,7 @@
 use std::env;
 
+use log::warn;
+
 #[derive(Clone)]
 pub struct Config {
     host: String,
@@ -16,12 +18,20 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn env() -> super::Result<Self> {
-        let host = env::var("NATS_HOST")?;
+    pub fn env() -> Option<Self> {
+        let host = env::var("NATS_HOST").ok();
         let port = env::var("NATS_PORT")
             .unwrap_or("4222".to_string())
-            .parse()?;
-        Ok(Self { host, port })
+            .parse()
+            .ok();
+
+        match (host, port) {
+            (Some(host), Some(port)) => Some(Self { host, port }),
+            _ => {
+                warn!("NATS env is not configured");
+                None
+            }
+        }
     }
 
     pub async fn connect(&self) -> async_nats::Client {

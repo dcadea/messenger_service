@@ -27,7 +27,9 @@ pub mod markup {
                     script src="https://unpkg.com/hyperscript.org@0.9.13" {}
 
                     script src="https://cdn.tailwindcss.com" {}
-                    link rel="stylesheet" href="/assets/styles.css" {}
+                    script src="/static/scripts.js" {}
+
+                    link rel="stylesheet" href="/static/styles.css" {}
                     link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" {}
 
                     meta name="htmx-config" content=r#"{"responseHandling": [{"code":".*", "swap": true}]}"# {}

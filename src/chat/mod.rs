@@ -12,7 +12,7 @@ use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
 use crate::state::AppState;
-use crate::{integration, user};
+use crate::user;
 
 mod handler;
 pub mod markup;
@@ -75,9 +75,6 @@ pub enum Error {
     _User(#[from] user::Error),
 
     #[error(transparent)]
-    _Integration(#[from] integration::Error),
-
-    #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
 }
 
@@ -91,7 +88,7 @@ impl IntoResponse for Error {
             Self::NotCreated => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             Self::AlreadyExists => (StatusCode::CONFLICT, self.to_string()),
 
-            Self::_User(_) | Self::_Integration(_) | Self::_MongoDB(_) => (
+            Self::_User(_) | Self::_MongoDB(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_owned(),
             ),

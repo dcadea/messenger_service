@@ -13,9 +13,8 @@ pub struct Params {
     state: String,
 }
 
-pub async fn login(auth_service: State<AuthService>) -> super::Result<impl IntoResponse> {
-    let auth_url = auth_service.authorize().await?;
-    Ok(Redirect::to(&auth_url))
+pub async fn login(auth_service: State<AuthService>) -> impl IntoResponse {
+    Redirect::to(&auth_service.authorize().await)
 }
 
 pub async fn logout(
@@ -40,7 +39,7 @@ pub async fn callback(
         .await?;
 
     let sid = uuid::Uuid::new_v4();
-    auth_service.cache_token(&sid, token.secret(), &ttl).await?;
+    auth_service.cache_token(&sid, token.secret(), &ttl).await;
 
     let mut sid = Cookie::new(super::SESSION_ID, sid.to_string());
     sid.set_secure(true);

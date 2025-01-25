@@ -14,8 +14,6 @@ pub mod db;
 pub mod idp;
 pub mod pubsub;
 
-type Result<T> = std::result::Result<T, Error>;
-
 #[derive(Clone)]
 pub enum Environment {
     Local,
@@ -163,16 +161,4 @@ pub fn init_http_client() -> reqwest::Client {
             panic!("Failed to initialize HTTP client: {}", e)
         }
     }
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error(transparent)]
-    _Var(#[from] std::env::VarError),
-
-    #[error(transparent)]
-    _ParseInt(#[from] std::num::ParseIntError),
-
-    #[error(transparent)]
-    _Redis(#[from] redis::RedisError),
 }

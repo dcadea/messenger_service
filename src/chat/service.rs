@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use futures::future::try_join_all;
-use futures::TryFutureExt;
 use log::warn;
 
 use super::model::{Chat, ChatDto};
@@ -222,7 +221,10 @@ impl ChatValidator {
 
     async fn find_members(&self, chat_id: &Id) -> super::Result<Vec<user::Sub>> {
         let cache_key = cache::Key::Chat(chat_id.to_owned());
-        let members: Option<Vec<user::Sub>> = self.redis.smembers(cache_key.clone()).await?;
+        let members = self
+            .redis
+            .smembers::<Vec<user::Sub>>(cache_key.clone())
+            .await;
 
         match members {
             Some(m) if !m.is_empty() => Ok(m),
@@ -230,11 +232,8 @@ impl ChatValidator {
                 let chat = self.repository.find_by_id(chat_id).await?;
                 let members = chat.members;
 
-                let _: () = self
-                    .redis
-                    .sadd(cache_key.clone(), &members.clone())
-                    .and_then(|_: ()| self.redis.expire(cache_key))
-                    .await?;
+                self.redis.sadd(cache_key.clone(), &members.clone()).await;
+                self.redis.expire(cache_key).await;
 
                 Ok(members)
             }

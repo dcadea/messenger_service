@@ -1,5 +1,5 @@
 use crate::state::AppState;
-use crate::{integration, user};
+use crate::user;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
@@ -49,9 +49,6 @@ pub enum Error {
     InvalidState,
 
     #[error(transparent)]
-    _Integration(#[from] integration::Error),
-
-    #[error(transparent)]
     _Configuration(#[from] oauth2::ConfigurationError),
 
     #[error(transparent)]
@@ -77,8 +74,7 @@ impl IntoResponse for Error {
                 (StatusCode::FORBIDDEN, "Forbidden")
             }
             Self::TokenMalformed => (StatusCode::BAD_REQUEST, "Token malformed"),
-            Self::_Integration(_)
-            | Self::_Configuration(_)
+            Self::_Configuration(_)
             | Self::_JsonWebtoken(_)
             | Self::_Uuid(_)
             | Self::_Reqwest(_)

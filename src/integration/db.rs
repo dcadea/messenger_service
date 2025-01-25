@@ -1,6 +1,7 @@
 use std::time::Duration;
 use std::{env, str::FromStr};
 
+use log::warn;
 use mongodb::bson::{doc, oid};
 
 use crate::{chat, message, user};
@@ -23,13 +24,21 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn env() -> super::Result<Self> {
-        let host = env::var("MONGO_HOST")?;
+    pub fn env() -> Option<Self> {
+        let host = env::var("MONGO_HOST").ok();
         let port = env::var("MONGO_PORT")
             .unwrap_or("27017".to_string())
-            .parse()?;
+            .parse()
+            .ok();
         let db = env::var("MONGO_DB").unwrap_or_else(|_e| String::from("messenger"));
-        Ok(Self { host, port, db })
+
+        match (host, port) {
+            (Some(host), Some(port)) => Some(Self { host, port, db }),
+            _ => {
+                warn!("MONGO env is not configured");
+                None
+            }
+        }
     }
 
     pub fn connect(&self) -> mongodb::Database {

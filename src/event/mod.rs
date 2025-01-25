@@ -8,7 +8,7 @@ use maud::{html, Markup, Render};
 use serde::{Deserialize, Serialize};
 
 use crate::state::AppState;
-use crate::{auth, chat, integration, message, user};
+use crate::{auth, chat, message, user};
 
 mod handler;
 pub mod service;
@@ -119,8 +119,6 @@ pub enum Error {
     #[error("not a message recipient")]
     NotRecipient,
 
-    #[error(transparent)]
-    _Integration(#[from] integration::Error),
     #[error(transparent)]
     _Auth(#[from] auth::Error),
     #[error(transparent)]

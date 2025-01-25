@@ -36,9 +36,7 @@ async fn handle_global(
     event_service: EventService,
     user_service: UserService,
 ) {
-    if let Err(e) = user_service.add_online_user(&logged_sub).await {
-        error!("Failed to add user to online users: {e}");
-    }
+    user_service.add_online_user(&logged_sub).await;
 
     let (sender, receiver) = ws.split();
 
@@ -57,9 +55,7 @@ async fn handle_global(
         Err(e) => error!("WS disconnected with error: {e}"),
     }
 
-    if let Err(e) = user_service.remove_online_user(&logged_sub).await {
-        error!("Failed to remove user from online users: {e}");
-    }
+    user_service.remove_online_user(&logged_sub).await
 }
 
 async fn write_global(
@@ -67,7 +63,7 @@ async fn write_global(
     logged_sub: user::Sub,
     sender: SplitSink<WebSocket, ws::Message>,
     event_service: EventService,
-    user_service: UserService,
+    _user_service: UserService,
 ) {
     let mut noti_stream = match event_service
         .subscribe::<Notification>(&Subject::Notifications(logged_sub.clone()))
@@ -81,14 +77,15 @@ async fn write_global(
         }
     };
 
-    let mut online_status_changes = match event_service.listen_online_status_change().await {
-        Ok(stream) => stream,
-        Err(e) => {
-            error!("Failed to listen online status changes: {e}");
-            close.notify_one();
-            return;
-        }
-    };
+    // TODO: online users feature
+    // let mut online_status_changes = match event_service.listen_online_status_change().await {
+    //     Ok(stream) => stream,
+    //     Err(e) => {
+    //         error!("Failed to listen online status changes: {e}");
+    //         close.notify_one();
+    //         return;
+    //     }
+    // };
 
     let sender = Arc::new(RwLock::new(sender));
     loop {
@@ -97,15 +94,16 @@ async fn write_global(
             _ = close.notified() => break,
 
             // push new list of online users when somebody logs in or out
-            status = online_status_changes.next() => {
-                match status {
-                    None => continue,
-                    Some(Err(e)) => error!("Failed to read online status change: {e}"),
-                    Some(Ok(_)) => {
-                        publish_online_friends(&logged_sub, user_service.clone(), event_service.clone()).await;
-                    }
-                }
-            },
+            // TODO: online users feature
+            // status = online_status_changes.next() => {
+            //     match status {
+            //         None => continue,
+            //         Some(Err(e)) => error!("Failed to read online status change: {e}"),
+            //         Some(Ok(_)) => {
+            //             publish_online_friends(&logged_sub, user_service.clone(), event_service.clone()).await;
+            //         }
+            //     }
+            // },
             // new notification is received from subject => send it to the client
             noti = noti_stream.next() => {
                 match noti {
@@ -266,26 +264,27 @@ async fn read(close: Arc<Notify>, mut receiver: SplitStream<WebSocket>) {
     }
 }
 
-async fn publish_online_friends(
-    logged_sub: &user::Sub,
-    user_service: UserService,
-    event_service: EventService,
-) {
-    if let Ok(friends) = user_service.get_online_friends(logged_sub).await {
-        if friends.is_empty() {
-            return;
-        }
+// TODO: online users feature
+// async fn publish_online_friends(
+//     logged_sub: &user::Sub,
+//     user_service: UserService,
+//     event_service: EventService,
+// ) {
+//     if let Some(friends) = user_service.get_online_friends(logged_sub).await {
+//         if friends.is_empty() {
+//             return;
+//         }
 
-        if let Err(e) = event_service
-            .publish(
-                &Subject::Notifications(logged_sub.clone()),
-                Notification::OnlineFriends {
-                    friends: friends.clone(),
-                },
-            )
-            .await
-        {
-            error!("Failed to publish online users notification: {e}");
-        }
-    }
-}
+//         if let Err(e) = event_service
+//             .publish(
+//                 &Subject::Notifications(logged_sub.clone()),
+//                 Notification::OnlineFriends {
+//                     friends: friends.clone(),
+//                 },
+//             )
+//             .await
+//         {
+//             error!("Failed to publish online users notification: {e}");
+//         }
+//     }
+// }

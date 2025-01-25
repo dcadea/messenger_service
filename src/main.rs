@@ -74,7 +74,7 @@ fn app(app_state: AppState, env: &Environment) -> Router {
         );
 
     Router::new()
-        .nest_service("/assets", ServeDir::new("assets"))
+        .nest_service("/static", ServeDir::new("static"))
         .merge(auth::pages(app_state.clone()))
         .merge(auth::api(app_state.clone()))
         .merge(protected_router)

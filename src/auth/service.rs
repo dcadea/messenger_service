@@ -66,7 +66,7 @@ impl AuthService {
 }
 
 impl AuthService {
-    pub async fn authorize(&self) -> super::Result<String> {
+    pub async fn authorize(&self) -> String {
         let (auth_url, csrf) = self
             .oauth2
             .authorize_url(CsrfToken::new_random)
@@ -78,9 +78,9 @@ impl AuthService {
             ])
             .url();
 
-        self.cache_csrf(csrf.secret()).await?;
+        self.cache_csrf(csrf.secret()).await;
 
-        Ok(auth_url.to_string())
+        auth_url.to_string()
     }
 
     pub async fn exchange_code(
@@ -145,22 +145,16 @@ impl AuthService {
 }
 
 impl AuthService {
-    pub async fn cache_token(
-        &self,
-        sid: &uuid::Uuid,
-        token: &str,
-        ttl: &Duration,
-    ) -> super::Result<()> {
-        self.redis.set(cache::Key::Session(*sid), token).await?;
+    pub async fn cache_token(&self, sid: &uuid::Uuid, token: &str, ttl: &Duration) {
+        self.redis.set(cache::Key::Session(*sid), token).await;
         self.redis
             .expire_after(cache::Key::Session(*sid), ttl.as_secs())
-            .await?;
-        Ok(())
+            .await;
     }
 
     pub async fn invalidate_token(&self, sid: &str) -> super::Result<()> {
         let sid = uuid::Uuid::parse_str(sid)?;
-        let token: Option<String> = self.redis.get_del(cache::Key::Session(sid)).await?;
+        let token = self.redis.get_del(cache::Key::Session(sid)).await;
 
         if let Some(token) = token {
             self.oauth2
@@ -171,24 +165,23 @@ impl AuthService {
     }
 
     pub async fn find_token(&self, sid: &str) -> Option<String> {
-        if let Ok(sid) = uuid::Uuid::parse_str(sid) {
-            let token: Option<String> = self.redis.get(cache::Key::Session(sid)).await.ok();
-            return token;
+        match uuid::Uuid::parse_str(sid) {
+            Ok(sid) => self.redis.get::<String>(cache::Key::Session(sid)).await,
+            Err(_) => {
+                warn!("Could not find token for sid: {sid}");
+                None
+            }
         }
-
-        warn!("Could not find token for sid: {sid}");
-        None
     }
 
-    async fn cache_csrf(&self, csrf: &str) -> super::Result<()> {
+    async fn cache_csrf(&self, csrf: &str) {
         let cache_key = cache::Key::Csrf(csrf.to_string());
-        self.redis.set_ex(cache_key, csrf).await?;
-        Ok(())
+        self.redis.set_ex(cache_key, csrf).await
     }
 
     async fn validate_state(&self, csrf: &str) -> super::Result<()> {
         let csrf = cache::Key::Csrf(csrf.to_string());
-        let csrf: Option<String> = self.redis.get_del(csrf).await?;
+        let csrf = self.redis.get_del::<String>(csrf).await;
         csrf.map(|_| ()).ok_or(super::Error::InvalidState)
     }
 }

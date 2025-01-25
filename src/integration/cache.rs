@@ -1,11 +1,7 @@
-use std::collections::HashSet;
 use std::env;
 use std::fmt::{Display, Formatter};
-use std::hash::Hash;
-use std::pin::Pin;
 
-use futures::{Stream, StreamExt};
-use log::debug;
+use log::{error, warn};
 use redis::{AsyncCommands, JsonAsyncCommands};
 use serde::Serialize;
 
@@ -14,146 +10,173 @@ use crate::{chat, user};
 
 #[derive(Clone)]
 pub struct Redis {
-    client: redis::Client,
+    _client: redis::Client,
     con: redis::aio::ConnectionManager,
 }
 
 impl Redis {
-    pub async fn set<V>(&self, key: Key, value: V) -> super::Result<()>
+    pub async fn set<V>(&self, key: Key, value: V)
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        let _: () = con.set(&key, value).await?;
-        Ok(())
+        if let Err(e) = con.set::<&Key, V, ()>(&key, value).await {
+            error!("Failed to set for key {key}. Reason: {e:?}")
+        }
     }
 
-    pub async fn set_ex<V>(&self, key: Key, value: V) -> super::Result<()>
+    pub async fn set_ex<V>(&self, key: Key, value: V)
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        let _: () = con.set_ex(&key, value, key.ttl()).await?;
-        Ok(())
+        if let Err(e) = con.set_ex::<&Key, V, ()>(&key, value, key.ttl()).await {
+            error!("Failed to set_ex for key {key}. Reason: {e:?}")
+        }
     }
 
-    pub async fn json_set_ex<V>(&self, key: Key, value: V) -> super::Result<()>
+    pub async fn json_set_ex<V>(&self, key: Key, value: V)
     where
         V: Send + Sync + Serialize,
     {
         let mut con = self.con.clone();
-        let _: () = con.json_set(&key, "$", &value).await?;
+        if let Err(e) = con.json_set::<&Key, &str, V, ()>(&key, "$", &value).await {
+            error!("Failed to json_set for key {key}. Reason: {e:?}")
+        }
 
         self.expire(key).await
     }
 
-    pub async fn sadd<V>(&self, key: Key, value: V) -> super::Result<()>
+    pub async fn sadd<V>(&self, key: Key, value: V)
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        let _: () = con.sadd(&key, value).await?;
-        Ok(())
+        if let Err(e) = con.sadd::<&Key, V, ()>(&key, value).await {
+            error!("Failed to sadd for key {key}. Reason: {e:?}")
+        }
     }
 
-    pub async fn get<V>(&self, key: Key) -> super::Result<V>
+    pub async fn get<V>(&self, key: Key) -> Option<V>
     where
         V: redis::FromRedisValue,
     {
         let mut con = self.con.clone();
-        let value: V = con.get(&key).await?;
-        Ok(value)
+        match con.get::<&Key, V>(&key).await {
+            Ok(value) => Some(value),
+            Err(e) => {
+                error!("Failed to get key {key}. Reason: {e:?}");
+                None
+            }
+        }
     }
 
-    pub async fn json_get<V>(&self, key: Key) -> super::Result<V>
+    pub async fn json_get<V>(&self, key: Key) -> Option<V>
     where
         V: redis::FromRedisValue,
     {
         let mut con = self.con.clone();
-        let value: V = con.json_get(&key, "&").await?;
-        Ok(value)
+        match con.json_get::<&Key, &str, V>(&key, "&").await {
+            Ok(value) => Some(value),
+            Err(e) => {
+                error!("Failed to json_get key {key}. Reason: {e:?}");
+                None
+            }
+        }
     }
 
-    pub async fn get_del<V>(&self, key: Key) -> super::Result<Option<V>>
+    pub async fn get_del<V>(&self, key: Key) -> Option<V>
     where
         V: redis::FromRedisValue,
     {
         let mut con = self.con.clone();
 
-        let value: Option<V> = con.get_del(&key).await?;
-        Ok(value)
+        match con.get_del::<&Key, Option<V>>(&key).await {
+            Ok(value) => value,
+            Err(e) => {
+                error!("Failed to get_del key {key}. Reason: {e:?}");
+                None
+            }
+        }
     }
 
-    pub async fn smembers<V>(&self, key: Key) -> super::Result<Option<V>>
+    pub async fn smembers<V>(&self, key: Key) -> Option<V>
     where
         V: redis::FromRedisValue + IntoIterator,
-        V::Item: redis::FromRedisValue + Hash + PartialEq + Eq,
+        V::Item: redis::FromRedisValue + PartialEq + Eq,
     {
         let mut con = self.con.clone();
-        let values: Option<V> = con.smembers(&key).await?;
-        Ok(values)
+        match con.smembers::<&Key, Option<V>>(&key).await {
+            Ok(members) => members,
+            Err(e) => {
+                error!("Failed to smembers for key {key}. Reason: {e:?}");
+                None
+            }
+        }
     }
 
-    pub async fn sinter<V>(&self, keys: Vec<Key>) -> super::Result<HashSet<V>>
-    where
-        V: redis::FromRedisValue + Hash + PartialEq + Eq,
-    {
-        let mut con = self.con.clone();
-        // TODO: find a way to concatenate keys into a single string
-        let values: HashSet<V> = con.sinter(&keys).await?;
-        Ok(values)
-    }
+    // TODO: online users feature
+    // pub async fn sinter<V>(&self, keys: Vec<Key>) -> Option<HashSet<V>>
+    // where
+    //     V: redis::FromRedisValue + Hash + PartialEq + Eq,
+    // {
+    //     let mut con = self.con.clone();
+    //     match con.sinter::<&Vec<Key>, HashSet<V>>(&keys).await {
+    //         Ok(intersection) => Some(intersection),
+    //         Err(e) => {
+    //             let keys: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
+    //             error!("Failed to sinter for keys {keys:?}. Reason: {e:?}",);
+    //             None
+    //         }
+    //     }
+    // }
 
     #[allow(dead_code)]
-    pub async fn del(&self, key: Key) -> super::Result<()> {
+    pub async fn del(&self, key: Key) {
         let mut con = self.con.clone();
-        let _: () = con.del(&key).await?;
-        Ok(())
+        if let Err(e) = con.del::<&Key, ()>(&key).await {
+            error!("Failed to del key {key}. Reason: {e:?}")
+        }
     }
 
-    pub async fn srem<V>(&self, key: Key, value: V) -> super::Result<()>
+    pub async fn srem<V>(&self, key: Key, value: V)
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        let _: () = con.srem(&key, value).await?;
-        Ok(())
+
+        if let Err(e) = con.srem::<&Key, V, ()>(&key, value).await {
+            error!("Failed to srem key {key}. Reason: {e:?}")
+        }
     }
 
-    pub async fn expire_after(&self, key: Key, seconds: u64) -> super::Result<()> {
+    pub async fn expire_after(&self, key: Key, seconds: u64) {
         let mut con = self.con.clone();
-        let _: () = con.expire(&key, seconds as i64).await?;
-        Ok(())
+        if let Err(e) = con.expire::<&Key, ()>(&key, seconds as i64).await {
+            error!("Failed to expire key {key}. Reason: {e:?}")
+        }
     }
 
-    pub async fn expire(&self, key: Key) -> super::Result<()> {
+    pub async fn expire(&self, key: Key) {
         let mut con = self.con.clone();
-        let _: () = con.expire(&key, key.ttl() as i64).await?;
-        Ok(())
+        if let Err(e) = con.expire::<&Key, ()>(&key, key.ttl() as i64).await {
+            error!("Failed to expire key {key}. Reason: {e:?}")
+        }
     }
 }
 
-pub type UpdateStream = Pin<Box<dyn Stream<Item = redis::RedisResult<redis::Msg>> + Send>>;
+// TODO: online users feature
+// impl Redis {
+//     pub async fn subscribe(&self, keyspace: &Keyspace) -> redis::aio::PubSubStream {
+//         let mut pub_sub = self.client.get_async_pubsub().await?;
 
-impl Redis {
-    pub async fn subscribe(&self, keyspace: &Keyspace) -> super::Result<UpdateStream> {
-        let mut pub_sub = self.client.get_async_pubsub().await?;
+//         pub_sub.psubscribe(keyspace).await?;
 
-        pub_sub.psubscribe(keyspace).await?;
+//         debug!("Subscribed to keyspace: {keyspace}");
 
-        debug!("Subscribed to keyspace: {keyspace}");
-
-        let stream = pub_sub
-            .into_on_message()
-            .map(|msg| {
-                debug!("Received keyspace event: {msg:?}");
-                Ok(msg)
-            })
-            .boxed();
-
-        Ok(Box::pin(stream))
-    }
-}
+//         pub_sub.into_on_message()
+//     }
+// }
 
 #[derive(Clone)]
 pub struct Config {
@@ -171,25 +194,33 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn env() -> super::Result<Self> {
-        let host = env::var("REDIS_HOST")?;
+    pub fn env() -> Option<Self> {
+        let host = env::var("REDIS_HOST").ok();
         let port = env::var("REDIS_PORT")
             .unwrap_or("6379".to_string())
-            .parse()?;
-        Ok(Self { host, port })
+            .parse()
+            .ok();
+
+        match (host, port) {
+            (Some(host), Some(port)) => Some(Self { host, port }),
+            _ => {
+                warn!("REDIS env is not configured");
+                None
+            }
+        }
     }
 
     pub async fn connect(&self) -> Redis {
-        let client = match redis::Client::open(format!("redis://{}:{}", self.host, self.port)) {
+        let _client = match redis::Client::open(format!("redis://{}:{}", self.host, self.port)) {
             Ok(client) => client,
             Err(e) => panic!("Failed to connect to Redis: {e:?}"),
         };
-        let con = match client.get_connection_manager().await {
+        let con = match _client.get_connection_manager().await {
             Ok(con) => con,
             Err(e) => panic!("Failed create Redis connection manager: {}", e),
         };
 
-        Redis { client, con }
+        Redis { _client, con }
     }
 }
 
@@ -243,31 +274,32 @@ impl redis::ToRedisArgs for Key {
     }
 }
 
-#[derive(Clone)]
-pub struct Keyspace {
-    pub key: Key,
-}
+// TODO: online users feature
+// #[derive(Clone)]
+// pub struct Keyspace {
+//     pub key: Key,
+// }
 
-impl Keyspace {
-    pub fn new(key: Key) -> Self {
-        Self { key }
-    }
-}
+// impl Keyspace {
+//     pub fn new(key: Key) -> Self {
+//         Self { key }
+//     }
+// }
 
-impl Display for Keyspace {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "__keyspace@0__:{}", &self.key)
-    }
-}
+// impl Display for Keyspace {
+//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+//         write!(f, "__keyspace@0__:{}", &self.key)
+//     }
+// }
 
-impl redis::ToRedisArgs for Keyspace {
-    fn write_redis_args<W>(&self, out: &mut W)
-    where
-        W: ?Sized + redis::RedisWrite,
-    {
-        self.to_string().write_redis_args(out);
-    }
-}
+// impl redis::ToRedisArgs for Keyspace {
+//     fn write_redis_args<W>(&self, out: &mut W)
+//     where
+//         W: ?Sized + redis::RedisWrite,
+//     {
+//         self.to_string().write_redis_args(out);
+//     }
+// }
 
 impl redis::FromRedisValue for user::Sub {
     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<user::Sub> {
