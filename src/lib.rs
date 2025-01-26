@@ -24,9 +24,10 @@ pub mod markup {
                         integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq"
                         crossorigin="anonymous" {}
                     script src="https://unpkg.com/htmx-ext-ws@2.0.2/ws.js" {}
+                    script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js" {}
                     script src="https://unpkg.com/hyperscript.org@0.9.13" {}
 
-                    script src="https://cdn.tailwindcss.com" {}
+                    script src="https://unpkg.com/@tailwindcss/browser@4" {}
                     script src="/static/scripts.js" {}
 
                     link rel="stylesheet" href="/static/styles.css" {}
