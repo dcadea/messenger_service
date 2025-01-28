@@ -4,18 +4,19 @@ use axum::{
     Extension, Form,
 };
 use maud::{Markup, Render};
+use messenger_service::markup::Wrappable;
 use serde::Deserialize;
 
 use crate::user::{self, model::UserInfo, service::UserService};
 
 use super::{markup, service::ChatService, Id};
 
-pub async fn find_all(
+pub async fn home(
     user_info: Extension<UserInfo>,
     chat_service: State<ChatService>,
-) -> crate::Result<Markup> {
+) -> crate::Result<Wrappable> {
     let chats = chat_service.find_all(&user_info).await?;
-    Ok(markup::chat_list(&chats))
+    Ok(Wrappable::new(markup::all_chats(user_info, &chats).await).with_sse())
 }
 
 pub async fn find_one(

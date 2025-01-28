@@ -4,16 +4,11 @@ use maud::{html, Markup, Render};
 use crate::message::markup::MessageInput;
 use crate::user::model::UserInfo;
 use crate::{message, user};
-use messenger_service::markup::Wrappable;
 
 use super::model::ChatDto;
 use super::Id;
 
-pub async fn home(logged_user: Extension<UserInfo>) -> Wrappable {
-    Wrappable::new(all_chats(logged_user).await).with_sse()
-}
-
-pub async fn all_chats(logged_user: Extension<UserInfo>) -> Markup {
+pub async fn all_chats(logged_user: Extension<UserInfo>, chats: &Vec<ChatDto>) -> Markup {
     html! {
         div id="chat-window"
             class="flex flex-col h-full"
@@ -24,8 +19,17 @@ pub async fn all_chats(logged_user: Extension<UserInfo>) -> Markup {
 
             div id="chat-list"
                 class="flex flex-col space-y-2 h-full overflow-y-auto"
-                hx-get="/api/chats"
-                hx-trigger="load" {}
+            {
+                @for chat in chats {
+                    (chat)
+                }
+
+                i id="noti-bell"
+                    ."fa-regular fa-bell-slash"
+                    ."text-green-700 text-3xl"
+                    ."absolute right-5 bottom-5"
+                    _="on click askNotificationPermission()"{}
+            }
         }
     }
 }
@@ -86,20 +90,6 @@ impl Render for ChatControls<'_> {
                 }
             }
         }
-    }
-}
-
-pub fn chat_list(chats: &[ChatDto]) -> Markup {
-    html! {
-        @for chat in chats {
-            (chat)
-        }
-
-        i id="noti-bell"
-            ."fa-regular fa-bell-slash"
-            ."text-green-700 text-3xl"
-            ."absolute right-5 bottom-5"
-            _="on click askNotificationPermission()"{}
     }
 }
 

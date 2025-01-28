@@ -45,15 +45,13 @@ pub enum Kind {
 
 pub fn pages<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route("/", get(markup::home))
-        .route("/chats", get(markup::all_chats))
+        .route("/", get(handler::home))
         .route("/chats/:id", get(handler::open_chat))
         .with_state(state)
 }
 
 pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route("/chats", get(handler::find_all))
         .route("/chats/:id", get(handler::find_one))
         .route("/chats", post(handler::create))
         .route("/chats/:id", delete(handler::delete))
