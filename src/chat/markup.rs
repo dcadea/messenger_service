@@ -10,7 +10,7 @@ use super::model::ChatDto;
 use super::Id;
 
 pub async fn home(logged_user: Extension<UserInfo>) -> Wrappable {
-    Wrappable::new(all_chats(logged_user).await).with_ws()
+    Wrappable::new(all_chats(logged_user).await).with_sse()
 }
 
 pub async fn all_chats(logged_user: Extension<UserInfo>) -> Markup {
@@ -53,7 +53,7 @@ pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
 
         div id="active-chat"
             class="flex-grow overflow-auto mt-4 mb-4"
-            ws-connect={ "/ws/" (id) }
+            hx-ext="ws" ws-connect={ "/ws/" (id) }
         {
             div id="message-list"
                 class="sticky flex flex-col-reverse overflow-auto h-full"

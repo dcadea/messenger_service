@@ -67,8 +67,8 @@ pub mod markup {
             html {
                 (Head { title: "AWG Messenger" })
 
-                @if w.ws {
-                    body class=(body_class) hx-ext="ws" ws-connect="/ws" {
+                @if w.sse {
+                    body class=(body_class) hx-ext="sse" sse-connect="/sse" {
                         (content)
                     }
                 } @else {
@@ -83,16 +83,19 @@ pub mod markup {
     #[derive(Clone)]
     pub struct Wrappable {
         content: Markup,
-        ws: bool,
+        sse: bool,
     }
 
     impl Wrappable {
         pub fn new(content: Markup) -> Self {
-            Self { content, ws: false }
+            Self {
+                content,
+                sse: false,
+            }
         }
 
-        pub fn with_ws(mut self) -> Self {
-            self.ws = true;
+        pub fn with_sse(mut self) -> Self {
+            self.sse = true;
             self
         }
     }

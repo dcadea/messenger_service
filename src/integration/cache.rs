@@ -139,16 +139,17 @@ impl Redis {
         }
     }
 
-    pub async fn srem<V>(&self, key: Key, value: V)
-    where
-        V: redis::ToRedisArgs + Send + Sync,
-    {
-        let mut con = self.con.clone();
+    // TODO: online users feature
+    // pub async fn srem<V>(&self, key: Key, value: V)
+    // where
+    //     V: redis::ToRedisArgs + Send + Sync,
+    // {
+    //     let mut con = self.con.clone();
 
-        if let Err(e) = con.srem::<&Key, V, ()>(&key, value).await {
-            error!("Failed to srem key {key}. Reason: {e:?}")
-        }
-    }
+    //     if let Err(e) = con.srem::<&Key, V, ()>(&key, value).await {
+    //         error!("Failed to srem key {key}. Reason: {e:?}")
+    //     }
+    // }
 
     pub async fn expire_after(&self, key: Key, seconds: u64) {
         let mut con = self.con.clone();
@@ -227,7 +228,8 @@ impl Config {
 #[derive(Clone)]
 pub enum Key {
     UserInfo(user::Sub),
-    UsersOnline,
+    // TODO: online users feature
+    // UsersOnline,
     Friends(user::Sub),
     Chat(chat::Id),
     Session(uuid::Uuid),
@@ -239,7 +241,7 @@ impl Key {
     pub fn ttl(&self) -> u64 {
         match self {
             Key::UserInfo(_) => 3600,
-            Key::UsersOnline => u64::MAX,
+            // Key::UsersOnline => u64::MAX,
             Key::Friends(_) => u64::MAX,
             Key::Chat(_) => 3600,
             // Just in case if token response does not provide an expiration claim
@@ -256,7 +258,7 @@ impl Display for Key {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Key::UserInfo(sub) => write!(f, "userinfo:{sub}"),
-            Key::UsersOnline => write!(f, "users:online"),
+            // Key::UsersOnline => write!(f, "users:online"),
             Key::Friends(sub) => write!(f, "friends:{sub}"),
             Key::Chat(id) => write!(f, "chat:{}", id),
             Key::Session(id) => write!(f, "session:{id}"),

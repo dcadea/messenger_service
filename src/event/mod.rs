@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::pin::Pin;
 
+use axum::response::sse;
 use axum::routing::get;
 use axum::Router;
 use futures::Stream;
@@ -17,14 +18,14 @@ type Result<T> = std::result::Result<T, Error>;
 
 pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route("/ws", get(handler::ws))
-        .route("/ws/:chat_id", get(handler::ws_chat))
+        .route("/sse", get(handler::sse::notifications))
+        .route("/ws/:chat_id", get(handler::ws::chat))
         .with_state(state)
 }
 
-pub type PayloadStream<T> = Pin<Box<dyn Stream<Item = Option<T>> + Send>>;
+pub type PayloadStream<T> = Pin<Box<dyn Stream<Item = T> + Send>>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Subject {
     Notifications(user::Sub),
     Messages(user::Sub, chat::Id),
@@ -73,6 +74,18 @@ impl Render for Notification {
     }
 }
 
+impl From<Notification> for sse::Event {
+    fn from(noti: Notification) -> Self {
+        let event = match noti {
+            Notification::OnlineFriends { .. } => sse::Event::default().event("onlineFriends"),
+            Notification::NewFriend { .. } => sse::Event::default().event("newFriend"),
+            Notification::NewMessage { .. } => sse::Event::default().event("newMessage"),
+        };
+
+        event.data(noti.render().into_string())
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Message {
@@ -118,6 +131,8 @@ pub enum Error {
     NotOwner,
     #[error("not a message recipient")]
     NotRecipient,
+    #[error("stream unavailable")]
+    StreamUnavailable,
 
     #[error(transparent)]
     _Auth(#[from] auth::Error),

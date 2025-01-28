@@ -1,8 +1,6 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use log::debug;
-
 use crate::integration::{self, cache};
 use crate::user::model::{User, UserInfo};
 
@@ -77,12 +75,12 @@ impl UserService {
 
 // cache operations
 impl UserService {
-    pub async fn add_online_user(&self, sub: &Sub) {
-        debug!("Adding to online users: {:?}", sub);
-        self.redis.sadd(cache::Key::UsersOnline, sub).await
-    }
-
     // TODO: online users feature
+    // pub async fn add_online_user(&self, sub: &Sub) {
+    //     debug!("Adding to online users: {:?}", sub);
+    //     self.redis.sadd(cache::Key::UsersOnline, sub).await
+    // }
+
     // pub async fn get_online_friends(&self, sub: &Sub) -> Option<HashSet<Sub>> {
     //     self.redis
     //         .sinter::<Sub>(vec![
@@ -92,10 +90,10 @@ impl UserService {
     //         .await
     // }
 
-    pub async fn remove_online_user(&self, sub: &Sub) {
-        debug!("Removing from online users: {:?}", sub);
-        self.redis.srem(cache::Key::UsersOnline, sub).await
-    }
+    // pub async fn remove_online_user(&self, sub: &Sub) {
+    //     debug!("Removing from online users: {:?}", sub);
+    //     self.redis.srem(cache::Key::UsersOnline, sub).await
+    // }
 
     pub async fn cache_friends(&self, sub: &Sub) -> super::Result<()> {
         let friends = self.repository.find_friends_by_sub(sub).await?;

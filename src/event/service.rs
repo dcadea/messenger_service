@@ -17,18 +17,12 @@ impl EventService {
 impl EventService {
     pub async fn subscribe<T: DeserializeOwned>(
         &self,
-        q: &Subject,
+        s: &Subject,
     ) -> super::Result<PayloadStream<T>> {
-        let subscriber = self.pubsub.subscribe(q).await?;
+        let subscriber = self.pubsub.subscribe(s).await?;
 
         let stream = subscriber.then(|msg| async move {
-            match serde_json::from_slice::<T>(&msg.payload) {
-                Ok(noti) => Some(noti),
-                Err(e) => {
-                    log::error!("failed to deserialize notification: {:?}", e);
-                    None
-                }
-            }
+            serde_json::from_slice::<T>(&msg.payload).expect("failed payload deserialization")
         });
 
         Ok(Box::pin(stream))
