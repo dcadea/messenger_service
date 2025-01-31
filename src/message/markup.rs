@@ -3,7 +3,10 @@ use maud::{html, Markup, Render};
 
 use crate::{chat, user};
 
-use super::model::{LastMessage, Message};
+use super::{
+    model::{LastMessage, Message},
+    Id,
+};
 
 pub struct MessageInput<'a> {
     chat_id: &'a chat::Id,
@@ -154,19 +157,16 @@ fn message_bubble(msg: &Message, belongs_to_user: bool) -> Markup {
     html! {
         @if belongs_to_user {
             div class="message-controls hidden pb-2" {
-                i class="fa-trash-can fa-solid text-red-700 cursor-pointer"
-                    hx-delete={"/api/messages/" (msg._id)}
-                    hx-target={"#m-" (msg._id)}
-                    hx-swap="outerHTML swap:200ms" {}
+                (Icon::Delete(&msg._id))
 
                 // TODO: Add edit handler
-                (icon::Edit)
+                (Icon::Edit)
             }
 
-            (icon::Sent)
+            (Icon::Sent)
 
             @if msg.seen {
-                (icon::Seen)
+                (Icon::Seen)
             }
         }
 
@@ -205,45 +205,36 @@ pub fn last_message(
 
                 @if let Some(sender) = sub {
                     @if !last_message.seen && last_message.recipient == *sender {
-                        (chat::markup::icon::Unseen)
+                        (chat::markup::Icon::Unseen)
                     }
                 } @else {
-                    (chat::markup::icon::Unseen)
+                    (chat::markup::Icon::Unseen)
                 }
             }
         }
     }
 }
 
-pub mod icon {
-    use maud::{html, Markup, Render};
+pub enum Icon<'a> {
+    Edit,
+    Delete(&'a Id),
+    Sent,
+    Seen,
+}
 
-    pub struct Edit;
-
-    impl Render for Edit {
-        fn render(&self) -> Markup {
-            html! {
-                i class="fa-pen fa-solid ml-2 text-green-700 cursor-pointer" {}
-            }
-        }
-    }
-
-    pub struct Seen;
-
-    impl Render for Seen {
-        fn render(&self) -> Markup {
-            html! {
-                i class="fa-solid fa-check absolute bottom-1 right-2.5 text-white opacity-65" {}
-            }
-        }
-    }
-
-    pub struct Sent;
-
-    impl Render for Sent {
-        fn render(&self) -> Markup {
-            html! {
-                i class="fa-solid fa-check absolute bottom-1 right-1 text-white opacity-65" {}
+impl Render for Icon<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            @match self {
+                Self::Edit => i class="fa-pen fa-solid ml-2 text-green-700 cursor-pointer" {},
+                Self::Delete(id) => {
+                    i class="fa-trash-can fa-solid text-red-700 cursor-pointer"
+                        hx-delete={"/api/messages/" (id)}
+                        hx-target={"#m-" (id)}
+                        hx-swap="outerHTML swap:200ms" {}
+                },
+                Self::Sent => i class="fa-solid fa-check absolute bottom-1 right-1 text-white opacity-65" {},
+                Self::Seen => i class="fa-solid fa-check absolute bottom-1 right-2.5 text-white opacity-65" {},
             }
         }
     }

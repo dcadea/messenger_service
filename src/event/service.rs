@@ -1,5 +1,5 @@
+use futures::StreamExt;
 use serde::{de::DeserializeOwned, Serialize};
-use tokio_stream::StreamExt;
 
 use super::{PayloadStream, Subject};
 
@@ -26,7 +26,7 @@ impl EventService {
             serde_json::from_slice::<T>(&msg.payload).expect("failed payload deserialization")
         });
 
-        Ok(Box::pin(stream))
+        Ok(stream.boxed())
     }
 
     pub async fn publish<T: Serialize>(&self, s: &Subject, payload: T) -> super::Result<()> {

@@ -45,7 +45,7 @@ impl Render for Header<'_> {
                     href="/" { "X" }
                 h2 class="text-2xl" { (self.0.name) }
                 span class="online-status absolute inset-12 flex items-center justify-center text-xs text-gray-500" { "offline" }
-                (icon::ChatControls)
+                (Icon::ChatControls)
             }
         }
     }
@@ -113,27 +113,22 @@ impl Render for ChatDto {
     }
 }
 
-pub mod icon {
-    use maud::{html, Markup, Render};
+pub enum Icon {
+    ChatControls,
+    Unseen,
+}
 
-    pub struct ChatControls;
-
-    impl Render for ChatControls {
-        fn render(&self) -> Markup {
-            html! {
-                i class="fa-solid fa-bars text-2xl cursor-pointer"
-                    _="on click toggle .invisible on #chat-controls" {}
+impl Render for Icon {
+    fn render(&self) -> Markup {
+        html! {
+            @match self {
+                Self::ChatControls => {
+                    i class="fa-solid fa-bars text-2xl cursor-pointer"
+                        _="on click toggle .invisible on #chat-controls" {}
+                },
+                Self::Unseen => i class="fa-solid fa-envelope text-green-600 ml-2" {}
             }
-        }
-    }
 
-    pub struct Unseen;
-
-    impl Render for Unseen {
-        fn render(&self) -> Markup {
-            html! {
-                i class="fa-solid fa-envelope text-green-600 ml-2" {}
-            }
         }
     }
 }
