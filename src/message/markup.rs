@@ -160,7 +160,7 @@ fn message_bubble(msg: &Message, belongs_to_user: bool) -> Markup {
                     hx-swap="outerHTML swap:200ms" {}
 
                 // TODO: Add edit handler
-                i class="fa-pen fa-solid ml-2 text-green-700 cursor-pointer" {}
+                (icon::Edit)
             }
 
             (icon::Sent)
@@ -217,6 +217,16 @@ pub fn last_message(
 
 pub mod icon {
     use maud::{html, Markup, Render};
+
+    pub struct Edit;
+
+    impl Render for Edit {
+        fn render(&self) -> Markup {
+            html! {
+                i class="fa-pen fa-solid ml-2 text-green-700 cursor-pointer" {}
+            }
+        }
+    }
 
     pub struct Seen;
 

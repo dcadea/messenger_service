@@ -34,7 +34,7 @@ pub mod sse {
         };
 
         sse::Sse::new(stream).keep_alive(
-            axum::response::sse::KeepAlive::new()
+            sse::KeepAlive::new()
                 .interval(Duration::from_secs(2))
                 .text("sse-ping"),
         )

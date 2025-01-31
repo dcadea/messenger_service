@@ -22,6 +22,7 @@ impl EventService {
         let subscriber = self.pubsub.subscribe(s).await?;
 
         let stream = subscriber.then(|msg| async move {
+            // FIXME: expect!
             serde_json::from_slice::<T>(&msg.payload).expect("failed payload deserialization")
         });
 

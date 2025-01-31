@@ -73,6 +73,8 @@ impl ChatService {
         logged_user: &UserInfo,
         recipient: &user::Sub,
     ) -> super::Result<ChatDto> {
+        assert_ne!(&logged_user.sub, recipient);
+
         let members = [logged_user.sub.clone(), recipient.clone()];
         if self.repository.exists(&members).await? {
             return Err(chat::Error::AlreadyExists);

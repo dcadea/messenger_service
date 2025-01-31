@@ -53,6 +53,8 @@ impl UserService {
     }
 
     pub async fn create_friendship(&self, subs: &[Sub; 2]) -> super::Result<()> {
+        assert_ne!(&subs[0], &subs[1]);
+
         tokio::try_join!(
             self.repository.add_friend(&subs[0], &subs[1]),
             self.repository.add_friend(&subs[1], &subs[0]),
@@ -62,6 +64,8 @@ impl UserService {
     }
 
     pub async fn delete_friendship(&self, subs: &[Sub; 2]) -> super::Result<()> {
+        assert_ne!(&subs[0], &subs[1]);
+
         tokio::try_join!(
             self.repository.remove_friend(&subs[0], &subs[1]),
             self.repository.remove_friend(&subs[1], &subs[0]),
