@@ -39,7 +39,7 @@ pub async fn create(
     if let Some(last_msg) = messages.last() {
         let last_message = LastMessage::from(last_msg);
         chat_service
-            .update_last_message(&last_msg.chat_id, Some(last_message))
+            .update_last_message(&last_msg.chat_id, Some(&last_message))
             .await?;
     }
 
@@ -95,7 +95,7 @@ pub async fn delete(
                 .map(|msg| LastMessage::from(&msg));
 
             chat_service
-                .update_last_message(chat_id, last_message)
+                .update_last_message(chat_id, last_message.as_ref())
                 .await?;
         }
 

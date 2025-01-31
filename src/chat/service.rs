@@ -125,9 +125,9 @@ impl ChatService {
     pub async fn update_last_message(
         &self,
         id: &Id,
-        msg: Option<LastMessage>,
+        msg: Option<&LastMessage>,
     ) -> super::Result<()> {
-        self.repository.update_last_message(id, &msg).await?;
+        self.repository.update_last_message(id, msg).await?;
         if let Some(last_message) = msg {
             if let Err(e) = self
                 .event_service
@@ -135,7 +135,7 @@ impl ChatService {
                     &event::Subject::Notifications(last_message.recipient.clone()),
                     event::Notification::NewMessage {
                         chat_id: id.clone(),
-                        last_message,
+                        last_message: last_message.clone(),
                     },
                 )
                 .await
