@@ -76,13 +76,15 @@ impl Render for Notification {
 
 impl From<Notification> for sse::Event {
     fn from(noti: Notification) -> Self {
-        let event = match noti {
-            Notification::OnlineFriends { .. } => sse::Event::default().event("onlineFriends"),
-            Notification::NewFriend { .. } => sse::Event::default().event("newFriend"),
-            Notification::NewMessage { .. } => sse::Event::default().event("newMessage"),
+        let event_name = match &noti {
+            Notification::OnlineFriends { .. } => "onlineFriends",
+            Notification::NewFriend { .. } => "newFriend",
+            Notification::NewMessage { chat_id, .. } => &format!("newMessage:{}", &chat_id),
         };
 
-        event.data(noti.render().into_string())
+        sse::Event::default()
+            .event(event_name)
+            .data(noti.render().into_string())
     }
 }
 

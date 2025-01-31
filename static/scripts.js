@@ -9,9 +9,20 @@ function askNotificationPermission() {
 }
 
 window.addEventListener("load", function () {
-  document.body.addEventListener("msg:newMessage", function (evt) {
+  document.body.addEventListener("htmx:sseMessage", function (evt) {
+    if (document.hasFocus()) {
+      // don't push notifications if current tab is active
+      return;
+    }
+
     if (Notification?.permission === "granted") {
-      new Notification(evt.detail.message);
+      if (evt.detail.type.startsWith("newMessage")) {
+        new Notification("You've got new message");
+      }
+
+      if (evt.detail.type.startsWith("newFriend")) {
+        new Notification("New friend request");
+      }
     }
   });
 });

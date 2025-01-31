@@ -190,7 +190,10 @@ pub fn last_message(
     sub: Option<&user::Sub>,
 ) -> Markup {
     html! {
-        div id={"lm-"(chat_id)} class="flex-grow text-right truncate" {
+        div id={"lm-"(chat_id)} class="flex-grow text-right truncate"
+            hx-target="this" // override parent's target
+            sse-swap={"newMessage:" (chat_id)}
+        {
             @if let Some(last_message) = lm {
                 span class="last-message text-sm text-gray-500" {
                     ({
