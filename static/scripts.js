@@ -21,7 +21,7 @@ window.addEventListener("load", function () {
       }
 
       if (evt.detail.type.startsWith("newFriend")) {
-        new Notification("New friend request");
+        new Notification("You've got a new friend");
       }
     }
   });

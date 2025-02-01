@@ -191,7 +191,7 @@ pub fn last_message(
 ) -> Markup {
     html! {
         div id={"lm-"(chat_id)} class="flex-grow text-right truncate"
-            hx-target="this" // override parent's target
+            hx-swap="outerHTML" hx-target="this" // override parent's attributes
             sse-swap={"newMessage:" (chat_id)}
         {
             @if let Some(last_message) = lm {
