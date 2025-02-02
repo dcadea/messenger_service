@@ -19,6 +19,8 @@ pub async fn all_chats(logged_user: Extension<UserInfo>, chats: &Vec<ChatDto>) -
 
             div id="chat-list"
                 class="flex flex-col space-y-2 h-full overflow-y-auto"
+                sse-swap="newFriend"
+                hx-swap="beforeend"
             {
                 @for chat in chats {
                     (chat)
@@ -100,6 +102,7 @@ impl Render for ChatDto {
                 id={"c-" (self.id)}
                 hx-get={"/chats/" (self.id)}
                 hx-target="#chat-window"
+                hx-swap="innerHTML"
             {
                 // TODO: wrap in green circle when online
                 img class="w-8 h-8 rounded-full"
@@ -107,7 +110,12 @@ impl Render for ChatDto {
 
                 span class="chat-recipient font-bold mx-2" { (self.recipient_name) }
 
-                (message::markup::last_message(self.last_message.as_ref(), &self.id, Some(&self.sender)))
+                div class="flex-grow text-right truncate"
+                    sse-swap={"newMessage:"(self.id)}
+                    hx-target={"#lm-"(self.id)}
+                {
+                    (message::markup::last_message(self.last_message.as_ref(), &self.id, Some(&self.sender)))
+                }
             }
         }
     }

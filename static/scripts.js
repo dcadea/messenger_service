@@ -15,14 +15,19 @@ window.addEventListener("load", function () {
       return;
     }
 
-    if (Notification?.permission === "granted") {
-      if (evt.detail.type.startsWith("newMessage")) {
-        new Notification("You've got new message");
-      }
+    if (Notification?.permission !== "granted") {
+      return;
+    }
 
-      if (evt.detail.type.startsWith("newFriend")) {
+    var notiType = evt.detail.type.split(":")[0];
+
+    switch (notiType) {
+      case "newMessage":
+        new Notification("You've got new message");
+        break;
+      case "newFriend":
         new Notification("You've got a new friend");
-      }
+        break;
     }
   });
 });

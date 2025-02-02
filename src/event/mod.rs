@@ -59,11 +59,7 @@ impl Render for Notification {
     fn render(&self) -> Markup {
         match self {
             Notification::OnlineFriends { friends: _friends } => todo!(),
-            Notification::NewFriend { chat_dto } => html! {
-                div id="chat-list" hx-swap-oob="afterbegin" {
-                    (chat_dto)
-                }
-            },
+            Notification::NewFriend { chat_dto } => html! { (chat_dto) },
             Notification::NewMessage {
                 chat_id,
                 last_message,
