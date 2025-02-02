@@ -16,7 +16,7 @@ pub async fn home(
     chat_service: State<ChatService>,
 ) -> crate::Result<Wrappable> {
     let chats = chat_service.find_all(&user_info).await?;
-    Ok(Wrappable::new(markup::all_chats(user_info, &chats).await).with_sse())
+    Ok(Wrappable::new(markup::all_chats(user_info, &chats)).with_sse())
 }
 
 pub async fn find_one(

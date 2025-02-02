@@ -8,7 +8,7 @@ use crate::{message, user};
 use super::model::ChatDto;
 use super::Id;
 
-pub async fn all_chats(logged_user: Extension<UserInfo>, chats: &Vec<ChatDto>) -> Markup {
+pub fn all_chats(logged_user: Extension<UserInfo>, chats: &Vec<ChatDto>) -> Markup {
     html! {
         div id="chat-window"
             class="flex flex-col h-full"

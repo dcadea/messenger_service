@@ -48,7 +48,7 @@ impl MessageService {
                 vec![msg.clone()]
             }
             _ => {
-                let messages = self.split_message(msg);
+                let messages = split_message(&self.splitter, msg);
                 self.repository.insert_many(&messages).await?;
                 messages
             }
@@ -97,16 +97,6 @@ impl MessageService {
         }
 
         Ok(None)
-    }
-}
-
-impl MessageService {
-    fn split_message(&self, msg: &Message) -> Vec<Message> {
-        let chunks = self.splitter.chunks(&msg.text);
-
-        chunks
-            .map(|text| msg.with_random_id().with_text(text))
-            .collect::<Vec<Message>>()
     }
 }
 
@@ -196,4 +186,12 @@ impl MessageService {
 
         Ok(seen_qty)
     }
+}
+
+fn split_message(splitter: &TextSplitter<Characters>, msg: &Message) -> Vec<Message> {
+    let chunks = splitter.chunks(&msg.text);
+
+    chunks
+        .map(|text| msg.with_random_id().with_text(text))
+        .collect::<Vec<Message>>()
 }
