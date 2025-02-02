@@ -23,13 +23,13 @@ struct TokenClaims {
 
 pub fn pages<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route("/login", get(markup::login))
+        .route("/login", get(handler::login))
         .with_state(state)
 }
 
 pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route("/sso/login", get(handler::login))
+        .route("/sso/login", get(handler::sso_login))
         .route("/logout", get(handler::logout))
         .route("/callback", get(handler::callback))
         .with_state(state)

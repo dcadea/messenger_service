@@ -66,26 +66,39 @@ impl Render for AddFriend<'_> {
     }
 }
 
-pub fn search_result(friends: &HashSet<Sub>, users: &[UserInfo]) -> Markup {
-    let search_result_class =
-        "absolute w-full bg-white border border-gray-300 rounded-md shadow-lg";
+pub struct SearchResult<'a> {
+    friends: &'a HashSet<Sub>,
+    users: &'a [UserInfo],
+}
 
-    html! {
-        @if users.is_empty() {
-            ul class=({search_result_class}) {
-                li class="px-3 py-2" { "No users found" }
-            }
-        } @else {
-            ul class=({search_result_class}) {
-                @for user in users {
-                    li class="px-3 py-2" {
-                        img class="w-6 h-6 rounded-full float-left"
-                            src=(user.picture)
-                            alt="User avatar" {}
-                        strong.px-3 {(user.name)} (user.nickname)
+impl<'a> SearchResult<'a> {
+    pub fn new(friends: &'a HashSet<Sub>, users: &'a [UserInfo]) -> Self {
+        Self { friends, users }
+    }
+}
 
-                        @if !friends.contains(&user.sub) {
-                            (AddFriend(&user.sub))
+impl Render for SearchResult<'_> {
+    fn render(&self) -> Markup {
+        let search_result_class =
+            "absolute w-full bg-white border border-gray-300 rounded-md shadow-lg";
+
+        html! {
+            @if self.users.is_empty() {
+                ul class=({search_result_class}) {
+                    li class="px-3 py-2" { "No users found" }
+                }
+            } @else {
+                ul class=({search_result_class}) {
+                    @for user in self.users {
+                        li class="px-3 py-2" {
+                            img class="w-6 h-6 rounded-full float-left"
+                                src=(user.picture)
+                                alt="User avatar" {}
+                            strong.px-3 {(user.name)} (user.nickname)
+
+                            @if !self.friends.contains(&user.sub) {
+                                (AddFriend(&user.sub))
+                            }
                         }
                     }
                 }

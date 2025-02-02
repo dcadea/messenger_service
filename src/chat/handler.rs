@@ -16,7 +16,7 @@ pub async fn home(
     chat_service: State<ChatService>,
 ) -> crate::Result<Wrappable> {
     let chats = chat_service.find_all(&user_info).await?;
-    Ok(Wrappable::new(markup::all_chats(user_info, &chats)).with_sse())
+    Ok(Wrappable::new(markup::ChatList::new(&user_info, &chats)).with_sse())
 }
 
 pub async fn find_one(
@@ -43,7 +43,7 @@ pub async fn create(
     let chat = chat_service.create(&logged_user, recipient).await?;
     let recipient = user_service.find_user_info(recipient).await?;
 
-    Ok(markup::active_chat(&chat.id, &recipient))
+    Ok(markup::ActiveChat::new(&chat.id, &recipient).render())
 }
 
 pub async fn delete(
@@ -65,5 +65,5 @@ pub async fn open_chat(
     let chat = chat_service.find_by_id(&chat_id, &logged_user).await?;
     let recipient = user_service.find_user_info(&chat.recipient).await?;
 
-    Ok(markup::active_chat(&chat.id, &recipient))
+    Ok(markup::ActiveChat::new(&chat.id, &recipient).render())
 }

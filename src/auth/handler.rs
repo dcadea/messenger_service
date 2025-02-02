@@ -1,10 +1,11 @@
-use super::service::AuthService;
+use super::{markup, service::AuthService};
 use axum::{
     extract::State,
     response::{IntoResponse, Redirect},
 };
 use axum_extra::extract::cookie::{self, Cookie};
 use axum_extra::extract::{CookieJar, Query};
+use messenger_service::markup::Wrappable;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -13,7 +14,11 @@ pub struct Params {
     state: String,
 }
 
-pub async fn login(auth_service: State<AuthService>) -> impl IntoResponse {
+pub async fn login() -> Wrappable {
+    Wrappable::new(markup::Login)
+}
+
+pub async fn sso_login(auth_service: State<AuthService>) -> impl IntoResponse {
     Redirect::to(&auth_service.authorize().await)
 }
 

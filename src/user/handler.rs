@@ -1,5 +1,5 @@
 use axum::{extract::State, Extension, Form};
-use maud::{html, Markup};
+use maud::{html, Markup, Render};
 use serde::Deserialize;
 
 use super::{markup, model::UserInfo, service::UserService};
@@ -27,5 +27,5 @@ pub async fn search(
         .await
         .unwrap_or(user_info.friends.clone());
 
-    Ok(markup::search_result(&friends, &users))
+    Ok(markup::SearchResult::new(&friends, &users).render())
 }

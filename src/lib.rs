@@ -87,9 +87,9 @@ pub mod markup {
     }
 
     impl Wrappable {
-        pub fn new(content: Markup) -> Self {
+        pub fn new(content: impl Render) -> Self {
             Self {
-                content,
+                content: content.render(),
                 sse: false,
             }
         }

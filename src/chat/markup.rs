@@ -1,4 +1,3 @@
-use axum::Extension;
 use maud::{html, Markup, Render};
 
 use crate::message::markup::MessageInput;
@@ -8,29 +7,42 @@ use crate::{message, user};
 use super::model::ChatDto;
 use super::Id;
 
-pub fn all_chats(logged_user: Extension<UserInfo>, chats: &Vec<ChatDto>) -> Markup {
-    html! {
-        div id="chat-window"
-            class="flex flex-col h-full"
-        {
-            (user::markup::Header(&logged_user))
+pub struct ChatList<'a> {
+    user_info: &'a UserInfo,
+    chats: &'a Vec<ChatDto>,
+}
 
-            (user::markup::Search)
+impl<'a> ChatList<'a> {
+    pub fn new(user_info: &'a UserInfo, chats: &'a Vec<ChatDto>) -> Self {
+        Self { user_info, chats }
+    }
+}
 
-            div id="chat-list"
-                class="flex flex-col space-y-2 h-full overflow-y-auto"
-                sse-swap="newFriend"
-                hx-swap="beforeend"
+impl Render for ChatList<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            div id="chat-window"
+                class="flex flex-col h-full"
             {
-                @for chat in chats {
-                    (chat)
-                }
+                (user::markup::Header(self.user_info))
 
-                i id="noti-bell"
-                    ."fa-regular fa-bell-slash"
-                    ."text-green-700 text-3xl"
-                    ."absolute right-5 bottom-5"
-                    _="on click askNotificationPermission()"{}
+                (user::markup::Search)
+
+                div id="chat-list"
+                    class="flex flex-col space-y-2 h-full overflow-y-auto"
+                    sse-swap="newFriend"
+                    hx-swap="beforeend"
+                {
+                    @for chat in self.chats {
+                        (chat)
+                    }
+
+                    i id="noti-bell"
+                        ."fa-regular fa-bell-slash"
+                        ."text-green-700 text-3xl"
+                        ."absolute right-5 bottom-5"
+                        _="on click askNotificationPermission()"{}
+                }
             }
         }
     }
@@ -53,23 +65,36 @@ impl Render for Header<'_> {
     }
 }
 
-pub fn active_chat(id: &Id, recipient: &UserInfo) -> Markup {
-    html! {
-        (Header(recipient))
+pub struct ActiveChat<'a> {
+    id: &'a Id,
+    recipient: &'a UserInfo,
+}
 
-        div id="active-chat"
-            class="flex-grow overflow-auto mt-4 mb-4"
-            hx-ext="ws" ws-connect={ "/ws/" (id) }
-        {
-            div id="message-list"
-                class="sticky flex flex-col-reverse overflow-auto h-full"
-                hx-get={ "/api/messages?limit=20&chat_id=" (id) }
-                hx-trigger="load" {}
+impl<'a> ActiveChat<'a> {
+    pub fn new(id: &'a Id, recipient: &'a UserInfo) -> Self {
+        Self { id, recipient }
+    }
+}
+
+impl Render for ActiveChat<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            (Header(self.recipient))
+
+            div id="active-chat"
+                class="flex-grow overflow-auto mt-4 mb-4"
+                hx-ext="ws" ws-connect={ "/ws/" (self.id) }
+            {
+                div id="message-list"
+                    class="sticky flex flex-col-reverse overflow-auto h-full"
+                    hx-get={ "/api/messages?limit=20&chat_id=" (self.id) }
+                    hx-trigger="load" {}
+            }
+
+            (MessageInput::new(self.id, &self.recipient.sub))
+
+            (ChatControls(self.id))
         }
-
-        (MessageInput::new(id, &recipient.sub))
-
-        (ChatControls(id))
     }
 }
 
