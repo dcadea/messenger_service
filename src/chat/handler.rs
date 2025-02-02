@@ -15,8 +15,12 @@ pub async fn home(
     user_info: Extension<UserInfo>,
     chat_service: State<ChatService>,
 ) -> crate::Result<Wrappable> {
-    let chats = chat_service.find_all(&user_info).await?;
-    Ok(Wrappable::new(markup::ChatList::new(&user_info, &chats)).with_sse())
+    let chats = &chat_service.find_all(&user_info).await?;
+    Ok(Wrappable::new(markup::ChatWindow {
+        user_info: &user_info,
+        chats,
+    })
+    .with_sse())
 }
 
 pub async fn find_one(
@@ -41,9 +45,11 @@ pub async fn create(
 ) -> crate::Result<Markup> {
     let recipient = &params.sub;
     let chat = chat_service.create(&logged_user, recipient).await?;
-    let recipient = user_service.find_user_info(recipient).await?;
 
-    Ok(markup::ActiveChat::new(&chat.id, &recipient).render())
+    let id = &chat.id;
+    let recipient = &user_service.find_user_info(recipient).await?;
+
+    Ok(markup::ActiveChat { id, recipient }.render())
 }
 
 pub async fn delete(
@@ -62,8 +68,10 @@ pub async fn open_chat(
     chat_service: State<ChatService>,
     user_service: State<UserService>,
 ) -> crate::Result<Markup> {
-    let chat = chat_service.find_by_id(&chat_id, &logged_user).await?;
-    let recipient = user_service.find_user_info(&chat.recipient).await?;
+    let chat = &chat_service.find_by_id(&chat_id, &logged_user).await?;
 
-    Ok(markup::ActiveChat::new(&chat.id, &recipient).render())
+    let id = &chat.id;
+    let recipient = &user_service.find_user_info(&chat.recipient).await?;
+
+    Ok(markup::ActiveChat { id, recipient }.render())
 }

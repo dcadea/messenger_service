@@ -7,18 +7,12 @@ use crate::{message, user};
 use super::model::ChatDto;
 use super::Id;
 
-pub struct ChatList<'a> {
-    user_info: &'a UserInfo,
-    chats: &'a Vec<ChatDto>,
+pub struct ChatWindow<'a> {
+    pub user_info: &'a UserInfo,
+    pub chats: &'a Vec<ChatDto>,
 }
 
-impl<'a> ChatList<'a> {
-    pub fn new(user_info: &'a UserInfo, chats: &'a Vec<ChatDto>) -> Self {
-        Self { user_info, chats }
-    }
-}
-
-impl Render for ChatList<'_> {
+impl Render for ChatWindow<'_> {
     fn render(&self) -> Markup {
         html! {
             div id="chat-window"
@@ -28,21 +22,31 @@ impl Render for ChatList<'_> {
 
                 (user::markup::Search)
 
-                div id="chat-list"
-                    class="flex flex-col space-y-2 h-full overflow-y-auto"
-                    sse-swap="newFriend"
-                    hx-swap="beforeend"
-                {
-                    @for chat in self.chats {
-                        (chat)
-                    }
+                (ChatList(self.chats))
+            }
+        }
+    }
+}
 
-                    i id="noti-bell"
-                        ."fa-regular fa-bell-slash"
-                        ."text-green-700 text-3xl"
-                        ."absolute right-5 bottom-5"
-                        _="on click askNotificationPermission()"{}
+struct ChatList<'a>(&'a Vec<ChatDto>);
+
+impl Render for ChatList<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            div id="chat-list"
+                class="flex flex-col space-y-2 h-full overflow-y-auto"
+                sse-swap="newFriend"
+                hx-swap="beforeend"
+            {
+                @for chat in self.0 {
+                    (chat)
                 }
+
+                i id="noti-bell"
+                    ."fa-regular fa-bell-slash"
+                    ."text-green-700 text-3xl"
+                    ."absolute right-5 bottom-5"
+                    _="on click askNotificationPermission()"{}
             }
         }
     }
@@ -66,14 +70,8 @@ impl Render for Header<'_> {
 }
 
 pub struct ActiveChat<'a> {
-    id: &'a Id,
-    recipient: &'a UserInfo,
-}
-
-impl<'a> ActiveChat<'a> {
-    pub fn new(id: &'a Id, recipient: &'a UserInfo) -> Self {
-        Self { id, recipient }
-    }
+    pub id: &'a Id,
+    pub recipient: &'a UserInfo,
 }
 
 impl Render for ActiveChat<'_> {
