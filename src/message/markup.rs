@@ -189,19 +189,21 @@ pub fn last_message(
     chat_id: &chat::Id,
     sub: Option<&user::Sub>,
 ) -> Markup {
+    let trim_last_message = |last_message: &LastMessage| {
+        let mut text = last_message.text.clone();
+        if text.len() > MAX_LEN {
+            text.truncate(MAX_LEN);
+            text.push_str("...");
+        }
+        text
+    };
+
     html! {
-        div id={"lm-"(chat_id)} {
+        div id={"lm-"(chat_id)}
+            class="last-message text-sm text-gray-500"
+        {
             @if let Some(last_message) = lm {
-                span class="last-message text-sm text-gray-500" {
-                    ({
-                        let mut text = last_message.text.clone();
-                        if text.len() > MAX_LEN {
-                            text.truncate(MAX_LEN);
-                            text.push_str("...");
-                        }
-                        text
-                    })
-                }
+                (trim_last_message(last_message))
 
                 @if let Some(sender) = sub {
                     @if !last_message.seen && last_message.recipient == *sender {
