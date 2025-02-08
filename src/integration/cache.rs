@@ -306,7 +306,7 @@ impl redis::ToRedisArgs for Key {
 impl redis::FromRedisValue for user::Sub {
     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<user::Sub> {
         let s = String::from_redis_value(v)?;
-        Ok(user::Sub(s))
+        Ok(user::Sub(s.into()))
     }
 }
 
@@ -315,7 +315,7 @@ impl redis::ToRedisArgs for user::Sub {
     where
         W: ?Sized + redis::RedisWrite,
     {
-        self.0.write_redis_args(out);
+        self.as_str().write_redis_args(out);
     }
 }
 

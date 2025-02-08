@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use oauth2::{
     basic::BasicClient, AuthUrl, ClientId, ClientSecret, RedirectUrl, RevocationUrl, TokenUrl,
@@ -16,32 +16,33 @@ pub struct Config {
     pub jwks_url: String,
     pub issuer: String,
     pub audience: String,
-    pub required_claims: Vec<String>,
+    pub required_claims: Arc<[String]>,
     pub token_ttl: Duration,
 }
 
 impl Config {
     pub fn new(
-        client_id: String,
-        client_secret: String,
-        redirect_url: String,
-        issuer: String,
-        audience: String,
-        required_claims: Vec<String>,
+        client_id: impl Into<String>,
+        client_secret: impl Into<String>,
+        redirect_url: impl Into<String>,
+        issuer: impl Into<String>,
+        audience: impl Into<String>,
+        required_claims: &[String],
         token_ttl: Duration,
     ) -> Self {
+        let issuer = issuer.into();
         Self {
-            client_id,
-            client_secret,
+            client_id: client_id.into(),
+            client_secret: client_secret.into(),
             auth_url: format!("{issuer}authorize"),
             token_url: format!("{issuer}oauth/token"),
             revocation_url: format!("{issuer}oauth/revoke"),
-            redirect_url,
+            redirect_url: redirect_url.into(),
             userinfo_url: format!("{issuer}userinfo"),
             jwks_url: format!("{issuer}.well-known/jwks.json"),
             issuer,
-            audience,
-            required_claims,
+            audience: audience.into(),
+            required_claims: required_claims.into(),
             token_ttl,
         }
     }

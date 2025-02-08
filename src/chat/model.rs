@@ -56,15 +56,15 @@ impl ChatDto {
         chat: Chat,
         sender: user::Sub,
         recipient: user::Sub,
-        recipient_picture: String,
-        recipient_name: String,
+        recipient_picture: impl Into<String>,
+        recipient_name: impl Into<String>,
     ) -> Self {
         Self {
             id: chat._id,
             sender,
             recipient,
-            recipient_picture,
-            recipient_name,
+            recipient_picture: recipient_picture.into(),
+            recipient_name: recipient_name.into(),
             last_message: chat.last_message,
         }
     }

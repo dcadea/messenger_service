@@ -131,7 +131,8 @@ impl Default for Config {
                 .expect("REQUIRED_CLAIMS must be set")
                 .split(',')
                 .map(String::from)
-                .collect::<Vec<String>>(),
+                .collect::<Vec<String>>()
+                .as_slice(),
             Duration::from_secs(
                 std::env::var("TOKEN_TTL")
                     .unwrap_or("3600".into())

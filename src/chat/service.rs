@@ -234,7 +234,7 @@ impl ChatValidator {
                 let chat = self.repository.find_by_id(chat_id).await?;
                 let members = chat.members;
 
-                self.redis.sadd(cache_key.clone(), &members.clone()).await;
+                self.redis.sadd(cache_key.clone(), &members).await;
                 self.redis.expire(cache_key).await;
 
                 Ok(members)

@@ -31,7 +31,7 @@ impl MessageRepository {
         Ok(())
     }
 
-    pub async fn insert_many(&self, messages: &Vec<Message>) -> super::Result<()> {
+    pub async fn insert_many(&self, messages: &[Message]) -> super::Result<()> {
         let result = self.collection.insert_many(messages).await?;
 
         if result.inserted_ids.len() != messages.len() {
@@ -155,7 +155,7 @@ impl MessageRepository {
         Ok(())
     }
 
-    pub async fn mark_as_seen(&self, ids: &Vec<Id>) -> super::Result<()> {
+    pub async fn mark_as_seen(&self, ids: &[Id]) -> super::Result<()> {
         self.collection
             .update_many(
                 doc! {"_id": {"$in": ids}, "seen": false},

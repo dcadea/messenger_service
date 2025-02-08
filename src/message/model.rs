@@ -16,13 +16,18 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn new(chat_id: chat::Id, owner: user::Sub, recipient: user::Sub, text: &str) -> Self {
+    pub fn new(
+        chat_id: chat::Id,
+        owner: user::Sub,
+        recipient: user::Sub,
+        text: impl Into<String>,
+    ) -> Self {
         Self {
             _id: Id::random(),
             chat_id,
             owner,
             recipient,
-            text: text.to_string(),
+            text: text.into(),
             timestamp: chrono::Utc::now().timestamp(),
             seen: false,
         }

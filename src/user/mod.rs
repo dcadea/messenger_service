@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
 use axum::{routing::post, Router};
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
@@ -25,18 +25,22 @@ pub fn api<S>(state: AppState) -> Router<S> {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct Sub(pub String);
+pub struct Sub(pub Arc<str>);
 
 impl Sub {
-    fn parts(&self) -> (String, String) {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    fn parts(&self) -> (&str, &str) {
         let mut parts = self.0.splitn(2, '|');
         let provider = parts.next().expect("provider must be present");
         let id = parts.next().expect("id must be present");
 
-        (provider.to_string(), id.to_string())
+        (provider, id)
     }
 
-    pub fn id(&self) -> String {
+    pub fn id(&self) -> &str {
         self.parts().1
     }
 }
@@ -62,7 +66,7 @@ impl<'de> Deserialize<'de> for Sub {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        Ok(Sub(s))
+        Ok(Sub(s.into()))
     }
 }
 

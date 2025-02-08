@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use maud::{html, Markup, Render};
 
 use crate::message::markup::MessageInput;
@@ -8,8 +10,21 @@ use super::model::ChatDto;
 use super::Id;
 
 pub struct ChatWindow<'a> {
-    pub user_info: &'a UserInfo,
-    pub chats: &'a Vec<ChatDto>,
+    user_info: &'a UserInfo,
+    chats: Rc<[ChatDto]>,
+}
+
+impl<'a> ChatWindow<'a> {
+    pub fn new(user_info: &'a UserInfo, chats: &[ChatDto]) -> Self {
+        Self {
+            user_info,
+            chats: chats.into(),
+        }
+    }
+
+    fn get_chats(&self) -> &[ChatDto] {
+        &self.chats
+    }
 }
 
 impl Render for ChatWindow<'_> {
@@ -22,15 +37,25 @@ impl Render for ChatWindow<'_> {
 
                 (user::markup::Search)
 
-                (ChatList(self.chats))
+                (ChatList::new(self.get_chats()))
             }
         }
     }
 }
 
-struct ChatList<'a>(&'a Vec<ChatDto>);
+struct ChatList(Rc<[ChatDto]>);
 
-impl Render for ChatList<'_> {
+impl ChatList {
+    fn new(chats: &[ChatDto]) -> Self {
+        Self(chats.into())
+    }
+
+    fn get_chats(&self) -> &[ChatDto] {
+        &self.0
+    }
+}
+
+impl Render for ChatList {
     fn render(&self) -> Markup {
         html! {
             div id="chat-list"
@@ -38,7 +63,7 @@ impl Render for ChatList<'_> {
                 sse-swap="newFriend"
                 hx-swap="beforeend"
             {
-                @for chat in self.0 {
+                @for chat in self.get_chats() {
                     (chat)
                 }
 

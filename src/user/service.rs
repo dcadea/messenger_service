@@ -71,7 +71,7 @@ impl UserService {
             self.repository.remove_friend(&subs[1], &subs[0]),
         )?;
 
-        self.invalidate_friends(subs.into()).await;
+        self.invalidate_friends(subs).await;
 
         Ok(())
     }
@@ -126,9 +126,9 @@ impl UserService {
         }
     }
 
-    async fn invalidate_friends(&self, subs: Vec<Sub>) {
+    async fn invalidate_friends(&self, subs: &[Sub]) {
         for sub in subs {
-            let _: () = self.redis.del(cache::Key::Friends(sub)).await;
+            let _: () = self.redis.del(cache::Key::Friends(sub.to_owned())).await;
         }
     }
 

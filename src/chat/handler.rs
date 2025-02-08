@@ -15,12 +15,8 @@ pub async fn home(
     user_info: Extension<UserInfo>,
     chat_service: State<ChatService>,
 ) -> crate::Result<Wrappable> {
-    let chats = &chat_service.find_all(&user_info).await?;
-    Ok(Wrappable::new(markup::ChatWindow {
-        user_info: &user_info,
-        chats,
-    })
-    .with_sse())
+    let chats = chat_service.find_all(&user_info).await?;
+    Ok(Wrappable::new(markup::ChatWindow::new(&user_info, &chats)).with_sse())
 }
 
 pub async fn find_one(

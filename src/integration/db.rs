@@ -87,7 +87,7 @@ impl From<user::Id> for mongodb::bson::Bson {
 
 impl From<user::Sub> for mongodb::bson::Bson {
     fn from(val: user::Sub) -> Self {
-        mongodb::bson::Bson::String(val.0)
+        mongodb::bson::Bson::String(val.0.to_string())
     }
 }
 
