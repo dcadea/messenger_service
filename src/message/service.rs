@@ -54,15 +54,17 @@ impl MessageService {
             }
         };
 
-        // TODO: publish_all
-        for msg in &messages {
-            self.event_service
-                .publish(
-                    &event::Subject::Messages(msg.recipient.clone(), msg.chat_id.clone()),
-                    event::Message::New(msg.clone()),
-                )
-                .await?;
-        }
+        let message_events: Vec<event::Message> = messages
+            .iter()
+            .map(|m| event::Message::New(m.clone()))
+            .collect();
+
+        self.event_service
+            .publish_all(
+                &event::Subject::Messages(msg.recipient.clone(), msg.chat_id.clone()),
+                &message_events,
+            )
+            .await?;
 
         Ok(messages)
     }

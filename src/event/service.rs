@@ -34,6 +34,17 @@ impl EventService {
         self.pubsub.publish(s, payload.into()).await?;
         Ok(())
     }
+
+    pub async fn publish_all<T: Serialize>(
+        &self,
+        s: &Subject,
+        payloads: &[T],
+    ) -> super::Result<()> {
+        for p in payloads {
+            self.publish(s, p).await?;
+        }
+        Ok(())
+    }
 }
 
 // TODO: online users feature
