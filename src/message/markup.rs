@@ -114,43 +114,42 @@ impl<'a> MessageItem<'a> {
     }
 
     fn hx_trigger(&self) -> Option<&'a str> {
-        if self.is_last {
-            return Some("intersect once");
+        match self.is_last {
+            true => Some("intersect once"),
+            false => None,
         }
-
-        None
     }
 
     fn hx_swap(&self) -> Option<&'a str> {
-        if self.is_last {
-            return Some("afterend");
+        match self.is_last {
+            true => Some("afterend"),
+            false => None,
         }
-
-        None
     }
 
     fn next_page(&self) -> Option<String> {
-        if self.is_last {
-            return Some(format!(
-                "/api/messages?limit=20&chat_id={}&end_time={}",
-                self.msg.chat_id, self.msg.timestamp
-            ));
+        match self.is_last {
+            true => {
+                let path = format!(
+                    "/api/messages?limit=20&chat_id={}&end_time={}",
+                    self.msg.chat_id, self.msg.timestamp
+                );
+                Some(path)
+            }
+            false => None,
         }
-
-        None
     }
 
     fn controls_handler(&self) -> Option<&str> {
-        if self.belongs_to_user() {
-            return Some(
+        match self.belongs_to_user() {
+            true => Some(
                 r#"
                 on mouseover remove .hidden from the first <div.message-controls/> in me
                 on mouseout add .hidden to the first <div.message-controls/> in me
                 "#,
-            );
+            ),
+            false => None,
         }
-
-        None
     }
 }
 

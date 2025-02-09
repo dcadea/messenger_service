@@ -10,16 +10,14 @@ pub mod markup {
 
     pub const EMPTY: PreEscaped<&'static str> = PreEscaped("");
 
-    struct Head<'a> {
-        title: &'a str,
-    }
+    struct Head<'a>(&'a str);
 
     impl Render for Head<'_> {
         fn render(&self) -> Markup {
             html! {
                 head {
                     meta charset="utf-8" {}
-                    title { (self.title) }
+                    title { (self.0) }
                     script src="https://unpkg.com/htmx.org@2.0.3"
                         integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq"
                         crossorigin="anonymous" {}
@@ -39,11 +37,9 @@ pub mod markup {
         }
     }
 
-    struct MainContent {
-        content: Markup,
-    }
+    struct MainContent<'a>(&'a Markup);
 
-    impl Render for MainContent {
+    impl Render for MainContent<'_> {
         fn render(&self) -> Markup {
             html! {
                 div ."main-content"
@@ -51,30 +47,24 @@ pub mod markup {
                     ."bg-white rounded-2xl p-6"
                     ."relative overflow-hidden"
                 {
-                    div id="errors" {}
-                    (self.content)
+                    div #errors {}
+                    (self.0)
                 }
             }
         }
     }
 
     fn base(w: Wrappable) -> Markup {
-        let body_class = "h-screen bg-black flex items-center justify-center";
-        let content = MainContent { content: w.content };
-
         html! {
             (DOCTYPE)
             html {
-                (Head { title: "AWG Messenger" })
+                (Head("AWG Messenger"))
 
-                @if w.sse {
-                    body class=(body_class) hx-ext="sse" sse-connect="/sse" {
-                        (content)
-                    }
-                } @else {
-                    body class=(body_class) {
-                        (content)
-                    }
+                body ."h-screen bg-black flex items-center justify-center"
+                    hx-ext=[w.hx_ext_sse()]
+                    sse-connect=[w.sse_connect()]
+                {
+                    (MainContent(&w.content))
                 }
             }
         }
@@ -97,6 +87,20 @@ pub mod markup {
         pub fn with_sse(mut self) -> Self {
             self.sse = true;
             self
+        }
+
+        fn hx_ext_sse(&self) -> Option<&str> {
+            match self.sse {
+                true => Some("sse"),
+                false => None,
+            }
+        }
+
+        fn sse_connect(&self) -> Option<&str> {
+            match self.sse {
+                true => Some("/sse"),
+                false => None,
+            }
         }
     }
 
