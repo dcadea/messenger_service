@@ -22,7 +22,7 @@ impl<'a> MessageInput<'a> {
 impl Render for MessageInput<'_> {
     fn render(&self) -> Markup {
         html! {
-            form #"message-input" ."border-gray-200 flex"
+            form #message-input ."border-gray-200 flex"
                 hx-post="/api/messages"
                 hx-target="#message-list"
                 hx-swap="afterbegin"

@@ -30,13 +30,9 @@ impl<'a> ChatWindow<'a> {
 impl Render for ChatWindow<'_> {
     fn render(&self) -> Markup {
         html! {
-            div id="chat-window"
-                class="flex flex-col h-full"
-            {
+            div #chat-window ."flex flex-col h-full" {
                 (user::markup::Header(self.user_info))
-
                 (user::markup::Search)
-
                 (ChatList::new(self.get_chats()))
             }
         }
@@ -58,8 +54,7 @@ impl ChatList {
 impl Render for ChatList {
     fn render(&self) -> Markup {
         html! {
-            div id="chat-list"
-                class="flex flex-col space-y-2 h-full overflow-y-auto"
+            div #chat-list ."flex flex-col space-y-2 h-full overflow-y-auto"
                 sse-swap="newFriend"
                 hx-swap="beforeend"
             {
@@ -67,7 +62,7 @@ impl Render for ChatList {
                     (chat)
                 }
 
-                i id="noti-bell"
+                i #noti-bell
                     ."fa-regular fa-bell-slash"
                     ."text-green-700 text-3xl"
                     ."absolute right-5 bottom-5"
@@ -82,12 +77,11 @@ struct Header<'a>(&'a UserInfo);
 impl Render for Header<'_> {
     fn render(&self) -> Markup {
         html! {
-            header id="recipient-header"
-                class="flex justify-between items-center relative" {
-                a class="cursor-pointer border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
+            header #recipient-header ."flex justify-between items-center relative" {
+                a ."cursor-pointer border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
                     href="/" { "X" }
-                h2 class="text-2xl" { (self.0.name) }
-                span class="online-status absolute inset-12 flex items-center justify-center text-xs text-gray-500" { "offline" }
+                h2 .text-2xl { (self.0.name) }
+                span ."online-status absolute inset-12 flex items-center justify-center text-xs text-gray-500" { "offline" }
                 (Icon::ChatControls)
             }
         }
@@ -104,18 +98,16 @@ impl Render for ActiveChat<'_> {
         html! {
             (Header(self.recipient))
 
-            div id="active-chat"
-                class="flex-grow overflow-auto mt-4 mb-4"
-                hx-ext="ws" ws-connect={ "/ws/" (self.id) }
+            div #active-chat ."flex-grow overflow-auto mt-4 mb-4"
+                hx-ext="ws"
+                ws-connect={ "/ws/" (self.id) }
             {
-                div id="message-list"
-                    class="sticky flex flex-col-reverse overflow-auto h-full"
+                div #message-list ."sticky flex flex-col-reverse overflow-auto h-full"
                     hx-get={ "/api/messages?limit=20&chat_id=" (self.id) }
                     hx-trigger="load" {}
             }
 
             (MessageInput::new(self.id, &self.recipient.sub))
-
             (ChatControls(self.id))
         }
     }
@@ -128,14 +120,13 @@ impl Render for ChatControls<'_> {
         let controls_item_class = "text-lg py-3 cursor-pointer hover:bg-gray-300";
 
         html! {
-            div id="chat-controls"
-                ."flex flex-row h-full w-full absolute top-0 left-0 invisible" {
-                div class="chat-controls-overlay w-2/3 bg-gray-300 bg-opacity-50"
+            div #chat-controls ."flex flex-row h-full w-full absolute top-0 left-0 invisible" {
+                div ."chat-controls-overlay w-2/3 bg-gray-300 bg-opacity-50"
                     _="on click add .invisible to #chat-controls" {}
 
-                div class="flex flex-col bg-white h-full w-1/3 py-4 text-center" {
-                    div class="text-2xl py-3" { "Settings" }
-                    div class=(controls_item_class)
+                div ."flex flex-col bg-white h-full w-1/3 py-4 text-center" {
+                    div ."text-2xl py-3" { "Settings" }
+                    div .(controls_item_class)
                         hx-delete={"/api/chats/" (self.0)} { "Delete chat" }
                 }
             }
@@ -146,19 +137,19 @@ impl Render for ChatControls<'_> {
 impl Render for ChatDto {
     fn render(&self) -> Markup {
         html! {
-            div class="chat-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center"
-                id={"c-" (self.id)}
+            div #{"c-" (self.id)}
+                ."chat-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center"
                 hx-get={"/chats/" (self.id)}
                 hx-target="#chat-window"
                 hx-swap="innerHTML"
             {
                 // TODO: wrap in green circle when online
-                img class="w-8 h-8 rounded-full"
+                img ."w-8 h-8 rounded-full"
                     src=(self.recipient_picture) alt="Recipient avatar" {}
 
-                span class="chat-recipient font-bold mx-2" { (self.recipient_name) }
+                span ."chat-recipient font-bold mx-2" { (self.recipient_name) }
 
-                div class="flex-grow text-right truncate"
+                div ."flex-grow text-right truncate"
                     sse-swap={"newMessage:"(self.id)}
                     hx-target={"#lm-"(self.id)}
                 {
@@ -179,10 +170,10 @@ impl Render for Icon {
         html! {
             @match self {
                 Self::ChatControls => {
-                    i class="fa-solid fa-bars text-2xl cursor-pointer"
+                    i ."fa-solid fa-bars text-2xl cursor-pointer"
                         _="on click toggle .invisible on #chat-controls" {}
                 },
-                Self::Unseen => i class="fa-solid fa-envelope text-green-600 ml-2" {}
+                Self::Unseen => i ."fa-solid fa-envelope text-green-600 ml-2" {}
             }
 
         }
