@@ -22,8 +22,7 @@ impl<'a> MessageInput<'a> {
 impl Render for MessageInput<'_> {
     fn render(&self) -> Markup {
         html! {
-            form id="message-input"
-                class="border-gray-200 flex"
+            form #"message-input" ."border-gray-200 flex"
                 hx-post="/api/messages"
                 hx-target="#message-list"
                 hx-swap="afterbegin"
@@ -33,14 +32,14 @@ impl Render for MessageInput<'_> {
                 input type="hidden" name="chat_id" value=(self.chat_id) {}
                 input type="hidden" name="recipient" value=(self.recipient) {}
 
-                input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none"
+                input ."border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none"
                     type="text"
                     name="text"
                     placeholder="Type your message..."
                     autocomplete="off"
                     _="on keyup if the event's key is 'Escape' set value of me to ''" {}
 
-                input class="bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700"
+                input ."bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700"
                     type="submit"
                     value="Send" {}
             }
@@ -102,81 +101,102 @@ impl<'a> MessageItem<'a> {
         }
     }
 
-    pub fn as_last(&'a mut self) -> &'a Self {
+    fn as_last(&'a mut self) -> &'a Self {
         self.is_last = true;
         self
     }
-}
 
-impl Render for MessageItem<'_> {
-    fn render(&self) -> Markup {
-        let belongs_to_user = match self.sub {
+    fn belongs_to_user(&self) -> bool {
+        match self.sub {
             Some(sub) => self.msg.owner == *sub,
             None => false,
-        };
-
-        let message_class = "message-item flex items-end relative";
-        let hyperscript = if belongs_to_user {
-            r#"
-            on mouseover remove .hidden from the first <div.message-controls/> in me
-            on mouseout add .hidden to the first <div.message-controls/> in me
-            "#
-        } else {
-            // maud does not support conditional attributes
-            ""
-        };
-
-        html! {
-            @if self.is_last {
-                div id={"m-" (self.msg._id)}
-                    .{(message_class)}
-                    .justify-end[belongs_to_user]
-                    hx-trigger="intersect once"
-                    hx-swap="afterend"
-                    hx-get={ "/api/messages?limit=20&chat_id=" (self.msg.chat_id) "&end_time=" (self.msg.timestamp) }
-                    _=(hyperscript)
-                {
-                    (message_bubble(self.msg, belongs_to_user))
-                }
-            } @else {
-                div id={"m-" (self.msg._id)}
-                    .{(message_class)}
-                    .justify-end[belongs_to_user]
-                    _=(hyperscript)
-                {
-                    (message_bubble(self.msg, belongs_to_user))
-                }
-            }
         }
+    }
+
+    fn hx_trigger(&self) -> Option<&'a str> {
+        if self.is_last {
+            return Some("intersect once");
+        }
+
+        None
+    }
+
+    fn hx_swap(&self) -> Option<&'a str> {
+        if self.is_last {
+            return Some("afterend");
+        }
+
+        None
+    }
+
+    fn next_page(&self) -> Option<String> {
+        if self.is_last {
+            return Some(format!(
+                "/api/messages?limit=20&chat_id={}&end_time={}",
+                self.msg.chat_id, self.msg.timestamp
+            ));
+        }
+
+        None
+    }
+
+    fn controls_handler(&self) -> Option<&str> {
+        if self.belongs_to_user() {
+            return Some(
+                r#"
+                on mouseover remove .hidden from the first <div.message-controls/> in me
+                on mouseout add .hidden to the first <div.message-controls/> in me
+                "#,
+            );
+        }
+
+        None
     }
 }
 
-fn message_bubble(msg: &Message, belongs_to_user: bool) -> Markup {
-    let message_timestamp = DateTime::from_timestamp(msg.timestamp, 0).map(|dt| dt.format("%H:%M"));
+const MESSAGE_CLASS: &str = "message-item flex items-end relative";
+const MESSAGE_BUBBLE_CLASS: &str = "message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs";
+const MESSAGE_TEXT_CLASS: &str =
+    "message-text break-words overflow-hidden mr-2 whitespace-normal font-light";
 
-    html! {
-        @if belongs_to_user {
-            div class="message-controls hidden pb-2" {
-                (Icon::Delete(&msg._id))
+impl Render for MessageItem<'_> {
+    fn render(&self) -> Markup {
+        let belongs_to_user = self.belongs_to_user();
 
-                // TODO: Add edit handler
-                (Icon::Edit)
-            }
+        let message_timestamp =
+            DateTime::from_timestamp(self.msg.timestamp, 0).map(|dt| dt.format("%H:%M"));
 
-            (Icon::Sent)
+        html! {
+            div #{"m-" (self.msg._id)}
+                .(MESSAGE_CLASS)
+                .justify-end[belongs_to_user]
+                hx-trigger=[self.hx_trigger()]
+                hx-swap=[self.hx_swap()]
+                hx-get=[self.next_page()]
+                _=[self.controls_handler()]
+            {
+                @if belongs_to_user {
+                    div ."message-controls hidden pb-2" {
+                        (Icon::Delete(&self.msg._id))
+                        (Icon::Edit) // TODO: Add edit handler
+                    }
 
-            @if msg.seen {
-                (Icon::Seen)
-            }
-        }
+                    (Icon::Sent)
 
-        div ."message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs"
-            ."bg-blue-600 text-white ml-2"[belongs_to_user]
-            ."bg-gray-300 text-gray-600"[!belongs_to_user] {
+                    @if self.msg.seen {
+                        (Icon::Seen)
+                    }
+                }
 
-            p class="message-text break-words overflow-hidden mr-2 whitespace-normal font-light" lang="en" { (msg.text) }
-            @if let Some(mt) = message_timestamp {
-                span class="message-timestamp text-xs opacity-65" { (mt) }
+                div .(MESSAGE_BUBBLE_CLASS)
+                    ."bg-blue-600 text-white ml-2"[belongs_to_user]
+                    ."bg-gray-300 text-gray-600"[!belongs_to_user] {
+
+                    p .(MESSAGE_TEXT_CLASS) lang="en" { (self.msg.text) }
+                    @if let Some(timestamp) = message_timestamp {
+                        span ."message-timestamp text-xs opacity-65" { (timestamp) }
+                    }
+                }
             }
         }
     }
@@ -199,9 +219,7 @@ pub fn last_message(
     };
 
     html! {
-        div id={"lm-"(chat_id)}
-            class="last-message text-sm text-gray-500"
-        {
+        div #{"lm-"(chat_id)} ."last-message text-sm text-gray-500" {
             @if let Some(last_message) = lm {
                 (trim_last_message(last_message))
 
@@ -228,15 +246,15 @@ impl Render for Icon<'_> {
     fn render(&self) -> Markup {
         html! {
             @match self {
-                Self::Edit => i class="fa-pen fa-solid ml-2 text-green-700 cursor-pointer" {},
+                Self::Edit => i ."fa-pen fa-solid ml-2 text-green-700 cursor-pointer" {},
                 Self::Delete(id) => {
-                    i class="fa-trash-can fa-solid text-red-700 cursor-pointer"
+                    i ."fa-trash-can fa-solid text-red-700 cursor-pointer"
                         hx-delete={"/api/messages/" (id)}
                         hx-target={"#m-" (id)}
                         hx-swap="outerHTML swap:200ms" {}
                 },
-                Self::Sent => i class="fa-solid fa-check absolute bottom-1 right-1 text-white opacity-65" {},
-                Self::Seen => i class="fa-solid fa-check absolute bottom-1 right-2.5 text-white opacity-65" {},
+                Self::Sent => i ."fa-solid fa-check absolute bottom-1 right-1 text-white opacity-65" {},
+                Self::Seen => i ."fa-solid fa-check absolute bottom-1 right-2.5 text-white opacity-65" {},
             }
         }
     }
