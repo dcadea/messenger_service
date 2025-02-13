@@ -26,12 +26,13 @@ pub async fn logout(
     auth_service: State<AuthService>,
     jar: CookieJar,
 ) -> super::Result<impl IntoResponse> {
-    if let Some(sid) = jar.get(super::SESSION_ID) {
-        auth_service.invalidate_token(sid.value()).await?;
-        return Ok((CookieJar::new(), Redirect::to("/login")));
+    match jar.get(super::SESSION_ID) {
+        Some(sid) => auth_service
+            .invalidate_token(sid.value())
+            .await
+            .map(|_| (CookieJar::new(), Redirect::to("/login"))),
+        None => Ok((jar, Redirect::to("/login"))),
     }
-
-    Ok((jar, Redirect::to("/login")))
 }
 
 pub async fn callback(

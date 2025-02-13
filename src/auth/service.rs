@@ -180,9 +180,13 @@ impl AuthService {
     }
 
     async fn validate_state(&self, csrf: &str) -> super::Result<()> {
-        let csrf = cache::Key::Csrf(csrf.to_string());
-        let csrf = self.redis.get_del::<String>(csrf).await;
-        csrf.map(|_| ()).ok_or(super::Error::InvalidState)
+        let cache_key = cache::Key::Csrf(csrf.to_string());
+        let cached_csrf = self.redis.get_del::<String>(cache_key).await;
+
+        cached_csrf
+            .filter(|cc| cc == csrf)
+            .map(|_| ())
+            .ok_or(super::Error::InvalidState)
     }
 }
 
