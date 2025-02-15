@@ -61,7 +61,7 @@ impl MessageService {
 
         self.event_service
             .publish_all(
-                &event::Subject::Messages(msg.recipient.clone(), msg.chat_id.clone()),
+                &event::Subject::Messages(&msg.recipient, &msg.chat_id),
                 &message_events,
             )
             .await?;
@@ -89,8 +89,8 @@ impl MessageService {
         let msg = msg.with_text(text);
         self.event_service
             .publish(
-                &event::Subject::Messages(msg.recipient.clone(), msg.chat_id.clone()),
-                event::Message::Updated(msg.clone()),
+                &event::Subject::Messages(&msg.recipient, &msg.chat_id),
+                &event::Message::Updated(msg.clone()),
             )
             .await?;
 
@@ -109,8 +109,8 @@ impl MessageService {
 
         self.event_service
             .publish(
-                &event::Subject::Messages(msg.recipient.clone(), chat_id.clone()),
-                event::Message::Deleted(id.clone()),
+                &event::Subject::Messages(&msg.recipient, chat_id),
+                &event::Message::Deleted(id.clone()),
             )
             .await?;
 
@@ -197,11 +197,13 @@ impl MessageService {
 
         let owner = owner.expect("no owner present");
         let seen_qty = messages.len();
+
+        // TODO: publish all
         for msg in messages {
             self.event_service
                 .publish(
-                    &event::Subject::Messages(owner.clone(), msg.chat_id.clone()),
-                    event::Message::Seen(msg.clone()),
+                    &event::Subject::Messages(&owner, &msg.chat_id),
+                    &event::Message::Seen(msg.clone()),
                 )
                 .await?;
         }

@@ -17,7 +17,7 @@ pub mod sse {
     ) -> sse::Sse<impl Stream<Item = Result<sse::Event, Infallible>>> {
         let stream = async_stream::stream! {
             let mut noti_stream = event_service
-                .subscribe::<Notification>(&Subject::Notifications(user_info.sub))
+                .subscribe::<Notification>(&Subject::Notifications(&user_info.sub))
                 .await
                 .expect("failed to subscribe to subject"); // FIXME
 
@@ -134,7 +134,7 @@ pub mod ws {
         chat_service: ChatService,
     ) {
         let mut messages_stream = match event_service
-            .subscribe::<Message>(&Subject::Messages(logged_sub.clone(), chat_id))
+            .subscribe::<Message>(&Subject::Messages(&logged_sub, &chat_id))
             .await
         {
             Ok(stream) => stream,

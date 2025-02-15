@@ -26,12 +26,12 @@ pub fn api<S>(state: AppState) -> Router<S> {
 pub type PayloadStream<T> = Pin<Box<dyn Stream<Item = T> + Send>>;
 
 #[derive(Clone, Debug)]
-pub enum Subject {
-    Notifications(user::Sub),
-    Messages(user::Sub, chat::Id),
+pub enum Subject<'a> {
+    Notifications(&'a user::Sub),
+    Messages(&'a user::Sub, &'a chat::Id),
 }
 
-impl async_nats::subject::ToSubject for &Subject {
+impl async_nats::subject::ToSubject for &Subject<'_> {
     fn to_subject(&self) -> async_nats::Subject {
         match self {
             Subject::Notifications(sub) => format!("noti.{sub}").into(),

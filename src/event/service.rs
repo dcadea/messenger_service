@@ -17,7 +17,7 @@ impl EventService {
 impl EventService {
     pub async fn subscribe<T: DeserializeOwned>(
         &self,
-        s: &Subject,
+        s: &Subject<'_>,
     ) -> super::Result<PayloadStream<T>> {
         let subscriber = self.pubsub.subscribe(s).await?;
 
@@ -29,15 +29,15 @@ impl EventService {
         Ok(stream.boxed())
     }
 
-    pub async fn publish<T: Serialize>(&self, s: &Subject, payload: T) -> super::Result<()> {
-        let payload = serde_json::to_vec(&payload)?;
+    pub async fn publish<T: Serialize>(&self, s: &Subject<'_>, payload: &T) -> super::Result<()> {
+        let payload = serde_json::to_vec(payload)?;
         self.pubsub.publish(s, payload.into()).await?;
         Ok(())
     }
 
     pub async fn publish_all<T: Serialize>(
         &self,
-        s: &Subject,
+        s: &Subject<'_>,
         payloads: &[T],
     ) -> super::Result<()> {
         for p in payloads {
