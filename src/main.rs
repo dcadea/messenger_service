@@ -66,6 +66,10 @@ fn app(app_state: AppState, env: &Environment) -> Router {
                 .merge(message::api(app_state.clone()))
                 .merge(user::api(app_state.clone())),
         )
+        .nest(
+            "/templates",
+            Router::new().merge(message::templates(app_state.clone())),
+        )
         .route_layer(
             ServiceBuilder::new()
                 .layer(from_fn_with_state(app_state.clone(), validate_sid))

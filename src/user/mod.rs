@@ -20,7 +20,7 @@ pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
 pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route("/users/search", post(handler::search))
+        .route("/users/search", post(handler::api::search))
         .with_state(state)
 }
 

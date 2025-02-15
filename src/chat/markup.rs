@@ -107,7 +107,7 @@ impl Render for ActiveChat<'_> {
                     hx-trigger="load" {}
             }
 
-            (MessageInput::new(self.id, &self.recipient.sub))
+            (MessageInput::blank(self.id, &self.recipient.sub))
             (ChatControls(self.id))
         }
     }

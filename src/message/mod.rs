@@ -34,9 +34,22 @@ impl Display for Id {
 
 pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
-        .route("/messages", post(handler::create))
-        .route("/messages", get(handler::find_all))
-        .route("/messages/:id", delete(handler::delete))
+        .route("/messages", post(handler::api::create))
+        .route("/messages", get(handler::api::find_all))
+        .route("/messages/:id", delete(handler::api::delete))
+        .with_state(state)
+}
+
+pub fn templates<S>(state: AppState) -> Router<S> {
+    Router::new()
+        .route(
+            "/messages/input/blank",
+            get(handler::templates::message_input_blank),
+        )
+        .route(
+            "/messages/input/edit",
+            get(handler::templates::message_input_edit),
+        )
         .with_state(state)
 }
 

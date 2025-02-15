@@ -8,14 +8,70 @@ use super::{
     Id,
 };
 
+pub enum MessageInputType<'a> {
+    Blank,
+    Edit(&'a Id),
+}
+
 pub struct MessageInput<'a> {
     chat_id: &'a chat::Id,
     recipient: &'a user::Sub,
+    input_type: MessageInputType<'a>,
 }
 
 impl<'a> MessageInput<'a> {
-    pub fn new(chat_id: &'a chat::Id, recipient: &'a user::Sub) -> Self {
-        Self { chat_id, recipient }
+    pub fn blank(chat_id: &'a chat::Id, recipient: &'a user::Sub) -> Self {
+        Self {
+            chat_id,
+            recipient,
+            input_type: MessageInputType::Blank,
+        }
+    }
+
+    pub fn edit(message_id: &'a Id, chat_id: &'a chat::Id, recipient: &'a user::Sub) -> Self {
+        Self {
+            chat_id,
+            recipient,
+            input_type: MessageInputType::Edit(message_id),
+        }
+    }
+
+    fn hx_post(&self) -> Option<&'a str> {
+        match self.input_type {
+            MessageInputType::Blank => Some("/api/messages"),
+            MessageInputType::Edit(_) => None,
+        }
+    }
+
+    fn hx_put(&self) -> Option<String> {
+        match self.input_type {
+            MessageInputType::Blank => None,
+            MessageInputType::Edit(message_id) => Some(format!("/api/messages/{message_id}")),
+        }
+    }
+
+    fn hx_target(&self) -> Option<String> {
+        match self.input_type {
+            MessageInputType::Blank => Some("#message-list".into()),
+            MessageInputType::Edit(message_id) => Some(format!("#{message_id}")),
+        }
+    }
+
+    fn hx_swap(&self) -> &'a str {
+        match self.input_type {
+            MessageInputType::Blank => "afterbegin",
+            MessageInputType::Edit(_) => "outerHTML",
+        }
+    }
+
+    fn submit_handler(&self) -> &str {
+        match self.input_type {
+            MessageInputType::Blank => {
+                r#"on htmx:afterRequest reset() me
+                    on htmx:afterRequest go to the bottom of the #message-list"#
+            }
+            MessageInputType::Edit(_) => todo!(),
+        }
     }
 }
 
@@ -23,12 +79,15 @@ impl Render for MessageInput<'_> {
     fn render(&self) -> Markup {
         html! {
             form #message-input ."border-gray-200 flex"
-                hx-post="/api/messages"
-                hx-target="#message-list"
-                hx-swap="afterbegin"
-                _="on htmx:afterRequest reset() me
-                   on htmx:afterRequest go to the bottom of the #message-list"
+                hx-post=[self.hx_post()] // Depending on MessageInputType
+                hx-put=[self.hx_put()]   // it's either post or put
+                hx-target=[self.hx_target()]
+                hx-swap=(self.hx_swap())
+                _=(self.submit_handler())
             {
+                @if let MessageInputType::Edit(message_id) = self.input_type {
+                    input type="hidden" name="message_id" value=(message_id) {}
+                }
                 input type="hidden" name="chat_id" value=(self.chat_id) {}
                 input type="hidden" name="recipient" value=(self.recipient) {}
 
@@ -177,7 +236,7 @@ impl Render for MessageItem<'_> {
                 @if belongs_to_user {
                     div ."message-controls hidden pb-2" {
                         (Icon::Delete(&self.msg._id))
-                        (Icon::Edit) // TODO: Add edit handler
+                        (Icon::Edit(&self.msg._id))
                     }
 
                     (Icon::Sent)
@@ -235,7 +294,7 @@ pub fn last_message(
 }
 
 pub enum Icon<'a> {
-    Edit,
+    Edit(&'a Id),
     Delete(&'a Id),
     Sent,
     Seen,
@@ -245,7 +304,10 @@ impl Render for Icon<'_> {
     fn render(&self) -> Markup {
         html! {
             @match self {
-                Self::Edit => i ."fa-pen fa-solid ml-2 text-green-700 cursor-pointer" {},
+                Self::Edit(id) =>
+                i ."fa-pen fa-solid ml-2 text-green-700 cursor-pointer"
+                    hx-get={"/messages/input/edit?message_id=" (id) "&chat_id=" (todo!()) "&recipient=" (todo!())}
+                    {},
                 Self::Delete(id) => {
                     i ."fa-trash-can fa-solid text-red-700 cursor-pointer"
                         hx-delete={"/api/messages/" (id)}
