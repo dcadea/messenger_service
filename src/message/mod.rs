@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use axum::{
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
@@ -36,6 +36,7 @@ pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/messages", post(handler::api::create))
         .route("/messages", get(handler::api::find_all))
+        .route("/messages", put(handler::api::update))
         .route("/messages/:id", delete(handler::api::delete))
         .with_state(state)
 }

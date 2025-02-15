@@ -80,6 +80,24 @@ pub(super) mod api {
         Ok(markup::MessageList::append(&messages, logged_sub).render())
     }
 
+    #[derive(Deserialize)]
+    pub struct UpdateParams {
+        message_id: Id,
+        text: String,
+    }
+
+    pub async fn update(
+        user_info: Extension<UserInfo>,
+        message_service: State<MessageService>,
+        Form(params): Form<UpdateParams>,
+    ) -> crate::Result<Markup> {
+        let msg = message_service
+            .update(&user_info.sub, &params.message_id, &params.text)
+            .await?;
+
+        Ok(markup::MessageItem::new(&msg, Some(&user_info.sub)).render())
+    }
+
     pub async fn delete(
         user_info: Extension<UserInfo>,
         Path(id): Path<Id>,
@@ -108,14 +126,17 @@ pub(super) mod api {
 }
 
 pub(super) mod templates {
-    use axum::extract::Query;
+    use axum::{
+        extract::{Query, State},
+        Extension,
+    };
     use maud::{Markup, Render};
     use serde::Deserialize;
 
     use crate::{
         chat,
-        message::{self, markup},
-        user,
+        message::{self, markup, service::MessageService},
+        user::{self, model::UserInfo},
     };
 
     #[derive(Deserialize)]
@@ -125,17 +146,25 @@ pub(super) mod templates {
     }
 
     pub async fn message_input_blank(params: Query<BlankParams>) -> Markup {
-        markup::MessageInput::blank(&params.chat_id, &params.recipient).render()
+        markup::InputBlank::new(&params.chat_id, &params.recipient).render()
     }
 
     #[derive(Deserialize)]
     pub struct EditParams {
         message_id: message::Id,
-        chat_id: chat::Id,
-        recipient: user::Sub,
     }
 
-    pub async fn message_input_edit(params: Query<EditParams>) -> Markup {
-        markup::MessageInput::edit(&params.message_id, &params.chat_id, &params.recipient).render()
+    pub async fn message_input_edit(
+        user_info: Extension<UserInfo>,
+        params: Query<EditParams>,
+        message_service: State<MessageService>,
+    ) -> crate::Result<Markup> {
+        let msg = message_service.find_by_id(&params.message_id).await?;
+
+        if msg.owner != user_info.sub {
+            return Err(crate::error::Error::from(message::Error::NotOwner));
+        }
+
+        Ok(markup::InputEdit::new(&msg._id, &msg.text).render())
     }
 }

@@ -8,100 +8,93 @@ use super::{
     Id,
 };
 
-pub enum MessageInputType<'a> {
-    Blank,
-    Edit(&'a Id),
+pub struct InputBlank<'a> {
+    pub chat_id: &'a chat::Id,
+    pub recipient: &'a user::Sub,
 }
 
-pub struct MessageInput<'a> {
-    chat_id: &'a chat::Id,
-    recipient: &'a user::Sub,
-    input_type: MessageInputType<'a>,
-}
-
-impl<'a> MessageInput<'a> {
-    pub fn blank(chat_id: &'a chat::Id, recipient: &'a user::Sub) -> Self {
-        Self {
-            chat_id,
-            recipient,
-            input_type: MessageInputType::Blank,
-        }
-    }
-
-    pub fn edit(message_id: &'a Id, chat_id: &'a chat::Id, recipient: &'a user::Sub) -> Self {
-        Self {
-            chat_id,
-            recipient,
-            input_type: MessageInputType::Edit(message_id),
-        }
-    }
-
-    fn hx_post(&self) -> Option<&'a str> {
-        match self.input_type {
-            MessageInputType::Blank => Some("/api/messages"),
-            MessageInputType::Edit(_) => None,
-        }
-    }
-
-    fn hx_put(&self) -> Option<String> {
-        match self.input_type {
-            MessageInputType::Blank => None,
-            MessageInputType::Edit(message_id) => Some(format!("/api/messages/{message_id}")),
-        }
-    }
-
-    fn hx_target(&self) -> Option<String> {
-        match self.input_type {
-            MessageInputType::Blank => Some("#message-list".into()),
-            MessageInputType::Edit(message_id) => Some(format!("#{message_id}")),
-        }
-    }
-
-    fn hx_swap(&self) -> &'a str {
-        match self.input_type {
-            MessageInputType::Blank => "afterbegin",
-            MessageInputType::Edit(_) => "outerHTML",
-        }
-    }
-
-    fn submit_handler(&self) -> &str {
-        match self.input_type {
-            MessageInputType::Blank => {
-                r#"on htmx:afterRequest reset() me
-                    on htmx:afterRequest go to the bottom of the #message-list"#
-            }
-            MessageInputType::Edit(_) => todo!(),
-        }
+impl<'a> InputBlank<'a> {
+    pub fn new(chat_id: &'a chat::Id, recipient: &'a user::Sub) -> Self {
+        Self { chat_id, recipient }
     }
 }
 
-impl Render for MessageInput<'_> {
+impl Render for InputBlank<'_> {
     fn render(&self) -> Markup {
         html! {
             form #message-input ."border-gray-200 flex"
-                hx-post=[self.hx_post()] // Depending on MessageInputType
-                hx-put=[self.hx_put()]   // it's either post or put
-                hx-target=[self.hx_target()]
-                hx-swap=(self.hx_swap())
-                _=(self.submit_handler())
+                hx-post="/api/messages"
+                hx-target="#message-list"
+                hx-swap="afterbegin"
+                _=r#"
+                    on htmx:afterRequest reset() me
+                    on htmx:afterRequest go to the bottom of the #message-list
+                "#
             {
-                @if let MessageInputType::Edit(message_id) = self.input_type {
-                    input type="hidden" name="message_id" value=(message_id) {}
-                }
                 input type="hidden" name="chat_id" value=(self.chat_id) {}
                 input type="hidden" name="recipient" value=(self.recipient) {}
-
-                input ."border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none"
-                    type="text"
-                    name="text"
-                    placeholder="Type your message..."
-                    autocomplete="off"
-                    _="on keyup if the event's key is 'Escape' set value of me to ''" {}
-
-                input ."bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700"
-                    type="submit"
-                    value="Send" {}
+                (InputText(None))
+                (SendButton)
             }
+        }
+    }
+}
+
+pub struct InputEdit<'a> {
+    message_id: &'a Id,
+    old_text: &'a str,
+}
+
+impl<'a> InputEdit<'a> {
+    pub fn new(message_id: &'a Id, old_text: &'a str) -> Self {
+        Self {
+            message_id,
+            old_text,
+        }
+    }
+}
+
+impl Render for InputEdit<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            form #message-input ."border-gray-200 flex"
+                hx-put="/api/messages"
+                hx-target={"#m-" (self.message_id)}
+                hx-swap="outerHTML"
+                _="on htmx:afterRequest reset() me" // todo: request blank template
+            {
+                input type="hidden" name="message_id" value=(self.message_id) {}
+                (InputText(Some(self.old_text)))
+                (SendButton)
+            }
+        }
+    }
+}
+
+struct InputText<'a>(Option<&'a str>);
+
+impl Render for InputText<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            input ."border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none"
+                type="text"
+                name="text"
+                value=[self.0]
+                placeholder="Type your message..."
+                autocomplete="off"
+                _="on keyup if the event's key is 'Escape' set value of me to ''" {}
+        }
+    }
+}
+
+struct SendButton;
+
+impl Render for SendButton {
+    fn render(&self) -> Markup {
+        html! {
+            input ."bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700"
+                type="submit"
+                value="Send" {}
         }
     }
 }
@@ -236,7 +229,7 @@ impl Render for MessageItem<'_> {
                 @if belongs_to_user {
                     div ."message-controls hidden pb-2" {
                         (Icon::Delete(&self.msg._id))
-                        (Icon::Edit(&self.msg._id))
+                        (Icon::Edit(&self.msg))
                     }
 
                     (Icon::Sent)
@@ -294,7 +287,7 @@ pub fn last_message(
 }
 
 pub enum Icon<'a> {
-    Edit(&'a Id),
+    Edit(&'a Message),
     Delete(&'a Id),
     Sent,
     Seen,
@@ -304,10 +297,12 @@ impl Render for Icon<'_> {
     fn render(&self) -> Markup {
         html! {
             @match self {
-                Self::Edit(id) =>
-                i ."fa-pen fa-solid ml-2 text-green-700 cursor-pointer"
-                    hx-get={"/messages/input/edit?message_id=" (id) "&chat_id=" (todo!()) "&recipient=" (todo!())}
-                    {},
+                Self::Edit(msg) =>{
+                    i ."fa-pen fa-solid ml-2 text-green-700 cursor-pointer"
+                        hx-get={"/templates/messages/input/edit?message_id=" (msg._id)}
+                        hx-target="#message-input"
+                        hx-swap="outerHTML" {}
+                },
                 Self::Delete(id) => {
                     i ."fa-trash-can fa-solid text-red-700 cursor-pointer"
                         hx-delete={"/api/messages/" (id)}

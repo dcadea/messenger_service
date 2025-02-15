@@ -88,37 +88,29 @@ impl From<Notification> for sse::Event {
 #[serde(tag = "type")]
 pub enum Message {
     New(message::model::Message),
-    Updated { id: message::Id, text: String },
+    Updated(message::model::Message),
     Deleted(message::Id),
     Seen(message::model::Message),
 }
 
 impl Render for Message {
     fn render(&self) -> Markup {
-        match self {
-            Message::New(msg) => html! {
-                div #message-list hx-swap-oob="afterbegin" {
+        html! {
+            @match self {
+                Message::New(msg) => div #message-list hx-swap-oob="afterbegin" {
                     (message::markup::MessageItem::new(&msg, None))
-                }
-            },
-            Message::Updated {
-                id: _id,
-                text: _text,
-            } => todo!(),
-            Message::Deleted(id) => html! {
-                div #{"m-" (id)}
-                    ."message-item flex items-center items-baseline" {
+                },
+                Message::Updated(msg) => (message::markup::MessageItem::new(&msg, Some(&msg.recipient))),
+                Message::Deleted(id) => div #{"m-" (id)} ."message-item flex items-center items-baseline" {
                     div ."message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs"
                         ."bg-gray-300 text-gray-600 italic" {
                         "message deleted..."
                     }
-                }
-            },
-            Message::Seen(msg) => html! {
-                div #{"m-" (msg._id)} hx-swap-oob="beforeend" {
+                },
+                Message::Seen(msg) => div #{"m-" (msg._id)} hx-swap-oob="beforeend" {
                     (message::markup::Icon::Seen)
-                }
-            },
+                },
+            }
         }
     }
 }

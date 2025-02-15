@@ -2,7 +2,6 @@ use std::rc::Rc;
 
 use maud::{html, Markup, Render};
 
-use crate::message::markup::MessageInput;
 use crate::user::model::UserInfo;
 use crate::{message, user};
 
@@ -107,7 +106,7 @@ impl Render for ActiveChat<'_> {
                     hx-trigger="load" {}
             }
 
-            (MessageInput::blank(self.id, &self.recipient.sub))
+            (message::markup::InputBlank::new(self.id, &self.recipient.sub))
             (ChatControls(self.id))
         }
     }

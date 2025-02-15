@@ -130,12 +130,12 @@ impl MessageRepository {
         Ok(most_recent)
     }
 
-    // pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
-    //     self.collection
-    //         .update_one(doc! {"_id": id}, doc! {"$set": {"text": text}})
-    //         .await?;
-    //     Ok(())
-    // }
+    pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
+        self.collection
+            .update_one(doc! {"_id": id}, doc! {"$set": {"text": text}})
+            .await?;
+        Ok(())
+    }
 
     pub async fn delete(&self, id: &Id) -> super::Result<u64> {
         let deleted_count = self

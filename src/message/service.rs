@@ -69,13 +69,33 @@ impl MessageService {
         Ok(messages)
     }
 
+    pub async fn find_by_id(&self, id: &Id) -> super::Result<Message> {
+        self.repository.find_by_id(id).await
+    }
+
     pub async fn find_most_recent(&self, chat_id: &chat::Id) -> super::Result<Option<Message>> {
         self.repository.find_most_recent(chat_id).await
     }
 
-    // pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
-    //     self.repository.update(id, text).await
-    // }
+    pub async fn update(&self, owner: &user::Sub, id: &Id, text: &str) -> super::Result<Message> {
+        let msg = self.repository.find_by_id(id).await?;
+
+        if msg.owner.ne(owner) {
+            return Err(super::Error::NotOwner);
+        }
+
+        self.repository.update(id, text).await?;
+
+        let msg = msg.with_text(text);
+        self.event_service
+            .publish(
+                &event::Subject::Messages(msg.recipient.clone(), msg.chat_id.clone()),
+                event::Message::Updated(msg.clone()),
+            )
+            .await?;
+
+        Ok(msg)
+    }
 
     pub async fn delete(&self, owner: &user::Sub, id: &Id) -> super::Result<Option<Message>> {
         let msg = self.repository.find_by_id(id).await?;
