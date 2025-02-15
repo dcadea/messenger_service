@@ -90,12 +90,16 @@ pub(super) mod api {
         user_info: Extension<UserInfo>,
         message_service: State<MessageService>,
         Form(params): Form<UpdateParams>,
-    ) -> crate::Result<Markup> {
+    ) -> crate::Result<impl IntoResponse> {
         let msg = message_service
             .update(&user_info.sub, &params.message_id, &params.text)
             .await?;
 
-        Ok(markup::MessageItem::new(&msg, Some(&user_info.sub)).render())
+        Ok((
+            axum::http::StatusCode::OK,
+            [("HX-Trigger", "msg:afterUpdate")],
+            markup::MessageItem::new(&msg, Some(&user_info.sub)).render(),
+        ))
     }
 
     pub async fn delete(

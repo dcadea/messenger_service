@@ -61,12 +61,12 @@ impl Render for InputEdit<'_> {
                 hx-put="/api/messages"
                 hx-target={"#m-" (self.message_id)}
                 hx-swap="outerHTML"
-                _="on htmx:afterRequest reset() me" // todo: request blank template
             {
                 input type="hidden" name="message_id" value=(self.message_id) {}
                 (InputText(Some(self.old_text)))
                 (SendButton)
             }
+
         }
     }
 }
@@ -82,6 +82,7 @@ impl Render for InputText<'_> {
                 value=[self.0]
                 placeholder="Type your message..."
                 autocomplete="off"
+                hx-disabled-elt="this"
                 _="on keyup if the event's key is 'Escape' set value of me to ''" {}
         }
     }
@@ -93,6 +94,7 @@ impl Render for SendButton {
     fn render(&self) -> Markup {
         html! {
             input ."bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700"
+                hx-disabled-elt="this"
                 type="submit"
                 value="Send" {}
         }

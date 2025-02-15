@@ -108,6 +108,15 @@ impl Render for ActiveChat<'_> {
 
             (message::markup::InputBlank::new(self.id, &self.recipient.sub))
             (ChatControls(self.id))
+
+            div .hidden
+                hx-trigger="msg:afterUpdate from:body"
+                hx-target="#message-input"
+                hx-swap="outerHTML"
+                hx-get={"/templates/messages/input/blank"
+                    "?chat_id=" (self.id)
+                    "&recipient=" (&self.recipient.sub)
+                } {}
         }
     }
 }
