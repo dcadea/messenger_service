@@ -134,23 +134,23 @@ impl MessageService {
         end_time: Option<i64>,
     ) -> super::Result<(Vec<Message>, usize)> {
         let messages = match (limit, end_time) {
-            (None, None) => self.repository.find_by_chat_id(chat_id).await?,
+            (None, None) => self.repository.find_by_chat_id(chat_id).await,
             (Some(limit), None) => {
                 self.repository
                     .find_by_chat_id_limited(chat_id, limit)
-                    .await?
+                    .await
             }
             (None, Some(end_time)) => {
                 self.repository
                     .find_by_chat_id_before(chat_id, end_time)
-                    .await?
+                    .await
             }
             (Some(limit), Some(end_time)) => {
                 self.repository
                     .find_by_chat_id_limited_before(chat_id, limit, end_time)
-                    .await?
+                    .await
             }
-        };
+        }?;
 
         let seen_qty = self.mark_as_seen(logged_sub, &messages).await?;
 
@@ -196,18 +196,20 @@ impl MessageService {
         self.repository.mark_as_seen(&ids).await?;
 
         let owner = owner.expect("no owner present");
+        let chat_id = messages
+            .first()
+            .map(|m| m.chat_id.clone())
+            .expect("chat_id must be present");
+        let message_events: Vec<event::Message> = messages
+            .iter()
+            .map(|m| event::Message::Seen((*m).clone()))
+            .collect();
+
+        self.event_service
+            .publish_all(&event::Subject::Messages(&owner, &chat_id), &message_events)
+            .await?;
+
         let seen_qty = messages.len();
-
-        // TODO: publish all
-        for msg in messages {
-            self.event_service
-                .publish(
-                    &event::Subject::Messages(&owner, &msg.chat_id),
-                    &event::Message::Seen(msg.clone()),
-                )
-                .await?;
-        }
-
         Ok(seen_qty)
     }
 }
