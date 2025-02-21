@@ -3,9 +3,9 @@ pub mod sse {
     use crate::event::{Notification, Subject};
     use crate::user::model::UserInfo;
     use async_stream;
+    use axum::Extension;
     use axum::extract::State;
     use axum::response::sse;
-    use axum::Extension;
     use futures::{Stream, StreamExt};
 
     use std::convert::Infallible;
@@ -49,20 +49,20 @@ pub mod ws {
             self,
             service::{ChatService, ChatValidator},
         },
-        event::{service::EventService, Message, Subject},
+        event::{Message, Subject, service::EventService},
         message::service::MessageService,
         user::{self, model::UserInfo},
     };
     use axum::extract::ws::Message::{Close, Text};
     use axum::{
-        extract::{ws::WebSocket, Path, State, WebSocketUpgrade},
-        response::Response,
         Extension,
+        extract::{Path, State, WebSocketUpgrade, ws::WebSocket},
+        response::Response,
     };
     use futures::StreamExt;
     use futures::{
-        stream::{SplitSink, SplitStream},
         SinkExt,
+        stream::{SplitSink, SplitStream},
     };
     use log::{debug, error, warn};
     use maud::Render;
@@ -159,7 +159,7 @@ pub mod ws {
                             let mut sender = sender.write().await;
 
                             let markup = msg.render();
-                            if let Err(e) = sender.send(Text(markup.into_string())).await {
+                            if let Err(e) = sender.send(Text(markup.into_string().into())).await {
                                 error!("Failed to send notification to client: {e}");
                             }
 

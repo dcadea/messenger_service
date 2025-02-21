@@ -1,10 +1,10 @@
 use futures::TryStreamExt;
+use mongodb::Database;
 use mongodb::bson::doc;
 use mongodb::options::FindOneOptions;
-use mongodb::Database;
 
-use super::model::{Friends, User};
 use super::Sub;
+use super::model::{Friends, User};
 use crate::user;
 
 const USERS_COLLECTION: &str = "users";

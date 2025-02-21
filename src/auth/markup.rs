@@ -1,4 +1,4 @@
-use maud::{html, Render};
+use maud::{Render, html};
 
 pub struct Login;
 

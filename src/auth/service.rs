@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use jsonwebtoken::jwk::JwkSet;
-use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
+use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
 use log::{error, warn};
 use oauth2::basic::BasicClient;
 use oauth2::reqwest::async_http_client;

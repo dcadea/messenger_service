@@ -1,12 +1,12 @@
 use std::rc::Rc;
 
-use maud::{html, Markup, Render};
+use maud::{Markup, Render, html};
 
 use crate::user::model::UserInfo;
 use crate::{message, user};
 
-use super::model::ChatDto;
 use super::Id;
+use super::model::ChatDto;
 
 pub struct ChatWindow<'a> {
     user_info: &'a UserInfo,

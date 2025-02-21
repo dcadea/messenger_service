@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
-use maud::{html, Markup, Render};
+use maud::{Markup, Render, html};
 
-use super::{model::UserInfo, Sub};
+use super::{Sub, model::UserInfo};
 
 pub struct Header<'a>(pub &'a UserInfo);
 

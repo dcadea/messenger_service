@@ -5,7 +5,7 @@ pub mod markup {
         body::Body,
         response::{IntoResponse, IntoResponseParts, Response, ResponseParts},
     };
-    use maud::{html, Markup, PreEscaped, Render, DOCTYPE};
+    use maud::{DOCTYPE, Markup, PreEscaped, Render, html};
     use reqwest::header::CONTENT_LENGTH;
 
     pub const EMPTY: PreEscaped<&'static str> = PreEscaped("");

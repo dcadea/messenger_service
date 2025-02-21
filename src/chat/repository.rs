@@ -4,8 +4,8 @@ use mongodb::bson::doc;
 use crate::message::model::LastMessage;
 use crate::{chat, user};
 
-use super::model::Chat;
 use super::Id;
+use super::model::Chat;
 
 const CHATS_COLLECTION: &str = "chats";
 

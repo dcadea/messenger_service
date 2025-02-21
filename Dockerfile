@@ -1,4 +1,4 @@
-FROM rust:1.84 AS builder
+FROM rust:1.85 AS builder
 LABEL authors="dcadea"
 
 WORKDIR /usr/src/messenger_service

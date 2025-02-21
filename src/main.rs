@@ -1,8 +1,8 @@
 use auth::middleware::{authorize, validate_sid};
+use axum::Router;
 use axum::http::StatusCode;
 use axum::middleware::{from_fn, from_fn_with_state, map_response};
 use axum::routing::get;
-use axum::Router;
 use integration::Environment;
 use log::error;
 use messenger_service::markup::wrap_in_base;

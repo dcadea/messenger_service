@@ -1,6 +1,6 @@
 pub(super) mod api {
-    use axum::{extract::State, Extension, Form};
-    use maud::{html, Markup, Render};
+    use axum::{Extension, Form, extract::State};
+    use maud::{Markup, Render, html};
     use serde::Deserialize;
 
     use crate::user::{markup, model::UserInfo, service::UserService};

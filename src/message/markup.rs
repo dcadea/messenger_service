@@ -1,11 +1,11 @@
 use chrono::DateTime;
-use maud::{html, Markup, Render};
+use maud::{Markup, Render, html};
 
 use crate::{chat, user};
 
 use super::{
-    model::{LastMessage, Message},
     Id,
+    model::{LastMessage, Message},
 };
 
 pub struct InputBlank<'a> {

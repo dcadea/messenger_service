@@ -1,14 +1,14 @@
 pub(super) mod pages {
     use axum::{
-        extract::{Path, State},
         Extension,
+        extract::{Path, State},
     };
     use maud::{Markup, Render};
     use messenger_service::markup::Wrappable;
 
     use crate::user::{model::UserInfo, service::UserService};
 
-    use crate::chat::{markup, service::ChatService, Id};
+    use crate::chat::{Id, markup, service::ChatService};
 
     pub async fn home(
         user_info: Extension<UserInfo>,
@@ -35,15 +35,15 @@ pub(super) mod pages {
 
 pub(super) mod api {
     use axum::{
+        Extension, Form,
         extract::{Path, State},
         response::IntoResponse,
-        Extension, Form,
     };
     use maud::{Markup, Render};
     use serde::Deserialize;
 
     use crate::{
-        chat::{markup, service::ChatService, Id},
+        chat::{Id, markup, service::ChatService},
         user::{self, model::UserInfo, service::UserService},
     };
 

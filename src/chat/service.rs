@@ -3,9 +3,9 @@ use std::sync::Arc;
 use futures::future::try_join_all;
 use log::warn;
 
+use super::Id;
 use super::model::{Chat, ChatDto};
 use super::repository::ChatRepository;
-use super::Id;
 use crate::event::service::EventService;
 use crate::integration::{self, cache};
 use crate::message::model::{LastMessage, Message};

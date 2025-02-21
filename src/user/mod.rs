@@ -1,6 +1,6 @@
 use std::{fmt::Display, sync::Arc};
 
-use axum::{routing::post, Router};
+use axum::{Router, routing::post};
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 

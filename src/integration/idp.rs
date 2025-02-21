@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use oauth2::{
-    basic::BasicClient, AuthUrl, ClientId, ClientSecret, RedirectUrl, RevocationUrl, TokenUrl,
+    AuthUrl, ClientId, ClientSecret, RedirectUrl, RevocationUrl, TokenUrl, basic::BasicClient,
 };
 
 #[derive(Clone)]

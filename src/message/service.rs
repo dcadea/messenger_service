@@ -7,9 +7,9 @@ use crate::chat::service::ChatValidator;
 use crate::event::service::EventService;
 use crate::{chat, event, user};
 
+use super::Id;
 use super::model::Message;
 use super::repository::MessageRepository;
-use super::Id;
 
 const MAX_MESSAGE_LENGTH: usize = 1000;
 

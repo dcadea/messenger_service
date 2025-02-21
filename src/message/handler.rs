@@ -13,7 +13,7 @@ pub(super) mod api {
 
     use crate::message::model::{LastMessage, Message};
     use crate::message::service::MessageService;
-    use crate::message::{markup, Id};
+    use crate::message::{Id, markup};
 
     #[derive(Deserialize)]
     pub struct CreateParams {
@@ -131,8 +131,8 @@ pub(super) mod api {
 
 pub(super) mod templates {
     use axum::{
-        extract::{Query, State},
         Extension,
+        extract::{Query, State},
     };
     use maud::{Markup, Render};
     use serde::Deserialize;

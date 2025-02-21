@@ -1,9 +1,9 @@
 use crate::state::AppState;
 use crate::user;
+use axum::Router;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
-use axum::Router;
 use log::error;
 use serde::Deserialize;
 

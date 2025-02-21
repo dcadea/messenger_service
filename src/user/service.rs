@@ -4,8 +4,8 @@ use std::sync::Arc;
 use crate::integration::{self, cache};
 use crate::user::model::{User, UserInfo};
 
-use super::repository::UserRepository;
 use super::Sub;
+use super::repository::UserRepository;
 
 #[derive(Clone)]
 pub struct UserService {

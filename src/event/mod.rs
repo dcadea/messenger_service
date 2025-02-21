@@ -1,11 +1,11 @@
 use std::collections::HashSet;
 use std::pin::Pin;
 
+use axum::Router;
 use axum::response::sse;
 use axum::routing::get;
-use axum::Router;
 use futures::Stream;
-use maud::{html, Markup, Render};
+use maud::{Markup, Render, html};
 use serde::{Deserialize, Serialize};
 
 use crate::state::AppState;

@@ -1,7 +1,7 @@
 use axum::http::{HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use log::error;
-use maud::{html, Markup, Render};
+use maud::{Markup, Render, html};
 use serde::Serialize;
 
 use crate::{auth, chat, event, message, user};

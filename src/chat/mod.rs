@@ -3,9 +3,9 @@ use std::fmt::Display;
 use axum::http::StatusCode;
 use axum::routing::{delete, post};
 use axum::{
+    Router,
     response::{IntoResponse, Response},
     routing::get,
-    Router,
 };
 use log::error;
 use mongodb::bson::serde_helpers::hex_string_as_object_id;

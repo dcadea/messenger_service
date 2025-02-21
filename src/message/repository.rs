@@ -1,9 +1,9 @@
 use futures::TryStreamExt;
 use log::error;
-use mongodb::bson::doc;
 use mongodb::Database;
+use mongodb::bson::doc;
 
-use super::{model::Message, Id};
+use super::{Id, model::Message};
 use crate::{chat, message};
 
 const MESSAGES_COLLECTION: &str = "messages";
