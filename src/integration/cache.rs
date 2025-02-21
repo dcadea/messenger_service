@@ -57,6 +57,16 @@ impl Redis {
         }
     }
 
+    pub async fn srem<V>(&self, key: Key, value: V)
+    where
+        V: redis::ToRedisArgs + Send + Sync,
+    {
+        let mut con = self.con.clone();
+        if let Err(e) = con.srem::<&Key, V, ()>(&key, value).await {
+            error!("Failed to srem for key {key}. Reason: {e:?}")
+        }
+    }
+
     pub async fn get<V>(&self, key: Key) -> Option<V>
     where
         V: redis::FromRedisValue,

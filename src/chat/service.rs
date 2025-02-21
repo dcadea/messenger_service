@@ -109,7 +109,7 @@ impl ChatService {
         let chat = self.find_by_id(id, logged_user).await?;
 
         self.repository.delete(id).await?;
-        // hack until error handling is fixed
+        // TODO: hack until error handling is fixed
         if let Err(message::Error::_Chat(e)) = self.message_repository.delete_by_chat_id(id).await {
             return Err(e);
         }

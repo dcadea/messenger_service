@@ -1,6 +1,9 @@
 use std::{fmt::Display, sync::Arc};
 
-use axum::{Router, routing::post};
+use axum::{
+    Router,
+    routing::{get, post},
+};
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +24,7 @@ pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/users/search", post(handler::api::search))
+        .route("/users/friends", get(handler::api::find_friends))
         .with_state(state)
 }
 

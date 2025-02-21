@@ -30,4 +30,11 @@ pub(super) mod api {
 
         Ok(markup::SearchResult::new(&friends, &users).render())
     }
+
+    pub async fn find_friends(
+        _user_info: Extension<UserInfo>,
+        _user_service: State<UserService>,
+    ) -> crate::Result<Markup> {
+        todo!()
+    }
 }

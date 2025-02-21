@@ -10,7 +10,6 @@ use messenger_service::middleware::attach_request_id;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
-use user::middleware::cache_user_friends;
 
 use crate::state::AppState;
 
@@ -73,8 +72,7 @@ fn app(app_state: AppState, env: &Environment) -> Router {
         .route_layer(
             ServiceBuilder::new()
                 .layer(from_fn_with_state(app_state.clone(), validate_sid))
-                .layer(from_fn_with_state(app_state.clone(), authorize))
-                .layer(from_fn_with_state(app_state.clone(), cache_user_friends)),
+                .layer(from_fn_with_state(app_state.clone(), authorize)),
         );
 
     Router::new()

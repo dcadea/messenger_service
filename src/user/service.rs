@@ -53,25 +53,36 @@ impl UserService {
     }
 
     pub async fn create_friendship(&self, subs: &[Sub; 2]) -> super::Result<()> {
-        assert_ne!(&subs[0], &subs[1]);
+        let me = &subs[0];
+        let you = &subs[1];
+        assert_ne!(me, you);
 
         tokio::try_join!(
-            self.repository.add_friend(&subs[0], &subs[1]),
-            self.repository.add_friend(&subs[1], &subs[0]),
+            self.repository.add_friend(me, you),
+            self.repository.add_friend(you, me),
+            self.cache_friends(me),
+            self.cache_friends(you)
         )?;
 
         Ok(())
     }
 
     pub async fn delete_friendship(&self, subs: &[Sub; 2]) -> super::Result<()> {
-        assert_ne!(&subs[0], &subs[1]);
+        let me = &subs[0];
+        let you = &subs[1];
+        assert_ne!(me, you);
 
         tokio::try_join!(
-            self.repository.remove_friend(&subs[0], &subs[1]),
-            self.repository.remove_friend(&subs[1], &subs[0]),
+            self.repository.remove_friend(me, you),
+            self.repository.remove_friend(you, me),
         )?;
 
-        self.invalidate_friends(subs).await;
+        tokio::join!(
+            self.redis
+                .srem(cache::Key::Friends(me.to_owned()), you.to_owned()),
+            self.redis
+                .srem(cache::Key::Friends(you.to_owned()), me.to_owned()),
+        );
 
         Ok(())
     }
@@ -123,12 +134,6 @@ impl UserService {
         match friends {
             Some(friends) => Ok(friends),
             None => Err(super::Error::NoFriends(sub.to_owned())),
-        }
-    }
-
-    async fn invalidate_friends(&self, subs: &[Sub]) {
-        for sub in subs {
-            let _: () = self.redis.del(cache::Key::Friends(sub.to_owned())).await;
         }
     }
 
