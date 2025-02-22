@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::pin::Pin;
 
 use axum::Router;
@@ -22,7 +21,7 @@ pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/sse", get(handler::sse::notifications))
         .layer(from_fn_with_state(state.clone(), cache_user_friends))
-        .route("/ws/:chat_id", get(handler::ws::chat))
+        .route("/ws/{chat_id}", get(handler::ws::chat))
         .with_state(state)
 }
 
@@ -46,12 +45,8 @@ impl async_nats::subject::ToSubject for &Subject<'_> {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Notification {
-    OnlineFriends {
-        friends: HashSet<user::Sub>,
-    },
-    NewFriend {
-        chat_dto: chat::model::ChatDto,
-    },
+    OnlineStatus(user::model::FriendDto),
+    NewFriend(chat::model::ChatDto),
     NewMessage {
         chat_id: chat::Id,
         last_message: message::model::LastMessage,
@@ -61,8 +56,8 @@ pub enum Notification {
 impl Render for Notification {
     fn render(&self) -> Markup {
         match self {
-            Notification::OnlineFriends { friends: _friends } => todo!(),
-            Notification::NewFriend { chat_dto } => html! { (chat_dto) },
+            Notification::OnlineStatus(friend) => html! { (friend) },
+            Notification::NewFriend(chat_dto) => html! { (chat_dto) },
             Notification::NewMessage {
                 chat_id,
                 last_message,
@@ -76,7 +71,7 @@ impl Render for Notification {
 impl From<Notification> for sse::Event {
     fn from(noti: Notification) -> Self {
         let event_name = match &noti {
-            Notification::OnlineFriends { .. } => "onlineFriends",
+            Notification::OnlineStatus { .. } => "onlineStatus",
             Notification::NewFriend { .. } => "newFriend",
             Notification::NewMessage { chat_id, .. } => &format!("newMessage:{}", &chat_id),
         };

@@ -9,40 +9,45 @@ pub mod sse {
     use axum::extract::State;
     use axum::response::sse;
     use futures::{Stream, StreamExt};
+    use log::debug;
     use messenger_service::AsyncDrop;
 
     use std::convert::Infallible;
     use std::time::Duration;
 
-    struct SseCtx<'a> {
-        user_service: &'a UserService,
-        sub: &'a user::Sub,
+    #[derive(Clone)]
+    struct SseCtx {
+        user_service: UserService,
+        sub: user::Sub,
     }
 
     #[async_trait::async_trait]
-    impl AsyncDrop for SseCtx<'_> {
+    impl AsyncDrop for SseCtx {
         async fn async_drop(&mut self) {
-            self.user_service.remove_online_user(self.sub).await;
+            self.user_service.remove_online_user(&self.sub).await;
         }
     }
 
     pub async fn notifications(
         Extension(user_info): Extension<UserInfo>,
-        user_service: State<UserService>,
+        State(user_service): State<UserService>,
         event_service: State<EventService>,
     ) -> sse::Sse<impl Stream<Item = Result<sse::Event, Infallible>>> {
+        let sub = user_info.sub;
+
         let stream = async_stream::stream! {
             let mut noti_stream = event_service
-                .subscribe::<Notification>(&Subject::Notifications(&user_info.sub))
+                .subscribe::<Notification>(&Subject::Notifications(&sub))
                 .await
                 .expect("failed to subscribe to subject"); // FIXME
 
             let ctx = SseCtx {
-                user_service: &user_service,
-                sub: &user_info.sub,
+                user_service: user_service.clone(),
+                sub: sub.clone(),
             };
+            // messenger_service::Dropper::new(ctx); // FIXME: drop is called right after creation
 
-            user_service.add_online_user(ctx.sub).await;
+            user_service.add_online_user(&sub).await;
 
             loop {
                 tokio::select! {

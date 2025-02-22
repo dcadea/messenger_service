@@ -37,7 +37,7 @@ pub fn api<S>(state: AppState) -> Router<S> {
         .route("/messages", post(handler::api::create))
         .route("/messages", get(handler::api::find_all))
         .route("/messages", put(handler::api::update))
-        .route("/messages/:id", delete(handler::api::delete))
+        .route("/messages/{id}", delete(handler::api::delete))
         .with_state(state)
 }
 

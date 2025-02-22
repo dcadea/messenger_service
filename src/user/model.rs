@@ -16,6 +16,7 @@ pub struct User {
     friends: HashSet<Sub>,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct FriendDto {
     pub sub: Sub,
     pub online: bool,

@@ -91,9 +91,7 @@ impl ChatService {
             .event_service
             .publish(
                 &event::Subject::Notifications(recipient),
-                &event::Notification::NewFriend {
-                    chat_dto: chat_dto.clone(),
-                },
+                &event::Notification::NewFriend(chat_dto.clone()),
             )
             .await
         {
