@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 use maud::{Markup, Render, html};
 
-use super::{Sub, model::UserInfo};
+use super::{
+    Sub,
+    model::{FriendDto, UserInfo},
+};
 
 pub struct Header<'a>(pub &'a UserInfo);
 
@@ -99,5 +102,11 @@ impl Render for SearchResult<'_> {
                 }
             }
         }
+    }
+}
+
+impl Render for FriendDto {
+    fn render(&self) -> Markup {
+        todo!("online users feature")
     }
 }

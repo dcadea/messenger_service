@@ -1,10 +1,13 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+
+use log::debug;
 
 use crate::integration::{self, cache};
 use crate::user::model::{User, UserInfo};
 
 use super::Sub;
+use super::model::FriendDto;
 use super::repository::UserRepository;
 
 #[derive(Clone)]
@@ -90,25 +93,49 @@ impl UserService {
 
 // cache operations
 impl UserService {
-    // TODO: online users feature
-    // pub async fn add_online_user(&self, sub: &Sub) {
-    //     debug!("Adding to online users: {:?}", sub);
-    //     self.redis.sadd(cache::Key::UsersOnline, sub).await
-    // }
+    pub async fn add_online_user(&self, sub: &Sub) {
+        debug!("Adding to online users: {:?}", sub);
+        self.redis.sadd(cache::Key::UsersOnline, sub).await
+    }
 
-    // pub async fn get_online_friends(&self, sub: &Sub) -> Option<HashSet<Sub>> {
-    //     self.redis
-    //         .sinter::<Sub>(vec![
-    //             cache::Key::UsersOnline,
-    //             cache::Key::Friends(sub.to_owned()),
-    //         ])
-    //         .await
-    // }
+    pub async fn find_friends(&self, sub: &Sub) -> super::Result<Vec<FriendDto>> {
+        let mut friends: HashMap<Sub, bool> = self
+            .repository
+            .find_friends_by_sub(sub)
+            .await?
+            .into_iter()
+            .map(|s| (s, false))
+            .collect();
 
-    // pub async fn remove_online_user(&self, sub: &Sub) {
-    //     debug!("Removing from online users: {:?}", sub);
-    //     self.redis.srem(cache::Key::UsersOnline, sub).await
-    // }
+        if friends.is_empty() {
+            return Ok(Vec::with_capacity(0));
+        }
+
+        if let Some(online_friends) = self
+            .redis
+            .sinter::<Sub>(vec![
+                cache::Key::UsersOnline,
+                cache::Key::Friends(sub.to_owned()),
+            ])
+            .await
+        {
+            online_friends.into_iter().for_each(|s| {
+                friends.entry(s).and_modify(|e| *e = true);
+            });
+        }
+
+        let friends: Vec<FriendDto> = friends
+            .into_iter()
+            .map(|(sub, online)| FriendDto::new(sub, online))
+            .collect();
+
+        Ok(friends)
+    }
+
+    pub async fn remove_online_user(&self, sub: &Sub) {
+        debug!("Removing from online users: {:?}", sub);
+        self.redis.srem(cache::Key::UsersOnline, sub).await
+    }
 
     pub async fn cache_friends(&self, sub: &Sub) -> super::Result<()> {
         let friends = self.repository.find_friends_by_sub(sub).await?;

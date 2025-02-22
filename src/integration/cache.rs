@@ -1,5 +1,7 @@
+use std::collections::HashSet;
 use std::env;
 use std::fmt::{Display, Formatter};
+use std::hash::Hash;
 
 use log::{error, warn};
 use redis::{AsyncCommands, JsonAsyncCommands};
@@ -125,21 +127,20 @@ impl Redis {
         }
     }
 
-    // TODO: online users feature
-    // pub async fn sinter<V>(&self, keys: Vec<Key>) -> Option<HashSet<V>>
-    // where
-    //     V: redis::FromRedisValue + Hash + PartialEq + Eq,
-    // {
-    //     let mut con = self.con.clone();
-    //     match con.sinter::<&Vec<Key>, HashSet<V>>(&keys).await {
-    //         Ok(intersection) => Some(intersection),
-    //         Err(e) => {
-    //             let keys: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
-    //             error!("Failed to sinter for keys {keys:?}. Reason: {e:?}",);
-    //             None
-    //         }
-    //     }
-    // }
+    pub async fn sinter<V>(&self, keys: Vec<Key>) -> Option<HashSet<V>>
+    where
+        V: redis::FromRedisValue + Hash + PartialEq + Eq,
+    {
+        let mut con = self.con.clone();
+        match con.sinter::<&Vec<Key>, HashSet<V>>(&keys).await {
+            Ok(intersection) => Some(intersection),
+            Err(e) => {
+                let keys: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
+                error!("Failed to sinter for keys {keys:?}. Reason: {e:?}",);
+                None
+            }
+        }
+    }
 
     #[allow(dead_code)]
     pub async fn del(&self, key: Key) {
@@ -148,18 +149,6 @@ impl Redis {
             error!("Failed to del key {key}. Reason: {e:?}")
         }
     }
-
-    // TODO: online users feature
-    // pub async fn srem<V>(&self, key: Key, value: V)
-    // where
-    //     V: redis::ToRedisArgs + Send + Sync,
-    // {
-    //     let mut con = self.con.clone();
-
-    //     if let Err(e) = con.srem::<&Key, V, ()>(&key, value).await {
-    //         error!("Failed to srem key {key}. Reason: {e:?}")
-    //     }
-    // }
 
     pub async fn expire_after(&self, key: Key, seconds: u64) {
         let mut con = self.con.clone();
@@ -238,8 +227,7 @@ impl Config {
 #[derive(Clone)]
 pub enum Key {
     UserInfo(user::Sub),
-    // TODO: online users feature
-    // UsersOnline,
+    UsersOnline,
     Friends(user::Sub),
     Chat(chat::Id),
     Session(uuid::Uuid),
@@ -251,7 +239,7 @@ impl Key {
     pub fn ttl(&self) -> u64 {
         match self {
             Key::UserInfo(_) => 3600,
-            // Key::UsersOnline => u64::MAX,
+            Key::UsersOnline => u64::MAX,
             Key::Friends(_) => u64::MAX,
             Key::Chat(_) => 3600,
             // Just in case if token response does not provide an expiration claim
@@ -268,7 +256,7 @@ impl Display for Key {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Key::UserInfo(sub) => write!(f, "userinfo:{sub}"),
-            // Key::UsersOnline => write!(f, "users:online"),
+            Key::UsersOnline => write!(f, "users:online"),
             Key::Friends(sub) => write!(f, "friends:{sub}"),
             Key::Chat(id) => write!(f, "chat:{}", id),
             Key::Session(id) => write!(f, "session:{id}"),

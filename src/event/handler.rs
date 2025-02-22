@@ -1,25 +1,48 @@
 pub mod sse {
     use crate::event::service::EventService;
     use crate::event::{Notification, Subject};
+    use crate::user;
     use crate::user::model::UserInfo;
+    use crate::user::service::UserService;
     use async_stream;
     use axum::Extension;
     use axum::extract::State;
     use axum::response::sse;
     use futures::{Stream, StreamExt};
+    use messenger_service::AsyncDrop;
 
     use std::convert::Infallible;
     use std::time::Duration;
 
+    struct SseCtx<'a> {
+        user_service: &'a UserService,
+        sub: &'a user::Sub,
+    }
+
+    #[async_trait::async_trait]
+    impl AsyncDrop for SseCtx<'_> {
+        async fn async_drop(&mut self) {
+            self.user_service.remove_online_user(self.sub).await;
+        }
+    }
+
     pub async fn notifications(
         Extension(user_info): Extension<UserInfo>,
-        State(event_service): State<EventService>,
+        user_service: State<UserService>,
+        event_service: State<EventService>,
     ) -> sse::Sse<impl Stream<Item = Result<sse::Event, Infallible>>> {
         let stream = async_stream::stream! {
             let mut noti_stream = event_service
                 .subscribe::<Notification>(&Subject::Notifications(&user_info.sub))
                 .await
                 .expect("failed to subscribe to subject"); // FIXME
+
+            let ctx = SseCtx {
+                user_service: &user_service,
+                sub: &user_info.sub,
+            };
+
+            user_service.add_online_user(ctx.sub).await;
 
             loop {
                 tokio::select! {

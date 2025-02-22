@@ -16,6 +16,17 @@ pub struct User {
     friends: HashSet<Sub>,
 }
 
+pub struct FriendDto {
+    pub sub: Sub,
+    pub online: bool,
+}
+
+impl FriendDto {
+    pub fn new(sub: Sub, online: bool) -> Self {
+        Self { sub, online }
+    }
+}
+
 #[derive(Deserialize)]
 pub struct Friends {
     pub friends: Vec<Sub>,

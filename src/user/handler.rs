@@ -32,9 +32,15 @@ pub(super) mod api {
     }
 
     pub async fn find_friends(
-        _user_info: Extension<UserInfo>,
-        _user_service: State<UserService>,
+        user_info: Extension<UserInfo>,
+        user_service: State<UserService>,
     ) -> crate::Result<Markup> {
-        todo!()
+        let friends = user_service.find_friends(&user_info.sub).await?;
+
+        Ok(html! {
+            @for f in friends {
+                (f)
+            }
+        })
     }
 }

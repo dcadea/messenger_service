@@ -80,6 +80,7 @@ impl Render for Header<'_> {
                 a ."cursor-pointer border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
                     href="/" { "X" }
                 h2 .text-2xl { (self.0.name) }
+                // TODO: online users feature
                 span ."online-status absolute inset-12 flex items-center justify-center text-xs text-gray-500" { "offline" }
                 (Icon::ChatControls)
             }
@@ -151,7 +152,7 @@ impl Render for ChatDto {
                 hx-target="#chat-window"
                 hx-swap="innerHTML"
             {
-                // TODO: wrap in green circle when online
+                // TODO: online users feature
                 img ."w-8 h-8 rounded-full"
                     src=(self.recipient_picture) alt="Recipient avatar" {}
 
