@@ -9,24 +9,9 @@ pub mod sse {
     use axum::extract::State;
     use axum::response::sse;
     use futures::{Stream, StreamExt};
-    use log::debug;
-    use messenger_service::AsyncDrop;
 
     use std::convert::Infallible;
     use std::time::Duration;
-
-    #[derive(Clone)]
-    struct SseCtx {
-        user_service: UserService,
-        sub: user::Sub,
-    }
-
-    #[async_trait::async_trait]
-    impl AsyncDrop for SseCtx {
-        async fn async_drop(&mut self) {
-            self.user_service.remove_online_user(&self.sub).await;
-        }
-    }
 
     pub async fn notifications(
         Extension(user_info): Extension<UserInfo>,
@@ -41,13 +26,10 @@ pub mod sse {
                 .await
                 .expect("failed to subscribe to subject"); // FIXME
 
-            let ctx = SseCtx {
-                user_service: user_service.clone(),
-                sub: sub.clone(),
-            };
-            // messenger_service::Dropper::new(ctx); // FIXME: drop is called right after creation
-
+            // FIXME: if user has two or more sessions
+            // and closes one - user becomes offline (not ok)
             user_service.add_online_user(&sub).await;
+            let _osd = OnlineStatusDropper(&sub, &user_service);
 
             loop {
                 tokio::select! {
@@ -59,6 +41,7 @@ pub mod sse {
                     }
                 }
             }
+            // _osd drops here
         };
 
         sse::Sse::new(stream).keep_alive(
@@ -66,6 +49,19 @@ pub mod sse {
                 .interval(Duration::from_secs(2))
                 .text("sse-ping"),
         )
+    }
+
+    struct OnlineStatusDropper<'a>(&'a user::Sub, &'a UserService);
+
+    impl<'a> Drop for OnlineStatusDropper<'a> {
+        fn drop(&mut self) {
+            let sub = self.0.clone();
+            let user_service = self.1.clone();
+
+            tokio::spawn(async move {
+                user_service.remove_online_user(&sub).await;
+            });
+        }
     }
 }
 

@@ -1702,7 +1702,6 @@ version = "0.2.0"
 dependencies = [
  "async-nats",
  "async-stream",
- "async-trait",
  "axum",
  "axum-extra",
  "axum-server",
@@ -1722,7 +1721,6 @@ dependencies = [
  "text-splitter",
  "thiserror 2.0.11",
  "tokio",
- "tokio-stream",
  "tower 0.5.2",
  "tower-http",
  "url",
@@ -3213,17 +3211,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f6d0975eaace0cf0fcadee4e4aaa5da15b5c079146f2cffb67c113be122bf37"
 dependencies = [
  "rustls 0.23.23",
- "tokio",
-]
-
-[[package]]
-name = "tokio-stream"
-version = "0.1.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eca58d7bba4a75707817a2c44174253f9236b2d5fbd055602e9d5c07c139a047"
-dependencies = [
- "futures-core",
- "pin-project-lite",
  "tokio",
 ]
 

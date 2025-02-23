@@ -1,37 +1,3 @@
-#[async_trait::async_trait]
-pub trait AsyncDrop {
-    async fn async_drop(&mut self);
-}
-
-#[derive(Default)]
-pub struct Dropper<T: AsyncDrop + Default + Send + 'static> {
-    dropped: bool,
-    inner: T,
-}
-
-impl<T: AsyncDrop + Default + Send + 'static> Dropper<T> {
-    pub fn new(inner: T) -> Self {
-        Self {
-            dropped: false,
-            inner,
-        }
-    }
-}
-
-impl<T: AsyncDrop + Default + Send + 'static> Drop for Dropper<T> {
-    fn drop(&mut self) {
-        if !self.dropped {
-            let mut this = Dropper::default();
-            std::mem::swap(&mut this, self);
-            this.dropped = true;
-
-            tokio::spawn(async move {
-                this.inner.async_drop().await;
-            });
-        }
-    }
-}
-
 pub mod markup {
     use std::convert::Infallible;
 
