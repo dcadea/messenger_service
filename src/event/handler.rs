@@ -9,6 +9,7 @@ pub mod sse {
     use axum::extract::State;
     use axum::response::sse;
     use futures::{Stream, StreamExt};
+    use log::error;
 
     use std::convert::Infallible;
     use std::time::Duration;
@@ -16,7 +17,7 @@ pub mod sse {
     pub async fn notifications(
         Extension(user_info): Extension<UserInfo>,
         State(user_service): State<UserService>,
-        event_service: State<EventService>,
+        State(event_service): State<EventService>,
     ) -> sse::Sse<impl Stream<Item = Result<sse::Event, Infallible>>> {
         let sub = user_info.sub;
 
@@ -25,6 +26,11 @@ pub mod sse {
                 .subscribe::<Notification>(&Subject::Notifications(&sub))
                 .await
                 .expect("failed to subscribe to subject"); // FIXME
+
+            let mut os_stream = event_service
+                .listen_online_status_change()
+                .await
+                .expect("failed to subscribe to online status change");
 
             // FIXME: if user has two or more sessions
             // and closes one - user becomes offline (not ok)
@@ -37,6 +43,11 @@ pub mod sse {
                         match noti {
                             Some(noti) => yield Ok(sse::Event::from(noti)),
                             None => continue,
+                        }
+                    },
+                    update = os_stream.next() => {
+                        if update.is_some() {
+                            publish_online_friends(&sub, user_service.clone(), event_service.clone()).await;
                         }
                     }
                 }
@@ -53,7 +64,7 @@ pub mod sse {
 
     struct OnlineStatusDropper<'a>(&'a user::Sub, &'a UserService);
 
-    impl<'a> Drop for OnlineStatusDropper<'a> {
+    impl Drop for OnlineStatusDropper<'_> {
         fn drop(&mut self) {
             let sub = self.0.clone();
             let user_service = self.1.clone();
@@ -61,6 +72,30 @@ pub mod sse {
             tokio::spawn(async move {
                 user_service.remove_online_user(&sub).await;
             });
+        }
+    }
+
+    async fn publish_online_friends(
+        logged_sub: &user::Sub,
+        user_service: UserService,
+        event_service: EventService,
+    ) {
+        if let Ok(friends) = user_service.find_friends(logged_sub).await {
+            if friends.is_empty() {
+                return;
+            }
+
+            let online_friends: Vec<Notification> = friends
+                .into_iter()
+                .map(Notification::OnlineFriend)
+                .collect();
+
+            if let Err(e) = event_service
+                .publish_all(&Subject::Notifications(logged_sub), &online_friends)
+                .await
+            {
+                error!("Failed to publish online users notification: {e}");
+            }
         }
     }
 }
@@ -235,28 +270,3 @@ pub mod ws {
         }
     }
 }
-
-// TODO: online users feature
-// async fn publish_online_friends(
-//     logged_sub: &user::Sub,
-//     user_service: UserService,
-//     event_service: EventService,
-// ) {
-//     if let Some(friends) = user_service.get_online_friends(logged_sub).await {
-//         if friends.is_empty() {
-//             return;
-//         }
-
-//         if let Err(e) = event_service
-//             .publish(
-//                 &Subject::Notifications(logged_sub.clone()),
-//                 Notification::OnlineFriends {
-//                     friends: friends.clone(),
-//                 },
-//             )
-//             .await
-//         {
-//             error!("Failed to publish online users notification: {e}");
-//         }
-//     }
-// }

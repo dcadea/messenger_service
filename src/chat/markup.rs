@@ -152,7 +152,7 @@ impl Render for ChatDto {
                 hx-target="#chat-window"
                 hx-swap="innerHTML"
             {
-                // TODO: online users feature
+                (user::model::FriendDto::new(self.recipient.clone(), false))
                 img ."w-8 h-8 rounded-full"
                     src=(self.recipient_picture) alt="Recipient avatar" {}
 

@@ -107,6 +107,33 @@ impl Render for SearchResult<'_> {
 
 impl Render for FriendDto {
     fn render(&self) -> Markup {
-        todo!("online users feature")
+        html! {
+            div sse-swap={"onlineFriend:"(self.id())}
+                hx-target={"os-"(self.id())}
+            {
+                (Icon::OnlineStatus(self))
+            }
+        }
+    }
+}
+
+pub enum Icon<'a> {
+    OnlineStatus(&'a FriendDto),
+}
+
+impl Render for Icon<'_> {
+    fn render(&self) -> Markup {
+        match self {
+            Self::OnlineStatus(f) => {
+                let i_class = match f.online {
+                    true => "fa-solid",
+                    false => "fa-regular",
+                };
+
+                html! {
+                    i #{"os-" (f.id())} .(i_class) ."fa-circle text-green-600 mr-2" {}
+                }
+            }
+        }
     }
 }

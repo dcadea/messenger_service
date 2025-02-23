@@ -3,8 +3,8 @@ use std::env;
 use std::fmt::{Display, Formatter};
 use std::hash::Hash;
 
-use log::{error, warn};
-use redis::{AsyncCommands, JsonAsyncCommands};
+use log::{debug, error, warn};
+use redis::{AsyncCommands, JsonAsyncCommands, RedisResult};
 use serde::Serialize;
 
 use crate::user::model::UserInfo;
@@ -12,7 +12,7 @@ use crate::{chat, user};
 
 #[derive(Clone)]
 pub struct Redis {
-    _client: redis::Client,
+    client: redis::Client,
     con: redis::aio::ConnectionManager,
 }
 
@@ -165,18 +165,17 @@ impl Redis {
     }
 }
 
-// TODO: online users feature
-// impl Redis {
-//     pub async fn subscribe(&self, keyspace: &Keyspace) -> redis::aio::PubSubStream {
-//         let mut pub_sub = self.client.get_async_pubsub().await?;
+impl Redis {
+    pub async fn subscribe(&self, keyspace: &Keyspace) -> RedisResult<redis::aio::PubSubStream> {
+        let mut pub_sub = self.client.get_async_pubsub().await?;
 
-//         pub_sub.psubscribe(keyspace).await?;
+        pub_sub.psubscribe(keyspace).await?;
 
-//         debug!("Subscribed to keyspace: {keyspace}");
+        debug!("Subscribed to keyspace: {keyspace}");
 
-//         pub_sub.into_on_message()
-//     }
-// }
+        Ok(pub_sub.into_on_message())
+    }
+}
 
 #[derive(Clone)]
 pub struct Config {
@@ -211,16 +210,16 @@ impl Config {
     }
 
     pub async fn connect(&self) -> Redis {
-        let _client = match redis::Client::open(format!("redis://{}:{}", self.host, self.port)) {
+        let client = match redis::Client::open(format!("redis://{}:{}", self.host, self.port)) {
             Ok(client) => client,
             Err(e) => panic!("Failed to connect to Redis: {e:?}"),
         };
-        let con = match _client.get_connection_manager().await {
+        let con = match client.get_connection_manager().await {
             Ok(con) => con,
             Err(e) => panic!("Failed create Redis connection manager: {}", e),
         };
 
-        Redis { _client, con }
+        Redis { client, con }
     }
 }
 
@@ -274,32 +273,31 @@ impl redis::ToRedisArgs for Key {
     }
 }
 
-// TODO: online users feature
-// #[derive(Clone)]
-// pub struct Keyspace {
-//     pub key: Key,
-// }
+#[derive(Clone)]
+pub struct Keyspace {
+    pub key: Key,
+}
 
-// impl Keyspace {
-//     pub fn new(key: Key) -> Self {
-//         Self { key }
-//     }
-// }
+impl Keyspace {
+    pub fn new(key: Key) -> Self {
+        Self { key }
+    }
+}
 
-// impl Display for Keyspace {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         write!(f, "__keyspace@0__:{}", &self.key)
-//     }
-// }
+impl Display for Keyspace {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "__keyspace@0__:{}", &self.key)
+    }
+}
 
-// impl redis::ToRedisArgs for Keyspace {
-//     fn write_redis_args<W>(&self, out: &mut W)
-//     where
-//         W: ?Sized + redis::RedisWrite,
-//     {
-//         self.to_string().write_redis_args(out);
-//     }
-// }
+impl redis::ToRedisArgs for Keyspace {
+    fn write_redis_args<W>(&self, out: &mut W)
+    where
+        W: ?Sized + redis::RedisWrite,
+    {
+        self.to_string().write_redis_args(out);
+    }
+}
 
 impl redis::FromRedisValue for user::Sub {
     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<user::Sub> {

@@ -18,13 +18,17 @@ pub struct User {
 
 #[derive(Serialize, Deserialize)]
 pub struct FriendDto {
-    pub sub: Sub,
+    sub: Sub,
     pub online: bool,
 }
 
 impl FriendDto {
     pub fn new(sub: Sub, online: bool) -> Self {
         Self { sub, online }
+    }
+
+    pub fn id(&self) -> &str {
+        self.sub.id()
     }
 }
 

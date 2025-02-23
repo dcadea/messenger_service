@@ -45,7 +45,7 @@ impl async_nats::subject::ToSubject for &Subject<'_> {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Notification {
-    OnlineStatus(user::model::FriendDto),
+    OnlineFriend(user::model::FriendDto),
     NewFriend(chat::model::ChatDto),
     NewMessage {
         chat_id: chat::Id,
@@ -56,7 +56,7 @@ pub enum Notification {
 impl Render for Notification {
     fn render(&self) -> Markup {
         match self {
-            Notification::OnlineStatus(friend) => html! { (friend) },
+            Notification::OnlineFriend(f) => html! { (user::markup::Icon::OnlineStatus(&f)) },
             Notification::NewFriend(chat_dto) => html! { (chat_dto) },
             Notification::NewMessage {
                 chat_id,
@@ -71,8 +71,8 @@ impl Render for Notification {
 impl From<Notification> for sse::Event {
     fn from(noti: Notification) -> Self {
         let event_name = match &noti {
-            Notification::OnlineStatus { .. } => "onlineStatus",
-            Notification::NewFriend { .. } => "newFriend",
+            Notification::OnlineFriend(f) => &format!("onlineFriend:{}", f.id()),
+            Notification::NewFriend(_) => "newFriend",
             Notification::NewMessage { chat_id, .. } => &format!("newMessage:{}", &chat_id),
         };
 
@@ -135,4 +135,6 @@ pub enum Error {
     _NatsPub(#[from] async_nats::PublishError),
     #[error(transparent)]
     _NatsSub(#[from] async_nats::SubscribeError),
+    #[error(transparent)]
+    _Redis(#[from] redis::RedisError),
 }

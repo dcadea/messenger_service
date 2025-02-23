@@ -1,16 +1,19 @@
 use futures::StreamExt;
 use serde::{Serialize, de::DeserializeOwned};
 
+use crate::integration::cache;
+
 use super::{PayloadStream, Subject};
 
 #[derive(Clone)]
 pub struct EventService {
     pubsub: async_nats::Client,
+    redis: cache::Redis,
 }
 
 impl EventService {
-    pub fn new(pubsub: async_nats::Client) -> Self {
-        Self { pubsub }
+    pub fn new(pubsub: async_nats::Client, redis: cache::Redis) -> Self {
+        Self { pubsub, redis }
     }
 }
 
@@ -47,14 +50,13 @@ impl EventService {
     }
 }
 
-// TODO: online users feature
-// impl EventService {
-//     pub async fn listen_online_status_change(&self) -> super::Result<cache::UpdateStream> {
-//         let stream = self
-//             .redis
-//             .subscribe(&cache::Keyspace::new(cache::Key::UsersOnline))
-//             .await?;
+impl EventService {
+    pub async fn listen_online_status_change(&self) -> super::Result<redis::aio::PubSubStream> {
+        let stream = self
+            .redis
+            .subscribe(&cache::Keyspace::new(cache::Key::UsersOnline))
+            .await?;
 
-//         Ok(stream)
-//     }
-// }
+        Ok(stream)
+    }
+}
