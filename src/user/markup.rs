@@ -109,7 +109,7 @@ impl Render for FriendDto {
     fn render(&self) -> Markup {
         html! {
             div sse-swap={"onlineFriend:"(self.id())}
-                hx-target={"os-"(self.id())}
+                hx-target={"#os-"(self.id())}
             {
                 (Icon::OnlineStatus(self))
             }
