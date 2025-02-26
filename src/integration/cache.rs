@@ -1,10 +1,8 @@
-use std::collections::HashSet;
 use std::env;
 use std::fmt::{Display, Formatter};
-use std::hash::Hash;
 
-use log::{debug, error, warn};
-use redis::{AsyncCommands, JsonAsyncCommands, RedisResult};
+use log::{error, warn};
+use redis::{AsyncCommands, JsonAsyncCommands};
 use serde::Serialize;
 
 use crate::user::model::UserInfo;
@@ -12,7 +10,6 @@ use crate::{chat, user};
 
 #[derive(Clone)]
 pub struct Redis {
-    client: redis::Client,
     con: redis::aio::ConnectionManager,
 }
 
@@ -127,21 +124,6 @@ impl Redis {
         }
     }
 
-    pub async fn sinter<V>(&self, keys: Vec<Key>) -> Option<HashSet<V>>
-    where
-        V: redis::FromRedisValue + Hash + PartialEq + Eq,
-    {
-        let mut con = self.con.clone();
-        match con.sinter::<&Vec<Key>, HashSet<V>>(&keys).await {
-            Ok(intersection) => Some(intersection),
-            Err(e) => {
-                let keys: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
-                error!("Failed to sinter for keys {keys:?}. Reason: {e:?}",);
-                None
-            }
-        }
-    }
-
     #[allow(dead_code)]
     pub async fn del(&self, key: Key) {
         let mut con = self.con.clone();
@@ -162,18 +144,6 @@ impl Redis {
         if let Err(e) = con.expire::<&Key, ()>(&key, key.ttl() as i64).await {
             error!("Failed to expire key {key}. Reason: {e:?}")
         }
-    }
-}
-
-impl Redis {
-    pub async fn subscribe(&self, keyspace: &Keyspace) -> RedisResult<redis::aio::PubSubStream> {
-        let mut pub_sub = self.client.get_async_pubsub().await?;
-
-        pub_sub.psubscribe(keyspace).await?;
-
-        debug!("Subscribed to keyspace: {keyspace}");
-
-        Ok(pub_sub.into_on_message())
     }
 }
 
@@ -219,14 +189,13 @@ impl Config {
             Err(e) => panic!("Failed create Redis connection manager: {}", e),
         };
 
-        Redis { client, con }
+        Redis { con }
     }
 }
 
 #[derive(Clone)]
 pub enum Key {
     UserInfo(user::Sub),
-    UsersOnline,
     Friends(user::Sub),
     Chat(chat::Id),
     Session(uuid::Uuid),
@@ -238,7 +207,6 @@ impl Key {
     pub fn ttl(&self) -> u64 {
         match self {
             Key::UserInfo(_) => 3600,
-            Key::UsersOnline => u64::MAX,
             Key::Friends(_) => u64::MAX,
             Key::Chat(_) => 3600,
             // Just in case if token response does not provide an expiration claim
@@ -255,7 +223,6 @@ impl Display for Key {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Key::UserInfo(sub) => write!(f, "userinfo:{sub}"),
-            Key::UsersOnline => write!(f, "users:online"),
             Key::Friends(sub) => write!(f, "friends:{sub}"),
             Key::Chat(id) => write!(f, "chat:{}", id),
             Key::Session(id) => write!(f, "session:{id}"),
@@ -265,32 +232,6 @@ impl Display for Key {
 }
 
 impl redis::ToRedisArgs for Key {
-    fn write_redis_args<W>(&self, out: &mut W)
-    where
-        W: ?Sized + redis::RedisWrite,
-    {
-        self.to_string().write_redis_args(out);
-    }
-}
-
-#[derive(Clone)]
-pub struct Keyspace {
-    pub key: Key,
-}
-
-impl Keyspace {
-    pub fn new(key: Key) -> Self {
-        Self { key }
-    }
-}
-
-impl Display for Keyspace {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "__keyspace@0__:{}", &self.key)
-    }
-}
-
-impl redis::ToRedisArgs for Keyspace {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + redis::RedisWrite,

@@ -11,7 +11,6 @@ use crate::state::AppState;
 
 mod handler;
 pub mod markup;
-pub mod middleware;
 pub mod model;
 pub mod repository;
 pub mod service;
@@ -78,8 +77,6 @@ impl<'de> Deserialize<'de> for Sub {
 pub enum Error {
     #[error("user not found: {0:?}")]
     NotFound(Sub),
-    #[error("you have no friends ;( man {0:?}")]
-    NoFriends(Sub),
 
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),

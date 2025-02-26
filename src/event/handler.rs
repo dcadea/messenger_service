@@ -9,7 +9,7 @@ pub mod sse {
     use axum::extract::State;
     use axum::response::sse;
     use futures::{Stream, StreamExt};
-    use log::error;
+    use tokio::time::{self};
 
     use std::convert::Infallible;
     use std::time::Duration;
@@ -27,15 +27,12 @@ pub mod sse {
                 .await
                 .expect("failed to subscribe to subject"); // FIXME
 
-            let mut os_stream = event_service
-                .listen_online_status_change()
-                .await
-                .expect("failed to subscribe to online status change");
-
             // FIXME: if user has two or more sessions
             // and closes one - user becomes offline (not ok)
-            user_service.add_online_user(&sub).await;
+            user_service.notify_online(&sub).await;
             let _osd = OnlineStatusDropper(&sub, &user_service);
+
+            let mut interval = time::interval(Duration::from_millis(10));
 
             loop {
                 tokio::select! {
@@ -45,10 +42,8 @@ pub mod sse {
                             None => continue,
                         }
                     },
-                    update = os_stream.next() => {
-                        if update.is_some() {
-                            publish_online_friends(&sub, user_service.clone(), event_service.clone()).await;
-                        }
+                    _ = interval.tick() => {
+                        user_service.notify_online(&sub).await;
                     }
                 }
             }
@@ -70,32 +65,8 @@ pub mod sse {
             let user_service = self.1.clone();
 
             tokio::spawn(async move {
-                user_service.remove_online_user(&sub).await;
+                user_service.notify_offline(&sub).await;
             });
-        }
-    }
-
-    async fn publish_online_friends(
-        logged_sub: &user::Sub,
-        user_service: UserService,
-        event_service: EventService,
-    ) {
-        if let Ok(friends) = user_service.find_friends(logged_sub).await {
-            if friends.is_empty() {
-                return;
-            }
-
-            let online_friends: Vec<Notification> = friends
-                .into_iter()
-                .map(Notification::OnlineFriend)
-                .collect();
-
-            if let Err(e) = event_service
-                .publish_all(&Subject::Notifications(logged_sub), &online_friends)
-                .await
-            {
-                error!("Failed to publish online users notification: {e}");
-            }
         }
     }
 }

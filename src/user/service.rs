@@ -1,8 +1,10 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::Arc;
 
-use log::debug;
+use log::error;
 
+use crate::event;
+use crate::event::service::EventService;
 use crate::integration::{self, cache};
 use crate::user::model::{User, UserInfo};
 
@@ -13,13 +15,19 @@ use super::repository::UserRepository;
 #[derive(Clone)]
 pub struct UserService {
     repository: Arc<UserRepository>,
+    event_service: Arc<EventService>,
     redis: integration::cache::Redis,
 }
 
 impl UserService {
-    pub fn new(repository: UserRepository, redis: integration::cache::Redis) -> Self {
+    pub fn new(
+        repository: UserRepository,
+        event_service: EventService,
+        redis: integration::cache::Redis,
+    ) -> Self {
         Self {
             repository: Arc::new(repository),
+            event_service: Arc::new(event_service),
             redis,
         }
     }
@@ -53,6 +61,18 @@ impl UserService {
             .search_by_nickname(nickname, logged_nickname)
             .await?;
         Ok(users.into_iter().map(|user| user.into()).collect())
+    }
+
+    pub async fn find_friends(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
+        let friends = self
+            .redis
+            .smembers::<HashSet<Sub>>(cache::Key::Friends(sub.to_owned()))
+            .await;
+
+        match friends {
+            Some(friends) => Ok(friends),
+            None => self.cache_friends(sub).await,
+        }
     }
 
     pub async fn create_friendship(&self, subs: &[Sub; 2]) -> super::Result<()> {
@@ -91,77 +111,56 @@ impl UserService {
     }
 }
 
+// notifications
+impl UserService {
+    pub async fn notify_online(&self, sub: &Sub) {
+        self.notify_online_status_change(sub, true).await;
+    }
+
+    pub async fn notify_offline(&self, sub: &Sub) {
+        self.notify_online_status_change(sub, false).await;
+    }
+
+    async fn notify_online_status_change(&self, sub: &Sub, online: bool) {
+        match self.repository.find_friends_by_sub(sub).await {
+            Ok(friend_subs) => {
+                let friend = FriendDto::new(sub.to_owned(), online);
+
+                for fsub in friend_subs {
+                    if let Err(e) = self
+                        .event_service
+                        .publish(
+                            &event::Subject::Notifications(&fsub),
+                            &event::Notification::OnlineFriend(friend.clone()),
+                        )
+                        .await
+                    {
+                        error!("failed to publish online status change notification: {e:?}");
+                    };
+                }
+            }
+            Err(e) => {
+                error!("failed to find friends by sub: {e:?}");
+            }
+        }
+    }
+}
+
 // cache operations
 impl UserService {
-    pub async fn add_online_user(&self, sub: &Sub) {
-        debug!("Adding to online users: {:?}", sub);
-        self.redis.sadd(cache::Key::UsersOnline, sub).await
-    }
-
-    pub async fn find_friends(&self, sub: &Sub) -> super::Result<Vec<FriendDto>> {
-        let mut friends: HashMap<Sub, bool> = self
-            .repository
-            .find_friends_by_sub(sub)
-            .await?
-            .into_iter()
-            .map(|s| (s, false))
-            .collect();
-
-        if friends.is_empty() {
-            return Ok(Vec::with_capacity(0));
-        }
-
-        if let Some(online_friends) = self
-            .redis
-            .sinter::<Sub>(vec![
-                cache::Key::UsersOnline,
-                cache::Key::Friends(sub.to_owned()),
-            ])
-            .await
-        {
-            online_friends.into_iter().for_each(|s| {
-                friends.entry(s).and_modify(|e| *e = true);
-            });
-        }
-
-        let friends: Vec<FriendDto> = friends
-            .into_iter()
-            .map(|(sub, online)| FriendDto::new(sub, online))
-            .collect();
-
-        Ok(friends)
-    }
-
-    pub async fn remove_online_user(&self, sub: &Sub) {
-        debug!("Removing from online users: {:?}", sub);
-        self.redis.srem(cache::Key::UsersOnline, sub).await
-    }
-
-    pub async fn cache_friends(&self, sub: &Sub) -> super::Result<()> {
+    async fn cache_friends(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
         let friends = self.repository.find_friends_by_sub(sub).await?;
 
         if friends.is_empty() {
-            return Ok(());
+            return Ok(HashSet::with_capacity(0));
         }
 
         let _: () = self
             .redis
-            .sadd(cache::Key::Friends(sub.to_owned()), friends)
+            .sadd(cache::Key::Friends(sub.to_owned()), &friends)
             .await;
 
-        Ok(())
-    }
-
-    pub async fn find_cached_friends(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
-        let friends = self
-            .redis
-            .smembers::<HashSet<Sub>>(cache::Key::Friends(sub.to_owned()))
-            .await;
-
-        match friends {
-            Some(friends) => Ok(friends),
-            None => Err(super::Error::NoFriends(sub.to_owned())),
-        }
+        Ok(HashSet::from_iter(friends.iter().cloned()))
     }
 
     async fn cache_user_info(&self, user_info: &UserInfo) {

@@ -1,7 +1,6 @@
 use std::pin::Pin;
 
 use axum::Router;
-use axum::middleware::from_fn_with_state;
 use axum::response::sse;
 use axum::routing::get;
 use futures::Stream;
@@ -9,7 +8,6 @@ use maud::{Markup, Render, html};
 use serde::{Deserialize, Serialize};
 
 use crate::state::AppState;
-use crate::user::middleware::cache_user_friends;
 use crate::{auth, chat, message, user};
 
 mod handler;
@@ -20,7 +18,6 @@ type Result<T> = std::result::Result<T, Error>;
 pub fn api<S>(state: AppState) -> Router<S> {
     Router::new()
         .route("/sse", get(handler::sse::notifications))
-        .layer(from_fn_with_state(state.clone(), cache_user_friends))
         .route("/ws/{chat_id}", get(handler::ws::chat))
         .with_state(state)
 }

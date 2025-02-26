@@ -24,7 +24,7 @@ pub(super) mod api {
             .await?;
 
         let friends = user_service
-            .find_cached_friends(&user_info.sub)
+            .find_friends(&user_info.sub)
             .await
             .unwrap_or(user_info.friends.clone());
 
