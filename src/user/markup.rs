@@ -110,6 +110,7 @@ impl Render for FriendDto {
         html! {
             div sse-swap={"onlineFriend:"(self.id())}
                 hx-target={"#os-"(self.id())}
+                hx-swap="outerHTML"
             {
                 (Icon::OnlineStatus(self))
             }

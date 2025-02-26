@@ -9,7 +9,7 @@ pub mod sse {
     use axum::extract::State;
     use axum::response::sse;
     use futures::{Stream, StreamExt};
-    use tokio::time::{self};
+    use tokio::time;
 
     use std::convert::Infallible;
     use std::time::Duration;
@@ -27,13 +27,9 @@ pub mod sse {
                 .await
                 .expect("failed to subscribe to subject"); // FIXME
 
-            // FIXME: if user has two or more sessions
-            // and closes one - user becomes offline (not ok)
-            user_service.notify_online(&sub).await;
             let _osd = OnlineStatusDropper(&sub, &user_service);
 
-            let mut interval = time::interval(Duration::from_millis(10));
-
+            let mut interval = time::interval(Duration::from_secs(15));
             loop {
                 tokio::select! {
                     noti = noti_stream.next() => {
