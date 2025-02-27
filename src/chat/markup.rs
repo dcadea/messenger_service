@@ -1,11 +1,11 @@
 use std::rc::Rc;
 
 use maud::{Markup, Render, html};
+use messenger_service::markup::Id;
 
 use crate::user::model::UserInfo;
-use crate::{message, user};
+use crate::{chat, message, user};
 
-use super::Id;
 use super::model::ChatDto;
 
 pub struct ChatWindow<'a> {
@@ -89,7 +89,7 @@ impl Render for Header<'_> {
 }
 
 pub struct ActiveChat<'a> {
-    pub id: &'a Id,
+    pub id: &'a chat::Id,
     pub recipient: &'a UserInfo,
 }
 
@@ -122,7 +122,7 @@ impl Render for ActiveChat<'_> {
     }
 }
 
-struct ChatControls<'a>(&'a Id);
+struct ChatControls<'a>(&'a chat::Id);
 
 impl Render for ChatControls<'_> {
     fn render(&self) -> Markup {
@@ -146,13 +146,13 @@ impl Render for ChatControls<'_> {
 impl Render for ChatDto {
     fn render(&self) -> Markup {
         html! {
-            div #{"c-" (self.id)}
+            div #(self.id.attr())
                 ."chat-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center"
                 hx-get={"/chats/" (self.id)}
                 hx-target="#chat-window"
                 hx-swap="innerHTML"
             {
-                (user::model::FriendDto::new(self.recipient.clone(), false))
+                (user::model::OnlineStatus::new(self.recipient.clone(), false))
                 img ."w-8 h-8 rounded-full"
                     src=(self.recipient_picture) alt="Recipient avatar" {}
 
@@ -166,6 +166,16 @@ impl Render for ChatDto {
                 }
             }
         }
+    }
+}
+
+impl messenger_service::markup::Id for chat::Id {
+    fn attr(&self) -> String {
+        format!("c-{}", self.0)
+    }
+
+    fn target(&self) -> String {
+        format!("#c-{}", self.0)
     }
 }
 

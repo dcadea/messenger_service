@@ -9,7 +9,7 @@ use crate::integration::{self, cache};
 use crate::user::model::{User, UserInfo};
 
 use super::Sub;
-use super::model::FriendDto;
+use super::model::OnlineStatus;
 use super::repository::UserRepository;
 
 #[derive(Clone)]
@@ -124,14 +124,14 @@ impl UserService {
     async fn notify_online_status_change(&self, sub: &Sub, online: bool) {
         match self.repository.find_friends_by_sub(sub).await {
             Ok(friend_subs) => {
-                let friend = FriendDto::new(sub.to_owned(), online);
+                let status = OnlineStatus::new(sub.to_owned(), online);
 
                 for fsub in friend_subs {
                     if let Err(e) = self
                         .event_service
                         .publish(
                             &event::Subject::Notifications(&fsub),
-                            &event::Notification::OnlineFriend(friend.clone()),
+                            &event::Notification::OnlineStatusChange(status.clone()),
                         )
                         .await
                     {

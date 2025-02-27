@@ -4,7 +4,7 @@ use maud::{Markup, Render, html};
 
 use super::{
     Sub,
-    model::{FriendDto, UserInfo},
+    model::{OnlineStatus, UserInfo},
 };
 
 pub struct Header<'a>(pub &'a UserInfo);
@@ -105,27 +105,27 @@ impl Render for SearchResult<'_> {
     }
 }
 
-impl Render for FriendDto {
+impl Render for OnlineStatus {
     fn render(&self) -> Markup {
         html! {
-            div sse-swap={"onlineFriend:"(self.id())}
+            div sse-swap={"onlineStatusChange:"(self.id())}
                 hx-target={"#os-"(self.id())}
                 hx-swap="outerHTML"
             {
-                (Icon::OnlineStatus(self))
+                (Icon::OnlineIndicator(self))
             }
         }
     }
 }
 
 pub enum Icon<'a> {
-    OnlineStatus(&'a FriendDto),
+    OnlineIndicator(&'a OnlineStatus),
 }
 
 impl Render for Icon<'_> {
     fn render(&self) -> Markup {
         match self {
-            Self::OnlineStatus(f) => {
+            Self::OnlineIndicator(f) => {
                 let i_class = match f.online {
                     true => "fa-solid",
                     false => "fa-regular",

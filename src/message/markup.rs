@@ -1,12 +1,10 @@
 use chrono::DateTime;
 use maud::{Markup, Render, html};
+use messenger_service::markup::Id;
 
-use crate::{chat, user};
+use crate::{chat, message, user};
 
-use super::{
-    Id,
-    model::{LastMessage, Message},
-};
+use super::model::{LastMessage, Message};
 
 pub struct InputBlank<'a> {
     pub chat_id: &'a chat::Id,
@@ -41,16 +39,13 @@ impl Render for InputBlank<'_> {
 }
 
 pub struct InputEdit<'a> {
-    message_id: &'a Id,
+    id: &'a message::Id,
     old_text: &'a str,
 }
 
 impl<'a> InputEdit<'a> {
-    pub fn new(message_id: &'a Id, old_text: &'a str) -> Self {
-        Self {
-            message_id,
-            old_text,
-        }
+    pub fn new(id: &'a message::Id, old_text: &'a str) -> Self {
+        Self { id, old_text }
     }
 }
 
@@ -59,10 +54,10 @@ impl Render for InputEdit<'_> {
         html! {
             form #message-input ."border-gray-200 flex"
                 hx-put="/api/messages"
-                hx-target={"#m-" (self.message_id)}
+                hx-target=(self.id.target())
                 hx-swap="outerHTML"
             {
-                input type="hidden" name="message_id" value=(self.message_id) {}
+                input type="hidden" name="message_id" value=(self.id) {}
                 (InputText(Some(self.old_text)))
                 (SendButton)
             }
@@ -220,7 +215,7 @@ impl Render for MessageItem<'_> {
             DateTime::from_timestamp(self.msg.timestamp, 0).map(|dt| dt.format("%H:%M"));
 
         html! {
-            div #{"m-" (self.msg._id)}
+            div #(self.msg._id.attr())
                 .(MESSAGE_CLASS)
                 .justify-end[belongs_to_user]
                 hx-trigger=[self.hx_trigger()]
@@ -288,9 +283,19 @@ pub fn last_message(
     }
 }
 
+impl messenger_service::markup::Id for message::Id {
+    fn attr(&self) -> String {
+        format!("m-{}", self.0)
+    }
+
+    fn target(&self) -> String {
+        format!("#m-{}", self.0)
+    }
+}
+
 pub enum Icon<'a> {
     Edit(&'a Message),
-    Delete(&'a Id),
+    Delete(&'a message::Id),
     Sent,
     Seen,
 }
@@ -308,7 +313,7 @@ impl Render for Icon<'_> {
                 Self::Delete(id) => {
                     i ."fa-trash-can fa-solid text-red-700 cursor-pointer"
                         hx-delete={"/api/messages/" (id)}
-                        hx-target={"#m-" (id)}
+                        hx-target=(id.target())
                         hx-swap="outerHTML swap:200ms" {}
                 },
                 Self::Sent => i ."fa-solid fa-check absolute bottom-1 right-1 text-white opacity-65" {},

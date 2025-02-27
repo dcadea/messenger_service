@@ -10,6 +10,11 @@ pub mod markup {
 
     pub const EMPTY: PreEscaped<&'static str> = PreEscaped("");
 
+    pub trait Id {
+        fn attr(&self) -> String;
+        fn target(&self) -> String;
+    }
+
     struct Head<'a>(&'a str);
 
     impl Render for Head<'_> {

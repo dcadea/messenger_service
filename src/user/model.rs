@@ -17,12 +17,12 @@ pub struct User {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct FriendDto {
+pub struct OnlineStatus {
     sub: Sub,
     pub online: bool,
 }
 
-impl FriendDto {
+impl OnlineStatus {
     pub fn new(sub: Sub, online: bool) -> Self {
         Self { sub, online }
     }

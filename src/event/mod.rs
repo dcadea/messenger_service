@@ -5,6 +5,7 @@ use axum::response::sse;
 use axum::routing::get;
 use futures::Stream;
 use maud::{Markup, Render, html};
+use messenger_service::markup::Id;
 use serde::{Deserialize, Serialize};
 
 use crate::state::AppState;
@@ -42,7 +43,7 @@ impl async_nats::subject::ToSubject for &Subject<'_> {
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Notification {
-    OnlineFriend(user::model::FriendDto),
+    OnlineStatusChange(user::model::OnlineStatus),
     NewFriend(chat::model::ChatDto),
     NewMessage {
         chat_id: chat::Id,
@@ -53,7 +54,9 @@ pub enum Notification {
 impl Render for Notification {
     fn render(&self) -> Markup {
         match self {
-            Notification::OnlineFriend(f) => html! { (user::markup::Icon::OnlineStatus(&f)) },
+            Notification::OnlineStatusChange(os) => {
+                html! { (user::markup::Icon::OnlineIndicator(&os)) }
+            }
             Notification::NewFriend(chat_dto) => html! { (chat_dto) },
             Notification::NewMessage {
                 chat_id,
@@ -68,7 +71,7 @@ impl Render for Notification {
 impl From<Notification> for sse::Event {
     fn from(noti: Notification) -> Self {
         let event_name = match &noti {
-            Notification::OnlineFriend(f) => &format!("onlineFriend:{}", f.id()),
+            Notification::OnlineStatusChange(f) => &format!("onlineStatusChange:{}", f.id()),
             Notification::NewFriend(_) => "newFriend",
             Notification::NewMessage { chat_id, .. } => &format!("newMessage:{}", &chat_id),
         };
@@ -96,13 +99,13 @@ impl Render for Message {
                     (message::markup::MessageItem::new(&msg, None))
                 },
                 Message::Updated(msg) => (message::markup::MessageItem::new(&msg, Some(&msg.recipient))),
-                Message::Deleted(id) => div #{"m-" (id)} ."message-item flex items-center items-baseline" {
+                Message::Deleted(id) => div #(id.attr()) ."message-item flex items-center items-baseline" {
                     div ."message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs"
                         ."bg-gray-300 text-gray-600 italic" {
                         "message deleted..."
                     }
                 },
-                Message::Seen(msg) => div #{"m-" (msg._id)} hx-swap-oob="beforeend" {
+                Message::Seen(msg) => div #(msg._id.attr()) hx-swap-oob="beforeend" {
                     (message::markup::Icon::Seen)
                 },
             }
