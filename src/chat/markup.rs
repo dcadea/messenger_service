@@ -3,10 +3,14 @@ use std::rc::Rc;
 use maud::{Markup, Render, html};
 use messenger_service::markup::Id;
 
+use crate::message::markup::{MESSAGE_INPUT_TARGET, MESSAGE_LIST_ID};
 use crate::user::model::UserInfo;
 use crate::{chat, message, user};
 
 use super::model::ChatDto;
+
+const CHAT_WINDOW_ID: &str = "chat-window";
+pub const CHAT_WINDOW_TARGET: &str = "#chat-window";
 
 pub struct ChatWindow<'a> {
     user_info: &'a UserInfo,
@@ -29,7 +33,7 @@ impl<'a> ChatWindow<'a> {
 impl Render for ChatWindow<'_> {
     fn render(&self) -> Markup {
         html! {
-            div #chat-window ."flex flex-col h-full" {
+            div #(CHAT_WINDOW_ID) ."flex flex-col h-full" {
                 (user::markup::Header(self.user_info))
                 (user::markup::Search)
                 (ChatList::new(self.get_chats()))
@@ -102,7 +106,7 @@ impl Render for ActiveChat<'_> {
                 hx-ext="ws"
                 ws-connect={ "/ws/" (self.id) }
             {
-                div #message-list ."sticky flex flex-col-reverse overflow-auto h-full"
+                div #(MESSAGE_LIST_ID) ."sticky flex flex-col-reverse overflow-auto h-full"
                     hx-get={ "/api/messages?limit=20&chat_id=" (self.id) }
                     hx-trigger="load" {}
             }
@@ -112,7 +116,7 @@ impl Render for ActiveChat<'_> {
 
             div .hidden
                 hx-trigger="msg:afterUpdate from:body"
-                hx-target="#message-input"
+                hx-target=(MESSAGE_INPUT_TARGET)
                 hx-swap="outerHTML"
                 hx-get={"/templates/messages/input/blank"
                     "?chat_id=" (self.id)
@@ -149,7 +153,7 @@ impl Render for ChatDto {
             div #(self.id.attr())
                 ."chat-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center"
                 hx-get={"/chats/" (self.id)}
-                hx-target="#chat-window"
+                hx-target=(CHAT_WINDOW_TARGET)
                 hx-swap="innerHTML"
             {
                 (user::model::OnlineStatus::new(self.recipient.clone(), false))

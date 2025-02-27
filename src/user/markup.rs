@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 
 use maud::{Markup, Render, html};
+use messenger_service::markup::Id;
+
+use crate::chat::markup::CHAT_WINDOW_TARGET;
 
 use super::{
     Sub,
@@ -26,8 +29,20 @@ impl Render for Header<'_> {
 
 pub struct Search;
 
+const SEARCH_RESULTS_ID: &str = "search-results";
+const SEARCH_RESULTS_TARGET: &str = "#search-results";
+
 impl Render for Search {
     fn render(&self) -> Markup {
+        let search_handler = format!(
+            r#"on keyup
+                if the event's key is 'Escape'
+                    set value of me to ''
+                    remove children of {}
+            "#,
+            SEARCH_RESULTS_TARGET
+        );
+
         html! {
             input ."mb-4 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none"
                 type="search"
@@ -36,14 +51,10 @@ impl Render for Search {
                 autocomplete="off"
                 hx-post="/api/users/search"
                 hx-trigger="input changed delay:500ms"
-                hx-target="#search-results"
-                _=r#"on keyup
-                        if the event's key is 'Escape'
-                            set value of me to ''
-                            remove children of #search-results
-                    "# {}
+                hx-target=(SEARCH_RESULTS_TARGET)
+                _=(search_handler) {}
 
-            div #search-results .relative {}
+            div #(SEARCH_RESULTS_ID) .relative {}
         }
     }
 }
@@ -55,7 +66,7 @@ impl Render for AddFriend<'_> {
         html! {
             form .float-right
                 hx-post="/api/chats"
-                hx-target="#chat-window"
+                hx-target=(CHAT_WINDOW_TARGET)
             {
                 input type="hidden" name="sub" value=(self.0) {}
                 input ."px-2 py-1 text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-xs focus:outline-none"
@@ -105,11 +116,21 @@ impl Render for SearchResult<'_> {
     }
 }
 
+impl messenger_service::markup::Id for OnlineStatus {
+    fn attr(&self) -> String {
+        format!("os-{}", self.id())
+    }
+
+    fn target(&self) -> String {
+        format!("#os-{}", self.id())
+    }
+}
+
 impl Render for OnlineStatus {
     fn render(&self) -> Markup {
         html! {
             div sse-swap={"onlineStatusChange:"(self.id())}
-                hx-target={"#os-"(self.id())}
+                hx-target=(self.target())
                 hx-swap="outerHTML"
             {
                 (Icon::OnlineIndicator(self))
@@ -125,14 +146,14 @@ pub enum Icon<'a> {
 impl Render for Icon<'_> {
     fn render(&self) -> Markup {
         match self {
-            Self::OnlineIndicator(f) => {
-                let i_class = match f.online {
+            Self::OnlineIndicator(os) => {
+                let i_class = match os.online {
                     true => "fa-solid",
                     false => "fa-regular",
                 };
 
                 html! {
-                    i #{"os-" (f.id())} .(i_class) ."fa-circle text-green-600 mr-2" {}
+                    i #(os.attr()) .(i_class) ."fa-circle text-green-600 mr-2" {}
                 }
             }
         }

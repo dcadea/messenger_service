@@ -17,17 +17,28 @@ impl<'a> InputBlank<'a> {
     }
 }
 
+const MESSAGE_INPUT_ID: &str = "message-input";
+pub const MESSAGE_INPUT_TARGET: &str = "#message-input";
+
+pub const MESSAGE_LIST_ID: &str = "message-list";
+const MESSAGE_LIST_TARGET: &str = "#message-list";
+
 impl Render for InputBlank<'_> {
     fn render(&self) -> Markup {
+        let send_message_handler = format!(
+            r#"
+                on htmx:afterRequest reset() me
+                on htmx:afterRequest go to the bottom of the {}
+            "#,
+            MESSAGE_LIST_TARGET
+        );
+
         html! {
-            form #message-input ."border-gray-200 flex"
+            form #(MESSAGE_INPUT_ID) ."border-gray-200 flex"
                 hx-post="/api/messages"
-                hx-target="#message-list"
+                hx-target=(MESSAGE_LIST_TARGET)
                 hx-swap="afterbegin"
-                _=r#"
-                    on htmx:afterRequest reset() me
-                    on htmx:afterRequest go to the bottom of the #message-list
-                "#
+                _=(send_message_handler)
             {
                 input type="hidden" name="chat_id" value=(self.chat_id) {}
                 input type="hidden" name="recipient" value=(self.recipient) {}
@@ -52,7 +63,7 @@ impl<'a> InputEdit<'a> {
 impl Render for InputEdit<'_> {
     fn render(&self) -> Markup {
         html! {
-            form #message-input ."border-gray-200 flex"
+            form #(MESSAGE_INPUT_ID) ."border-gray-200 flex"
                 hx-put="/api/messages"
                 hx-target=(self.id.target())
                 hx-swap="outerHTML"
@@ -307,7 +318,7 @@ impl Render for Icon<'_> {
                 Self::Edit(msg) =>{
                     i ."fa-pen fa-solid ml-2 text-green-700 cursor-pointer"
                         hx-get={"/templates/messages/input/edit?message_id=" (msg._id)}
-                        hx-target="#message-input"
+                        hx-target=(MESSAGE_INPUT_TARGET)
                         hx-swap="outerHTML" {}
                 },
                 Self::Delete(id) => {

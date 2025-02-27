@@ -8,6 +8,7 @@ use maud::{Markup, Render, html};
 use messenger_service::markup::Id;
 use serde::{Deserialize, Serialize};
 
+use crate::message::markup::MESSAGE_LIST_ID;
 use crate::state::AppState;
 use crate::{auth, chat, message, user};
 
@@ -95,7 +96,7 @@ impl Render for Message {
     fn render(&self) -> Markup {
         html! {
             @match self {
-                Message::New(msg) => div #message-list hx-swap-oob="afterbegin" {
+                Message::New(msg) => div #(MESSAGE_LIST_ID) hx-swap-oob="afterbegin" {
                     (message::markup::MessageItem::new(&msg, None))
                 },
                 Message::Updated(msg) => (message::markup::MessageItem::new(&msg, Some(&msg.recipient))),
