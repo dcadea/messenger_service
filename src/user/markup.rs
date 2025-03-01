@@ -153,7 +153,7 @@ impl Render for Icon<'_> {
                 };
 
                 html! {
-                    i #(os.attr()) .(i_class) ."fa-circle text-green-600 mr-2" {}
+                    i #(os.attr()) .(i_class) ."fa-circle text-green-600 mr-2 text-sm" {}
                 }
             }
         }

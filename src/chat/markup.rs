@@ -80,12 +80,13 @@ struct Header<'a>(&'a UserInfo);
 impl Render for Header<'_> {
     fn render(&self) -> Markup {
         html! {
-            header #recipient-header ."flex justify-between items-center relative" {
+            header #recipient-header ."flex justify-between items-center" {
                 a ."cursor-pointer border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
                     href="/" { "X" }
-                h2 .text-2xl { (self.0.name) }
-                // TODO: online users feature
-                span ."online-status absolute inset-12 flex items-center justify-center text-xs text-gray-500" { "offline" }
+                ."flex text-2xl" {
+                    (user::model::OnlineStatus::new(self.0.sub.clone(), false))
+                    (self.0.name)
+                }
                 (Icon::ChatControls)
             }
         }
