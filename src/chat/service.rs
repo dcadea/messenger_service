@@ -71,6 +71,7 @@ impl ChatService {
     pub async fn create(
         &self,
         logged_user: &UserInfo,
+        kind: &chat::Kind,
         recipient: &user::Sub,
     ) -> super::Result<ChatDto> {
         assert_ne!(&logged_user.sub, recipient);
@@ -82,7 +83,7 @@ impl ChatService {
 
         self.user_service.create_friendship(&members).await?;
 
-        let chat = Chat::private(members);
+        let chat = Chat::new(kind.clone(), logged_user.sub.clone(), members.to_vec());
         _ = self.repository.create(chat.clone()).await?;
 
         let chat_dto = self.chat_to_dto(chat, recipient).await?;

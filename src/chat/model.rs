@@ -18,21 +18,10 @@ pub struct Chat {
 }
 
 impl Chat {
-    pub fn private(members: [user::Sub; 2]) -> Self {
+    pub fn new(kind: Kind, owner: user::Sub, members: Vec<user::Sub>) -> Self {
         Self {
             _id: Id::random(),
-            kind: Kind::Private,
-            owner: None,
-            members: members.to_vec(),
-            last_message: None,
-        }
-    }
-
-    #[allow(dead_code)] // TODO
-    pub fn group(owner: user::Sub, members: Vec<user::Sub>) -> Self {
-        Self {
-            _id: Id::random(),
-            kind: Kind::Group,
+            kind,
             owner: Some(owner),
             members,
             last_message: None,

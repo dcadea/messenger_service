@@ -43,7 +43,7 @@ pub(super) mod api {
     use serde::Deserialize;
 
     use crate::{
-        chat::{Id, markup, service::ChatService},
+        chat::{self, Id, markup, service::ChatService},
         user::{self, model::UserInfo, service::UserService},
     };
 
@@ -58,6 +58,7 @@ pub(super) mod api {
 
     #[derive(Deserialize)]
     pub struct CreateParams {
+        kind: chat::Kind,
         sub: user::Sub,
     }
 
@@ -68,7 +69,9 @@ pub(super) mod api {
         Form(params): Form<CreateParams>,
     ) -> crate::Result<Markup> {
         let recipient = &params.sub;
-        let chat = chat_service.create(&logged_user, recipient).await?;
+        let chat = chat_service
+            .create(&logged_user, &params.kind, recipient)
+            .await?;
 
         let id = &chat.id;
         let recipient = &user_service.find_user_info(recipient).await?;
