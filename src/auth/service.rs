@@ -49,10 +49,10 @@ impl AuthService {
             jwk_decoding_keys: jwk_decoding_keys.clone(),
         };
 
-        let http = integration::init_http_client();
         let config_clone = config.clone();
         // FIXME: this occupies a resource for too long
         tokio::spawn(async move {
+            let http = integration::init_http_client();
             loop {
                 match fetch_jwk_decoding_keys(&config_clone, &http).await {
                     Ok(keys) => *jwk_decoding_keys.write().await = keys,
