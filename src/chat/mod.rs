@@ -12,7 +12,6 @@ use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
 use crate::state::AppState;
-use crate::user;
 
 mod handler;
 pub mod markup;
@@ -66,11 +65,10 @@ pub enum Error {
     NotMember,
     #[error("could not create chat")]
     NotCreated,
+    #[error("could not delete chat")]
+    NotDeleted,
     #[error("chat already exists")]
     AlreadyExists,
-
-    #[error(transparent)]
-    _User(#[from] user::Error),
 
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
@@ -84,9 +82,10 @@ impl IntoResponse for Error {
             Self::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             Self::NotMember => (StatusCode::BAD_REQUEST, self.to_string()),
             Self::NotCreated => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+            Self::NotDeleted => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             Self::AlreadyExists => (StatusCode::CONFLICT, self.to_string()),
 
-            Self::_User(_) | Self::_MongoDB(_) => (
+            Self::_MongoDB(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Internal server error".to_owned(),
             ),

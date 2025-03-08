@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use futures::future::try_join_all;
+use log::error;
 
 use super::Id;
 use super::model::{Chat, ChatDto};
@@ -11,7 +12,7 @@ use crate::message::model::{LastMessage, Message};
 use crate::message::repository::MessageRepository;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
-use crate::{chat, event, message, user};
+use crate::{chat, event, user};
 
 #[derive(Clone)]
 pub struct ChatService {
@@ -80,7 +81,10 @@ impl ChatService {
             return Err(chat::Error::AlreadyExists);
         }
 
-        self.user_service.create_friendship(&members).await?;
+        if let Err(e) = self.user_service.create_friendship(&members).await {
+            error!("could not create friendship: {e:?}");
+            return Err(chat::Error::NotCreated);
+        }
 
         let chat = Chat::new(kind.clone(), logged_user.sub.clone(), members.to_vec());
         _ = self.repository.create(chat.clone()).await?;
@@ -102,14 +106,18 @@ impl ChatService {
 
         let chat = self.find_by_id(id, logged_user).await?;
 
-        self.repository.delete(id).await?;
-        // TODO: hack until error handling is fixed
-        if let Err(message::Error::_Chat(e)) = self.message_repository.delete_by_chat_id(id).await {
-            return Err(e);
+        let friends = [chat.sender, chat.recipient];
+        if let Err(e) = self.user_service.delete_friendship(&friends).await {
+            error!("could not delete friendship: {e:?}");
+            return Err(chat::Error::NotDeleted);
         }
 
-        let friends = [chat.sender, chat.recipient];
-        self.user_service.delete_friendship(&friends).await?;
+        self.repository.delete(id).await?;
+        if let Err(e) = self.message_repository.delete_by_chat_id(id).await {
+            error!("failed to delete chat: {e:?}");
+            return Err(chat::Error::NotDeleted);
+            // TODO: tx rollback?
+        }
 
         Ok(())
     }
