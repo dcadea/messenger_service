@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::message::markup::MESSAGE_LIST_ID;
 use crate::state::AppState;
-use crate::{auth, chat, message, user};
+use crate::{chat, message, user};
 
 mod handler;
 pub mod service;
@@ -120,22 +120,7 @@ pub enum Error {
     NotOwner,
     #[error("not a message recipient")]
     NotRecipient,
-    #[error("stream unavailable")]
-    StreamUnavailable,
 
-    #[error(transparent)]
-    _Auth(#[from] auth::Error),
-    #[error(transparent)]
-    _Chat(#[from] chat::Error),
-    #[error(transparent)]
-    _User(#[from] user::Error),
-
-    #[error(transparent)]
-    _ParseJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    _NatsPub(#[from] async_nats::PublishError),
     #[error(transparent)]
     _NatsSub(#[from] async_nats::SubscribeError),
-    #[error(transparent)]
-    _Redis(#[from] redis::RedisError),
 }

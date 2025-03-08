@@ -127,16 +127,12 @@ impl UserService {
                 let status = OnlineStatus::new(sub.to_owned(), online);
 
                 for fsub in friend_subs {
-                    if let Err(e) = self
-                        .event_service
+                    self.event_service
                         .publish(
                             &event::Subject::Notifications(&fsub),
                             &event::Notification::OnlineStatusChange(status.clone()),
                         )
-                        .await
-                    {
-                        error!("failed to publish online status change notification: {e:?}");
-                    };
+                        .await;
                 }
             }
             Err(e) => {

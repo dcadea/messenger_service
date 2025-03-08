@@ -7,7 +7,7 @@ use axum::{
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
-use crate::{chat, event, state::AppState};
+use crate::{chat, state::AppState};
 
 mod handler;
 pub mod markup;
@@ -69,9 +69,6 @@ pub enum Error {
 
     #[error(transparent)]
     _Chat(#[from] chat::Error),
-
-    #[error(transparent)]
-    _Event(#[from] event::Error),
 
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),

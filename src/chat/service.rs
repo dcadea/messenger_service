@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use futures::future::try_join_all;
-use log::warn;
 
 use super::Id;
 use super::model::{Chat, ChatDto};
@@ -88,16 +87,12 @@ impl ChatService {
 
         let chat_dto = self.chat_to_dto(chat, recipient).await?;
 
-        if let Err(e) = self
-            .event_service
+        self.event_service
             .publish(
                 &event::Subject::Notifications(recipient),
                 &event::Notification::NewFriend(chat_dto.clone()),
             )
-            .await
-        {
-            warn!("Failed to publish new friend notification: {:?}", e);
-        }
+            .await;
 
         Ok(chat_dto)
     }
@@ -128,8 +123,7 @@ impl ChatService {
     ) -> super::Result<()> {
         self.repository.update_last_message(id, msg).await?;
         if let Some(last_message) = msg {
-            if let Err(e) = self
-                .event_service
+            self.event_service
                 .publish(
                     &event::Subject::Notifications(&last_message.recipient),
                     &event::Notification::NewMessage {
@@ -137,10 +131,7 @@ impl ChatService {
                         last_message: last_message.clone(),
                     },
                 )
-                .await
-            {
-                warn!("Failed to publish new message notification: {:?}", e);
-            }
+                .await;
         }
         Ok(())
     }

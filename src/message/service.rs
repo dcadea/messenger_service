@@ -64,7 +64,7 @@ impl MessageService {
                 &event::Subject::Messages(&msg.recipient, &msg.chat_id),
                 &message_events,
             )
-            .await?;
+            .await;
 
         Ok(messages)
     }
@@ -92,7 +92,7 @@ impl MessageService {
                 &event::Subject::Messages(&msg.recipient, &msg.chat_id),
                 &event::Message::Updated(msg.clone()),
             )
-            .await?;
+            .await;
 
         Ok(msg)
     }
@@ -112,7 +112,7 @@ impl MessageService {
                 &event::Subject::Messages(&msg.recipient, chat_id),
                 &event::Message::Deleted(id.clone()),
             )
-            .await?;
+            .await;
 
         if deleted_count > 0 {
             return Ok(Some(msg));
@@ -207,7 +207,7 @@ impl MessageService {
 
         self.event_service
             .publish_all(&event::Subject::Messages(&owner, &chat_id), &message_events)
-            .await?;
+            .await;
 
         let seen_qty = messages.len();
         Ok(seen_qty)

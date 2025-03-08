@@ -1,4 +1,5 @@
 use futures::StreamExt;
+use log::error;
 use serde::{Serialize, de::DeserializeOwned};
 
 use super::{PayloadStream, Subject};
@@ -21,7 +22,7 @@ impl EventService {
     ) -> super::Result<PayloadStream<T>> {
         let subscriber = self.pubsub.subscribe(s).await?;
 
-        let stream = subscriber.then(|msg| async move {
+        let stream = subscriber.then(async |msg| {
             // FIXME: expect!
             serde_json::from_slice::<T>(&msg.payload).expect("failed payload deserialization")
         });
@@ -29,20 +30,17 @@ impl EventService {
         Ok(stream.boxed())
     }
 
-    pub async fn publish<T: Serialize>(&self, s: &Subject<'_>, payload: &T) -> super::Result<()> {
-        let payload = serde_json::to_vec(payload)?;
-        self.pubsub.publish(s, payload.into()).await?;
-        Ok(())
+    pub async fn publish<T: Serialize>(&self, s: &Subject<'_>, payload: &T) {
+        if let Err(e) = serde_json::to_vec(payload)
+            .map(async |payload| self.pubsub.publish(s, payload.into()).await)
+        {
+            error!("failed to publish into subject: {s:?}, reason: {e:?}");
+        }
     }
 
-    pub async fn publish_all<T: Serialize>(
-        &self,
-        s: &Subject<'_>,
-        payloads: &[T],
-    ) -> super::Result<()> {
+    pub async fn publish_all<T: Serialize>(&self, s: &Subject<'_>, payloads: &[T]) {
         for p in payloads {
-            self.publish(s, p).await?;
+            self.publish(s, p).await;
         }
-        Ok(())
     }
 }
