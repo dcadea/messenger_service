@@ -13,40 +13,41 @@ use super::service::AuthService;
 pub async fn validate_sid(
     auth_service: State<AuthService>,
     jar: CookieJar,
-    mut request: Request,
+    mut req: Request,
     next: Next,
 ) -> crate::Result<Response> {
     if let Some(sid) = jar.get(super::SESSION_ID) {
         match auth_service.find_token(sid.value()).await {
             Some(token) => {
                 let sub = auth_service.validate(&token).await?;
-                request.extensions_mut().insert(sub);
-                request.extensions_mut().insert(AccessToken::new(token));
+                let ext = req.extensions_mut();
+                ext.insert(sub);
+                ext.insert(AccessToken::new(token));
             }
             None => return Ok(Redirect::to("/logout").into_response()),
         }
     }
 
-    Ok(next.run(request).await)
+    Ok(next.run(req).await)
 }
 
 pub async fn authorize(
     user_service: State<UserService>,
     auth_service: State<AuthService>,
     jar: CookieJar,
-    mut request: Request,
+    mut req: Request,
     next: Next,
 ) -> crate::Result<Response> {
     if jar.get(super::SESSION_ID).is_none() {
         return Ok(Redirect::to("/login").into_response());
     }
 
-    let sub = request
+    let sub = req
         .extensions()
         .get::<user::Sub>()
         .ok_or(super::Error::Unauthorized)?;
 
-    let token = request
+    let token = req
         .extensions()
         .get::<AccessToken>()
         .ok_or(super::Error::Unauthorized)?;
@@ -62,8 +63,8 @@ pub async fn authorize(
         Err(e) => return Err(e.into()),
     };
 
-    request.extensions_mut().insert(user_info);
+    req.extensions_mut().insert(user_info);
 
-    let response = next.run(request).await;
+    let response = next.run(req).await;
     Ok(response)
 }

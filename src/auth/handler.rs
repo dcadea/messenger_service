@@ -25,13 +25,12 @@ pub(super) mod api {
         auth_service: State<AuthService>,
         jar: CookieJar,
     ) -> auth::Result<impl IntoResponse> {
-        match jar.get(auth::SESSION_ID) {
-            Some(sid) => auth_service
-                .invalidate_token(sid.value())
-                .await
-                .map(|_| (CookieJar::new(), Redirect::to("/login"))),
-            None => Ok((jar, Redirect::to("/login"))),
+        if let Some(sid) = jar.get(auth::SESSION_ID) {
+            auth_service.invalidate_token(sid.value()).await?;
+            return Ok((CookieJar::new(), Redirect::to("/login")));
         }
+
+        Ok((jar, Redirect::to("/login")))
     }
 
     #[derive(Deserialize)]
