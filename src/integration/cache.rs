@@ -1,5 +1,6 @@
 use std::env;
 use std::fmt::{Display, Formatter};
+use std::sync::Arc;
 
 use log::{error, warn};
 use redis::{AsyncCommands, JsonAsyncCommands};
@@ -199,7 +200,7 @@ pub enum Key {
     Friends(user::Sub),
     Chat(chat::Id),
     Session(uuid::Uuid),
-    Csrf(String),
+    Csrf(Arc<str>),
 }
 
 impl Key {

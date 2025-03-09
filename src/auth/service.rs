@@ -11,6 +11,7 @@ use oauth2::{
     AccessToken, AuthorizationCode, CsrfToken, Scope, StandardRevocableToken, TokenResponse,
 };
 use tokio::sync::RwLock;
+use uuid::Uuid;
 
 use super::TokenClaims;
 
@@ -33,23 +34,23 @@ pub struct AuthService {
 }
 
 impl AuthService {
-    pub fn try_new(config: &idp::Config, redis: integration::cache::Redis) -> super::Result<Self> {
+    pub fn try_new(cfg: &idp::Config, redis: integration::cache::Redis) -> super::Result<Self> {
         let mut jwt_validator = Validation::new(jsonwebtoken::Algorithm::RS256);
-        jwt_validator.set_required_spec_claims(&config.required_claims);
-        jwt_validator.set_issuer(&[&config.issuer]);
-        jwt_validator.set_audience(&[&config.audience]);
+        jwt_validator.set_required_spec_claims(&cfg.required_claims);
+        jwt_validator.set_issuer(&[&cfg.issuer]);
+        jwt_validator.set_audience(&[&cfg.audience]);
 
         let jwk_decoding_keys = Arc::new(RwLock::new(HashMap::new()));
         let service = Self {
-            config: Arc::new(config.to_owned()),
+            config: Arc::new(cfg.to_owned()),
             http: Arc::new(integration::init_http_client()),
-            oauth2: Arc::new(integration::idp::init(config)),
+            oauth2: Arc::new(integration::idp::init(cfg)),
             redis,
             jwt_validator: Arc::new(jwt_validator),
             jwk_decoding_keys: jwk_decoding_keys.clone(),
         };
 
-        let config_clone = config.clone();
+        let config_clone = cfg.clone();
         // FIXME: this occupies a resource for too long
         tokio::spawn(async move {
             let http = integration::init_http_client();
@@ -100,9 +101,9 @@ impl AuthService {
             .await;
 
         match token_result {
-            Ok(response) => {
-                let access_token = response.access_token().to_owned();
-                let expires_in = response.expires_in().unwrap_or(self.config.token_ttl);
+            Ok(r) => {
+                let access_token = r.access_token().to_owned();
+                let expires_in = r.expires_in().unwrap_or(self.config.token_ttl);
 
                 Ok((access_token, expires_in))
             }
@@ -146,7 +147,7 @@ impl AuthService {
 }
 
 impl AuthService {
-    pub async fn cache_token(&self, sid: &uuid::Uuid, token: &str, ttl: &Duration) {
+    pub async fn cache_token(&self, sid: &Uuid, token: &str, ttl: &Duration) {
         self.redis.set(cache::Key::Session(*sid), token).await;
         self.redis
             .expire_after(cache::Key::Session(*sid), ttl.as_secs())
@@ -154,7 +155,7 @@ impl AuthService {
     }
 
     pub async fn invalidate_token(&self, sid: &str) -> super::Result<()> {
-        let sid = uuid::Uuid::parse_str(sid)?;
+        let sid = Uuid::parse_str(sid)?;
         let token = self.redis.get_del(cache::Key::Session(sid)).await;
 
         if let Some(token) = token {
@@ -166,7 +167,7 @@ impl AuthService {
     }
 
     pub async fn find_token(&self, sid: &str) -> Option<String> {
-        match uuid::Uuid::parse_str(sid) {
+        match Uuid::parse_str(sid) {
             Ok(sid) => self.redis.get::<String>(cache::Key::Session(sid)).await,
             Err(_) => {
                 warn!("Could not find token for sid: {sid}");
@@ -176,13 +177,13 @@ impl AuthService {
     }
 
     async fn cache_csrf(&self, csrf: &str) {
-        let cache_key = cache::Key::Csrf(csrf.to_string());
-        self.redis.set_ex(cache_key, csrf).await
+        let csrf_key = cache::Key::Csrf(csrf.into());
+        self.redis.set_ex(csrf_key, csrf).await
     }
 
     async fn validate_state(&self, csrf: &str) -> super::Result<()> {
-        let cache_key = cache::Key::Csrf(csrf.to_string());
-        let cached_csrf = self.redis.get_del::<String>(cache_key).await;
+        let csrf_key = cache::Key::Csrf(csrf.into());
+        let cached_csrf = self.redis.get_del::<String>(csrf_key).await;
 
         cached_csrf
             .filter(|cc| cc == csrf)
