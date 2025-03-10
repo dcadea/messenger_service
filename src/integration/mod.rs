@@ -1,3 +1,4 @@
+use std::env;
 use std::str::FromStr;
 use std::time::Duration;
 use std::{fs::File, net::SocketAddr};
@@ -15,29 +16,29 @@ pub mod idp;
 pub mod pubsub;
 
 #[derive(Clone)]
-pub enum Environment {
+pub enum Env {
     Local,
     Dev,
     Stage,
     Production,
 }
 
-impl Environment {
+impl Env {
     pub fn addr(&self) -> SocketAddr {
         match self {
-            Environment::Local => SocketAddr::from(([127, 0, 0, 1], 8000)),
-            Environment::Dev | Environment::Stage => SocketAddr::from(([0, 0, 0, 0], 8000)),
-            Environment::Production => SocketAddr::from(([0, 0, 0, 0], 8443)),
+            Env::Local => SocketAddr::from(([127, 0, 0, 1], 8000)),
+            Env::Dev | Env::Stage => SocketAddr::from(([0, 0, 0, 0], 8000)),
+            Env::Production => SocketAddr::from(([0, 0, 0, 0], 8443)),
         }
     }
 
     pub fn ssl_config(&self) -> Option<OpenSSLConfig> {
         match self {
-            Environment::Local | Environment::Dev | Environment::Stage => None,
-            Environment::Production => {
+            Env::Local | Env::Dev | Env::Stage => None,
+            Env::Production => {
                 let ssl_config = OpenSSLConfig::from_pem_file(
-                    std::env::var("SSL_CERT_FILE").expect("SSL_CERT_FILE must be set"),
-                    std::env::var("SSL_KEY_FILE").expect("SSL_KEY_FILE must be set"),
+                    env::var("SSL_CERT_FILE").expect("SSL_CERT_FILE must be set"),
+                    env::var("SSL_KEY_FILE").expect("SSL_KEY_FILE must be set"),
                 )
                 .expect("cert should be present and have read permission");
                 Some(ssl_config)
@@ -47,9 +48,9 @@ impl Environment {
 
     pub fn allow_origin(&self) -> AllowOrigin {
         match self {
-            Environment::Local | Environment::Dev => AllowOrigin::any(),
-            Environment::Stage | Environment::Production => {
-                let origins = std::env::var("ALLOW_ORIGIN")
+            Env::Local | Env::Dev => AllowOrigin::any(),
+            Env::Stage | Env::Production => {
+                let origins = env::var("ALLOW_ORIGIN")
                     .expect("ALLOW_ORIGIN must be set")
                     .split(',')
                     .map(HeaderValue::from_str)
@@ -62,22 +63,22 @@ impl Environment {
 
     pub fn allow_methods(&self) -> AllowMethods {
         match self {
-            Environment::Local | Environment::Dev => AllowMethods::any(),
-            Environment::Stage | Environment::Production => AllowMethods::any(),
+            Env::Local | Env::Dev => AllowMethods::any(),
+            Env::Stage | Env::Production => AllowMethods::any(),
         }
     }
 
     pub fn allow_headers(&self) -> AllowHeaders {
         match self {
-            Environment::Local | Environment::Dev => AllowHeaders::any(),
-            Environment::Stage | Environment::Production => AllowHeaders::any(),
+            Env::Local | Env::Dev => AllowHeaders::any(),
+            Env::Stage | Env::Production => AllowHeaders::any(),
         }
     }
 }
 
 #[derive(Clone)]
 pub struct Config {
-    pub env: Environment,
+    pub env: Env,
 
     pub redis: cache::Config,
     pub mongo: db::Config,
@@ -90,9 +91,9 @@ impl Default for Config {
     fn default() -> Self {
         dotenv().ok();
 
-        let rust_log = std::env::var("RUST_LOG").unwrap_or("info".into());
+        let rust_log = env::var("RUST_LOG").unwrap_or("info".into());
         let level = LevelFilter::from_str(&rust_log).unwrap_or(LevelFilter::Info);
-        let log_file = std::env::var("SERVICE_NAME")
+        let log_file = env::var("SERVICE_NAME")
             .map(|pkg| format!("{}.log", pkg))
             .unwrap_or("service.log".into());
 
@@ -111,30 +112,30 @@ impl Default for Config {
         ])
         .expect("Failed to initialize logger");
 
-        let env = std::env::var("ENV")
+        let env = env::var("ENV")
             .map(|env| match env.as_str() {
-                "local" => Environment::Local,
-                "dev" => Environment::Dev,
-                "stg" => Environment::Stage,
-                "prod" => Environment::Production,
+                "local" => Env::Local,
+                "dev" => Env::Dev,
+                "stg" => Env::Stage,
+                "prod" => Env::Production,
                 _ => panic!("Invalid environment: {}", env),
             })
-            .unwrap_or(Environment::Local);
+            .unwrap_or(Env::Local);
 
-        let idp_config = idp::Config::new(
-            std::env::var("CLIENT_ID").expect("CLIENT_ID must be set"),
-            std::env::var("CLIENT_SECRET").expect("CLIENT_SECRET must be set"),
-            std::env::var("REDIRECT_URL").expect("REDIRECT_URL must be set"),
-            std::env::var("ISSUER").expect("ISSUER must be set"),
-            std::env::var("AUDIENCE").expect("AUDIENCE must be set"),
-            std::env::var("REQUIRED_CLAIMS")
+        let idp_cfg = idp::Config::new(
+            env::var("CLIENT_ID").expect("CLIENT_ID must be set"),
+            env::var("CLIENT_SECRET").expect("CLIENT_SECRET must be set"),
+            env::var("REDIRECT_URL").expect("REDIRECT_URL must be set"),
+            env::var("ISSUER").expect("ISSUER must be set"),
+            env::var("AUDIENCE").expect("AUDIENCE must be set"),
+            env::var("REQUIRED_CLAIMS")
                 .expect("REQUIRED_CLAIMS must be set")
                 .split(',')
                 .map(String::from)
                 .collect::<Vec<String>>()
                 .as_slice(),
             Duration::from_secs(
-                std::env::var("TOKEN_TTL")
+                env::var("TOKEN_TTL")
                     .unwrap_or("3600".into())
                     .parse()
                     .expect("Failed to parse TOKEN_TTL"),
@@ -146,7 +147,7 @@ impl Default for Config {
             redis: cache::Config::env().unwrap_or_default(),
             mongo: db::Config::env().unwrap_or_default(),
             pubsub: pubsub::Config::env().unwrap_or_default(),
-            idp: idp_config,
+            idp: idp_cfg,
         }
     }
 }

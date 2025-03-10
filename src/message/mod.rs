@@ -7,7 +7,7 @@ use axum::{
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
-use crate::state::AppState;
+use crate::state::State;
 
 mod handler;
 pub mod markup;
@@ -32,16 +32,16 @@ impl Display for Id {
     }
 }
 
-pub fn api<S>(state: AppState) -> Router<S> {
+pub fn api<S>(s: State) -> Router<S> {
     Router::new()
         .route("/messages", post(handler::api::create))
         .route("/messages", get(handler::api::find_all))
         .route("/messages", put(handler::api::update))
         .route("/messages/{id}", delete(handler::api::delete))
-        .with_state(state)
+        .with_state(s)
 }
 
-pub fn templates<S>(state: AppState) -> Router<S> {
+pub fn templates<S>(s: State) -> Router<S> {
     Router::new()
         .route(
             "/messages/input/blank",
@@ -51,7 +51,7 @@ pub fn templates<S>(state: AppState) -> Router<S> {
             "/messages/input/edit",
             get(handler::templates::message_input_edit),
         )
-        .with_state(state)
+        .with_state(s)
 }
 
 #[derive(thiserror::Error, Debug)]

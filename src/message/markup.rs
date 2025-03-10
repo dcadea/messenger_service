@@ -222,7 +222,7 @@ impl Render for MessageItem<'_> {
     fn render(&self) -> Markup {
         let belongs_to_user = self.belongs_to_user();
 
-        let message_timestamp =
+        let msg_timestamp =
             DateTime::from_timestamp(self.msg.timestamp, 0).map(|dt| dt.format("%H:%M"));
 
         html! {
@@ -252,7 +252,7 @@ impl Render for MessageItem<'_> {
                     ."bg-gray-300 text-gray-600"[!belongs_to_user] {
 
                     p .(MESSAGE_TEXT_CLASS) lang="en" { (self.msg.text) }
-                    @if let Some(timestamp) = message_timestamp {
+                    @if let Some(timestamp) = msg_timestamp {
                         span ."message-timestamp text-xs opacity-65" { (timestamp) }
                     }
                 }
@@ -268,8 +268,8 @@ pub fn last_message(
     chat_id: &chat::Id,
     sub: Option<&user::Sub>,
 ) -> Markup {
-    let trim_last_message = |last_message: &LastMessage| {
-        let mut text = last_message.text.clone();
+    let trim = |lm: &LastMessage| {
+        let mut text = lm.text.clone();
         if text.len() > MAX_LEN {
             text.truncate(MAX_LEN);
             text.push_str("...");
@@ -279,11 +279,11 @@ pub fn last_message(
 
     html! {
         div #{"lm-"(chat_id)} ."last-message text-sm text-gray-500" {
-            @if let Some(last_message) = lm {
-                (trim_last_message(last_message))
+            @if let Some(last_msg) = lm {
+                (trim(last_msg))
 
                 @if let Some(sender) = sub {
-                    @if !last_message.seen && last_message.recipient == *sender {
+                    @if !last_msg.seen && last_msg.recipient == *sender {
                         (chat::markup::Icon::Unseen)
                     }
                 } @else {

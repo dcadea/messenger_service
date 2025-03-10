@@ -3,7 +3,7 @@ use axum::Router;
 use axum::http::StatusCode;
 use axum::middleware::{from_fn, from_fn_with_state, map_response};
 use axum::routing::get;
-use integration::Environment;
+use integration::Env;
 use log::error;
 use messenger_service::markup::wrap_in_base;
 use messenger_service::middleware::attach_request_id;
@@ -11,7 +11,7 @@ use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
-use crate::state::AppState;
+use crate::state::State;
 
 mod auth;
 mod chat;
@@ -27,8 +27,8 @@ pub type Result<T> = std::result::Result<T, crate::error::Error>;
 #[tokio::main]
 async fn main() {
     let config = integration::Config::default();
-    let app_state = match AppState::init(config.clone()).await {
-        Ok(state) => state,
+    let app_state = match State::init(config.clone()).await {
+        Ok(s) => s,
         Err(e) => {
             error!("Failed to initialize app state: {:?}", e);
             return;
@@ -54,31 +54,31 @@ async fn main() {
     .expect("Failed to start server")
 }
 
-fn app(app_state: AppState, env: &Environment) -> Router {
+fn app(s: State, env: &Env) -> Router {
     let protected_router = Router::new()
-        .merge(chat::pages(app_state.clone()))
-        .merge(event::api(app_state.clone()))
+        .merge(chat::pages(s.clone()))
+        .merge(event::api(s.clone()))
         .nest(
             "/api",
             Router::new()
-                .merge(chat::api(app_state.clone()))
-                .merge(message::api(app_state.clone()))
-                .merge(user::api(app_state.clone())),
+                .merge(chat::api(s.clone()))
+                .merge(message::api(s.clone()))
+                .merge(user::api(s.clone())),
         )
         .nest(
             "/templates",
-            Router::new().merge(message::templates(app_state.clone())),
+            Router::new().merge(message::templates(s.clone())),
         )
         .route_layer(
             ServiceBuilder::new()
-                .layer(from_fn_with_state(app_state.clone(), validate_sid))
-                .layer(from_fn_with_state(app_state.clone(), authorize)),
+                .layer(from_fn_with_state(s.clone(), validate_sid))
+                .layer(from_fn_with_state(s.clone(), authorize)),
         );
 
     Router::new()
         .nest_service("/static", ServeDir::new("static"))
-        .merge(auth::pages(app_state.clone()))
-        .merge(auth::api(app_state.clone()))
+        .merge(auth::pages(s.clone()))
+        .merge(auth::api(s.clone()))
         .merge(protected_router)
         .route(
             "/health",

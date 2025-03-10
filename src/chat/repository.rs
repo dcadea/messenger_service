@@ -11,31 +11,31 @@ const CHATS_COLLECTION: &str = "chats";
 
 #[derive(Clone)]
 pub struct ChatRepository {
-    collection: mongodb::Collection<Chat>,
+    col: mongodb::Collection<Chat>,
 }
 
 impl ChatRepository {
-    pub fn new(database: &mongodb::Database) -> Self {
+    pub fn new(db: &mongodb::Database) -> Self {
         Self {
-            collection: database.collection(CHATS_COLLECTION),
+            col: db.collection(CHATS_COLLECTION),
         }
     }
 }
 
 impl ChatRepository {
     pub async fn find_by_id(&self, id: &Id) -> super::Result<Chat> {
-        let chat = self.collection.find_one(doc! { "_id": id }).await?;
+        let chat = self.col.find_one(doc! { "_id": id }).await?;
 
         chat.ok_or(chat::Error::NotFound(Some(id.to_owned())))
     }
 
     /**
-     * Find a chat where the user sub is a member
+     * Find chats where the user sub is a member
      * @param sub: The user sub
      */
     pub async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Chat>> {
         let cursor = self
-            .collection
+            .col
             .find(doc! {"members": sub})
             .sort(doc! {"last_message.timestamp": -1})
             .await?;
@@ -47,7 +47,7 @@ impl ChatRepository {
 
     pub async fn find_by_id_and_sub(&self, id: &Id, sub: &user::Sub) -> super::Result<Chat> {
         let chat = self
-            .collection
+            .col
             .find_one(doc! {
                 "_id": id,
                 "members": sub
@@ -58,20 +58,20 @@ impl ChatRepository {
     }
 
     pub async fn exists(&self, members: &[user::Sub; 2]) -> super::Result<bool> {
-        let number_of_chats = self
-            .collection
+        let count = self
+            .col
             .count_documents(doc! {
                 "members": { "$all": members.to_vec() }
             })
             .await?;
 
-        Ok(number_of_chats > 0)
+        Ok(count > 0)
     }
 
     pub async fn create(&self, chat: Chat) -> super::Result<Id> {
-        let result = self.collection.insert_one(chat).await?;
+        let res = self.col.insert_one(chat).await?;
 
-        if let Some(chat_id) = result.inserted_id.as_object_id() {
+        if let Some(chat_id) = res.inserted_id.as_object_id() {
             return Ok(Id(chat_id.to_hex()));
         }
 
@@ -79,7 +79,7 @@ impl ChatRepository {
     }
 
     pub async fn delete(&self, id: &Id) -> super::Result<()> {
-        self.collection.delete_one(doc! {"_id": id}).await?;
+        self.col.delete_one(doc! {"_id": id}).await?;
         Ok(())
     }
 }
@@ -90,7 +90,7 @@ impl ChatRepository {
         id: &Id,
         msg: Option<&LastMessage>,
     ) -> super::Result<()> {
-        self.collection
+        self.col
             .update_one(
                 doc! { "_id": id },
                 doc! {"$set": {
@@ -102,7 +102,7 @@ impl ChatRepository {
     }
 
     pub async fn mark_as_seen(&self, id: &Id) -> super::Result<()> {
-        self.collection
+        self.col
             .update_one(
                 doc! { "_id": id },
                 doc! {"$set": {

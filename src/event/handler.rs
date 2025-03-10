@@ -159,7 +159,7 @@ pub mod ws {
         message_service: MessageService,
         chat_service: ChatService,
     ) {
-        let mut messages_stream = match event_service
+        let mut msg_stream = match event_service
             .subscribe::<Message>(&Subject::Messages(&logged_sub, &chat_id))
             .await
         {
@@ -178,7 +178,7 @@ pub mod ws {
                 _ = close.notified() => break,
 
                 // new message is received from subject => send it to the client
-                msg = messages_stream.next() => {
+                msg = msg_stream.next() => {
                     match msg {
                         None => break,
                         Some(msg) => {

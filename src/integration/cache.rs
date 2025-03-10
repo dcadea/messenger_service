@@ -225,7 +225,7 @@ impl Display for Key {
         match self {
             Key::UserInfo(sub) => write!(f, "userinfo:{sub}"),
             Key::Friends(sub) => write!(f, "friends:{sub}"),
-            Key::Chat(id) => write!(f, "chat:{}", id),
+            Key::Chat(id) => write!(f, "chat:{id}"),
             Key::Session(id) => write!(f, "session:{id}"),
             Key::Csrf(csrf) => write!(f, "csrf:{csrf}"),
         }

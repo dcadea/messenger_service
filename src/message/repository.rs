@@ -10,20 +10,20 @@ const MESSAGES_COLLECTION: &str = "messages";
 
 #[derive(Clone)]
 pub struct MessageRepository {
-    collection: mongodb::Collection<Message>,
+    col: mongodb::Collection<Message>,
 }
 
 impl MessageRepository {
-    pub fn new(database: &Database) -> Self {
+    pub fn new(db: &Database) -> Self {
         Self {
-            collection: database.collection(MESSAGES_COLLECTION),
+            col: db.collection(MESSAGES_COLLECTION),
         }
     }
 }
 
 impl MessageRepository {
-    pub async fn insert(&self, message: &Message) -> super::Result<()> {
-        let result = self.collection.insert_one(message).await?;
+    pub async fn insert(&self, msg: &Message) -> super::Result<()> {
+        let result = self.col.insert_one(msg).await?;
         result
             .inserted_id
             .as_object_id()
@@ -31,10 +31,10 @@ impl MessageRepository {
         Ok(())
     }
 
-    pub async fn insert_many(&self, messages: &[Message]) -> super::Result<()> {
-        let result = self.collection.insert_many(messages).await?;
+    pub async fn insert_many(&self, msgs: &[Message]) -> super::Result<()> {
+        let result = self.col.insert_many(msgs).await?;
 
-        if result.inserted_ids.len() != messages.len() {
+        if result.inserted_ids.len() != msgs.len() {
             error!("not all messages persisted")
         }
 
@@ -42,7 +42,7 @@ impl MessageRepository {
     }
 
     pub async fn find_by_id(&self, id: &Id) -> super::Result<Message> {
-        self.collection
+        self.col
             .find_one(doc! {"_id": id})
             .await?
             .ok_or(message::Error::NotFound(Some(id.to_owned())))
@@ -50,7 +50,7 @@ impl MessageRepository {
 
     pub async fn find_by_chat_id(&self, chat_id: &chat::Id) -> super::Result<Vec<Message>> {
         let cursor = self
-            .collection
+            .col
             .find(doc! {"chat_id": chat_id})
             .sort(doc! {"timestamp": -1})
             .await?;
@@ -66,7 +66,7 @@ impl MessageRepository {
         limit: usize,
     ) -> super::Result<Vec<Message>> {
         let cursor = self
-            .collection
+            .col
             .find(doc! {"chat_id": chat_id})
             .sort(doc! {"timestamp": -1})
             .limit(limit as i64)
@@ -83,7 +83,7 @@ impl MessageRepository {
         before: i64,
     ) -> super::Result<Vec<Message>> {
         let cursor = self
-            .collection
+            .col
             .find(doc! {
                 "chat_id": chat_id,
                 "timestamp": {"$lt": before}
@@ -91,9 +91,9 @@ impl MessageRepository {
             .sort(doc! {"timestamp": -1})
             .await?;
 
-        let messages = cursor.try_collect::<Vec<Message>>().await?;
+        let msgs = cursor.try_collect::<Vec<Message>>().await?;
 
-        Ok(messages)
+        Ok(msgs)
     }
 
     pub async fn find_by_chat_id_limited_before(
@@ -103,7 +103,7 @@ impl MessageRepository {
         before: i64,
     ) -> super::Result<Vec<Message>> {
         let cursor = self
-            .collection
+            .col
             .find(doc! {
                 "chat_id": chat_id,
                 "timestamp": {"$lt": before}
@@ -112,51 +112,45 @@ impl MessageRepository {
             .limit(limit as i64)
             .await?;
 
-        let messages = cursor.try_collect::<Vec<Message>>().await?;
+        let msgs = cursor.try_collect::<Vec<Message>>().await?;
 
-        Ok(messages)
+        Ok(msgs)
     }
 
     pub async fn find_most_recent(&self, chat_id: &chat::Id) -> super::Result<Option<Message>> {
         let mut cursor = self
-            .collection
+            .col
             .find(doc! {"chat_id": chat_id})
             .sort(doc! {"timestamp": -1})
             .limit(1)
             .await?;
 
-        let most_recent = cursor.try_next().await?;
+        let msg = cursor.try_next().await?;
 
-        Ok(most_recent)
+        Ok(msg)
     }
 
     pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
-        self.collection
+        self.col
             .update_one(doc! {"_id": id}, doc! {"$set": {"text": text}})
             .await?;
         Ok(())
     }
 
     pub async fn delete(&self, id: &Id) -> super::Result<u64> {
-        let deleted_count = self
-            .collection
-            .delete_one(doc! {"_id": id})
-            .await?
-            .deleted_count;
+        let count = self.col.delete_one(doc! {"_id": id}).await?.deleted_count;
 
-        Ok(deleted_count)
+        Ok(count)
     }
 
     pub async fn delete_by_chat_id(&self, chat_id: &chat::Id) -> super::Result<()> {
-        self.collection
-            .delete_many(doc! {"chat_id": chat_id})
-            .await?;
+        self.col.delete_many(doc! {"chat_id": chat_id}).await?;
 
         Ok(())
     }
 
     pub async fn mark_as_seen(&self, ids: &[Id]) -> super::Result<()> {
-        self.collection
+        self.col
             .update_many(
                 doc! {"_id": {"$in": ids}, "seen": false},
                 doc! {"$set": {"seen": true}},

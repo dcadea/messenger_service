@@ -1,4 +1,4 @@
-use crate::state::AppState;
+use crate::state::State;
 use crate::user;
 use axum::Router;
 use axum::http::StatusCode;
@@ -21,18 +21,18 @@ struct TokenClaims {
     sub: user::Sub,
 }
 
-pub fn pages<S>(state: AppState) -> Router<S> {
+pub fn pages<S>(s: State) -> Router<S> {
     Router::new()
         .route("/login", get(handler::pages::login))
-        .with_state(state)
+        .with_state(s)
 }
 
-pub fn api<S>(state: AppState) -> Router<S> {
+pub fn api<S>(s: State) -> Router<S> {
     Router::new()
         .route("/sso/login", get(handler::api::sso_login))
         .route("/logout", get(handler::api::logout))
         .route("/callback", get(handler::api::callback))
-        .with_state(state)
+        .with_state(s)
 }
 
 #[derive(thiserror::Error, Debug)]

@@ -42,15 +42,9 @@ pub async fn authorize(
         return Ok(Redirect::to("/login").into_response());
     }
 
-    let sub = req
-        .extensions()
-        .get::<user::Sub>()
-        .ok_or(super::Error::Unauthorized)?;
-
-    let token = req
-        .extensions()
-        .get::<AccessToken>()
-        .ok_or(super::Error::Unauthorized)?;
+    let ext = req.extensions();
+    let sub: &user::Sub = ext.get().ok_or(super::Error::Unauthorized)?;
+    let token: &AccessToken = ext.get().ok_or(super::Error::Unauthorized)?;
 
     let user_info = match user_service.find_user_info(sub).await {
         Ok(user_info) => user_info,
@@ -65,6 +59,5 @@ pub async fn authorize(
 
     req.extensions_mut().insert(user_info);
 
-    let response = next.run(req).await;
-    Ok(response)
+    Ok(next.run(req).await)
 }

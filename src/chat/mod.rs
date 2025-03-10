@@ -11,7 +11,7 @@ use log::error;
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
-use crate::state::AppState;
+use crate::state::State;
 
 mod handler;
 pub mod markup;
@@ -42,19 +42,19 @@ pub enum Kind {
     Group,
 }
 
-pub fn pages<S>(state: AppState) -> Router<S> {
+pub fn pages<S>(s: State) -> Router<S> {
     Router::new()
         .route("/", get(handler::pages::home))
         .route("/chats/{id}", get(handler::pages::active_chat))
-        .with_state(state)
+        .with_state(s)
 }
 
-pub fn api<S>(state: AppState) -> Router<S> {
+pub fn api<S>(s: State) -> Router<S> {
     Router::new()
         .route("/chats/{id}", get(handler::api::find_one))
         .route("/chats", post(handler::api::create))
         .route("/chats/{id}", delete(handler::api::delete))
-        .with_state(state)
+        .with_state(s)
 }
 
 #[derive(thiserror::Error, Debug)]

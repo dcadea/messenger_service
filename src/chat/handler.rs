@@ -6,9 +6,12 @@ pub(super) mod pages {
     use maud::{Markup, Render};
     use messenger_service::markup::Wrappable;
 
-    use crate::user::{model::UserInfo, service::UserService};
+    use crate::{
+        chat,
+        user::{model::UserInfo, service::UserService},
+    };
 
-    use crate::chat::{Id, markup, service::ChatService};
+    use crate::chat::{markup, service::ChatService};
 
     pub async fn home(
         user_info: Extension<UserInfo>,
@@ -19,12 +22,12 @@ pub(super) mod pages {
     }
 
     pub async fn active_chat(
-        chat_id: Path<Id>,
+        id: Path<chat::Id>,
         logged_user: Extension<UserInfo>,
         chat_service: State<ChatService>,
         user_service: State<UserService>,
     ) -> crate::Result<Markup> {
-        let chat = &chat_service.find_by_id(&chat_id, &logged_user).await?;
+        let chat = &chat_service.find_by_id(&id, &logged_user).await?;
 
         let id = &chat.id;
         let recipient = &user_service.find_user_info(&chat.recipient).await?;
@@ -39,7 +42,7 @@ pub(super) mod api {
         extract::{Path, State},
         response::IntoResponse,
     };
-    use maud::{Markup, Render};
+    use maud::{Markup, html};
     use serde::Deserialize;
 
     use crate::{
@@ -53,7 +56,7 @@ pub(super) mod api {
         Path(id): Path<Id>,
     ) -> crate::Result<Markup> {
         let chat = chat_service.find_by_id(&id, &user_info).await?;
-        Ok(chat.render())
+        Ok(html! { (chat) })
     }
 
     #[derive(Deserialize)]
@@ -76,7 +79,7 @@ pub(super) mod api {
         let id = &chat.id;
         let recipient = &user_service.find_user_info(recipient).await?;
 
-        Ok(markup::ActiveChat { id, recipient }.render())
+        Ok(html! {(markup::ActiveChat { id, recipient })})
     }
 
     pub async fn delete(

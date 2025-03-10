@@ -3,11 +3,10 @@ use std::sync::Arc;
 use futures::future::try_join_all;
 use log::error;
 
-use super::Id;
 use super::model::{Chat, ChatDto};
 use super::repository::ChatRepository;
 use crate::event::service::EventService;
-use crate::integration::{self, cache};
+use crate::integration::cache;
 use crate::message::model::{LastMessage, Message};
 use crate::message::repository::MessageRepository;
 use crate::user::model::UserInfo;
@@ -16,25 +15,25 @@ use crate::{chat, event, user};
 
 #[derive(Clone)]
 pub struct ChatService {
-    repository: Arc<ChatRepository>,
+    repo: Arc<ChatRepository>,
     validator: Arc<ChatValidator>,
-    message_repository: Arc<MessageRepository>,
+    message_repo: Arc<MessageRepository>,
     user_service: Arc<UserService>,
     event_service: Arc<EventService>,
 }
 
 impl ChatService {
     pub fn new(
-        repository: ChatRepository,
+        repo: ChatRepository,
         validator: ChatValidator,
-        message_repository: MessageRepository,
+        message_repo: MessageRepository,
         user_service: UserService,
         event_service: EventService,
     ) -> Self {
         Self {
-            repository: Arc::new(repository),
+            repo: Arc::new(repo),
             validator: Arc::new(validator),
-            message_repository: Arc::new(message_repository),
+            message_repo: Arc::new(message_repo),
             user_service: Arc::new(user_service),
             event_service: Arc::new(event_service),
         }
@@ -42,9 +41,9 @@ impl ChatService {
 }
 
 impl ChatService {
-    pub async fn find_by_id(&self, id: &Id, user_info: &UserInfo) -> super::Result<ChatDto> {
+    pub async fn find_by_id(&self, id: &chat::Id, user_info: &UserInfo) -> super::Result<ChatDto> {
         let sub = &user_info.sub;
-        match self.repository.find_by_id_and_sub(id, sub).await {
+        match self.repo.find_by_id_and_sub(id, sub).await {
             Ok(chat) => {
                 let chat_dto = self.chat_to_dto(chat, sub).await?;
                 Ok(chat_dto)
@@ -56,7 +55,7 @@ impl ChatService {
 
     pub async fn find_all(&self, user_info: &UserInfo) -> super::Result<Vec<ChatDto>> {
         let sub = &user_info.sub;
-        let chats = self.repository.find_by_sub(sub).await?;
+        let chats = self.repo.find_by_sub(sub).await?;
 
         let chat_dtos = try_join_all(
             chats
@@ -77,7 +76,7 @@ impl ChatService {
         assert_ne!(&logged_user.sub, recipient);
 
         let members = [logged_user.sub.clone(), recipient.clone()];
-        if self.repository.exists(&members).await? {
+        if self.repo.exists(&members).await? {
             return Err(chat::Error::AlreadyExists);
         }
 
@@ -87,7 +86,7 @@ impl ChatService {
         }
 
         let chat = Chat::new(kind.clone(), logged_user.sub.clone(), members.to_vec());
-        _ = self.repository.create(chat.clone()).await?;
+        _ = self.repo.create(chat.clone()).await?;
 
         let chat_dto = self.chat_to_dto(chat, recipient).await?;
 
@@ -101,7 +100,7 @@ impl ChatService {
         Ok(chat_dto)
     }
 
-    pub async fn delete(&self, id: &Id, logged_user: &UserInfo) -> super::Result<()> {
+    pub async fn delete(&self, id: &chat::Id, logged_user: &UserInfo) -> super::Result<()> {
         self.validator.check_member(id, &logged_user.sub).await?;
 
         let chat = self.find_by_id(id, logged_user).await?;
@@ -112,8 +111,8 @@ impl ChatService {
             return Err(chat::Error::NotDeleted);
         }
 
-        self.repository.delete(id).await?;
-        if let Err(e) = self.message_repository.delete_by_chat_id(id).await {
+        self.repo.delete(id).await?;
+        if let Err(e) = self.message_repo.delete_by_chat_id(id).await {
             error!("failed to delete chat: {e:?}");
             return Err(chat::Error::NotDeleted);
             // TODO: tx rollback?
@@ -126,10 +125,10 @@ impl ChatService {
 impl ChatService {
     pub async fn update_last_message(
         &self,
-        id: &Id,
+        id: &chat::Id,
         msg: Option<&LastMessage>,
     ) -> super::Result<()> {
-        self.repository.update_last_message(id, msg).await?;
+        self.repo.update_last_message(id, msg).await?;
         if let Some(last_message) = msg {
             self.event_service
                 .publish(
@@ -145,7 +144,7 @@ impl ChatService {
     }
 
     pub async fn is_last_message(&self, message: &Message) -> super::Result<bool> {
-        let chat = self.repository.find_by_id(&message.chat_id).await?;
+        let chat = self.repo.find_by_id(&message.chat_id).await?;
 
         if let Some(last_message) = chat.last_message {
             return Ok(last_message.id == message._id);
@@ -154,8 +153,8 @@ impl ChatService {
         Ok(false)
     }
 
-    pub async fn mark_as_seen(&self, id: &Id) -> super::Result<()> {
-        self.repository.mark_as_seen(id).await
+    pub async fn mark_as_seen(&self, id: &chat::Id) -> super::Result<()> {
+        self.repo.mark_as_seen(id).await
     }
 }
 
@@ -195,11 +194,11 @@ impl ChatService {
 #[derive(Clone)]
 pub struct ChatValidator {
     repository: Arc<ChatRepository>,
-    redis: integration::cache::Redis,
+    redis: cache::Redis,
 }
 
 impl ChatValidator {
-    pub fn new(repository: ChatRepository, redis: integration::cache::Redis) -> Self {
+    pub fn new(repository: ChatRepository, redis: cache::Redis) -> Self {
         Self {
             repository: Arc::new(repository),
             redis,
@@ -208,7 +207,7 @@ impl ChatValidator {
 }
 
 impl ChatValidator {
-    pub async fn check_member(&self, chat_id: &Id, sub: &user::Sub) -> super::Result<()> {
+    pub async fn check_member(&self, chat_id: &chat::Id, sub: &user::Sub) -> super::Result<()> {
         let members = self.find_members(chat_id).await?;
         let belongs_to_chat = members.contains(sub);
 
@@ -219,11 +218,11 @@ impl ChatValidator {
         Ok(())
     }
 
-    async fn find_members(&self, chat_id: &Id) -> super::Result<Vec<user::Sub>> {
-        let cache_key = cache::Key::Chat(chat_id.to_owned());
+    async fn find_members(&self, chat_id: &chat::Id) -> super::Result<Vec<user::Sub>> {
+        let chat_key = cache::Key::Chat(chat_id.to_owned());
         let members = self
             .redis
-            .smembers::<Vec<user::Sub>>(cache_key.clone())
+            .smembers::<Vec<user::Sub>>(chat_key.clone())
             .await;
 
         match members {
@@ -232,8 +231,8 @@ impl ChatValidator {
                 let chat = self.repository.find_by_id(chat_id).await?;
                 let members = chat.members;
 
-                self.redis.sadd(cache_key.clone(), &members).await;
-                self.redis.expire(cache_key).await;
+                self.redis.sadd(chat_key.clone(), &members).await;
+                self.redis.expire(chat_key).await;
 
                 Ok(members)
             }

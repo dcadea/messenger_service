@@ -1,5 +1,6 @@
 pub(super) mod api {
     use axum::extract::{Path, State};
+    use axum::http::StatusCode;
     use axum::response::IntoResponse;
     use axum::{Extension, Form};
     use axum_extra::extract::Query;
@@ -11,9 +12,9 @@ pub(super) mod api {
     use crate::user::model::UserInfo;
     use crate::{chat, message, user};
 
+    use crate::message::markup;
     use crate::message::model::{LastMessage, Message};
     use crate::message::service::MessageService;
-    use crate::message::{Id, markup};
 
     #[derive(Deserialize)]
     pub struct CreateParams {
@@ -35,16 +36,16 @@ pub(super) mod api {
             params.text.trim(),
         );
 
-        let messages = message_service.create(&msg).await?;
+        let msgs = message_service.create(&msg).await?;
 
-        if let Some(last_msg) = messages.last() {
-            let last_message = LastMessage::from(last_msg);
+        if let Some(last) = msgs.last() {
+            let last_msg = LastMessage::from(last);
             chat_service
-                .update_last_message(&last_msg.chat_id, Some(&last_message))
+                .update_last_message(&last.chat_id, Some(&last_msg))
                 .await?;
         }
 
-        Ok(markup::MessageList::prepend(&messages, &user_info.sub).render())
+        Ok(markup::MessageList::prepend(&msgs, &user_info.sub).render())
     }
 
     #[derive(Deserialize)]
@@ -69,7 +70,7 @@ pub(super) mod api {
 
         chat_validator.check_member(&chat_id, logged_sub).await?;
 
-        let (messages, seen_qty) = message_service
+        let (msgs, seen_qty) = message_service
             .find_by_chat_id_and_params(logged_sub, &chat_id, params.limit, params.end_time)
             .await?;
 
@@ -77,12 +78,12 @@ pub(super) mod api {
             chat_service.mark_as_seen(&chat_id).await?;
         }
 
-        Ok(markup::MessageList::append(&messages, logged_sub).render())
+        Ok(markup::MessageList::append(&msgs, logged_sub).render())
     }
 
     #[derive(Deserialize)]
     pub struct UpdateParams {
-        message_id: Id,
+        message_id: message::Id,
         text: String,
     }
 
@@ -96,7 +97,7 @@ pub(super) mod api {
             .await?;
 
         Ok((
-            axum::http::StatusCode::OK,
+            StatusCode::OK,
             [("HX-Trigger", "msg:afterUpdate")],
             markup::MessageItem::new(&msg, Some(&user_info.sub)).render(),
         ))
@@ -104,7 +105,7 @@ pub(super) mod api {
 
     pub async fn delete(
         user_info: Extension<UserInfo>,
-        Path(id): Path<Id>,
+        Path(id): Path<message::Id>,
         message_service: State<MessageService>,
         chat_service: State<ChatService>,
     ) -> crate::Result<()> {
@@ -112,13 +113,13 @@ pub(super) mod api {
             let is_last = chat_service.is_last_message(&deleted_msg).await?;
             if is_last {
                 let chat_id = &deleted_msg.chat_id;
-                let last_message = message_service
+                let last_msg = message_service
                     .find_most_recent(chat_id)
                     .await?
                     .map(|msg| LastMessage::from(&msg));
 
                 chat_service
-                    .update_last_message(chat_id, last_message.as_ref())
+                    .update_last_message(chat_id, last_msg.as_ref())
                     .await?;
             }
 

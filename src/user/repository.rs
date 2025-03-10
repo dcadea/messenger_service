@@ -15,10 +15,10 @@ pub struct UserRepository {
 }
 
 impl UserRepository {
-    pub fn new(database: &Database) -> Self {
+    pub fn new(db: &Database) -> Self {
         Self {
-            users_col: database.collection(USERS_COLLECTION),
-            friends_col: database.collection(USERS_COLLECTION),
+            users_col: db.collection(USERS_COLLECTION),
+            friends_col: db.collection(USERS_COLLECTION),
         }
     }
 }

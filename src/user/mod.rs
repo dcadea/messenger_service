@@ -4,7 +4,7 @@ use axum::{Router, routing::post};
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
-use crate::state::AppState;
+use crate::state::State;
 
 mod handler;
 pub mod markup;
@@ -17,10 +17,10 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
-pub fn api<S>(state: AppState) -> Router<S> {
+pub fn api<S>(s: State) -> Router<S> {
     Router::new()
         .route("/users/search", post(handler::api::search))
-        .with_state(state)
+        .with_state(s)
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]

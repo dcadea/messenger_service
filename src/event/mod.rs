@@ -9,7 +9,7 @@ use messenger_service::markup::Id;
 use serde::{Deserialize, Serialize};
 
 use crate::message::markup::MESSAGE_LIST_ID;
-use crate::state::AppState;
+use crate::state::State;
 use crate::{chat, message, user};
 
 mod handler;
@@ -17,11 +17,11 @@ pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
 
-pub fn api<S>(state: AppState) -> Router<S> {
+pub fn api<S>(s: State) -> Router<S> {
     Router::new()
         .route("/sse", get(handler::sse::notifications))
         .route("/ws/{chat_id}", get(handler::ws::chat))
-        .with_state(state)
+        .with_state(s)
 }
 
 pub type PayloadStream<T> = Pin<Box<dyn Stream<Item = T> + Send>>;
@@ -58,7 +58,7 @@ impl Render for Notification {
             Notification::OnlineStatusChange(os) => {
                 html! { (user::markup::Icon::OnlineIndicator(&os)) }
             }
-            Notification::NewFriend(chat_dto) => html! { (chat_dto) },
+            Notification::NewFriend(c) => html! { (c) },
             Notification::NewMessage {
                 chat_id,
                 last_message,
@@ -71,14 +71,14 @@ impl Render for Notification {
 
 impl From<Notification> for sse::Event {
     fn from(noti: Notification) -> Self {
-        let event_name = match &noti {
+        let evt = match &noti {
             Notification::OnlineStatusChange(f) => &format!("onlineStatusChange:{}", f.id()),
             Notification::NewFriend(_) => "newFriend",
             Notification::NewMessage { chat_id, .. } => &format!("newMessage:{}", &chat_id),
         };
 
         sse::Event::default()
-            .event(event_name)
+            .event(evt)
             .data(noti.render().into_string())
     }
 }
