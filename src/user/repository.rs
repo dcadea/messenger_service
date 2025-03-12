@@ -2,8 +2,8 @@ use futures::TryStreamExt;
 use mongodb::Database;
 use mongodb::bson::doc;
 use mongodb::options::FindOneOptions;
+use user::Sub;
 
-use super::Sub;
 use super::model::{Friends, User};
 use crate::user;
 
@@ -53,7 +53,7 @@ impl UserRepository {
         cursor.try_collect().await.map_err(super::Error::from)
     }
 
-    pub async fn find_friends_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<user::Sub>> {
+    pub async fn find_friends_by_sub(&self, sub: &Sub) -> super::Result<Vec<Sub>> {
         let filter = doc! { "sub": sub };
         let projection = FindOneOptions::builder()
             .projection(doc! { "friends": 1 })
@@ -70,7 +70,7 @@ impl UserRepository {
             .map(|f| f.friends)
     }
 
-    pub async fn add_friend(&self, sub: &user::Sub, friend: &user::Sub) -> super::Result<()> {
+    pub async fn add_friend(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
         let filter = doc! { "sub": sub };
         let update = doc! { "$addToSet": { "friends": friend } };
 
@@ -79,11 +79,11 @@ impl UserRepository {
         Ok(())
     }
 
-    pub async fn remove_friend(&self, sub: &user::Sub, friend: &user::Sub) -> super::Result<()> {
-        let filter = doc! { "sub": sub };
-        let update = doc! { "$pull": { "friends": friend } };
+    pub async fn remove_friendship(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
+        let filter = doc! { "sub": { "$in": [sub, friend] } };
+        let update = doc! { "$pull": { "friends": { "$in": [sub, friend] } } };
 
-        self.friends_col.update_one(filter, update).await?;
+        self.friends_col.update_many(filter, update).await?;
 
         Ok(())
     }

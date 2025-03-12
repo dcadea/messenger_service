@@ -91,10 +91,7 @@ impl UserService {
         let you = &subs[1];
         assert_ne!(me, you);
 
-        tokio::try_join!(
-            self.repo.remove_friend(me, you),
-            self.repo.remove_friend(you, me),
-        )?;
+        self.repo.remove_friendship(me, you).await?;
 
         tokio::join!(
             self.redis
