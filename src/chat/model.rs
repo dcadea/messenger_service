@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 
 use crate::message::model::LastMessage;
@@ -12,13 +14,13 @@ pub struct Chat {
     pub kind: Kind,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub owner: Option<user::Sub>,
-    pub members: Vec<user::Sub>,
+    pub members: HashSet<user::Sub>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_message: Option<LastMessage>,
 }
 
 impl Chat {
-    pub fn new(kind: Kind, owner: user::Sub, members: Vec<user::Sub>) -> Self {
+    pub fn new(kind: Kind, owner: user::Sub, members: HashSet<user::Sub>) -> Self {
         Self {
             _id: Id::random(),
             kind,

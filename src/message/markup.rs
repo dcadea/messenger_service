@@ -266,7 +266,7 @@ const MAX_LEN: usize = 25;
 pub fn last_message(
     lm: Option<&LastMessage>,
     chat_id: &chat::Id,
-    sub: Option<&user::Sub>,
+    sender: Option<&user::Sub>,
 ) -> Markup {
     let trim = |lm: &LastMessage| {
         let mut text = lm.text.clone();
@@ -282,8 +282,8 @@ pub fn last_message(
             @if let Some(last_msg) = lm {
                 (trim(last_msg))
 
-                @if let Some(sender) = sub {
-                    @if !last_msg.seen && last_msg.recipient == *sender {
+                @if let Some(s) = sender {
+                    @if !last_msg.seen && last_msg.owner != *s {
                         (chat::markup::Icon::Unseen)
                     }
                 } @else {

@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use futures::future::try_join_all;
@@ -70,7 +71,7 @@ impl ChatService {
     pub async fn create(
         &self,
         logged_user: &UserInfo,
-        kind: &chat::Kind,
+        kind: chat::Kind,
         recipient: &user::Sub,
     ) -> super::Result<ChatDto> {
         assert_ne!(&logged_user.sub, recipient);
@@ -85,7 +86,7 @@ impl ChatService {
             return Err(chat::Error::NotCreated);
         }
 
-        let chat = Chat::new(kind.clone(), logged_user.sub.clone(), members.to_vec());
+        let chat = Chat::new(kind, logged_user.sub.clone(), HashSet::from(members));
         _ = self.repo.create(chat.clone()).await?;
 
         let chat_dto = self.chat_to_dto(chat, recipient).await?;
@@ -129,16 +130,23 @@ impl ChatService {
         msg: Option<&LastMessage>,
     ) -> super::Result<()> {
         self.repo.update_last_message(id, msg).await?;
-        if let Some(last_message) = msg {
-            self.event_service
-                .publish(
-                    &event::Subject::Notifications(&last_message.recipient),
-                    &event::Notification::NewMessage {
-                        chat_id: id.clone(),
-                        last_message: last_message.clone(),
-                    },
-                )
-                .await;
+
+        if let Some(last_msg) = msg {
+            // FIXME: extract find_members from validator
+            let mut recipients = self.validator.find_members(id).await?;
+            recipients.remove(&last_msg.owner);
+
+            for r in recipients {
+                self.event_service
+                    .publish(
+                        &event::Subject::Notifications(&r),
+                        &event::Notification::NewMessage {
+                            chat_id: id.clone(),
+                            last_message: last_msg.clone(),
+                        },
+                    )
+                    .await;
+            }
         }
         Ok(())
     }
@@ -218,11 +226,11 @@ impl ChatValidator {
         Ok(())
     }
 
-    async fn find_members(&self, chat_id: &chat::Id) -> super::Result<Vec<user::Sub>> {
+    async fn find_members(&self, chat_id: &chat::Id) -> super::Result<HashSet<user::Sub>> {
         let chat_key = cache::Key::Chat(chat_id.to_owned());
         let members = self
             .redis
-            .smembers::<Vec<user::Sub>>(chat_key.clone())
+            .smembers::<HashSet<user::Sub>>(chat_key.clone())
             .await;
 
         match members {

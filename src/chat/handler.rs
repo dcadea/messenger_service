@@ -73,7 +73,7 @@ pub(super) mod api {
     ) -> crate::Result<Markup> {
         let recipient = &params.sub;
         let chat = chat_service
-            .create(&logged_user, &params.kind, recipient)
+            .create(&logged_user, params.kind, recipient)
             .await?;
 
         let id = &chat.id;
