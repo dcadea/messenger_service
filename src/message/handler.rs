@@ -10,7 +10,7 @@ pub(super) mod api {
     use crate::chat::service::{ChatService, ChatValidator};
     use crate::error::Error;
     use crate::user::model::UserInfo;
-    use crate::{chat, message, user};
+    use crate::{chat, message};
 
     use crate::message::markup;
     use crate::message::model::{LastMessage, Message};
@@ -19,7 +19,6 @@ pub(super) mod api {
     #[derive(Deserialize)]
     pub struct CreateParams {
         chat_id: chat::Id,
-        recipient: user::Sub,
         text: String,
     }
 
@@ -29,12 +28,7 @@ pub(super) mod api {
         chat_service: State<ChatService>,
         Form(params): Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let msg = Message::new(
-            params.chat_id,
-            user_info.sub.clone(),
-            params.recipient,
-            params.text.trim(),
-        );
+        let msg = Message::new(params.chat_id, user_info.sub.clone(), params.text.trim());
 
         let msgs = message_service.create(&msg).await?;
 
@@ -141,17 +135,16 @@ pub(super) mod templates {
     use crate::{
         chat,
         message::{self, markup, service::MessageService},
-        user::{self, model::UserInfo},
+        user::model::UserInfo,
     };
 
     #[derive(Deserialize)]
     pub struct BlankParams {
         chat_id: chat::Id,
-        recipient: user::Sub,
     }
 
     pub async fn message_input_blank(params: Query<BlankParams>) -> Markup {
-        markup::InputBlank::new(&params.chat_id, &params.recipient).render()
+        markup::InputBlank(&params.chat_id).render()
     }
 
     #[derive(Deserialize)]

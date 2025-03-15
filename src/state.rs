@@ -48,10 +48,12 @@ impl State {
             message_repo.clone(),
             user_service.clone(),
             event_service.clone(),
+            redis.clone(),
         );
 
         let message_service = MessageService::new(
             message_repo.clone(),
+            chat_service.clone(),
             chat_validator.clone(),
             event_service.clone(),
         );

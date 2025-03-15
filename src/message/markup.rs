@@ -6,16 +6,7 @@ use crate::{chat, message, user};
 
 use super::model::{LastMessage, Message};
 
-pub struct InputBlank<'a> {
-    pub chat_id: &'a chat::Id,
-    pub recipient: &'a user::Sub,
-}
-
-impl<'a> InputBlank<'a> {
-    pub fn new(chat_id: &'a chat::Id, recipient: &'a user::Sub) -> Self {
-        Self { chat_id, recipient }
-    }
-}
+pub struct InputBlank<'a>(pub &'a chat::Id);
 
 const MESSAGE_INPUT_ID: &str = "message-input";
 pub const MESSAGE_INPUT_TARGET: &str = "#message-input";
@@ -40,8 +31,7 @@ impl Render for InputBlank<'_> {
                 hx-swap="afterbegin"
                 _=(send_message_handler)
             {
-                input type="hidden" name="chat_id" value=(self.chat_id) {}
-                input type="hidden" name="recipient" value=(self.recipient) {}
+                input type="hidden" name="chat_id" value=(self.0) {}
                 (InputText(None))
                 (SendButton)
             }
@@ -148,15 +138,15 @@ impl Render for MessageList<'_> {
 
 pub struct MessageItem<'a> {
     msg: &'a Message,
-    sub: Option<&'a user::Sub>,
+    logged_sub: Option<&'a user::Sub>,
     is_last: bool,
 }
 
 impl<'a> MessageItem<'a> {
-    pub fn new(msg: &'a Message, sub: Option<&'a user::Sub>) -> Self {
+    pub fn new(msg: &'a Message, logged_sub: Option<&'a user::Sub>) -> Self {
         Self {
             msg,
-            sub,
+            logged_sub,
             is_last: false,
         }
     }
@@ -167,7 +157,7 @@ impl<'a> MessageItem<'a> {
     }
 
     fn belongs_to_user(&self) -> bool {
-        match self.sub {
+        match self.logged_sub {
             Some(sub) => self.msg.owner == *sub,
             None => false,
         }

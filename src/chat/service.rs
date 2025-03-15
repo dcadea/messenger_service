@@ -21,6 +21,7 @@ pub struct ChatService {
     message_repo: Arc<MessageRepository>,
     user_service: Arc<UserService>,
     event_service: Arc<EventService>,
+    redis: cache::Redis,
 }
 
 impl ChatService {
@@ -30,6 +31,7 @@ impl ChatService {
         message_repo: MessageRepository,
         user_service: UserService,
         event_service: EventService,
+        redis: cache::Redis,
     ) -> Self {
         Self {
             repo: Arc::new(repo),
@@ -37,6 +39,7 @@ impl ChatService {
             message_repo: Arc::new(message_repo),
             user_service: Arc::new(user_service),
             event_service: Arc::new(event_service),
+            redis,
         }
     }
 }
@@ -132,9 +135,7 @@ impl ChatService {
         self.repo.update_last_message(id, msg).await?;
 
         if let Some(last_msg) = msg {
-            // FIXME: extract find_members from validator
-            let mut recipients = self.validator.find_members(id).await?;
-            recipients.remove(&last_msg.owner);
+            let recipients = self.find_recipients(id, &last_msg.owner).await?;
 
             for r in recipients {
                 self.event_service
@@ -163,6 +164,16 @@ impl ChatService {
 
     pub async fn mark_as_seen(&self, id: &chat::Id) -> super::Result<()> {
         self.repo.mark_as_seen(id).await
+    }
+
+    pub async fn find_recipients(
+        &self,
+        chat_id: &chat::Id,
+        logged_sub: &user::Sub,
+    ) -> super::Result<HashSet<user::Sub>> {
+        let mut recipients = find_members(&self.redis, self.repo.clone(), chat_id).await?;
+        recipients.remove(logged_sub);
+        Ok(recipients)
     }
 }
 
@@ -201,14 +212,14 @@ impl ChatService {
 
 #[derive(Clone)]
 pub struct ChatValidator {
-    repository: Arc<ChatRepository>,
+    repo: Arc<ChatRepository>,
     redis: cache::Redis,
 }
 
 impl ChatValidator {
     pub fn new(repository: ChatRepository, redis: cache::Redis) -> Self {
         Self {
-            repository: Arc::new(repository),
+            repo: Arc::new(repository),
             redis,
         }
     }
@@ -216,7 +227,7 @@ impl ChatValidator {
 
 impl ChatValidator {
     pub async fn check_member(&self, chat_id: &chat::Id, sub: &user::Sub) -> super::Result<()> {
-        let members = self.find_members(chat_id).await?;
+        let members = find_members(&self.redis, self.repo.clone(), chat_id).await?;
         let belongs_to_chat = members.contains(sub);
 
         if !belongs_to_chat {
@@ -225,25 +236,26 @@ impl ChatValidator {
 
         Ok(())
     }
+}
 
-    async fn find_members(&self, chat_id: &chat::Id) -> super::Result<HashSet<user::Sub>> {
-        let chat_key = cache::Key::Chat(chat_id.to_owned());
-        let members = self
-            .redis
-            .smembers::<HashSet<user::Sub>>(chat_key.clone())
-            .await;
+async fn find_members(
+    redis: &cache::Redis,
+    repo: Arc<ChatRepository>,
+    chat_id: &chat::Id,
+) -> super::Result<HashSet<user::Sub>> {
+    let chat_key = cache::Key::Chat(chat_id.to_owned());
+    let members = redis.smembers::<HashSet<user::Sub>>(chat_key.clone()).await;
 
-        match members {
-            Some(m) if !m.is_empty() => Ok(m),
-            _ => {
-                let chat = self.repository.find_by_id(chat_id).await?;
-                let members = chat.members;
+    match members {
+        Some(m) if !m.is_empty() => Ok(m),
+        _ => {
+            let chat = repo.find_by_id(chat_id).await?;
+            let members = chat.members;
 
-                self.redis.sadd(chat_key.clone(), &members).await;
-                self.redis.expire(chat_key).await;
+            redis.sadd(chat_key.clone(), &members).await;
+            redis.expire(chat_key).await;
 
-                Ok(members)
-            }
+            Ok(members)
         }
     }
 }

@@ -9,24 +9,17 @@ pub struct Message {
     pub _id: Id,
     pub chat_id: chat::Id,
     pub owner: user::Sub,
-    pub recipient: user::Sub,
     pub text: String,
     pub timestamp: i64,
     pub seen: bool,
 }
 
 impl Message {
-    pub fn new(
-        chat_id: chat::Id,
-        owner: user::Sub,
-        recipient: user::Sub,
-        text: impl Into<String>,
-    ) -> Self {
+    pub fn new(chat_id: chat::Id, owner: user::Sub, text: impl Into<String>) -> Self {
         Self {
             _id: Id::random(),
             chat_id,
             owner,
-            recipient,
             text: text.into(),
             timestamp: chrono::Utc::now().timestamp(),
             seen: false,

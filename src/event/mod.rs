@@ -87,7 +87,10 @@ impl From<Notification> for sse::Event {
 #[serde(tag = "type")]
 pub enum Message {
     New(message::model::Message),
-    Updated(message::model::Message),
+    Updated {
+        msg: message::model::Message,
+        logged_sub: user::Sub,
+    },
     Deleted(message::Id),
     Seen(message::model::Message),
 }
@@ -99,7 +102,7 @@ impl Render for Message {
                 Message::New(msg) => div #(MESSAGE_LIST_ID) hx-swap-oob="afterbegin" {
                     (message::markup::MessageItem::new(&msg, None))
                 },
-                Message::Updated(msg) => (message::markup::MessageItem::new(&msg, Some(&msg.recipient))),
+                Message::Updated{ msg, logged_sub } => (message::markup::MessageItem::new(msg, Some(logged_sub))),
                 Message::Deleted(id) => div #(id.attr()) ."message-item flex items-center items-baseline" {
                     div ."message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs"
                         ."bg-gray-300 text-gray-600 italic" {

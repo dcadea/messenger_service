@@ -112,7 +112,7 @@ impl Render for ActiveChat<'_> {
                     hx-trigger="load" {}
             }
 
-            (message::markup::InputBlank::new(self.id, &self.recipient.sub))
+            (message::markup::InputBlank(self.id))
             (ChatControls(self.id))
 
             div .hidden
