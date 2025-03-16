@@ -20,6 +20,7 @@ mod event;
 mod integration;
 mod message;
 mod state;
+mod thread;
 mod user;
 
 pub type Result<T> = std::result::Result<T, crate::error::Error>;
@@ -63,6 +64,7 @@ fn app(s: State, env: &Env) -> Router {
             Router::new()
                 .merge(chat::api(s.clone()))
                 .merge(message::api(s.clone()))
+                .merge(thread::api(s.clone()))
                 .merge(user::api(s.clone())),
         )
         .nest(
