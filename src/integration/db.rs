@@ -4,7 +4,7 @@ use std::{env, str::FromStr};
 use log::warn;
 use mongodb::bson::{doc, oid};
 
-use crate::{chat, message, user};
+use crate::{message, talk, user};
 
 #[derive(Clone)]
 pub struct Config {
@@ -58,8 +58,8 @@ impl Config {
     }
 }
 
-impl From<chat::Id> for mongodb::bson::Bson {
-    fn from(val: chat::Id) -> Self {
+impl From<talk::Id> for mongodb::bson::Bson {
+    fn from(val: talk::Id) -> Self {
         match oid::ObjectId::from_str(&val.0) {
             Ok(oid) => mongodb::bson::Bson::ObjectId(oid),
             Err(_) => mongodb::bson::Bson::String(val.0.clone()),

@@ -67,6 +67,10 @@ pub enum Error {
     #[error("message id not present")]
     IdNotPresent,
 
+    // FIXME: this is not ok
+    #[error("unexpected error occurred: {0:?}")]
+    Unexpected(String),
+
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
 }

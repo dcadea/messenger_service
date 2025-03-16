@@ -3,9 +3,9 @@ use std::sync::Arc;
 use log::{debug, error};
 use text_splitter::{Characters, TextSplitter};
 
-use crate::chat::service::{ChatService, ChatValidator};
 use crate::event::service::EventService;
-use crate::{chat, event, message, user};
+use crate::talk::service::{TalkService, TalkValidator};
+use crate::{event, message, talk, user};
 
 use super::model::Message;
 use super::repository::MessageRepository;
@@ -15,8 +15,8 @@ const MAX_MESSAGE_LENGTH: usize = 1000;
 #[derive(Clone)]
 pub struct MessageService {
     repo: Arc<MessageRepository>,
-    chat_service: Arc<ChatService>,
-    chat_validator: Arc<ChatValidator>,
+    talk_service: Arc<TalkService>,
+    talk_validator: Arc<TalkValidator>,
     event_service: Arc<EventService>,
     splitter: Arc<TextSplitter<Characters>>,
 }
@@ -24,14 +24,14 @@ pub struct MessageService {
 impl MessageService {
     pub fn new(
         repo: MessageRepository,
-        chat_service: ChatService,
-        chat_validator: ChatValidator,
+        talk_service: TalkService,
+        talk_validator: TalkValidator,
         event_service: EventService,
     ) -> Self {
         Self {
             repo: Arc::new(repo),
-            chat_service: Arc::new(chat_service),
-            chat_validator: Arc::new(chat_validator),
+            talk_service: Arc::new(talk_service),
+            talk_validator: Arc::new(talk_validator),
             event_service: Arc::new(event_service),
             splitter: Arc::new(TextSplitter::new(MAX_MESSAGE_LENGTH)),
         }
@@ -56,7 +56,7 @@ impl MessageService {
             }
         };
 
-        self.notify_new(&msg.chat_id, &msg.owner, &msgs).await;
+        self.notify_new(&msg.talk_id, &msg.owner, &msgs).await;
 
         Ok(msgs)
     }
@@ -65,8 +65,8 @@ impl MessageService {
         self.repo.find_by_id(id).await
     }
 
-    pub async fn find_most_recent(&self, chat_id: &chat::Id) -> super::Result<Option<Message>> {
-        self.repo.find_most_recent(chat_id).await
+    pub async fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<Message>> {
+        self.repo.find_most_recent(talk_id).await
     }
 
     pub async fn update(
@@ -94,9 +94,9 @@ impl MessageService {
         id: &message::Id,
     ) -> super::Result<Option<Message>> {
         let msg = self.repo.find_by_id(id).await?;
-        let chat_id = &msg.chat_id;
-        self.chat_validator
-            .check_member(chat_id, logged_sub)
+        let talk_id = &msg.talk_id;
+        self.talk_validator
+            .check_member(talk_id, logged_sub)
             .await
             .map_err(|_| super::Error::NotOwner)?;
 
@@ -119,20 +119,20 @@ impl MessageService {
     // This method is designed to be callen when recipient requests messages related to selected chat.
     // It also marks all messages as seen where logged user is recipient.
     // Due to this side effect consider using other methods for read-only messages retrieval.
-    pub async fn find_by_chat_id_and_params(
+    pub async fn find_by_talk_id_and_params(
         &self,
         logged_sub: &user::Sub,
-        chat_id: &chat::Id,
+        talk_id: &talk::Id,
         limit: Option<usize>,
         end_time: Option<i64>,
     ) -> super::Result<(Vec<Message>, usize)> {
         let msgs = match (limit, end_time) {
-            (None, None) => self.repo.find_by_chat_id(chat_id).await,
-            (Some(limit), None) => self.repo.find_by_chat_id_limited(chat_id, limit).await,
-            (None, Some(end_time)) => self.repo.find_by_chat_id_before(chat_id, end_time).await,
+            (None, None) => self.repo.find_by_talk_id(talk_id).await,
+            (Some(limit), None) => self.repo.find_by_talk_id_limited(talk_id, limit).await,
+            (None, Some(end_time)) => self.repo.find_by_talk_id_before(talk_id, end_time).await,
             (Some(limit), Some(end_time)) => {
                 self.repo
-                    .find_by_chat_id_limited_before(chat_id, limit, end_time)
+                    .find_by_talk_id_limited_before(talk_id, limit, end_time)
                     .await
             }
         }?;
@@ -187,7 +187,7 @@ impl MessageService {
         for msg in unseen_msgs {
             self.event_service
                 .publish_all(
-                    &event::Subject::Messages(&msg.owner, &msg.chat_id),
+                    &event::Subject::Messages(&msg.owner, &msg.talk_id),
                     &msg_evts,
                 )
                 .await;
@@ -196,11 +196,28 @@ impl MessageService {
         let seen_qty = msg_evts.len();
         Ok(seen_qty)
     }
+
+    pub async fn is_last_message(&self, msg: &Message) -> super::Result<bool> {
+        let talk = self
+            .talk_service
+            .find_by_id(&msg.talk_id)
+            .await
+            .map_err(|e| match e {
+                talk::Error::NotFound(_) => message::Error::NotFound(Some(msg._id.clone())),
+                e => message::Error::Unexpected(e.to_string()),
+            })?;
+
+        if let Some(last_message) = talk.last_message {
+            return Ok(last_message.id == msg._id);
+        }
+
+        Ok(false)
+    }
 }
 
 impl MessageService {
-    async fn notify_new(&self, chat_id: &chat::Id, owner: &user::Sub, msgs: &[Message]) {
-        match self.chat_service.find_recipients(chat_id, owner).await {
+    async fn notify_new(&self, talk_id: &talk::Id, owner: &user::Sub, msgs: &[Message]) {
+        match self.talk_service.find_recipients(talk_id, owner).await {
             Ok(recipients) => {
                 let msg_evts: Vec<event::Message> = msgs
                     .iter()
@@ -209,24 +226,24 @@ impl MessageService {
 
                 for r in recipients {
                     self.event_service
-                        .publish_all(&event::Subject::Messages(&r, chat_id), &msg_evts)
+                        .publish_all(&event::Subject::Messages(&r, talk_id), &msg_evts)
                         .await;
                 }
             }
-            Err(e) => error!("could not find chat recipients: {e:?}"),
+            Err(e) => error!("could not find talk recipients: {e:?}"),
         };
     }
 
     async fn notify_updated(&self, msg: &Message) {
-        let chat_id = &msg.chat_id;
+        let talk_id = &msg.talk_id;
         let sub = &msg.owner;
 
-        match self.chat_service.find_recipients(chat_id, sub).await {
+        match self.talk_service.find_recipients(talk_id, sub).await {
             Ok(recipients) => {
                 for r in recipients {
                     self.event_service
                         .publish(
-                            &event::Subject::Messages(&r, chat_id),
+                            &event::Subject::Messages(&r, talk_id),
                             &event::Message::Updated {
                                 msg: msg.clone(),
                                 logged_sub: sub.clone(),
@@ -235,26 +252,26 @@ impl MessageService {
                         .await;
                 }
             }
-            Err(e) => error!("could not find chat recipients: {e:?}"),
+            Err(e) => error!("could not find talk recipients: {e:?}"),
         };
     }
 
     async fn notify_deleted(&self, msg: &Message) {
-        let chat_id = &msg.chat_id;
+        let talk_id = &msg.talk_id;
         let sub = &msg.owner;
 
-        match self.chat_service.find_recipients(chat_id, sub).await {
+        match self.talk_service.find_recipients(talk_id, sub).await {
             Ok(recipients) => {
                 for r in recipients {
                     self.event_service
                         .publish(
-                            &event::Subject::Messages(&r, chat_id),
+                            &event::Subject::Messages(&r, talk_id),
                             &event::Message::Deleted(msg._id.clone()),
                         )
                         .await;
                 }
             }
-            Err(e) => error!("could not find chat recipients: {e:?}"),
+            Err(e) => error!("could not find talk recipients: {e:?}"),
         };
     }
 }

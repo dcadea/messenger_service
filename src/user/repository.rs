@@ -70,6 +70,7 @@ impl UserRepository {
             .map(|f| f.friends)
     }
 
+    // TODO: revisit this
     pub async fn add_friend(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
         let filter = doc! { "sub": sub };
         let update = doc! { "$addToSet": { "friends": friend } };
@@ -79,6 +80,7 @@ impl UserRepository {
         Ok(())
     }
 
+    // TODO: revisit this
     pub async fn remove_friendship(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
         let filter = doc! { "sub": { "$in": [sub, friend] } };
         let update = doc! { "$pull": { "friends": { "$in": [sub, friend] } } };

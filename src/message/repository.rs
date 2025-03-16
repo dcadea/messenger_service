@@ -4,7 +4,7 @@ use mongodb::Database;
 use mongodb::bson::doc;
 
 use super::{Id, model::Message};
-use crate::{chat, message};
+use crate::{message, talk};
 
 const MESSAGES_COLLECTION: &str = "messages";
 
@@ -48,10 +48,10 @@ impl MessageRepository {
             .ok_or(message::Error::NotFound(Some(id.to_owned())))
     }
 
-    pub async fn find_by_chat_id(&self, chat_id: &chat::Id) -> super::Result<Vec<Message>> {
+    pub async fn find_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<Vec<Message>> {
         let cursor = self
             .col
-            .find(doc! {"chat_id": chat_id})
+            .find(doc! {"talk_id": talk_id})
             .sort(doc! {"timestamp": -1})
             .await?;
 
@@ -60,14 +60,14 @@ impl MessageRepository {
         Ok(messages)
     }
 
-    pub async fn find_by_chat_id_limited(
+    pub async fn find_by_talk_id_limited(
         &self,
-        chat_id: &chat::Id,
+        talk_id: &talk::Id,
         limit: usize,
     ) -> super::Result<Vec<Message>> {
         let cursor = self
             .col
-            .find(doc! {"chat_id": chat_id})
+            .find(doc! {"talk_id": talk_id})
             .sort(doc! {"timestamp": -1})
             .limit(limit as i64)
             .await?;
@@ -77,15 +77,15 @@ impl MessageRepository {
         Ok(messages)
     }
 
-    pub async fn find_by_chat_id_before(
+    pub async fn find_by_talk_id_before(
         &self,
-        chat_id: &chat::Id,
+        talk_id: &talk::Id,
         before: i64,
     ) -> super::Result<Vec<Message>> {
         let cursor = self
             .col
             .find(doc! {
-                "chat_id": chat_id,
+                "talk_id": talk_id,
                 "timestamp": {"$lt": before}
             })
             .sort(doc! {"timestamp": -1})
@@ -96,16 +96,16 @@ impl MessageRepository {
         Ok(msgs)
     }
 
-    pub async fn find_by_chat_id_limited_before(
+    pub async fn find_by_talk_id_limited_before(
         &self,
-        chat_id: &chat::Id,
+        talk_id: &talk::Id,
         limit: usize,
         before: i64,
     ) -> super::Result<Vec<Message>> {
         let cursor = self
             .col
             .find(doc! {
-                "chat_id": chat_id,
+                "talk_id": talk_id,
                 "timestamp": {"$lt": before}
             })
             .sort(doc! {"timestamp": -1})
@@ -117,10 +117,10 @@ impl MessageRepository {
         Ok(msgs)
     }
 
-    pub async fn find_most_recent(&self, chat_id: &chat::Id) -> super::Result<Option<Message>> {
+    pub async fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<Message>> {
         let mut cursor = self
             .col
-            .find(doc! {"chat_id": chat_id})
+            .find(doc! {"talk_id": talk_id})
             .sort(doc! {"timestamp": -1})
             .limit(1)
             .await?;
@@ -143,8 +143,8 @@ impl MessageRepository {
         Ok(count)
     }
 
-    pub async fn delete_by_chat_id(&self, chat_id: &chat::Id) -> super::Result<()> {
-        self.col.delete_many(doc! {"chat_id": chat_id}).await?;
+    pub async fn delete_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<()> {
+        self.col.delete_many(doc! {"talk_id": talk_id}).await?;
 
         Ok(())
     }

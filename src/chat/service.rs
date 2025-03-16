@@ -8,7 +8,6 @@ use super::model::{Chat, ChatDto};
 use super::repository::ChatRepository;
 use crate::event::service::EventService;
 use crate::integration::cache;
-use crate::message::model::{LastMessage, Message};
 use crate::message::repository::MessageRepository;
 use crate::user::model::UserInfo;
 use crate::user::service::UserService;
@@ -17,7 +16,6 @@ use crate::{chat, event, user};
 #[derive(Clone)]
 pub struct ChatService {
     repo: Arc<ChatRepository>,
-    validator: Arc<ChatValidator>,
     message_repo: Arc<MessageRepository>,
     user_service: Arc<UserService>,
     event_service: Arc<EventService>,
@@ -27,7 +25,6 @@ pub struct ChatService {
 impl ChatService {
     pub fn new(
         repo: ChatRepository,
-        validator: ChatValidator,
         message_repo: MessageRepository,
         user_service: UserService,
         event_service: EventService,
@@ -35,7 +32,6 @@ impl ChatService {
     ) -> Self {
         Self {
             repo: Arc::new(repo),
-            validator: Arc::new(validator),
             message_repo: Arc::new(message_repo),
             user_service: Arc::new(user_service),
             event_service: Arc::new(event_service),
@@ -45,32 +41,6 @@ impl ChatService {
 }
 
 impl ChatService {
-    pub async fn find_by_id(&self, id: &chat::Id, user_info: &UserInfo) -> super::Result<ChatDto> {
-        let sub = &user_info.sub;
-        match self.repo.find_by_id_and_sub(id, sub).await {
-            Ok(chat) => {
-                let chat_dto = self.chat_to_dto(chat, sub).await?;
-                Ok(chat_dto)
-            }
-            Err(chat::Error::NotFound(_)) => Err(chat::Error::NotMember),
-            Err(err) => Err(err),
-        }
-    }
-
-    pub async fn find_all(&self, user_info: &UserInfo) -> super::Result<Vec<ChatDto>> {
-        let sub = &user_info.sub;
-        let chats = self.repo.find_by_sub(sub).await?;
-
-        let chat_dtos = try_join_all(
-            chats
-                .into_iter()
-                .map(|chat| async { self.chat_to_dto(chat, sub).await }),
-        )
-        .await?;
-
-        Ok(chat_dtos)
-    }
-
     pub async fn create(
         &self,
         logged_user: &UserInfo,
@@ -123,139 +93,5 @@ impl ChatService {
         }
 
         Ok(())
-    }
-}
-
-impl ChatService {
-    pub async fn update_last_message(
-        &self,
-        id: &chat::Id,
-        msg: Option<&LastMessage>,
-    ) -> super::Result<()> {
-        self.repo.update_last_message(id, msg).await?;
-
-        if let Some(last_msg) = msg {
-            let recipients = self.find_recipients(id, &last_msg.owner).await?;
-
-            for r in recipients {
-                self.event_service
-                    .publish(
-                        &event::Subject::Notifications(&r),
-                        &event::Notification::NewMessage {
-                            chat_id: id.clone(),
-                            last_message: last_msg.clone(),
-                        },
-                    )
-                    .await;
-            }
-        }
-        Ok(())
-    }
-
-    pub async fn is_last_message(&self, message: &Message) -> super::Result<bool> {
-        let chat = self.repo.find_by_id(&message.chat_id).await?;
-
-        if let Some(last_message) = chat.last_message {
-            return Ok(last_message.id == message._id);
-        }
-
-        Ok(false)
-    }
-
-    pub async fn mark_as_seen(&self, id: &chat::Id) -> super::Result<()> {
-        self.repo.mark_as_seen(id).await
-    }
-
-    pub async fn find_recipients(
-        &self,
-        chat_id: &chat::Id,
-        logged_sub: &user::Sub,
-    ) -> super::Result<HashSet<user::Sub>> {
-        let mut recipients = find_members(&self.redis, self.repo.clone(), chat_id).await?;
-        recipients.remove(logged_sub);
-        Ok(recipients)
-    }
-}
-
-impl ChatService {
-    // FIXME: this is for private chat only
-    async fn chat_to_dto(&self, chat: Chat, sub: &user::Sub) -> super::Result<ChatDto> {
-        let members = chat.members.to_owned();
-
-        let sender = members
-            .iter()
-            .find(|&m| m == sub)
-            .ok_or(chat::Error::NotMember)?;
-
-        let recipient = members
-            .iter()
-            .find(|&m| m != sub)
-            .ok_or(chat::Error::NotMember)?;
-
-        let recipient_info = self
-            .user_service
-            .find_user_info(recipient)
-            .await
-            .expect("recipient info should be present");
-
-        let chat_dto = ChatDto::new(
-            chat,
-            sender.to_owned(),
-            recipient.to_owned(),
-            recipient_info.picture,
-            recipient_info.name,
-        );
-
-        Ok(chat_dto)
-    }
-}
-
-#[derive(Clone)]
-pub struct ChatValidator {
-    repo: Arc<ChatRepository>,
-    redis: cache::Redis,
-}
-
-impl ChatValidator {
-    pub fn new(repository: ChatRepository, redis: cache::Redis) -> Self {
-        Self {
-            repo: Arc::new(repository),
-            redis,
-        }
-    }
-}
-
-impl ChatValidator {
-    pub async fn check_member(&self, chat_id: &chat::Id, sub: &user::Sub) -> super::Result<()> {
-        let members = find_members(&self.redis, self.repo.clone(), chat_id).await?;
-        let belongs_to_chat = members.contains(sub);
-
-        if !belongs_to_chat {
-            return Err(chat::Error::NotMember);
-        }
-
-        Ok(())
-    }
-}
-
-async fn find_members(
-    redis: &cache::Redis,
-    repo: Arc<ChatRepository>,
-    chat_id: &chat::Id,
-) -> super::Result<HashSet<user::Sub>> {
-    let chat_key = cache::Key::Chat(chat_id.to_owned());
-    let members = redis.smembers::<HashSet<user::Sub>>(chat_key.clone()).await;
-
-    match members {
-        Some(m) if !m.is_empty() => Ok(m),
-        _ => {
-            let chat = repo.find_by_id(chat_id).await?;
-            let members = chat.members;
-
-            redis.sadd(chat_key.clone(), &members).await;
-            redis.expire(chat_key).await;
-
-            Ok(members)
-        }
     }
 }

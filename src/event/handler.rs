@@ -71,12 +71,12 @@ pub mod ws {
     use std::sync::Arc;
 
     use crate::{
-        chat::{
-            self,
-            service::{ChatService, ChatValidator},
-        },
         event::{Message, Subject, service::EventService},
         message::service::MessageService,
+        talk::{
+            self,
+            service::{TalkService, TalkValidator},
+        },
         user::{self, model::UserInfo},
     };
     use axum::extract::ws::Message::{Close, Text};
@@ -97,38 +97,38 @@ pub mod ws {
         try_join,
     };
 
-    pub async fn chat(
+    pub async fn talk(
         Extension(user_info): Extension<UserInfo>,
         ws: WebSocketUpgrade,
-        Path(chat_id): Path<chat::Id>,
-        State(chat_validator): State<ChatValidator>,
+        Path(talk_id): Path<talk::Id>,
+        State(talk_validator): State<TalkValidator>,
         State(event_service): State<EventService>,
         State(message_service): State<MessageService>,
-        State(chat_service): State<ChatService>,
+        State(talk_service): State<TalkService>,
     ) -> crate::Result<Response> {
-        chat_validator
-            .check_member(&chat_id, &user_info.sub)
+        talk_validator
+            .check_member(&talk_id, &user_info.sub)
             .await?;
 
         Ok(ws.on_upgrade(move |socket| {
             handle(
                 user_info.sub,
-                chat_id,
+                talk_id,
                 socket,
                 event_service,
                 message_service,
-                chat_service,
+                talk_service,
             )
         }))
     }
 
     async fn handle(
         logged_sub: user::Sub,
-        chat_id: chat::Id,
+        talk_id: talk::Id,
         ws: WebSocket,
         event_service: EventService,
         message_service: MessageService,
-        chat_service: ChatService,
+        talk_service: TalkService,
     ) {
         let (sender, receiver) = ws.split();
 
@@ -137,30 +137,30 @@ pub mod ws {
         let write = write(
             close.clone(),
             logged_sub,
-            chat_id,
+            talk_id,
             sender,
             event_service,
             message_service,
-            chat_service,
+            talk_service,
         );
 
         match try_join!(tokio::spawn(read), tokio::spawn(write)) {
-            Ok(_) => debug!("WS chat disconnected gracefully"),
-            Err(e) => error!("WS chat disconnected with error: {e}"),
+            Ok(_) => debug!("WS talk disconnected gracefully"),
+            Err(e) => error!("WS talk disconnected with error: {e}"),
         }
     }
 
     async fn write(
         close: Arc<Notify>,
         logged_sub: user::Sub,
-        chat_id: chat::Id,
+        talk_id: talk::Id,
         sender: SplitSink<WebSocket, axum::extract::ws::Message>,
         event_service: EventService,
         message_service: MessageService,
-        chat_service: ChatService,
+        talk_service: TalkService,
     ) {
         let mut msg_stream = match event_service
-            .subscribe::<Message>(&Subject::Messages(&logged_sub, &chat_id))
+            .subscribe::<Message>(&Subject::Messages(&logged_sub, &talk_id))
             .await
         {
             Ok(stream) => stream,
@@ -190,12 +190,12 @@ pub mod ws {
                             }
 
                             if let Message::New(msg) = msg {
-                                let chat_id = msg.chat_id.clone();
+                                let talk_id = msg.talk_id.clone();
                                 match message_service.mark_as_seen(&logged_sub, &[msg]).await {
                                     Ok(seen_qty) => {
                                         if seen_qty > 0 {
-                                            if let Err(e) = chat_service.mark_as_seen(&chat_id).await {
-                                                error!("Failed to mark chat as seen: {e}");
+                                            if let Err(e) = talk_service.mark_as_seen(&talk_id).await {
+                                                error!("Failed to mark talk as seen: {e}");
                                             }
                                         }
                                     }

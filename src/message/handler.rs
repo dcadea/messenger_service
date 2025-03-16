@@ -7,10 +7,10 @@ pub(super) mod api {
     use maud::{Markup, Render};
     use serde::Deserialize;
 
-    use crate::chat::service::{ChatService, ChatValidator};
     use crate::error::Error;
+    use crate::talk::service::{TalkService, TalkValidator};
     use crate::user::model::UserInfo;
-    use crate::{chat, message};
+    use crate::{message, talk};
 
     use crate::message::markup;
     use crate::message::model::{LastMessage, Message};
@@ -18,24 +18,24 @@ pub(super) mod api {
 
     #[derive(Deserialize)]
     pub struct CreateParams {
-        chat_id: chat::Id,
+        talk_id: talk::Id,
         text: String,
     }
 
     pub async fn create(
         user_info: Extension<UserInfo>,
         message_service: State<MessageService>,
-        chat_service: State<ChatService>,
+        talk_service: State<TalkService>,
         Form(params): Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let msg = Message::new(params.chat_id, user_info.sub.clone(), params.text.trim());
+        let msg = Message::new(params.talk_id, user_info.sub.clone(), params.text.trim());
 
         let msgs = message_service.create(&msg).await?;
 
         if let Some(last) = msgs.last() {
             let last_msg = LastMessage::from(last);
-            chat_service
-                .update_last_message(&last.chat_id, Some(&last_msg))
+            talk_service
+                .update_last_message(&last.talk_id, Some(&last_msg))
                 .await?;
         }
 
@@ -44,7 +44,7 @@ pub(super) mod api {
 
     #[derive(Deserialize)]
     pub struct FindAllParams {
-        chat_id: Option<chat::Id>,
+        talk_id: Option<talk::Id>,
         end_time: Option<i64>,
         limit: Option<usize>,
     }
@@ -52,24 +52,24 @@ pub(super) mod api {
     pub async fn find_all(
         user_info: Extension<UserInfo>,
         Query(params): Query<FindAllParams>,
-        chat_validator: State<ChatValidator>,
-        chat_service: State<ChatService>,
+        talk_validator: State<TalkValidator>,
+        talk_service: State<TalkService>,
         message_service: State<MessageService>,
     ) -> crate::Result<impl IntoResponse> {
-        let chat_id = params
-            .chat_id
-            .ok_or(Error::QueryParamRequired("chat_id".to_owned()))?;
+        let talk_id = params
+            .talk_id
+            .ok_or(Error::QueryParamRequired("talk_id".to_owned()))?;
 
         let logged_sub = &user_info.sub;
 
-        chat_validator.check_member(&chat_id, logged_sub).await?;
+        talk_validator.check_member(&talk_id, logged_sub).await?;
 
         let (msgs, seen_qty) = message_service
-            .find_by_chat_id_and_params(logged_sub, &chat_id, params.limit, params.end_time)
+            .find_by_talk_id_and_params(logged_sub, &talk_id, params.limit, params.end_time)
             .await?;
 
         if seen_qty > 0 {
-            chat_service.mark_as_seen(&chat_id).await?;
+            talk_service.mark_as_seen(&talk_id).await?;
         }
 
         Ok(markup::MessageList::append(&msgs, logged_sub).render())
@@ -101,19 +101,19 @@ pub(super) mod api {
         user_info: Extension<UserInfo>,
         Path(id): Path<message::Id>,
         message_service: State<MessageService>,
-        chat_service: State<ChatService>,
+        talk_service: State<TalkService>,
     ) -> crate::Result<()> {
         if let Some(deleted_msg) = message_service.delete(&user_info.sub, &id).await? {
-            let is_last = chat_service.is_last_message(&deleted_msg).await?;
+            let is_last = message_service.is_last_message(&deleted_msg).await?;
             if is_last {
-                let chat_id = &deleted_msg.chat_id;
+                let talk_id = &deleted_msg.talk_id;
                 let last_msg = message_service
-                    .find_most_recent(chat_id)
+                    .find_most_recent(talk_id)
                     .await?
                     .map(|msg| LastMessage::from(&msg));
 
-                chat_service
-                    .update_last_message(chat_id, last_msg.as_ref())
+                talk_service
+                    .update_last_message(talk_id, last_msg.as_ref())
                     .await?;
             }
 
@@ -133,18 +133,18 @@ pub(super) mod templates {
     use serde::Deserialize;
 
     use crate::{
-        chat,
         message::{self, markup, service::MessageService},
+        talk,
         user::model::UserInfo,
     };
 
     #[derive(Deserialize)]
     pub struct BlankParams {
-        chat_id: chat::Id,
+        talk_id: talk::Id,
     }
 
     pub async fn message_input_blank(params: Query<BlankParams>) -> Markup {
-        markup::InputBlank(&params.chat_id).render()
+        markup::InputBlank(&params.talk_id).render()
     }
 
     #[derive(Deserialize)]

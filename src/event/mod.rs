@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::message::markup::MESSAGE_LIST_ID;
 use crate::state::State;
-use crate::{chat, message, user};
+use crate::{message, talk, user};
 
 mod handler;
 pub mod service;
@@ -20,7 +20,7 @@ type Result<T> = std::result::Result<T, Error>;
 pub fn api<S>(s: State) -> Router<S> {
     Router::new()
         .route("/sse", get(handler::sse::notifications))
-        .route("/ws/{chat_id}", get(handler::ws::chat))
+        .route("/ws/{talk_id}", get(handler::ws::talk))
         .with_state(s)
 }
 
@@ -29,14 +29,14 @@ pub type PayloadStream<T> = Pin<Box<dyn Stream<Item = T> + Send>>;
 #[derive(Clone, Debug)]
 pub enum Subject<'a> {
     Notifications(&'a user::Sub),
-    Messages(&'a user::Sub, &'a chat::Id),
+    Messages(&'a user::Sub, &'a talk::Id),
 }
 
 impl async_nats::subject::ToSubject for &Subject<'_> {
     fn to_subject(&self) -> async_nats::Subject {
         match self {
             Subject::Notifications(sub) => format!("noti.{sub}").into(),
-            Subject::Messages(sub, chat_id) => format!("messages.{sub}.{chat_id}").into(),
+            Subject::Messages(sub, talk_id) => format!("messages.{sub}.{talk_id}").into(),
         }
     }
 }
@@ -45,9 +45,9 @@ impl async_nats::subject::ToSubject for &Subject<'_> {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Notification {
     OnlineStatusChange(user::model::OnlineStatus),
-    NewFriend(chat::model::ChatDto),
+    NewFriend(talk::model::TalkDto),
     NewMessage {
-        chat_id: chat::Id,
+        talk_id: talk::Id,
         last_message: message::model::LastMessage,
     },
 }
@@ -58,12 +58,12 @@ impl Render for Notification {
             Notification::OnlineStatusChange(os) => {
                 html! { (user::markup::Icon::OnlineIndicator(&os)) }
             }
-            Notification::NewFriend(c) => html! { (c) },
+            Notification::NewFriend(..) => todo!(),
             Notification::NewMessage {
-                chat_id,
+                talk_id,
                 last_message,
             } => html! {
-                (message::markup::last_message(Some(last_message), chat_id, None))
+                (message::markup::last_message(Some(last_message), talk_id, None))
             },
         }
     }
@@ -74,7 +74,7 @@ impl From<Notification> for sse::Event {
         let evt = match &noti {
             Notification::OnlineStatusChange(f) => &format!("onlineStatusChange:{}", f.id()),
             Notification::NewFriend(_) => "newFriend",
-            Notification::NewMessage { chat_id, .. } => &format!("newMessage:{}", &chat_id),
+            Notification::NewMessage { talk_id, .. } => &format!("newMessage:{}", &talk_id),
         };
 
         sse::Event::default()

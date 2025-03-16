@@ -18,6 +18,7 @@ pub struct User {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct OnlineStatus {
+    // TODO: add lifetime
     sub: Sub,
     pub online: bool,
 }

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use maud::{Markup, Render, html};
 use messenger_service::markup::Id;
 
-use crate::chat::markup::CHAT_WINDOW_TARGET;
+use crate::talk::markup::TALK_WINDOW_TARGET;
 
 use super::{
     Sub,
@@ -65,8 +65,8 @@ impl Render for AddFriend<'_> {
     fn render(&self) -> Markup {
         html! {
             form .float-right
-                hx-post="/api/chats"
-                hx-target=(CHAT_WINDOW_TARGET)
+                hx-post="/api/talks"
+                hx-target=(TALK_WINDOW_TARGET)
             {
                 input type="hidden" name="sub" value=(self.0) {}
                 input ."px-2 py-1 text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-xs focus:outline-none"

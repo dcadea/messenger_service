@@ -1,10 +1,9 @@
 use axum::extract::FromRef;
 
-use crate::chat::service::ChatValidator;
+use crate::talk::repository::TalkRepository;
+use crate::talk::service::{TalkService, TalkValidator};
 
 use super::auth::service::AuthService;
-use super::chat::repository::ChatRepository;
-use super::chat::service::ChatService;
 use super::event::service::EventService;
 use super::integration;
 use super::message::repository::MessageRepository;
@@ -18,8 +17,8 @@ pub struct State {
 
     pub auth_service: AuthService,
     pub user_service: UserService,
-    pub chat_validator: ChatValidator,
-    pub chat_service: ChatService,
+    pub talk_service: TalkService,
+    pub talk_validator: TalkValidator,
     pub message_service: MessageService,
     pub event_service: EventService,
 }
@@ -38,23 +37,23 @@ impl State {
             redis.clone(),
         );
 
-        let chat_repo = ChatRepository::new(&db);
+        let talk_repo = TalkRepository::new(&db);
         let message_repo = MessageRepository::new(&db);
 
-        let chat_validator = ChatValidator::new(chat_repo.clone(), redis.clone());
-        let chat_service = ChatService::new(
-            chat_repo.clone(),
-            chat_validator.clone(),
-            message_repo.clone(),
+        let talk_validator = TalkValidator::new(talk_repo.clone(), redis.clone());
+        let talk_service = TalkService::new(
+            talk_repo.clone(),
+            talk_validator.clone(),
             user_service.clone(),
             event_service.clone(),
+            message_repo.clone(),
             redis.clone(),
         );
 
         let message_service = MessageService::new(
             message_repo.clone(),
-            chat_service.clone(),
-            chat_validator.clone(),
+            talk_service.clone(),
+            talk_validator.clone(),
             event_service.clone(),
         );
 
@@ -62,8 +61,8 @@ impl State {
             cfg,
             auth_service,
             user_service,
-            chat_validator,
-            chat_service,
+            talk_service,
+            talk_validator,
             message_service,
             event_service,
         })
@@ -88,15 +87,15 @@ impl FromRef<State> for UserService {
     }
 }
 
-impl FromRef<State> for ChatValidator {
+impl FromRef<State> for TalkService {
     fn from_ref(s: &State) -> Self {
-        s.chat_validator.clone()
+        s.talk_service.clone()
     }
 }
 
-impl FromRef<State> for ChatService {
+impl FromRef<State> for TalkValidator {
     fn from_ref(s: &State) -> Self {
-        s.chat_service.clone()
+        s.talk_validator.clone()
     }
 }
 

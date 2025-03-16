@@ -7,7 +7,7 @@ use redis::{AsyncCommands, JsonAsyncCommands};
 use serde::Serialize;
 
 use crate::user::model::UserInfo;
-use crate::{chat, user};
+use crate::{talk, user};
 
 #[derive(Clone)]
 pub struct Redis {
@@ -198,7 +198,7 @@ impl Config {
 pub enum Key {
     UserInfo(user::Sub),
     Friends(user::Sub),
-    Chat(chat::Id),
+    Talk(talk::Id),
     Session(uuid::Uuid),
     Csrf(Arc<str>),
 }
@@ -209,7 +209,7 @@ impl Key {
         match self {
             Key::UserInfo(_) => 3600,
             Key::Friends(_) => u64::MAX,
-            Key::Chat(_) => 3600,
+            Key::Talk(_) => 3600,
             // Just in case if token response does not provide an expiration claim
             // fallback with this value
             Key::Session(_) => 3600,
@@ -225,7 +225,7 @@ impl Display for Key {
         match self {
             Key::UserInfo(sub) => write!(f, "userinfo:{sub}"),
             Key::Friends(sub) => write!(f, "friends:{sub}"),
-            Key::Chat(id) => write!(f, "chat:{id}"),
+            Key::Talk(id) => write!(f, "talk:{id}"),
             Key::Session(id) => write!(f, "session:{id}"),
             Key::Csrf(csrf) => write!(f, "csrf:{csrf}"),
         }

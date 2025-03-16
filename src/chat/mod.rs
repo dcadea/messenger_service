@@ -1,20 +1,12 @@
 use std::fmt::Display;
 
 use axum::http::StatusCode;
-use axum::routing::{delete, post};
-use axum::{
-    Router,
-    response::{IntoResponse, Response},
-    routing::get,
-};
+use axum::response::{IntoResponse, Response};
 use log::error;
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
-use crate::state::State;
-
 mod handler;
-pub mod markup;
 pub mod model;
 pub mod repository;
 pub mod service;
@@ -40,21 +32,6 @@ impl Display for Id {
 pub enum Kind {
     Private,
     Group,
-}
-
-pub fn pages<S>(s: State) -> Router<S> {
-    Router::new()
-        .route("/", get(handler::pages::home))
-        .route("/chats/{id}", get(handler::pages::active_chat))
-        .with_state(s)
-}
-
-pub fn api<S>(s: State) -> Router<S> {
-    Router::new()
-        .route("/chats/{id}", get(handler::api::find_one))
-        .route("/chats", post(handler::api::create))
-        .route("/chats/{id}", delete(handler::api::delete))
-        .with_state(s)
 }
 
 #[derive(thiserror::Error, Debug)]

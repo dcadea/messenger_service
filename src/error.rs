@@ -4,7 +4,7 @@ use log::error;
 use maud::{Markup, Render, html};
 use serde::Serialize;
 
-use crate::{auth, chat, event, message, user};
+use crate::{auth, event, message, talk, user};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -14,7 +14,7 @@ pub enum Error {
     #[error(transparent)]
     _Auth(#[from] auth::Error),
     #[error(transparent)]
-    _Chat(#[from] chat::Error),
+    _Talk(#[from] talk::Error),
     #[error(transparent)]
     _Event(#[from] event::Error),
     #[error(transparent)]
@@ -29,8 +29,8 @@ impl IntoResponse for Error {
 
         let (status, message) = match self {
             Self::_Auth(auth) => return auth.into_response(),
-            Self::_Chat(chat) => return chat.into_response(),
-
+            // TODO
+            // Self::_Talk(talk) => return talk.into_response(),
             Self::_Event(event::Error::NotOwner) => (StatusCode::FORBIDDEN, error_message),
             Self::_Event(event::Error::NotRecipient) => (StatusCode::FORBIDDEN, error_message),
 

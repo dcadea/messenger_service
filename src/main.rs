@@ -14,13 +14,12 @@ use tower_http::services::ServeDir;
 use crate::state::State;
 
 mod auth;
-mod chat;
 mod error;
 mod event;
 mod integration;
 mod message;
 mod state;
-mod thread;
+mod talk;
 mod user;
 
 pub type Result<T> = std::result::Result<T, crate::error::Error>;
@@ -57,14 +56,13 @@ async fn main() {
 
 fn app(s: State, env: &Env) -> Router {
     let protected_router = Router::new()
-        .merge(chat::pages(s.clone()))
+        .merge(talk::pages(s.clone()))
         .merge(event::api(s.clone()))
         .nest(
             "/api",
             Router::new()
-                .merge(chat::api(s.clone()))
                 .merge(message::api(s.clone()))
-                .merge(thread::api(s.clone()))
+                .merge(talk::api(s.clone()))
                 .merge(user::api(s.clone())),
         )
         .nest(

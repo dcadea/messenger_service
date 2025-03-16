@@ -2,11 +2,11 @@ use chrono::DateTime;
 use maud::{Markup, Render, html};
 use messenger_service::markup::Id;
 
-use crate::{chat, message, user};
+use crate::{message, talk, user};
 
 use super::model::{LastMessage, Message};
 
-pub struct InputBlank<'a>(pub &'a chat::Id);
+pub struct InputBlank<'a>(pub &'a talk::Id);
 
 const MESSAGE_INPUT_ID: &str = "message-input";
 pub const MESSAGE_INPUT_TARGET: &str = "#message-input";
@@ -31,7 +31,7 @@ impl Render for InputBlank<'_> {
                 hx-swap="afterbegin"
                 _=(send_message_handler)
             {
-                input type="hidden" name="chat_id" value=(self.0) {}
+                input type="hidden" name="talk_id" value=(self.0) {}
                 (InputText(None))
                 (SendButton)
             }
@@ -181,8 +181,8 @@ impl<'a> MessageItem<'a> {
         match self.is_last {
             true => {
                 let path = format!(
-                    "/api/messages?limit=20&chat_id={}&end_time={}",
-                    self.msg.chat_id, self.msg.timestamp
+                    "/api/messages?limit=20&talk_id={}&end_time={}",
+                    self.msg.talk_id, self.msg.timestamp
                 );
                 Some(path)
             }
@@ -255,7 +255,7 @@ const MAX_LEN: usize = 25;
 
 pub fn last_message(
     lm: Option<&LastMessage>,
-    chat_id: &chat::Id,
+    talk_id: &talk::Id,
     sender: Option<&user::Sub>,
 ) -> Markup {
     let trim = |lm: &LastMessage| {
@@ -268,16 +268,16 @@ pub fn last_message(
     };
 
     html! {
-        div #{"lm-"(chat_id)} ."last-message text-sm text-gray-500" {
+        div #{"lm-"(talk_id)} ."last-message text-sm text-gray-500" {
             @if let Some(last_msg) = lm {
                 (trim(last_msg))
 
                 @if let Some(s) = sender {
                     @if !last_msg.seen && last_msg.owner != *s {
-                        (chat::markup::Icon::Unseen)
+                        (talk::markup::Icon::Unseen)
                     }
                 } @else {
-                    (chat::markup::Icon::Unseen)
+                    (talk::markup::Icon::Unseen)
                 }
             }
         }
