@@ -45,7 +45,7 @@ impl async_nats::subject::ToSubject for &Subject<'_> {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Notification {
     OnlineStatusChange(user::model::OnlineStatus),
-    NewFriend(talk::model::TalkDto),
+    NewTalk(talk::model::TalkDto),
     NewMessage {
         talk_id: talk::Id,
         last_message: message::model::LastMessage,
@@ -58,7 +58,7 @@ impl Render for Notification {
             Notification::OnlineStatusChange(os) => {
                 html! { (user::markup::Icon::OnlineIndicator(&os)) }
             }
-            Notification::NewFriend(..) => todo!(),
+            Notification::NewTalk(..) => todo!(),
             Notification::NewMessage {
                 talk_id,
                 last_message,
@@ -73,7 +73,7 @@ impl From<Notification> for sse::Event {
     fn from(noti: Notification) -> Self {
         let evt = match &noti {
             Notification::OnlineStatusChange(f) => &format!("onlineStatusChange:{}", f.id()),
-            Notification::NewFriend(_) => "newFriend",
+            Notification::NewTalk(_) => "newTalk",
             Notification::NewMessage { talk_id, .. } => &format!("newMessage:{}", &talk_id),
         };
 

@@ -12,6 +12,16 @@ pub struct Talk {
     pub last_message: Option<LastMessage>,
 }
 
+impl Talk {
+    pub fn new(details: Details) -> Self {
+        Self {
+            _id: Id::random(),
+            details,
+            last_message: None,
+        }
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Details {
     Chat {

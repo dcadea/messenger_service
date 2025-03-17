@@ -59,45 +59,47 @@ impl UserService {
         Ok(users.into_iter().map(|user| user.into()).collect())
     }
 
-    pub async fn find_friends(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
-        let friends = self
+    pub async fn find_contacts(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
+        let contacts = self
             .redis
-            .smembers::<HashSet<Sub>>(cache::Key::Friends(sub.to_owned()))
+            .smembers::<HashSet<Sub>>(cache::Key::Contacts(sub.to_owned()))
             .await;
 
-        match friends {
-            Some(friends) => Ok(friends),
-            None => self.cache_friends(sub).await,
+        match contacts {
+            Some(c) => Ok(c),
+            None => self.cache_contacts(sub).await,
         }
     }
 
-    pub async fn create_friendship(&self, subs: &[Sub; 2]) -> super::Result<()> {
+    // TODO: revisit this
+    pub async fn _create_contact(&self, subs: &[Sub; 2]) -> super::Result<()> {
         let me = &subs[0];
         let you = &subs[1];
         assert_ne!(me, you);
 
         tokio::try_join!(
-            self.repo.add_friend(me, you),
-            self.repo.add_friend(you, me),
-            self.cache_friends(me),
-            self.cache_friends(you)
+            self.repo.add_contact(me, you),
+            self.repo.add_contact(you, me),
+            self.cache_contacts(me),
+            self.cache_contacts(you)
         )?;
 
         Ok(())
     }
 
-    pub async fn delete_friendship(&self, subs: &[Sub; 2]) -> super::Result<()> {
+    // TODO: revisit this
+    pub async fn _delete_contact(&self, subs: &[Sub; 2]) -> super::Result<()> {
         let me = &subs[0];
         let you = &subs[1];
         assert_ne!(me, you);
 
-        self.repo.remove_friendship(me, you).await?;
+        self.repo.remove_contact(me, you).await?;
 
         tokio::join!(
             self.redis
-                .srem(cache::Key::Friends(me.to_owned()), you.to_owned()),
+                .srem(cache::Key::Contacts(me.to_owned()), you.to_owned()),
             self.redis
-                .srem(cache::Key::Friends(you.to_owned()), me.to_owned()),
+                .srem(cache::Key::Contacts(you.to_owned()), me.to_owned()),
         );
 
         Ok(())
@@ -115,21 +117,21 @@ impl UserService {
     }
 
     async fn notify_online_status_change(&self, sub: &Sub, online: bool) {
-        match self.repo.find_friends_by_sub(sub).await {
-            Ok(friend_subs) => {
+        match self.repo.find_contacts_for_sub(sub).await {
+            Ok(contact) => {
                 let status = OnlineStatus::new(sub.to_owned(), online);
 
-                for fsub in friend_subs {
+                for c in contact {
                     self.event_service
                         .publish(
-                            &event::Subject::Notifications(&fsub),
+                            &event::Subject::Notifications(&c),
                             &event::Notification::OnlineStatusChange(status.clone()),
                         )
                         .await;
                 }
             }
             Err(e) => {
-                error!("failed to find friends by sub: {e:?}");
+                error!("failed to find contacts for sub: {e:?}");
             }
         }
     }
@@ -137,19 +139,19 @@ impl UserService {
 
 // cache operations
 impl UserService {
-    async fn cache_friends(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
-        let friends = self.repo.find_friends_by_sub(sub).await?;
+    async fn cache_contacts(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
+        let contacts = self.repo.find_contacts_for_sub(sub).await?;
 
-        if friends.is_empty() {
+        if contacts.is_empty() {
             return Ok(HashSet::with_capacity(0));
         }
 
         let _: () = self
             .redis
-            .sadd(cache::Key::Friends(sub.to_owned()), &friends)
+            .sadd(cache::Key::Contacts(sub.to_owned()), &contacts)
             .await;
 
-        Ok(HashSet::from_iter(friends.iter().cloned()))
+        Ok(HashSet::from_iter(contacts.iter().cloned()))
     }
 
     async fn cache_user_info(&self, user_info: &UserInfo) {

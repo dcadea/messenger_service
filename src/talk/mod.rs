@@ -2,8 +2,11 @@ use std::fmt::Display;
 
 use axum::{
     Router,
+    http::StatusCode,
+    response::{IntoResponse, Response},
     routing::{delete, get, post},
 };
+use log::error;
 use serde::{Deserialize, Serialize};
 
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
@@ -58,7 +61,33 @@ pub enum Error {
     NotCreated,
     #[error("could not delete talk")]
     NotDeleted,
+    #[error("talk already exists")]
+    AlreadyExists,
+    #[error("not enough members: {0:?}")]
+    NotEnoughMembers(usize),
 
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
+}
+
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        error!("{self}");
+
+        let (status, message) = match self {
+            Self::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
+            Self::NotMember => (StatusCode::BAD_REQUEST, self.to_string()),
+            Self::NotCreated => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+            Self::NotDeleted => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+            Self::AlreadyExists => (StatusCode::CONFLICT, self.to_string()),
+            Self::NotEnoughMembers(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+
+            Self::_MongoDB(_) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_owned(),
+            ),
+        };
+
+        (status, message).into_response()
+    }
 }

@@ -25,8 +25,8 @@ window.addEventListener("load", function () {
       case "newMessage":
         new Notification("You've got new message");
         break;
-      case "newFriend":
-        new Notification("You've got a new friend");
+      case "newTalk":
+        new Notification("You're invited to talk");
         break;
     }
   });

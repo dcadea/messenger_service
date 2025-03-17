@@ -13,7 +13,7 @@ pub struct User {
     name: String,
     picture: String,
     email: String,
-    friends: HashSet<Sub>,
+    contacts: HashSet<Sub>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -34,8 +34,8 @@ impl OnlineStatus {
 }
 
 #[derive(Deserialize)]
-pub struct Friends {
-    pub friends: Vec<Sub>,
+pub struct Contacts {
+    pub contacts: Vec<Sub>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -46,7 +46,7 @@ pub struct UserInfo {
     pub picture: String,
     email: String,
     #[serde(skip)]
-    pub friends: HashSet<Sub>,
+    pub contacts: HashSet<Sub>,
 }
 
 impl From<User> for UserInfo {
@@ -57,7 +57,7 @@ impl From<User> for UserInfo {
             name: user.name,
             picture: user.picture,
             email: user.email,
-            friends: user.friends,
+            contacts: user.contacts,
         }
     }
 }
@@ -71,7 +71,7 @@ impl From<UserInfo> for User {
             name: info.name,
             picture: info.picture,
             email: info.email,
-            friends: HashSet::new(),
+            contacts: HashSet::new(),
         }
     }
 }

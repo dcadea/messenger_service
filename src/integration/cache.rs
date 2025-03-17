@@ -197,7 +197,7 @@ impl Config {
 #[derive(Clone)]
 pub enum Key {
     UserInfo(user::Sub),
-    Friends(user::Sub),
+    Contacts(user::Sub),
     Talk(talk::Id),
     Session(uuid::Uuid),
     Csrf(Arc<str>),
@@ -208,7 +208,7 @@ impl Key {
     pub fn ttl(&self) -> u64 {
         match self {
             Key::UserInfo(_) => 3600,
-            Key::Friends(_) => u64::MAX,
+            Key::Contacts(_) => u64::MAX,
             Key::Talk(_) => 3600,
             // Just in case if token response does not provide an expiration claim
             // fallback with this value
@@ -224,7 +224,7 @@ impl Display for Key {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Key::UserInfo(sub) => write!(f, "userinfo:{sub}"),
-            Key::Friends(sub) => write!(f, "friends:{sub}"),
+            Key::Contacts(sub) => write!(f, "contacts:{sub}"),
             Key::Talk(id) => write!(f, "talk:{id}"),
             Key::Session(id) => write!(f, "session:{id}"),
             Key::Csrf(csrf) => write!(f, "csrf:{csrf}"),

@@ -23,11 +23,11 @@ pub(super) mod api {
             .search_user_info(&params.nickname, &user_info.nickname)
             .await?;
 
-        let friends = user_service
-            .find_friends(&user_info.sub)
+        let contacts = user_service
+            .find_contacts(&user_info.sub)
             .await
-            .unwrap_or(user_info.friends.clone());
+            .unwrap_or(user_info.contacts.clone());
 
-        Ok(markup::SearchResult::new(&friends, &users).render())
+        Ok(markup::SearchResult::new(&contacts, &users).render())
     }
 }

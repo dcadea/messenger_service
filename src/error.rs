@@ -29,8 +29,8 @@ impl IntoResponse for Error {
 
         let (status, message) = match self {
             Self::_Auth(auth) => return auth.into_response(),
-            // TODO
-            // Self::_Talk(talk) => return talk.into_response(),
+            Self::_Talk(talk) => return talk.into_response(),
+
             Self::_Event(event::Error::NotOwner) => (StatusCode::FORBIDDEN, error_message),
             Self::_Event(event::Error::NotRecipient) => (StatusCode::FORBIDDEN, error_message),
 

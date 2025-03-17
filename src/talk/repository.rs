@@ -50,19 +50,32 @@ impl TalkRepository {
         talk.ok_or(talk::Error::NotFound(Some(id.to_owned())))
     }
 
-    pub async fn create(&self, talk: Talk) -> super::Result<talk::Id> {
+    pub async fn create(&self, talk: Talk) -> super::Result<()> {
         let res = self.col.insert_one(talk).await?;
 
-        if let Some(talk_id) = res.inserted_id.as_object_id() {
-            return Ok(talk::Id(talk_id.to_hex()));
+        if let mongodb::bson::Bson::Null = res.inserted_id {
+            return Err(talk::Error::NotCreated);
         }
 
-        Err(talk::Error::NotCreated)
+        Ok(())
     }
 
     pub async fn delete(&self, id: &talk::Id) -> super::Result<()> {
         self.col.delete_one(doc! {"_id": id}).await?;
         Ok(())
+    }
+
+    pub async fn exists(&self, members: &[user::Sub; 2]) -> super::Result<bool> {
+        let count = self
+            .col
+            .count_documents(doc! {
+                // FIXME: this will prevent creating groups
+                // if a private chat with 2 such members exists
+                "details.members": { "$all": members.to_vec() }
+            })
+            .await?;
+
+        Ok(count > 0)
     }
 }
 

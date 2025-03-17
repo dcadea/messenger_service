@@ -59,7 +59,7 @@ impl Render for TalkList {
     fn render(&self) -> Markup {
         html! {
             div #talk-list ."flex flex-col space-y-2 h-full overflow-y-auto"
-                sse-swap="newFriend"
+                sse-swap="newTalk"
                 hx-swap="beforeend"
             {
                 @for talk in self.get_talks() {

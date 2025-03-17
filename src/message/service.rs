@@ -116,7 +116,7 @@ impl MessageService {
 }
 
 impl MessageService {
-    // This method is designed to be callen when recipient requests messages related to selected chat.
+    // This method is designed to be callen when recipient requests messages related to selected talk.
     // It also marks all messages as seen where logged user is recipient.
     // Due to this side effect consider using other methods for read-only messages retrieval.
     pub async fn find_by_talk_id_and_params(

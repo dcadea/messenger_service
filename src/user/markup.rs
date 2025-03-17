@@ -59,9 +59,9 @@ impl Render for Search {
     }
 }
 
-struct AddFriend<'a>(&'a Sub);
+struct StartTalk<'a>(&'a Sub);
 
-impl Render for AddFriend<'_> {
+impl Render for StartTalk<'_> {
     fn render(&self) -> Markup {
         html! {
             form .float-right
@@ -71,20 +71,20 @@ impl Render for AddFriend<'_> {
                 input type="hidden" name="sub" value=(self.0) {}
                 input ."px-2 py-1 text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-xs focus:outline-none"
                     type="submit"
-                    value="Add friend" {}
+                    value="Start talk" {}
             }
         }
     }
 }
 
 pub struct SearchResult<'a> {
-    friends: &'a HashSet<Sub>,
+    contacts: &'a HashSet<Sub>,
     users: &'a [UserInfo],
 }
 
 impl<'a> SearchResult<'a> {
-    pub fn new(friends: &'a HashSet<Sub>, users: &'a [UserInfo]) -> Self {
-        Self { friends, users }
+    pub fn new(contacts: &'a HashSet<Sub>, users: &'a [UserInfo]) -> Self {
+        Self { contacts, users }
     }
 }
 
@@ -105,8 +105,8 @@ impl Render for SearchResult<'_> {
                                 alt="User avatar" {}
                             strong .px-3 {(user.name)} (user.nickname)
 
-                            @if !self.friends.contains(&user.sub) {
-                                (AddFriend(&user.sub))
+                            @if !self.contacts.contains(&user.sub) {
+                                (StartTalk(&user.sub))
                             }
                         }
                     }

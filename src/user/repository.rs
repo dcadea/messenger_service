@@ -4,21 +4,21 @@ use mongodb::bson::doc;
 use mongodb::options::FindOneOptions;
 use user::Sub;
 
-use super::model::{Friends, User};
+use super::model::{Contacts, User};
 use crate::user;
 
 const USERS_COLLECTION: &str = "users";
 
 pub struct UserRepository {
     users_col: mongodb::Collection<User>,
-    friends_col: mongodb::Collection<Friends>,
+    contacts_col: mongodb::Collection<Contacts>,
 }
 
 impl UserRepository {
     pub fn new(db: &Database) -> Self {
         Self {
             users_col: db.collection(USERS_COLLECTION),
-            friends_col: db.collection(USERS_COLLECTION),
+            contacts_col: db.collection(USERS_COLLECTION),
         }
     }
 }
@@ -53,39 +53,39 @@ impl UserRepository {
         cursor.try_collect().await.map_err(super::Error::from)
     }
 
-    pub async fn find_friends_by_sub(&self, sub: &Sub) -> super::Result<Vec<Sub>> {
+    pub async fn find_contacts_for_sub(&self, sub: &Sub) -> super::Result<Vec<Sub>> {
         let filter = doc! { "sub": sub };
         let projection = FindOneOptions::builder()
-            .projection(doc! { "friends": 1 })
+            .projection(doc! { "contacts": 1 })
             .build();
 
-        let friends = self
-            .friends_col
+        let contacts = self
+            .contacts_col
             .find_one(filter)
             .with_options(projection)
             .await?;
 
-        friends
+        contacts
             .ok_or(super::Error::NotFound(sub.to_owned()))
-            .map(|f| f.friends)
+            .map(|f| f.contacts)
     }
 
     // TODO: revisit this
-    pub async fn add_friend(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
+    pub async fn add_contact(&self, sub: &Sub, contact: &Sub) -> super::Result<()> {
         let filter = doc! { "sub": sub };
-        let update = doc! { "$addToSet": { "friends": friend } };
+        let update = doc! { "$addToSet": { "contacts": contact } };
 
-        self.friends_col.update_one(filter, update).await?;
+        self.contacts_col.update_one(filter, update).await?;
 
         Ok(())
     }
 
     // TODO: revisit this
-    pub async fn remove_friendship(&self, sub: &Sub, friend: &Sub) -> super::Result<()> {
-        let filter = doc! { "sub": { "$in": [sub, friend] } };
-        let update = doc! { "$pull": { "friends": { "$in": [sub, friend] } } };
+    pub async fn remove_contact(&self, sub: &Sub, contact: &Sub) -> super::Result<()> {
+        let filter = doc! { "sub": { "$in": [sub, contact] } };
+        let update = doc! { "$pull": { "contacts": { "$in": [sub, contact] } } };
 
-        self.friends_col.update_many(filter, update).await?;
+        self.contacts_col.update_many(filter, update).await?;
 
         Ok(())
     }

@@ -34,15 +34,16 @@ pub(super) mod pages {
 
 pub(super) mod api {
     use axum::{
-        Extension,
+        Extension, Form,
         extract::{Path, State},
         response::IntoResponse,
     };
     use maud::{Markup, html};
+    use serde::Deserialize;
 
     use crate::{
-        talk::{self, service::TalkService},
-        user::model::UserInfo,
+        talk::{self, markup, service::TalkService},
+        user::{self, model::UserInfo},
     };
 
     pub async fn find_one(
@@ -54,8 +55,31 @@ pub(super) mod api {
         Ok(html! { (talk) })
     }
 
-    pub async fn create() -> crate::Result<()> {
-        todo!("implement create handler")
+    #[derive(Deserialize)]
+    pub enum CreateParams {
+        Chat {
+            sub: user::Sub,
+        },
+        Group {
+            name: String,
+            members: Vec<user::Sub>,
+        },
+    }
+
+    pub async fn create(
+        Extension(logged_user): Extension<UserInfo>,
+        talk_service: State<TalkService>,
+        Form(params): Form<CreateParams>,
+    ) -> crate::Result<Markup> {
+        let logged_sub = &logged_user.sub;
+        let talk = match params {
+            CreateParams::Chat { sub } => talk_service.create_chat(logged_sub, &sub).await,
+            CreateParams::Group { name, members } => {
+                talk_service.create_group(logged_sub, &name, &members).await
+            }
+        }?;
+
+        Ok(html! {(markup::ActiveTalk(&talk))})
     }
 
     pub async fn delete(

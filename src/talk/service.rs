@@ -45,6 +45,77 @@ impl TalkService {
 }
 
 impl TalkService {
+    pub async fn create_chat(
+        &self,
+        logged_sub: &user::Sub,
+        recipient: &user::Sub,
+    ) -> super::Result<TalkDto> {
+        assert_ne!(logged_sub, recipient);
+
+        let members = [logged_sub.clone(), recipient.clone()];
+        if self.repo.exists(&members).await? {
+            return Err(talk::Error::AlreadyExists);
+        }
+
+        // TODO: revisit this
+        // if let Err(e) = self.user_service.create_contact(&members).await {
+        //     error!("could not create contact: {e:?}");
+        //     return Err(talk::Error::NotCreated);
+        // }
+
+        let talk = Talk::new(Details::Chat { members });
+        self.repo.create(talk.clone()).await?;
+
+        let talk_dto = self.talk_to_dto(talk, logged_sub).await;
+
+        self.event_service
+            .publish(
+                &event::Subject::Notifications(recipient),
+                &event::Notification::NewTalk(talk_dto.clone()),
+            )
+            .await;
+
+        Ok(talk_dto)
+    }
+
+    pub async fn create_group(
+        &self,
+        logged_sub: &user::Sub,
+        name: &str,
+        members: &[user::Sub],
+    ) -> super::Result<TalkDto> {
+        assert!(members.contains(logged_sub));
+
+        if members.len() < 3 {
+            return Err(talk::Error::NotEnoughMembers(members.len()));
+        }
+
+        let talk = Talk::new(Details::Group {
+            name: name.into(),
+            picture: "".into(), // TODO: https://crates.io/crates/identicon-rs
+            owner: logged_sub.clone(),
+            members: members.into(),
+        });
+        self.repo.create(talk.clone()).await?;
+
+        let talk_dto = self.talk_to_dto(talk, logged_sub).await;
+
+        for m in members {
+            if m.eq(logged_sub) {
+                continue;
+            }
+
+            self.event_service
+                .publish(
+                    &event::Subject::Notifications(m),
+                    &event::Notification::NewTalk(talk_dto.clone()),
+                )
+                .await;
+        }
+
+        Ok(talk_dto)
+    }
+
     pub async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk> {
         let talk = self.repo.find_by_id(id).await?;
         Ok(talk)
@@ -90,10 +161,10 @@ impl TalkService {
 
         // TODO: revisit this
         // let talk = self.find_by_id_and_sub(id, logged_sub).await?;
-        // let friends = [chat.sender, chat.recipient];
-        // if let Err(e) = self.user_service.delete_friendship(&friends).await {
-        //     error!("could not delete friendship: {e:?}");
-        //     return Err(chat::Error::NotDeleted);
+        // let contacts = [talk.sender, talk.recipient];
+        // if let Err(e) = self.user_service.delete_contact(&contacts).await {
+        //     error!("could not delete contact: {e:?}");
+        //     return Err(talk::Error::NotDeleted);
         // }
 
         self.repo.delete(id).await?;
