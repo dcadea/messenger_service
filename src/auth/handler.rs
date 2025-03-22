@@ -24,7 +24,7 @@ pub(super) mod api {
     pub async fn logout(
         auth_service: State<AuthService>,
         jar: CookieJar,
-    ) -> auth::Result<impl IntoResponse> {
+    ) -> crate::Result<impl IntoResponse> {
         if let Some(sid) = jar.get(auth::SESSION_ID) {
             auth_service.invalidate_token(sid.value()).await?;
             return Ok((CookieJar::new(), Redirect::to("/login")));
@@ -43,7 +43,7 @@ pub(super) mod api {
         params: Query<Params>,
         auth_service: State<AuthService>,
         jar: CookieJar,
-    ) -> auth::Result<impl IntoResponse> {
+    ) -> crate::Result<impl IntoResponse> {
         let (token, ttl) = auth_service
             .exchange_code(&params.code, &params.state)
             .await?;

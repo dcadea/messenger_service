@@ -3,7 +3,6 @@ use std::fmt::Display;
 use axum::{
     Router,
     http::StatusCode,
-    response::{IntoResponse, Response},
     routing::{delete, get, post},
 };
 use log::error;
@@ -70,24 +69,16 @@ pub enum Error {
     _MongoDB(#[from] mongodb::error::Error),
 }
 
-impl IntoResponse for Error {
-    fn into_response(self) -> Response {
-        error!("{self}");
-
-        let (status, message) = match self {
-            Self::NotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
-            Self::NotMember => (StatusCode::BAD_REQUEST, self.to_string()),
-            Self::NotCreated => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-            Self::NotDeleted => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
-            Self::AlreadyExists => (StatusCode::CONFLICT, self.to_string()),
-            Self::NotEnoughMembers(_) => (StatusCode::BAD_REQUEST, self.to_string()),
-
-            Self::_MongoDB(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal server error".to_owned(),
-            ),
-        };
-
-        (status, message).into_response()
+impl From<Error> for StatusCode {
+    fn from(e: Error) -> Self {
+        match e {
+            Error::NotFound(_) => StatusCode::NOT_FOUND,
+            Error::NotMember => StatusCode::FORBIDDEN,
+            Error::NotCreated => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::NotDeleted => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::AlreadyExists => StatusCode::CONFLICT,
+            Error::NotEnoughMembers(_) => StatusCode::BAD_REQUEST,
+            Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
     }
 }

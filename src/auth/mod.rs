@@ -2,7 +2,6 @@ use crate::state::State;
 use crate::user;
 use axum::Router;
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use log::error;
 use serde::Deserialize;
@@ -64,23 +63,17 @@ pub enum Error {
     _Unexpected(String),
 }
 
-impl IntoResponse for Error {
-    fn into_response(self) -> Response {
-        error!("{self}");
-
-        let (status, message) = match self {
-            Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
-            Self::Forbidden | Self::UnknownKid | Self::InvalidState => {
-                (StatusCode::FORBIDDEN, "Forbidden")
-            }
-            Self::TokenMalformed => (StatusCode::BAD_REQUEST, "Token malformed"),
-            Self::_Configuration(_)
-            | Self::_JsonWebtoken(_)
-            | Self::_Uuid(_)
-            | Self::_Reqwest(_)
-            | Self::_Unexpected(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
-        };
-
-        (status, message).into_response()
+impl From<Error> for StatusCode {
+    fn from(e: Error) -> Self {
+        match e {
+            Error::Unauthorized => StatusCode::UNAUTHORIZED,
+            Error::Forbidden | Error::UnknownKid | Error::InvalidState => StatusCode::FORBIDDEN,
+            Error::TokenMalformed => StatusCode::BAD_REQUEST,
+            Error::_Configuration(_)
+            | Error::_JsonWebtoken(_)
+            | Error::_Uuid(_)
+            | Error::_Reqwest(_)
+            | Error::_Unexpected(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
     }
 }

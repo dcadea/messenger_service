@@ -1,4 +1,4 @@
-use axum::http::{HeaderMap, HeaderValue, StatusCode};
+use axum::http::{HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 use log::error;
 use maud::{Markup, Render, html};
@@ -25,39 +25,39 @@ pub enum Error {
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        let error_message = self.to_string();
+        let mut error_message = self.to_string();
+        error!("{error_message:?}");
 
-        let (status, message) = match self {
-            Self::_Auth(auth) => return auth.into_response(),
-            Self::_Talk(talk) => return talk.into_response(),
+        let status = StatusCode::from(self);
+        if status.is_server_error() {
+            error_message = "Internal server error".to_owned();
+        }
 
-            Self::_Event(event::Error::NotOwner) => (StatusCode::FORBIDDEN, error_message),
-            Self::_Event(event::Error::NotRecipient) => (StatusCode::FORBIDDEN, error_message),
+        let mut response = ErrorResponse { error_message }.render().into_response();
+        response
+            .headers_mut()
+            .insert("HX-Retarget", HeaderValue::from_static("#errors"));
 
-            Self::_Message(message::Error::NotFound(_)) => (StatusCode::NOT_FOUND, error_message),
-            Self::_Message(message::Error::NotOwner) => (StatusCode::BAD_REQUEST, error_message),
-            Self::_Message(message::Error::EmptyText) => (StatusCode::BAD_REQUEST, error_message),
+        response
+    }
+}
 
-            Self::_User(user::Error::NotFound(_)) => (StatusCode::NOT_FOUND, error_message),
-
-            Self::QueryParamRequired(_) => (StatusCode::BAD_REQUEST, error_message),
-            _ => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal server error".to_owned(),
-            ),
-        };
-
-        error!("{self}");
-
-        let mut header_map = HeaderMap::new();
-        header_map.insert("HX-Retarget", HeaderValue::from_static("#errors"));
-        (status, header_map, (ErrorResponse { message }).render()).into_response()
+impl From<Error> for StatusCode {
+    fn from(e: Error) -> Self {
+        match e {
+            Error::QueryParamRequired(_) => StatusCode::BAD_REQUEST,
+            Error::_Auth(a) => a.into(),
+            Error::_Talk(t) => t.into(),
+            Error::_Event(e) => e.into(),
+            Error::_Message(m) => m.into(),
+            Error::_User(u) => u.into(),
+        }
     }
 }
 
 #[derive(Serialize)]
 struct ErrorResponse {
-    message: String,
+    error_message: String,
 }
 
 impl Render for ErrorResponse {
@@ -70,7 +70,7 @@ impl Render for ErrorResponse {
                 _="on load wait 3s then transition my opacity to 0 then remove me"
             {
                 strong class="font-bold" { "Holy smokes! " }
-                span class="block sm:inline" { (self.message) }
+                span class="block sm:inline" { (self.error_message) }
                 span class="absolute top-0 bottom-0 right-0 px-4 py-3"
                      _="on click remove closest #error"
                 {

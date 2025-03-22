@@ -1,9 +1,8 @@
 use std::pin::Pin;
 
-use axum::Router;
-use axum::response::sse;
-use axum::routing::get;
+use axum::{Router, http::StatusCode, response::sse, routing::get};
 use futures::Stream;
+use log::error;
 use maud::{Markup, Render, html};
 use messenger_service::markup::Id;
 use serde::{Deserialize, Serialize};
@@ -126,4 +125,14 @@ pub enum Error {
 
     #[error(transparent)]
     _NatsSub(#[from] async_nats::SubscribeError),
+}
+
+impl From<Error> for StatusCode {
+    fn from(e: Error) -> Self {
+        match e {
+            Error::NotOwner => StatusCode::FORBIDDEN,
+            Error::NotRecipient => StatusCode::FORBIDDEN,
+            Error::_NatsSub(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
 }
