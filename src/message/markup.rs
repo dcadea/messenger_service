@@ -6,13 +6,13 @@ use crate::{message, talk, user};
 
 use super::model::{LastMessage, Message};
 
-pub struct InputBlank<'a>(pub &'a talk::Id);
-
 const MESSAGE_INPUT_ID: &str = "message-input";
 pub const MESSAGE_INPUT_TARGET: &str = "#message-input";
 
 pub const MESSAGE_LIST_ID: &str = "message-list";
 const MESSAGE_LIST_TARGET: &str = "#message-list";
+
+pub struct InputBlank<'a>(pub &'a talk::Id);
 
 impl Render for InputBlank<'_> {
     fn render(&self) -> Markup {
@@ -93,45 +93,6 @@ impl Render for SendButton {
                 hx-disabled-elt="this"
                 type="submit"
                 value="Send" {}
-        }
-    }
-}
-
-pub struct MessageList<'a> {
-    messages: &'a [Message],
-    sub: &'a user::Sub,
-    append: bool,
-}
-
-impl<'a> MessageList<'a> {
-    pub fn prepend(messages: &'a [Message], sub: &'a user::Sub) -> Self {
-        Self {
-            messages,
-            sub,
-            append: false,
-        }
-    }
-
-    pub fn append(messages: &'a [Message], sub: &'a user::Sub) -> Self {
-        Self {
-            messages,
-            sub,
-            append: true,
-        }
-    }
-}
-
-impl Render for MessageList<'_> {
-    fn render(&self) -> Markup {
-        let sub = Some(self.sub);
-        html! {
-            @for i in 0..self.messages.len() {
-                @if self.append && i == self.messages.len() - 1 {
-                    (MessageItem::new(&self.messages[i], sub).as_last())
-                } @else {
-                    (MessageItem::new(&self.messages[i], sub))
-                }
-            }
         }
     }
 }
@@ -251,6 +212,45 @@ impl Render for MessageItem<'_> {
     }
 }
 
+pub struct MessageList<'a> {
+    messages: &'a [Message],
+    sub: &'a user::Sub,
+    append: bool,
+}
+
+impl<'a> MessageList<'a> {
+    pub fn prepend(messages: &'a [Message], sub: &'a user::Sub) -> Self {
+        Self {
+            messages,
+            sub,
+            append: false,
+        }
+    }
+
+    pub fn append(messages: &'a [Message], sub: &'a user::Sub) -> Self {
+        Self {
+            messages,
+            sub,
+            append: true,
+        }
+    }
+}
+
+impl Render for MessageList<'_> {
+    fn render(&self) -> Markup {
+        let sub = Some(self.sub);
+        html! {
+            @for i in 0..self.messages.len() {
+                @if self.append && i == self.messages.len() - 1 {
+                    (MessageItem::new(&self.messages[i], sub).as_last())
+                } @else {
+                    (MessageItem::new(&self.messages[i], sub))
+                }
+            }
+        }
+    }
+}
+
 const MAX_LEN: usize = 25;
 
 pub fn last_message(
@@ -321,5 +321,421 @@ impl Render for Icon<'_> {
                 Self::Seen => i ."fa-solid fa-check absolute bottom-1 right-2.5 text-white opacity-65" {},
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use chrono::DateTime;
+    use maud::Render;
+    use messenger_service::markup::Id;
+
+    use crate::{
+        message::{
+            self,
+            markup::MessageItem,
+            model::{LastMessage, Message},
+        },
+        talk, user,
+    };
+
+    use super::{Icon, InputBlank, InputEdit, InputText, MessageList, SendButton, last_message};
+
+    #[test]
+    fn should_render_input_blank() {
+        let talk_id = &talk::Id("67dff625c469e51787ba173d".to_string());
+
+        let expected = concat!(
+            "<form class=\"border-gray-200 flex\" id=\"message-input\" hx-post=\"/api/messages\" hx-target=\"#message-list\" hx-swap=\"afterbegin\" ",
+            r#"_="
+                on htmx:afterRequest reset() me
+                on htmx:afterRequest go to the bottom of the #message-list
+            ">"#,
+            r#"<input type="hidden" name="talk_id" value="67dff625c469e51787ba173d"></input>"#,
+            r#"<input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none" type="text" name="text" placeholder="Type your message..." autocomplete="off" hx-disabled-elt="this" _="on keyup if the event's key is 'Escape' set value of me to ''"></input>"#,
+            r#"<input class="bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700" hx-disabled-elt="this" type="submit" value="Send"></input>"#,
+            "</form>",
+        );
+
+        let actual = InputBlank(talk_id).render();
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_input_edit() {
+        let message_id = &message::Id("67dff625c469e51787ba173d".to_string());
+
+        let expected = concat!(
+            "<form class=\"border-gray-200 flex\" id=\"message-input\" hx-put=\"/api/messages\" hx-target=\"#m-67dff625c469e51787ba173d\" hx-swap=\"outerHTML\">",
+            r#"<input type="hidden" name="message_id" value="67dff625c469e51787ba173d"></input>"#,
+            r#"<input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none" type="text" name="text" value="old text" placeholder="Type your message..." autocomplete="off" hx-disabled-elt="this" _="on keyup if the event's key is 'Escape' set value of me to ''"></input>"#,
+            r#"<input class="bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700" hx-disabled-elt="this" type="submit" value="Send"></input>"#,
+            "</form>",
+        );
+
+        let actual = InputEdit::new(message_id, "old text").render();
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_input_text_with_blank_value() {
+        let expected = r#"<input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none" type="text" name="text" placeholder="Type your message..." autocomplete="off" hx-disabled-elt="this" _="on keyup if the event's key is 'Escape' set value of me to ''"></input>"#;
+
+        let actual = InputText(None).render();
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_input_text_with_some_value() {
+        let expected = r#"<input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none" type="text" name="text" value="hello" placeholder="Type your message..." autocomplete="off" hx-disabled-elt="this" _="on keyup if the event's key is 'Escape' set value of me to ''"></input>"#;
+
+        let actual = InputText(Some("hello")).render();
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_send_button() {
+        let expected = r#"<input class="bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700" hx-disabled-elt="this" type="submit" value="Send"></input>"#;
+
+        let actual = SendButton.render();
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_message_item_where_logged_user_is_owner() {
+        let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
+        let logged_sub = "google|jora";
+        let msg = Message::new(talk_id, user::Sub(logged_sub.into()), "Lorem ipsum");
+
+        let msg_id = &msg._id;
+        let msg_timestamp = DateTime::from_timestamp(msg.timestamp, 0)
+            .map(|dt| dt.format("%H:%M"))
+            .unwrap();
+
+        let expected = format!(
+            concat!(
+                r#"<div class="message-item flex items-end relative justify-end" id="m-{}" "#,
+                r#"_="
+                on mouseover remove .hidden from the first &lt;div.message-controls/&gt; in me
+                on mouseout add .hidden to the first &lt;div.message-controls/&gt; in me
+                ">"#,
+                r#"<div class="message-controls hidden pb-2">"#,
+                "<i class=\"fa-trash-can fa-solid text-red-700 cursor-pointer\" hx-delete=\"/api/messages/{}\" hx-target=\"#m-{}\" hx-swap=\"outerHTML swap:200ms\"></i>",
+                "<i class=\"fa-pen fa-solid ml-2 text-green-700 cursor-pointer\" hx-get=\"/templates/messages/input/edit?message_id={}\" hx-target=\"#message-input\" hx-swap=\"outerHTML\"></i>",
+                "</div>",
+                r#"<i class="fa-solid fa-check absolute bottom-1 right-1 text-white opacity-65"></i>"#,
+                r#"<div class="message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs bg-blue-600 text-white ml-2">"#,
+                r#"<p class="message-text break-words overflow-hidden mr-2 whitespace-normal font-light" lang="en">Lorem ipsum</p>"#,
+                r#"<span class="message-timestamp text-xs opacity-65">{}</span>"#,
+                "</div>",
+                "</div>"
+            ),
+            msg_id, msg_id, msg_id, msg_id, msg_timestamp
+        );
+
+        let actual = MessageItem::new(&msg, Some(&user::Sub(logged_sub.into()))).render();
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_message_item_where_logged_user_is_not_owner() {
+        let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
+        let msg = Message::new(talk_id, user::Sub("auth0|valera".into()), "Lorem ipsum");
+
+        let msg_id = &msg._id;
+        let msg_timestamp = DateTime::from_timestamp(msg.timestamp, 0)
+            .map(|dt| dt.format("%H:%M"))
+            .unwrap();
+
+        let expected = format!(
+            concat!(
+                r#"<div class="message-item flex items-end relative" id="m-{}">"#,
+                r#"<div class="message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs bg-gray-300 text-gray-600">"#,
+                r#"<p class="message-text break-words overflow-hidden mr-2 whitespace-normal font-light" lang="en">Lorem ipsum</p>"#,
+                r#"<span class="message-timestamp text-xs opacity-65">{}</span>"#,
+                "</div>",
+                "</div>"
+            ),
+            msg_id, msg_timestamp
+        );
+
+        let actual = MessageItem::new(&msg, Some(&user::Sub("google|jora".into()))).render();
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_message_list_as_prepend() {
+        let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
+        let logged_sub = user::Sub("google|jora".into());
+
+        let msg1 = Message::new(talk_id.clone(), logged_sub.clone(), "Lorem ipsum");
+        let msg1_id = &msg1._id;
+        let msg1_timestamp = DateTime::from_timestamp(msg1.timestamp, 0)
+            .map(|dt| dt.format("%H:%M"))
+            .unwrap();
+
+        let msg2 = Message::new(
+            talk_id,
+            user::Sub("auth0|valera".into()),
+            "Sed ut perspiciatis",
+        );
+        let msg2_id = &msg2._id;
+        let msg2_timestamp = DateTime::from_timestamp(msg2.timestamp, 0)
+            .map(|dt| dt.format("%H:%M"))
+            .unwrap();
+
+        let expected = format!(
+            concat!(
+                r#"<div class="message-item flex items-end relative justify-end" id="m-{}" "#,
+                r#"_="
+                on mouseover remove .hidden from the first &lt;div.message-controls/&gt; in me
+                on mouseout add .hidden to the first &lt;div.message-controls/&gt; in me
+                ">"#,
+                r#"<div class="message-controls hidden pb-2">"#,
+                "<i class=\"fa-trash-can fa-solid text-red-700 cursor-pointer\" hx-delete=\"/api/messages/{}\" hx-target=\"#m-{}\" hx-swap=\"outerHTML swap:200ms\"></i>",
+                "<i class=\"fa-pen fa-solid ml-2 text-green-700 cursor-pointer\" hx-get=\"/templates/messages/input/edit?message_id={}\" hx-target=\"#message-input\" hx-swap=\"outerHTML\"></i>",
+                "</div>",
+                r#"<i class="fa-solid fa-check absolute bottom-1 right-1 text-white opacity-65"></i>"#,
+                r#"<div class="message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs bg-blue-600 text-white ml-2">"#,
+                r#"<p class="message-text break-words overflow-hidden mr-2 whitespace-normal font-light" lang="en">Lorem ipsum</p>"#,
+                r#"<span class="message-timestamp text-xs opacity-65">{}</span>"#,
+                "</div>",
+                "</div>",
+                r#"<div class="message-item flex items-end relative" id="m-{}">"#,
+                r#"<div class="message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs bg-gray-300 text-gray-600">"#,
+                r#"<p class="message-text break-words overflow-hidden mr-2 whitespace-normal font-light" lang="en">Sed ut perspiciatis</p>"#,
+                r#"<span class="message-timestamp text-xs opacity-65">{}</span>"#,
+                "</div>",
+                "</div>"
+            ),
+            msg1_id, msg1_id, msg1_id, msg1_id, msg1_timestamp, msg2_id, msg2_timestamp,
+        );
+
+        let actual = MessageList::prepend(&[msg1, msg2], &logged_sub).render();
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_message_list_as_append() {
+        let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
+        let logged_sub = user::Sub("google|jora".into());
+
+        let msg1 = Message::new(talk_id.clone(), logged_sub.clone(), "Lorem ipsum");
+        let msg1_id = &msg1._id;
+        let msg1_timestamp = DateTime::from_timestamp(msg1.timestamp, 0)
+            .map(|dt| dt.format("%H:%M"))
+            .unwrap();
+
+        let msg2 = Message::new(
+            talk_id.clone(),
+            user::Sub("auth0|valera".into()),
+            "Sed ut perspiciatis",
+        );
+        let msg2_id = &msg2._id;
+        let msg2_timestamp = DateTime::from_timestamp(msg2.timestamp, 0)
+            .map(|dt| dt.format("%H:%M"))
+            .unwrap();
+
+        let expected = format!(
+            concat!(
+                r#"<div class="message-item flex items-end relative justify-end" id="m-{}" "#,
+                r#"_="
+                on mouseover remove .hidden from the first &lt;div.message-controls/&gt; in me
+                on mouseout add .hidden to the first &lt;div.message-controls/&gt; in me
+                ">"#,
+                r#"<div class="message-controls hidden pb-2">"#,
+                "<i class=\"fa-trash-can fa-solid text-red-700 cursor-pointer\" hx-delete=\"/api/messages/{}\" hx-target=\"#m-{}\" hx-swap=\"outerHTML swap:200ms\"></i>",
+                "<i class=\"fa-pen fa-solid ml-2 text-green-700 cursor-pointer\" hx-get=\"/templates/messages/input/edit?message_id={}\" hx-target=\"#message-input\" hx-swap=\"outerHTML\"></i>",
+                "</div>",
+                r#"<i class="fa-solid fa-check absolute bottom-1 right-1 text-white opacity-65"></i>"#,
+                r#"<div class="message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs bg-blue-600 text-white ml-2">"#,
+                r#"<p class="message-text break-words overflow-hidden mr-2 whitespace-normal font-light" lang="en">Lorem ipsum</p>"#,
+                r#"<span class="message-timestamp text-xs opacity-65">{}</span>"#,
+                "</div>",
+                "</div>",
+                r#"<div class="message-item flex items-end relative" id="m-{}" hx-trigger="intersect once" hx-swap="afterend" hx-get="/api/messages?limit=20&amp;talk_id={}&amp;end_time={}">"#,
+                r#"<div class="message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs bg-gray-300 text-gray-600">"#,
+                r#"<p class="message-text break-words overflow-hidden mr-2 whitespace-normal font-light" lang="en">Sed ut perspiciatis</p>"#,
+                r#"<span class="message-timestamp text-xs opacity-65">{}</span>"#,
+                "</div>",
+                "</div>"
+            ),
+            msg1_id,
+            msg1_id,
+            msg1_id,
+            msg1_id,
+            msg1_timestamp,
+            msg2_id,
+            &talk_id,
+            msg2.timestamp,
+            msg2_timestamp,
+        );
+
+        let actual = MessageList::append(&[msg1, msg2], &logged_sub).render();
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_empty_last_message() {
+        let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
+
+        let expected = r#"<div class="last-message text-sm text-gray-500" id="lm-67dff625c469e51787ba173d"></div>"#;
+
+        let actual = last_message(None, &talk_id, None);
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_unassigned_last_message() {
+        let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
+        let msg = Message::new(
+            talk_id.clone(),
+            user::Sub("auth0|valera".into()),
+            "Lorem ipsum",
+        );
+        let last_msg = LastMessage::from(&msg);
+        let expected = concat!(
+            r#"<div class="last-message text-sm text-gray-500" id="lm-67dff625c469e51787ba173d">"#,
+            "Lorem ipsum",
+            r#"<i class="fa-solid fa-envelope text-green-600 ml-2"></i>"#,
+            "</div>"
+        );
+
+        let actual = last_message(Some(&last_msg), &talk_id, None);
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_not_owned_last_message() {
+        let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
+        let msg = Message::new(
+            talk_id.clone(),
+            user::Sub("auth0|valera".into()),
+            "Lorem ipsum",
+        );
+        let last_msg = LastMessage::from(&msg);
+        let expected = concat!(
+            r#"<div class="last-message text-sm text-gray-500" id="lm-67dff625c469e51787ba173d">"#,
+            "Lorem ipsum",
+            r#"<i class="fa-solid fa-envelope text-green-600 ml-2"></i>"#,
+            "</div>"
+        );
+
+        let actual = last_message(
+            Some(&last_msg),
+            &talk_id,
+            Some(&user::Sub("google|jora".into())),
+        );
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_logged_subs_last_message() {
+        let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
+        let logged_sub = user::Sub("auth0|valera".into());
+        let msg = Message::new(talk_id.clone(), logged_sub.clone(), "Lorem ipsum");
+        let last_msg = LastMessage::from(&msg);
+        let expected = concat!(
+            r#"<div class="last-message text-sm text-gray-500" id="lm-67dff625c469e51787ba173d">"#,
+            "Lorem ipsum",
+            "</div>"
+        );
+
+        let actual = last_message(Some(&last_msg), &talk_id, Some(&logged_sub));
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_trimmed_last_message_when_length_greater_than_25() {
+        let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
+        let logged_sub = user::Sub("auth0|valera".into());
+        let msg = Message::new(
+            talk_id.clone(),
+            logged_sub.clone(),
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+        );
+        let last_msg = LastMessage::from(&msg);
+        let expected = concat!(
+            r#"<div class="last-message text-sm text-gray-500" id="lm-67dff625c469e51787ba173d">"#,
+            "Lorem ipsum dolor sit ame...",
+            "</div>"
+        );
+
+        let actual = last_message(Some(&last_msg), &talk_id, Some(&logged_sub));
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_return_message_id_as_attribute() {
+        let id = message::Id("67dff625c469e51787ba173d".to_string());
+
+        assert_eq!("m-67dff625c469e51787ba173d", id.attr())
+    }
+
+    #[test]
+    fn should_return_message_id_as_target() {
+        let id = message::Id("67dff625c469e51787ba173d".to_string());
+
+        assert_eq!("#m-67dff625c469e51787ba173d", id.target())
+    }
+
+    #[test]
+    fn should_render_edit_icon() {
+        let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
+        let logged_sub = user::Sub("auth0|valera".into());
+        let msg = Message::new(talk_id.clone(), logged_sub.clone(), "Lorem ipsum");
+
+        let expected = format!(
+            "<i class=\"fa-pen fa-solid ml-2 text-green-700 cursor-pointer\" hx-get=\"/templates/messages/input/edit?message_id={}\" hx-target=\"#message-input\" hx-swap=\"outerHTML\"></i>",
+            &msg._id
+        );
+
+        let actual = Icon::Edit(&msg).render();
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_delete_icon() {
+        let id = message::Id("67dff625c469e51787ba173d".to_string());
+
+        let expected = "<i class=\"fa-trash-can fa-solid text-red-700 cursor-pointer\" hx-delete=\"/api/messages/67dff625c469e51787ba173d\" hx-target=\"#m-67dff625c469e51787ba173d\" hx-swap=\"outerHTML swap:200ms\"></i>";
+
+        let actual = Icon::Delete(&id).render();
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_sent_icon() {
+        let expected =
+            r#"<i class="fa-solid fa-check absolute bottom-1 right-1 text-white opacity-65"></i>"#;
+
+        let actual = Icon::Sent.render();
+
+        assert_eq!(expected, actual.into_string())
+    }
+
+    #[test]
+    fn should_render_seen_icon() {
+        let expected = r#"<i class="fa-solid fa-check absolute bottom-1 right-2.5 text-white opacity-65"></i>"#;
+
+        let actual = Icon::Seen.render();
+
+        assert_eq!(expected, actual.into_string())
     }
 }
