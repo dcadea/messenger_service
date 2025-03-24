@@ -4,8 +4,8 @@ use std::sync::Arc;
 use futures::future::join_all;
 use log::error;
 
-use super::Repository;
 use super::model::{Details, DetailsDto, Talk, TalkDto};
+use super::{Repository, Validator};
 use crate::event::service::EventService;
 use crate::integration::cache;
 use crate::message::model::LastMessage;
@@ -57,7 +57,7 @@ pub trait TalkService {
 #[derive(Clone)]
 pub struct TalkServiceImpl {
     repo: Repository,
-    validator: Arc<TalkValidator>,
+    validator: Validator,
     user_service: user::Service,
     event_service: Arc<EventService>,
     message_repo: message::Repository,
@@ -67,7 +67,7 @@ pub struct TalkServiceImpl {
 impl TalkServiceImpl {
     pub fn new(
         repo: Repository,
-        validator: TalkValidator,
+        validator: Validator,
         user_service: user::Service,
         event_service: EventService,
         message_repo: message::Repository,
@@ -75,7 +75,7 @@ impl TalkServiceImpl {
     ) -> Self {
         Self {
             repo,
-            validator: Arc::new(validator),
+            validator,
             user_service,
             event_service: Arc::new(event_service),
             message_repo,
@@ -283,20 +283,26 @@ impl TalkServiceImpl {
     }
 }
 
+#[async_trait::async_trait]
+pub trait TalkValidator {
+    async fn check_member(&self, talk_id: &talk::Id, sub: &user::Sub) -> super::Result<()>;
+}
+
 #[derive(Clone)]
-pub struct TalkValidator {
+pub struct TalkValidatorImpl {
     repo: Repository,
     redis: cache::Redis,
 }
 
-impl TalkValidator {
+impl TalkValidatorImpl {
     pub fn new(repo: Repository, redis: cache::Redis) -> Self {
         Self { repo, redis }
     }
 }
 
-impl TalkValidator {
-    pub async fn check_member(&self, talk_id: &talk::Id, sub: &user::Sub) -> super::Result<()> {
+#[async_trait::async_trait]
+impl TalkValidator for TalkValidatorImpl {
+    async fn check_member(&self, talk_id: &talk::Id, sub: &user::Sub) -> super::Result<()> {
         let members = find_members(&self.redis, self.repo.clone(), talk_id).await?;
         let belongs_to_talk = members.contains(sub);
 

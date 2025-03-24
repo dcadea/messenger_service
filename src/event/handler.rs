@@ -71,8 +71,7 @@ pub mod ws {
 
     use crate::{
         event::{Message, Subject, service::EventService},
-        message,
-        talk::{self, service::TalkValidator},
+        message, talk,
         user::{self, model::UserInfo},
     };
     use axum::extract::ws::Message::{Close, Text};
@@ -97,7 +96,7 @@ pub mod ws {
         Extension(user_info): Extension<UserInfo>,
         ws: WebSocketUpgrade,
         Path(talk_id): Path<talk::Id>,
-        State(talk_validator): State<TalkValidator>,
+        State(talk_validator): State<talk::Validator>,
         State(event_service): State<EventService>,
         State(message_service): State<message::Service>,
         State(talk_service): State<talk::Service>,

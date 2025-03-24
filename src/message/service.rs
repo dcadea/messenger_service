@@ -4,7 +4,6 @@ use log::{debug, error};
 use text_splitter::{Characters, TextSplitter};
 
 use crate::event::service::EventService;
-use crate::talk::service::TalkValidator;
 use crate::{event, message, talk, user};
 
 use super::Repository;
@@ -50,7 +49,7 @@ pub trait MessageService {
 pub struct MessageServiceImpl {
     repo: Repository,
     talk_service: talk::Service,
-    talk_validator: Arc<TalkValidator>,
+    talk_validator: talk::Validator,
     event_service: Arc<EventService>,
     splitter: Arc<TextSplitter<Characters>>,
 }
@@ -59,13 +58,13 @@ impl MessageServiceImpl {
     pub fn new(
         repo: Repository,
         talk_service: talk::Service,
-        talk_validator: TalkValidator,
+        talk_validator: talk::Validator,
         event_service: EventService,
     ) -> Self {
         Self {
             repo,
             talk_service,
-            talk_validator: Arc::new(talk_validator),
+            talk_validator,
             event_service: Arc::new(event_service),
             splitter: Arc::new(TextSplitter::new(MAX_MESSAGE_LENGTH)),
         }

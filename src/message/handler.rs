@@ -8,7 +8,6 @@ pub(super) mod api {
     use serde::Deserialize;
 
     use crate::error::Error;
-    use crate::talk::service::TalkValidator;
     use crate::user::model::UserInfo;
     use crate::{message, talk};
 
@@ -51,7 +50,7 @@ pub(super) mod api {
     pub async fn find_all(
         user_info: Extension<UserInfo>,
         Query(params): Query<FindAllParams>,
-        talk_validator: State<TalkValidator>,
+        talk_validator: State<talk::Validator>,
         talk_service: State<talk::Service>,
         message_service: State<message::Service>,
     ) -> crate::Result<impl IntoResponse> {

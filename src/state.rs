@@ -6,7 +6,7 @@ use crate::auth::service::AuthServiceImpl;
 use crate::message::repository::MongoMessageRepository;
 use crate::message::service::MessageServiceImpl;
 use crate::talk::repository::MongoTalkRepository;
-use crate::talk::service::{TalkServiceImpl, TalkValidator};
+use crate::talk::service::{TalkServiceImpl, TalkValidatorImpl};
 use crate::user::repository::MongoUserRepository;
 use crate::user::service::UserServiceImpl;
 use crate::{auth, message, talk, user};
@@ -21,7 +21,7 @@ pub struct AppState {
     auth_service: auth::Service,
     user_service: user::Service,
     talk_service: talk::Service,
-    talk_validator: TalkValidator,
+    talk_validator: talk::Validator,
     message_service: message::Service,
     event_service: EventService,
 }
@@ -45,7 +45,7 @@ impl AppState {
         let talk_repo = Arc::new(MongoTalkRepository::new(&db));
         let message_repo = Arc::new(MongoMessageRepository::new(&db));
 
-        let talk_validator = TalkValidator::new(talk_repo.clone(), redis.clone());
+        let talk_validator = Arc::new(TalkValidatorImpl::new(talk_repo.clone(), redis.clone()));
         let talk_service = Arc::new(TalkServiceImpl::new(
             talk_repo.clone(),
             talk_validator.clone(),
@@ -98,7 +98,7 @@ impl FromRef<AppState> for talk::Service {
     }
 }
 
-impl FromRef<AppState> for TalkValidator {
+impl FromRef<AppState> for talk::Validator {
     fn from_ref(s: &AppState) -> Self {
         s.talk_validator.clone()
     }
