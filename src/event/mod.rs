@@ -8,7 +8,7 @@ use messenger_service::markup::Id;
 use serde::{Deserialize, Serialize};
 
 use crate::message::markup::MESSAGE_LIST_ID;
-use crate::state::State;
+use crate::state::AppState;
 use crate::{message, talk, user};
 
 mod handler;
@@ -16,7 +16,7 @@ pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
 
-pub fn api<S>(s: State) -> Router<S> {
+pub fn api<S>(s: AppState) -> Router<S> {
     Router::new()
         .route("/sse", get(handler::sse::notifications))
         .route("/ws/{talk_id}", get(handler::ws::talk))

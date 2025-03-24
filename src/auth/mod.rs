@@ -1,4 +1,6 @@
-use crate::state::State;
+use std::sync::Arc;
+
+use crate::state::AppState;
 use crate::user;
 use axum::Router;
 use axum::http::StatusCode;
@@ -6,12 +8,13 @@ use axum::routing::get;
 use log::error;
 use serde::Deserialize;
 
-mod handler;
-mod markup;
+pub mod handler;
+pub mod markup;
 pub mod middleware;
 pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
+pub type Service = Arc<dyn service::AuthService + Send + Sync>;
 
 const SESSION_ID: &str = "session_id";
 
@@ -20,13 +23,13 @@ struct TokenClaims {
     sub: user::Sub,
 }
 
-pub fn pages<S>(s: State) -> Router<S> {
+pub fn pages<S>(s: AppState) -> Router<S> {
     Router::new()
         .route("/login", get(handler::pages::login))
         .with_state(s)
 }
 
-pub fn api<S>(s: State) -> Router<S> {
+pub fn api<S>(s: AppState) -> Router<S> {
     Router::new()
         .route("/sso/login", get(handler::api::sso_login))
         .route("/logout", get(handler::api::logout))

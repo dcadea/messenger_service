@@ -9,7 +9,7 @@ use log::error;
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
-use crate::state::State;
+use crate::state::AppState;
 
 mod handler;
 pub mod markup;
@@ -34,7 +34,7 @@ impl Display for Id {
     }
 }
 
-pub fn api<S>(s: State) -> Router<S> {
+pub fn api<S>(s: AppState) -> Router<S> {
     Router::new()
         .route("/messages", post(handler::api::create))
         .route("/messages", get(handler::api::find_all))
@@ -43,7 +43,7 @@ pub fn api<S>(s: State) -> Router<S> {
         .with_state(s)
 }
 
-pub fn templates<S>(s: State) -> Router<S> {
+pub fn templates<S>(s: AppState) -> Router<S> {
     Router::new()
         .route(
             "/messages/input/blank",

@@ -5,7 +5,7 @@ use log::error;
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use serde::{Deserialize, Serialize};
 
-use crate::state::State;
+use crate::state::AppState;
 
 mod handler;
 pub mod markup;
@@ -18,7 +18,7 @@ type Result<T> = std::result::Result<T, Error>;
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
-pub fn api<S>(s: State) -> Router<S> {
+pub fn api<S>(s: AppState) -> Router<S> {
     Router::new()
         .route("/users/search", post(handler::api::search))
         .with_state(s)

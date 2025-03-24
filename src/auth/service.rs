@@ -23,8 +23,26 @@ use crate::user::model::UserInfo;
 
 const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
 
+#[async_trait::async_trait]
+pub trait AuthService {
+    async fn authorize(&self) -> String;
+
+    async fn exchange_code(&self, code: &str, csrf: &str)
+    -> super::Result<(AccessToken, Duration)>;
+
+    async fn validate(&self, token: &str) -> super::Result<user::Sub>;
+
+    async fn get_user_info(&self, token: &str) -> super::Result<UserInfo>;
+
+    async fn cache_token(&self, sid: &Uuid, token: &str, ttl: &Duration);
+
+    async fn invalidate_token(&self, sid: &str) -> super::Result<()>;
+
+    async fn find_token(&self, sid: &str) -> Option<String>;
+}
+
 #[derive(Clone)]
-pub struct AuthService {
+pub struct AuthServiceImpl {
     cfg: Arc<idp::Config>,
     http: Arc<reqwest::Client>,
     oauth2: Arc<BasicClient>,
@@ -33,7 +51,7 @@ pub struct AuthService {
     jwk_decoding_keys: Arc<RwLock<HashMap<String, DecodingKey>>>,
 }
 
-impl AuthService {
+impl AuthServiceImpl {
     pub fn try_new(cfg: &idp::Config, redis: cache::Redis) -> super::Result<Self> {
         let mut jwt_validator = Validation::new(jsonwebtoken::Algorithm::RS256);
         jwt_validator.set_required_spec_claims(&cfg.required_claims);
@@ -67,8 +85,9 @@ impl AuthService {
     }
 }
 
-impl AuthService {
-    pub async fn authorize(&self) -> String {
+#[async_trait::async_trait]
+impl AuthService for AuthServiceImpl {
+    async fn authorize(&self) -> String {
         let (auth_url, csrf) = self
             .oauth2
             .authorize_url(CsrfToken::new_random)
@@ -85,7 +104,7 @@ impl AuthService {
         auth_url.to_string()
     }
 
-    pub async fn exchange_code(
+    async fn exchange_code(
         &self,
         code: &str,
         csrf: &str,
@@ -111,7 +130,7 @@ impl AuthService {
         }
     }
 
-    pub async fn validate(&self, token: &str) -> super::Result<user::Sub> {
+    async fn validate(&self, token: &str) -> super::Result<user::Sub> {
         let jwt_header = decode_header(token).map_err(|e| {
             warn!("{e:?}");
             super::Error::TokenMalformed
@@ -132,7 +151,7 @@ impl AuthService {
             })
     }
 
-    pub async fn get_user_info(&self, token: &str) -> super::Result<UserInfo> {
+    async fn get_user_info(&self, token: &str) -> super::Result<UserInfo> {
         let response = self
             .http
             .get(&self.cfg.userinfo_url)
@@ -142,17 +161,15 @@ impl AuthService {
 
         Ok(response.json::<UserInfo>().await?)
     }
-}
 
-impl AuthService {
-    pub async fn cache_token(&self, sid: &Uuid, token: &str, ttl: &Duration) {
+    async fn cache_token(&self, sid: &Uuid, token: &str, ttl: &Duration) {
         self.redis.set(cache::Key::Session(*sid), token).await;
         self.redis
             .expire_after(cache::Key::Session(*sid), ttl.as_secs())
             .await;
     }
 
-    pub async fn invalidate_token(&self, sid: &str) -> super::Result<()> {
+    async fn invalidate_token(&self, sid: &str) -> super::Result<()> {
         let sid = Uuid::parse_str(sid)?;
         let token = self.redis.get_del(cache::Key::Session(sid)).await;
 
@@ -164,7 +181,7 @@ impl AuthService {
         Ok(())
     }
 
-    pub async fn find_token(&self, sid: &str) -> Option<String> {
+    async fn find_token(&self, sid: &str) -> Option<String> {
         match Uuid::parse_str(sid) {
             Ok(sid) => self.redis.get::<String>(cache::Key::Session(sid)).await,
             Err(_) => {
@@ -173,7 +190,9 @@ impl AuthService {
             }
         }
     }
+}
 
+impl AuthServiceImpl {
     async fn cache_csrf(&self, csrf: &str) {
         let csrf_key = cache::Key::Csrf(csrf.into());
         self.redis.set_ex(csrf_key, csrf).await

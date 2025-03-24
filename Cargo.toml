@@ -17,6 +17,7 @@ text-splitter = "0.24.1"
 
 tokio = { version = "1.44.0", features = ["macros", "sync", "rt-multi-thread"] }
 async-stream = "0.3.6"
+async-trait = "0.1.88"
 futures = { version = "0.3.31", default-features = false }
 
 axum = { version = "0.8.1", features = ["ws", "macros"] }

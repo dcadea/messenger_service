@@ -8,7 +8,7 @@ pub(super) mod pages {
 }
 
 pub(super) mod api {
-    use crate::auth::{self, service::AuthService};
+    use crate::auth;
     use axum::{
         extract::State,
         response::{IntoResponse, Redirect},
@@ -17,12 +17,12 @@ pub(super) mod api {
     use axum_extra::extract::{CookieJar, Query};
     use serde::Deserialize;
 
-    pub async fn sso_login(auth_service: State<AuthService>) -> impl IntoResponse {
+    pub async fn sso_login(auth_service: State<auth::Service>) -> impl IntoResponse {
         Redirect::to(&auth_service.authorize().await)
     }
 
     pub async fn logout(
-        auth_service: State<AuthService>,
+        auth_service: State<auth::Service>,
         jar: CookieJar,
     ) -> crate::Result<impl IntoResponse> {
         if let Some(sid) = jar.get(auth::SESSION_ID) {
@@ -41,7 +41,7 @@ pub(super) mod api {
 
     pub async fn callback(
         params: Query<Params>,
-        auth_service: State<AuthService>,
+        auth_service: State<auth::Service>,
         jar: CookieJar,
     ) -> crate::Result<impl IntoResponse> {
         let (token, ttl) = auth_service

@@ -11,7 +11,7 @@ use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 
-use crate::state::State;
+use crate::state::AppState;
 
 mod auth;
 mod error;
@@ -27,7 +27,7 @@ pub type Result<T> = std::result::Result<T, crate::error::Error>;
 #[tokio::main]
 async fn main() {
     let config = integration::Config::default();
-    let app_state = match State::init(config.clone()).await {
+    let app_state = match AppState::init(config.clone()).await {
         Ok(s) => s,
         Err(e) => {
             error!("Failed to initialize app state: {:?}", e);
@@ -54,7 +54,7 @@ async fn main() {
     .expect("Failed to start server")
 }
 
-fn app(s: State, env: &Env) -> Router {
+fn app(s: AppState, env: &Env) -> Router {
     let protected_router = Router::new()
         .merge(talk::pages(s.clone()))
         .merge(event::api(s.clone()))

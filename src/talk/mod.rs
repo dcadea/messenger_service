@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 
-use crate::state::State;
+use crate::state::AppState;
 
 mod handler;
 pub mod markup;
@@ -35,14 +35,14 @@ impl Display for Id {
     }
 }
 
-pub fn pages<S>(s: State) -> Router<S> {
+pub fn pages<S>(s: AppState) -> Router<S> {
     Router::new()
         .route("/", get(handler::pages::home))
         .route("/talks/{id}", get(handler::pages::active_talk))
         .with_state(s)
 }
 
-pub fn api<S>(s: State) -> Router<S> {
+pub fn api<S>(s: AppState) -> Router<S> {
     Router::new()
         .route("/talks/{id}", get(handler::api::find_one))
         .route("/talks", post(handler::api::create))
