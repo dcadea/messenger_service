@@ -6,12 +6,12 @@ use crate::auth;
 use crate::auth::service::AuthServiceImpl;
 use crate::talk::repository::TalkRepository;
 use crate::talk::service::{TalkService, TalkValidator};
+use crate::user::repository::MongoUserRepository;
 
 use super::event::service::EventService;
 use super::integration;
 use super::message::repository::MessageRepository;
 use super::message::service::MessageService;
-use super::user::repository::UserRepository;
 use super::user::service::UserService;
 
 #[derive(Clone)]
@@ -34,11 +34,9 @@ impl AppState {
 
         let auth_service = AuthServiceImpl::try_new(&cfg.idp, redis.clone())?;
         let event_service = EventService::new(pubsub);
-        let user_service = UserService::new(
-            UserRepository::new(&db),
-            event_service.clone(),
-            redis.clone(),
-        );
+
+        let user_repo = Arc::new(MongoUserRepository::new(&db));
+        let user_service = UserService::new(user_repo, event_service.clone(), redis.clone());
 
         let talk_repo = TalkRepository::new(&db);
         let message_repo = MessageRepository::new(&db);

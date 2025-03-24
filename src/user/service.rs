@@ -8,21 +8,20 @@ use crate::event::service::EventService;
 use crate::integration::cache;
 use crate::user::model::{User, UserInfo};
 
-use super::Sub;
 use super::model::OnlineStatus;
-use super::repository::UserRepository;
+use super::{Repository, Sub};
 
 #[derive(Clone)]
 pub struct UserService {
-    repo: Arc<UserRepository>,
+    repo: Repository,
     event_service: Arc<EventService>,
     redis: cache::Redis,
 }
 
 impl UserService {
-    pub fn new(repo: UserRepository, event_service: EventService, redis: cache::Redis) -> Self {
+    pub fn new(repo: Repository, event_service: EventService, redis: cache::Redis) -> Self {
         Self {
-            repo: Arc::new(repo),
+            repo: repo.clone(),
             event_service: Arc::new(event_service),
             redis,
         }
