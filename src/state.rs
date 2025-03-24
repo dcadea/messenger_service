@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::extract::FromRef;
 
 use crate::auth::service::AuthServiceImpl;
+use crate::message::repository::MongoMessageRepository;
 use crate::talk::repository::TalkRepository;
 use crate::talk::service::{TalkService, TalkValidator};
 use crate::user::repository::MongoUserRepository;
@@ -11,7 +12,6 @@ use crate::{auth, user};
 
 use super::event::service::EventService;
 use super::integration;
-use super::message::repository::MessageRepository;
 use super::message::service::MessageService;
 
 #[derive(Clone)]
@@ -43,7 +43,7 @@ impl AppState {
         ));
 
         let talk_repo = TalkRepository::new(&db);
-        let message_repo = MessageRepository::new(&db);
+        let message_repo = Arc::new(MongoMessageRepository::new(&db));
 
         let talk_validator = TalkValidator::new(talk_repo.clone(), redis.clone());
         let talk_service = TalkService::new(

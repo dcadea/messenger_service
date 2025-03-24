@@ -7,14 +7,14 @@ use crate::event::service::EventService;
 use crate::talk::service::{TalkService, TalkValidator};
 use crate::{event, message, talk, user};
 
+use super::Repository;
 use super::model::Message;
-use super::repository::MessageRepository;
 
 const MAX_MESSAGE_LENGTH: usize = 1000;
 
 #[derive(Clone)]
 pub struct MessageService {
-    repo: Arc<MessageRepository>,
+    repo: Repository,
     talk_service: Arc<TalkService>,
     talk_validator: Arc<TalkValidator>,
     event_service: Arc<EventService>,
@@ -23,13 +23,13 @@ pub struct MessageService {
 
 impl MessageService {
     pub fn new(
-        repo: MessageRepository,
+        repo: Repository,
         talk_service: TalkService,
         talk_validator: TalkValidator,
         event_service: EventService,
     ) -> Self {
         Self {
-            repo: Arc::new(repo),
+            repo,
             talk_service: Arc::new(talk_service),
             talk_validator: Arc::new(talk_validator),
             event_service: Arc::new(event_service),

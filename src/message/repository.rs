@@ -8,12 +8,52 @@ use crate::{message, talk};
 
 const MESSAGES_COLLECTION: &str = "messages";
 
+#[async_trait::async_trait]
+pub trait MessageRepository {
+    async fn insert(&self, msg: &Message) -> super::Result<()>;
+
+    async fn insert_many(&self, msgs: &[Message]) -> super::Result<()>;
+
+    async fn find_by_id(&self, id: &Id) -> super::Result<Message>;
+
+    async fn find_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<Vec<Message>>;
+
+    async fn find_by_talk_id_limited(
+        &self,
+        talk_id: &talk::Id,
+        limit: usize,
+    ) -> super::Result<Vec<Message>>;
+
+    async fn find_by_talk_id_before(
+        &self,
+        talk_id: &talk::Id,
+        before: i64,
+    ) -> super::Result<Vec<Message>>;
+
+    async fn find_by_talk_id_limited_before(
+        &self,
+        talk_id: &talk::Id,
+        limit: usize,
+        before: i64,
+    ) -> super::Result<Vec<Message>>;
+
+    async fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<Message>>;
+
+    async fn update(&self, id: &Id, text: &str) -> super::Result<()>;
+
+    async fn delete(&self, id: &Id) -> super::Result<u64>;
+
+    async fn delete_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<()>;
+
+    async fn mark_as_seen(&self, ids: &[Id]) -> super::Result<()>;
+}
+
 #[derive(Clone)]
-pub struct MessageRepository {
+pub struct MongoMessageRepository {
     col: mongodb::Collection<Message>,
 }
 
-impl MessageRepository {
+impl MongoMessageRepository {
     pub fn new(db: &Database) -> Self {
         Self {
             col: db.collection(MESSAGES_COLLECTION),
@@ -21,8 +61,9 @@ impl MessageRepository {
     }
 }
 
-impl MessageRepository {
-    pub async fn insert(&self, msg: &Message) -> super::Result<()> {
+#[async_trait::async_trait]
+impl MessageRepository for MongoMessageRepository {
+    async fn insert(&self, msg: &Message) -> super::Result<()> {
         let result = self.col.insert_one(msg).await?;
         result
             .inserted_id
@@ -31,7 +72,7 @@ impl MessageRepository {
         Ok(())
     }
 
-    pub async fn insert_many(&self, msgs: &[Message]) -> super::Result<()> {
+    async fn insert_many(&self, msgs: &[Message]) -> super::Result<()> {
         let result = self.col.insert_many(msgs).await?;
 
         if result.inserted_ids.len() != msgs.len() {
@@ -41,14 +82,14 @@ impl MessageRepository {
         Ok(())
     }
 
-    pub async fn find_by_id(&self, id: &Id) -> super::Result<Message> {
+    async fn find_by_id(&self, id: &Id) -> super::Result<Message> {
         self.col
             .find_one(doc! {"_id": id})
             .await?
             .ok_or(message::Error::NotFound(Some(id.to_owned())))
     }
 
-    pub async fn find_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<Vec<Message>> {
+    async fn find_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<Vec<Message>> {
         let cursor = self
             .col
             .find(doc! {"talk_id": talk_id})
@@ -60,7 +101,7 @@ impl MessageRepository {
         Ok(messages)
     }
 
-    pub async fn find_by_talk_id_limited(
+    async fn find_by_talk_id_limited(
         &self,
         talk_id: &talk::Id,
         limit: usize,
@@ -77,7 +118,7 @@ impl MessageRepository {
         Ok(messages)
     }
 
-    pub async fn find_by_talk_id_before(
+    async fn find_by_talk_id_before(
         &self,
         talk_id: &talk::Id,
         before: i64,
@@ -96,7 +137,7 @@ impl MessageRepository {
         Ok(msgs)
     }
 
-    pub async fn find_by_talk_id_limited_before(
+    async fn find_by_talk_id_limited_before(
         &self,
         talk_id: &talk::Id,
         limit: usize,
@@ -117,7 +158,7 @@ impl MessageRepository {
         Ok(msgs)
     }
 
-    pub async fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<Message>> {
+    async fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<Message>> {
         let mut cursor = self
             .col
             .find(doc! {"talk_id": talk_id})
@@ -130,26 +171,26 @@ impl MessageRepository {
         Ok(msg)
     }
 
-    pub async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
+    async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
         self.col
             .update_one(doc! {"_id": id}, doc! {"$set": {"text": text}})
             .await?;
         Ok(())
     }
 
-    pub async fn delete(&self, id: &Id) -> super::Result<u64> {
+    async fn delete(&self, id: &Id) -> super::Result<u64> {
         let count = self.col.delete_one(doc! {"_id": id}).await?.deleted_count;
 
         Ok(count)
     }
 
-    pub async fn delete_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<()> {
+    async fn delete_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<()> {
         self.col.delete_many(doc! {"talk_id": talk_id}).await?;
 
         Ok(())
     }
 
-    pub async fn mark_as_seen(&self, ids: &[Id]) -> super::Result<()> {
+    async fn mark_as_seen(&self, ids: &[Id]) -> super::Result<()> {
         self.col
             .update_many(
                 doc! {"_id": {"$in": ids}, "seen": false},

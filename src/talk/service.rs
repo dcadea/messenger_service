@@ -9,9 +9,8 @@ use super::repository::TalkRepository;
 use crate::event::service::EventService;
 use crate::integration::cache;
 use crate::message::model::LastMessage;
-use crate::message::repository::MessageRepository;
 use crate::user::model::UserInfo;
-use crate::{event, talk, user};
+use crate::{event, message, talk, user};
 
 #[derive(Clone)]
 pub struct TalkService {
@@ -19,7 +18,7 @@ pub struct TalkService {
     validator: Arc<TalkValidator>,
     user_service: user::Service,
     event_service: Arc<EventService>,
-    message_repo: Arc<MessageRepository>,
+    message_repo: message::Repository,
     redis: cache::Redis,
 }
 
@@ -29,15 +28,15 @@ impl TalkService {
         validator: TalkValidator,
         user_service: user::Service,
         event_service: EventService,
-        message_repo: MessageRepository,
+        message_repo: message::Repository,
         redis: cache::Redis,
     ) -> Self {
         Self {
             repo: Arc::new(repo),
             validator: Arc::new(validator),
-            user_service: user_service.clone(),
+            user_service,
             event_service: Arc::new(event_service),
-            message_repo: Arc::new(message_repo),
+            message_repo,
             redis,
         }
     }

@@ -46,7 +46,7 @@ pub struct UserServiceImpl {
 impl UserServiceImpl {
     pub fn new(repo: Repository, event_service: EventService, redis: cache::Redis) -> Self {
         Self {
-            repo: repo.clone(),
+            repo,
             event_service: Arc::new(event_service),
             redis,
         }
