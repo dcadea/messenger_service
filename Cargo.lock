@@ -1706,6 +1706,7 @@ dependencies = [
  "axum",
  "axum-extra",
  "axum-server",
+ "bytes",
  "chrono",
  "dotenv",
  "futures",

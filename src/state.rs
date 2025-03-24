@@ -3,15 +3,15 @@ use std::sync::Arc;
 use axum::extract::FromRef;
 
 use crate::auth::service::AuthServiceImpl;
+use crate::event::service::EventServiceImpl;
 use crate::message::repository::MongoMessageRepository;
 use crate::message::service::MessageServiceImpl;
 use crate::talk::repository::MongoTalkRepository;
 use crate::talk::service::{TalkServiceImpl, TalkValidatorImpl};
 use crate::user::repository::MongoUserRepository;
 use crate::user::service::UserServiceImpl;
-use crate::{auth, message, talk, user};
+use crate::{auth, event, message, talk, user};
 
-use super::event::service::EventService;
 use super::integration;
 
 #[derive(Clone)]
@@ -23,7 +23,7 @@ pub struct AppState {
     talk_service: talk::Service,
     talk_validator: talk::Validator,
     message_service: message::Service,
-    event_service: EventService,
+    event_service: event::Service,
 }
 
 impl AppState {
@@ -33,7 +33,7 @@ impl AppState {
         let pubsub = cfg.pubsub.connect().await;
 
         let auth_service = Arc::new(AuthServiceImpl::try_new(&cfg.idp, redis.clone())?);
-        let event_service = EventService::new(pubsub);
+        let event_service = Arc::new(EventServiceImpl::new(pubsub));
 
         let user_repo = Arc::new(MongoUserRepository::new(&db));
         let user_service = Arc::new(UserServiceImpl::new(
@@ -110,7 +110,7 @@ impl FromRef<AppState> for message::Service {
     }
 }
 
-impl FromRef<AppState> for EventService {
+impl FromRef<AppState> for event::Service {
     fn from_ref(s: &AppState) -> Self {
         s.event_service.clone()
     }

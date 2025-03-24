@@ -3,7 +3,6 @@ use std::sync::Arc;
 use log::{debug, error};
 use text_splitter::{Characters, TextSplitter};
 
-use crate::event::service::EventService;
 use crate::{event, message, talk, user};
 
 use super::Repository;
@@ -50,7 +49,7 @@ pub struct MessageServiceImpl {
     repo: Repository,
     talk_service: talk::Service,
     talk_validator: talk::Validator,
-    event_service: Arc<EventService>,
+    event_service: event::Service,
     splitter: Arc<TextSplitter<Characters>>,
 }
 
@@ -59,13 +58,13 @@ impl MessageServiceImpl {
         repo: Repository,
         talk_service: talk::Service,
         talk_validator: talk::Validator,
-        event_service: EventService,
+        event_service: event::Service,
     ) -> Self {
         Self {
             repo,
             talk_service,
             talk_validator,
-            event_service: Arc::new(event_service),
+            event_service,
             splitter: Arc::new(TextSplitter::new(MAX_MESSAGE_LENGTH)),
         }
     }
@@ -207,16 +206,17 @@ impl MessageService for MessageServiceImpl {
 
         self.repo.mark_as_seen(&unseen_ids).await?;
 
-        let msg_evts: Vec<event::Message> = unseen_msgs
+        let msg_evts: Vec<bytes::Bytes> = unseen_msgs
             .iter()
             .map(|m| event::Message::Seen((*m).clone()))
+            .map(bytes::Bytes::from)
             .collect();
 
         for msg in unseen_msgs {
             self.event_service
                 .publish_all(
                     &event::Subject::Messages(&msg.owner, &msg.talk_id),
-                    &msg_evts,
+                    msg_evts.clone(),
                 )
                 .await;
         }
@@ -247,14 +247,15 @@ impl MessageServiceImpl {
     async fn notify_new(&self, talk_id: &talk::Id, owner: &user::Sub, msgs: &[Message]) {
         match self.talk_service.find_recipients(talk_id, owner).await {
             Ok(recipients) => {
-                let msg_evts: Vec<event::Message> = msgs
+                let msg_evts: Vec<bytes::Bytes> = msgs
                     .iter()
                     .map(|m| event::Message::New(m.clone()))
+                    .map(bytes::Bytes::from)
                     .collect();
 
                 for r in recipients {
                     self.event_service
-                        .publish_all(&event::Subject::Messages(&r, talk_id), &msg_evts)
+                        .publish_all(&event::Subject::Messages(&r, talk_id), msg_evts.clone())
                         .await;
                 }
             }
@@ -272,10 +273,11 @@ impl MessageServiceImpl {
                     self.event_service
                         .publish(
                             &event::Subject::Messages(&r, talk_id),
-                            &event::Message::Updated {
+                            event::Message::Updated {
                                 msg: msg.clone(),
                                 logged_sub: sub.clone(),
-                            },
+                            }
+                            .into(),
                         )
                         .await;
                 }
@@ -294,7 +296,7 @@ impl MessageServiceImpl {
                     self.event_service
                         .publish(
                             &event::Subject::Messages(&r, talk_id),
-                            &event::Message::Deleted(msg._id.clone()),
+                            event::Message::Deleted(msg._id.clone()).into(),
                         )
                         .await;
                 }

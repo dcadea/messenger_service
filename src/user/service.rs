@@ -1,10 +1,8 @@
 use std::collections::HashSet;
-use std::sync::Arc;
 
 use log::error;
 
 use crate::event;
-use crate::event::service::EventService;
 use crate::integration::cache;
 use crate::user::model::{User, UserInfo};
 
@@ -39,15 +37,15 @@ pub trait UserService {
 #[derive(Clone)]
 pub struct UserServiceImpl {
     repo: Repository,
-    event_service: Arc<EventService>,
+    event_service: event::Service,
     redis: cache::Redis,
 }
 
 impl UserServiceImpl {
-    pub fn new(repo: Repository, event_service: EventService, redis: cache::Redis) -> Self {
+    pub fn new(repo: Repository, event_service: event::Service, redis: cache::Redis) -> Self {
         Self {
             repo,
-            event_service: Arc::new(event_service),
+            event_service,
             redis,
         }
     }
@@ -150,7 +148,7 @@ impl UserServiceImpl {
                     self.event_service
                         .publish(
                             &event::Subject::Notifications(&c),
-                            &event::Notification::OnlineStatusChange(status.clone()),
+                            event::Notification::OnlineStatusChange(status.clone()).into(),
                         )
                         .await;
                 }

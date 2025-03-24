@@ -1,6 +1,5 @@
 pub mod sse {
-    use crate::event::service::EventService;
-    use crate::event::{Notification, Subject};
+    use crate::event::{self, Subject};
     use crate::user;
     use crate::user::model::UserInfo;
     use async_stream;
@@ -16,13 +15,13 @@ pub mod sse {
     pub async fn notifications(
         Extension(user_info): Extension<UserInfo>,
         State(user_service): State<user::Service>,
-        State(event_service): State<EventService>,
+        State(event_service): State<event::Service>,
     ) -> sse::Sse<impl Stream<Item = Result<sse::Event, Infallible>>> {
         let sub = user_info.sub;
 
         let stream = async_stream::stream! {
             let mut noti_stream = event_service
-                .subscribe::<Notification>(&Subject::Notifications(&sub))
+                .subscribe_noti(&Subject::Notifications(&sub))
                 .await
                 .expect("failed to subscribe to subject"); // FIXME
 
@@ -70,7 +69,7 @@ pub mod ws {
     use std::sync::Arc;
 
     use crate::{
-        event::{Message, Subject, service::EventService},
+        event::{self, Message, Subject},
         message, talk,
         user::{self, model::UserInfo},
     };
@@ -97,7 +96,7 @@ pub mod ws {
         ws: WebSocketUpgrade,
         Path(talk_id): Path<talk::Id>,
         State(talk_validator): State<talk::Validator>,
-        State(event_service): State<EventService>,
+        State(event_service): State<event::Service>,
         State(message_service): State<message::Service>,
         State(talk_service): State<talk::Service>,
     ) -> crate::Result<Response> {
@@ -121,7 +120,7 @@ pub mod ws {
         logged_sub: user::Sub,
         talk_id: talk::Id,
         ws: WebSocket,
-        event_service: EventService,
+        event_service: event::Service,
         message_service: message::Service,
         talk_service: talk::Service,
     ) {
@@ -150,12 +149,12 @@ pub mod ws {
         logged_sub: user::Sub,
         talk_id: talk::Id,
         sender: SplitSink<WebSocket, axum::extract::ws::Message>,
-        event_service: EventService,
+        event_service: event::Service,
         message_service: message::Service,
         talk_service: talk::Service,
     ) {
         let mut msg_stream = match event_service
-            .subscribe::<Message>(&Subject::Messages(&logged_sub, &talk_id))
+            .subscribe_event(&Subject::Messages(&logged_sub, &talk_id))
             .await
         {
             Ok(stream) => stream,

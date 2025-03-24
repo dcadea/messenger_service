@@ -1,12 +1,10 @@
 use std::collections::HashSet;
-use std::sync::Arc;
 
 use futures::future::join_all;
 use log::error;
 
 use super::model::{Details, DetailsDto, Talk, TalkDto};
 use super::{Repository, Validator};
-use crate::event::service::EventService;
 use crate::integration::cache;
 use crate::message::model::LastMessage;
 use crate::user::model::UserInfo;
@@ -59,7 +57,7 @@ pub struct TalkServiceImpl {
     repo: Repository,
     validator: Validator,
     user_service: user::Service,
-    event_service: Arc<EventService>,
+    event_service: event::Service,
     message_repo: message::Repository,
     redis: cache::Redis,
 }
@@ -69,7 +67,7 @@ impl TalkServiceImpl {
         repo: Repository,
         validator: Validator,
         user_service: user::Service,
-        event_service: EventService,
+        event_service: event::Service,
         message_repo: message::Repository,
         redis: cache::Redis,
     ) -> Self {
@@ -77,7 +75,7 @@ impl TalkServiceImpl {
             repo,
             validator,
             user_service,
-            event_service: Arc::new(event_service),
+            event_service,
             message_repo,
             redis,
         }
@@ -112,7 +110,7 @@ impl TalkService for TalkServiceImpl {
         self.event_service
             .publish(
                 &event::Subject::Notifications(recipient),
-                &event::Notification::NewTalk(talk_dto.clone()),
+                event::Notification::NewTalk(talk_dto.clone()).into(),
             )
             .await;
 
@@ -149,7 +147,7 @@ impl TalkService for TalkServiceImpl {
             self.event_service
                 .publish(
                     &event::Subject::Notifications(m),
-                    &event::Notification::NewTalk(talk_dto.clone()),
+                    event::Notification::NewTalk(talk_dto.clone()).into(),
                 )
                 .await;
         }
@@ -232,10 +230,11 @@ impl TalkService for TalkServiceImpl {
                 self.event_service
                     .publish(
                         &event::Subject::Notifications(&r),
-                        &event::Notification::NewMessage {
+                        event::Notification::NewMessage {
                             talk_id: id.clone(),
                             last_message: last_msg.clone(),
-                        },
+                        }
+                        .into(),
                     )
                     .await;
             }

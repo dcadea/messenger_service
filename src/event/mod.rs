@@ -1,11 +1,14 @@
 use std::pin::Pin;
+use std::sync::Arc;
 
 use axum::{Router, http::StatusCode, response::sse, routing::get};
+use bytes::Bytes;
 use futures::Stream;
 use log::error;
 use maud::{Markup, Render, html};
 use messenger_service::markup::Id;
 use serde::{Deserialize, Serialize};
+use service::EventService;
 
 use crate::message::markup::MESSAGE_LIST_ID;
 use crate::state::AppState;
@@ -15,6 +18,7 @@ mod handler;
 pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
+pub type Service = Arc<dyn EventService + Send + Sync>;
 
 pub fn api<S>(s: AppState) -> Router<S> {
     Router::new()
@@ -82,6 +86,16 @@ impl From<Notification> for sse::Event {
     }
 }
 
+impl From<Notification> for Bytes {
+    fn from(n: Notification) -> Self {
+        let mut bytes: Vec<u8> = Vec::new();
+        if let Err(e) = serde_json::to_writer(&mut bytes, &n) {
+            error!("could not serialize notification: {e:?}");
+        }
+        bytes.into()
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Message {
@@ -113,6 +127,16 @@ impl Render for Message {
                 },
             }
         }
+    }
+}
+
+impl From<Message> for Bytes {
+    fn from(m: Message) -> Self {
+        let mut bytes: Vec<u8> = Vec::new();
+        if let Err(e) = serde_json::to_writer(&mut bytes, &m) {
+            error!("could not serialize event message: {e:?}");
+        }
+        bytes.into()
     }
 }
 

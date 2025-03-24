@@ -1,45 +1,65 @@
+use bytes::Bytes;
 use futures::StreamExt;
 use log::error;
-use serde::{Serialize, de::DeserializeOwned};
 
-use super::{PayloadStream, Subject};
+use super::{Message, Notification, PayloadStream, Subject};
+
+#[async_trait::async_trait]
+pub trait EventService {
+    async fn subscribe_event(&self, s: &Subject<'_>) -> super::Result<PayloadStream<Message>>;
+
+    async fn subscribe_noti(&self, s: &Subject<'_>) -> super::Result<PayloadStream<Notification>>;
+
+    async fn publish(&self, s: &Subject<'_>, payload: Bytes);
+
+    async fn publish_all(&self, s: &Subject<'_>, payloads: Vec<Bytes>);
+}
 
 #[derive(Clone)]
-pub struct EventService {
+pub struct EventServiceImpl {
     pubsub: async_nats::Client,
 }
 
-impl EventService {
+impl EventServiceImpl {
     pub fn new(pubsub: async_nats::Client) -> Self {
         Self { pubsub }
     }
 }
 
-impl EventService {
-    pub async fn subscribe<T: DeserializeOwned>(
-        &self,
-        s: &Subject<'_>,
-    ) -> super::Result<PayloadStream<T>> {
+#[async_trait::async_trait]
+impl EventService for EventServiceImpl {
+    async fn subscribe_event(&self, s: &Subject<'_>) -> super::Result<PayloadStream<Message>> {
         let subscriber = self.pubsub.subscribe(s).await?;
 
         let stream = subscriber.then(async |msg| {
             // FIXME: expect!
-            serde_json::from_slice::<T>(&msg.payload).expect("failed payload deserialization")
+            serde_json::from_slice::<Message>(&msg.payload)
+                .expect("failed event message deserialization")
         });
 
         Ok(stream.boxed())
     }
 
-    pub async fn publish<T: Serialize>(&self, s: &Subject<'_>, payload: &T) {
-        if let Err(e) = serde_json::to_vec(payload)
-            .map(async |payload| self.pubsub.publish(s, payload.into()).await)
-        {
+    async fn subscribe_noti(&self, s: &Subject<'_>) -> super::Result<PayloadStream<Notification>> {
+        let subscriber = self.pubsub.subscribe(s).await?;
+
+        let stream = subscriber.then(async |msg| {
+            // FIXME: expect!
+            serde_json::from_slice::<Notification>(&msg.payload)
+                .expect("failed notification deserialization")
+        });
+
+        Ok(stream.boxed())
+    }
+
+    async fn publish(&self, s: &Subject<'_>, payload: Bytes) {
+        if let Err(e) = self.pubsub.publish(s, payload).await {
             error!("failed to publish into subject: {s:?}, reason: {e:?}");
         }
     }
 
-    pub async fn publish_all<T: Serialize>(&self, s: &Subject<'_>, payloads: &[T]) {
-        for p in payloads {
+    async fn publish_all(&self, s: &Subject<'_>, payloads: Vec<Bytes>) {
+        for p in payloads.into_iter() {
             self.publish(s, p).await;
         }
     }
