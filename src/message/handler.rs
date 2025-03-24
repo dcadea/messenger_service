@@ -8,7 +8,7 @@ pub(super) mod api {
     use serde::Deserialize;
 
     use crate::error::Error;
-    use crate::talk::service::{TalkService, TalkValidator};
+    use crate::talk::service::TalkValidator;
     use crate::user::model::UserInfo;
     use crate::{message, talk};
 
@@ -24,7 +24,7 @@ pub(super) mod api {
     pub async fn create(
         user_info: Extension<UserInfo>,
         message_service: State<message::Service>,
-        talk_service: State<TalkService>,
+        talk_service: State<talk::Service>,
         Form(params): Form<CreateParams>,
     ) -> crate::Result<Markup> {
         let msg = Message::new(params.talk_id, user_info.sub.clone(), params.text.trim());
@@ -52,7 +52,7 @@ pub(super) mod api {
         user_info: Extension<UserInfo>,
         Query(params): Query<FindAllParams>,
         talk_validator: State<TalkValidator>,
-        talk_service: State<TalkService>,
+        talk_service: State<talk::Service>,
         message_service: State<message::Service>,
     ) -> crate::Result<impl IntoResponse> {
         let talk_id = params
@@ -100,7 +100,7 @@ pub(super) mod api {
         user_info: Extension<UserInfo>,
         Path(id): Path<message::Id>,
         message_service: State<message::Service>,
-        talk_service: State<TalkService>,
+        talk_service: State<talk::Service>,
     ) -> crate::Result<()> {
         if let Some(deleted_msg) = message_service.delete(&user_info.sub, &id).await? {
             let is_last = message_service.is_last_message(&deleted_msg).await?;

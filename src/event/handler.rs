@@ -72,10 +72,7 @@ pub mod ws {
     use crate::{
         event::{Message, Subject, service::EventService},
         message,
-        talk::{
-            self,
-            service::{TalkService, TalkValidator},
-        },
+        talk::{self, service::TalkValidator},
         user::{self, model::UserInfo},
     };
     use axum::extract::ws::Message::{Close, Text};
@@ -103,7 +100,7 @@ pub mod ws {
         State(talk_validator): State<TalkValidator>,
         State(event_service): State<EventService>,
         State(message_service): State<message::Service>,
-        State(talk_service): State<TalkService>,
+        State(talk_service): State<talk::Service>,
     ) -> crate::Result<Response> {
         talk_validator
             .check_member(&talk_id, &user_info.sub)
@@ -127,7 +124,7 @@ pub mod ws {
         ws: WebSocket,
         event_service: EventService,
         message_service: message::Service,
-        talk_service: TalkService,
+        talk_service: talk::Service,
     ) {
         let (sender, receiver) = ws.split();
 
@@ -156,7 +153,7 @@ pub mod ws {
         sender: SplitSink<WebSocket, axum::extract::ws::Message>,
         event_service: EventService,
         message_service: message::Service,
-        talk_service: TalkService,
+        talk_service: talk::Service,
     ) {
         let mut msg_stream = match event_service
             .subscribe::<Message>(&Subject::Messages(&logged_sub, &talk_id))

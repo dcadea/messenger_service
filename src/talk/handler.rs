@@ -7,13 +7,13 @@ pub(super) mod pages {
     use messenger_service::markup::Wrappable;
 
     use crate::{
-        talk::{self, markup, service::TalkService},
+        talk::{self, markup},
         user::model::UserInfo,
     };
 
     pub async fn home(
         user_info: Extension<UserInfo>,
-        talk_service: State<TalkService>,
+        talk_service: State<talk::Service>,
     ) -> crate::Result<Wrappable> {
         let talks = talk_service.find_all(&user_info).await?;
         Ok(Wrappable::new(markup::TalkWindow::new(&user_info, &talks)).with_sse())
@@ -22,7 +22,7 @@ pub(super) mod pages {
     pub async fn active_talk(
         id: Path<talk::Id>,
         logged_user: Extension<UserInfo>,
-        talk_service: State<TalkService>,
+        talk_service: State<talk::Service>,
     ) -> crate::Result<Markup> {
         let talk = &talk_service
             .find_by_id_and_sub(&id, &logged_user.sub)
@@ -42,13 +42,13 @@ pub(super) mod api {
     use serde::Deserialize;
 
     use crate::{
-        talk::{self, markup, service::TalkService},
+        talk::{self, markup},
         user::{self, model::UserInfo},
     };
 
     pub async fn find_one(
         user_info: Extension<UserInfo>,
-        talk_service: State<TalkService>,
+        talk_service: State<talk::Service>,
         Path(id): Path<talk::Id>,
     ) -> crate::Result<Markup> {
         let talk = talk_service.find_by_id_and_sub(&id, &user_info.sub).await?;
@@ -68,7 +68,7 @@ pub(super) mod api {
 
     pub async fn create(
         Extension(logged_user): Extension<UserInfo>,
-        talk_service: State<TalkService>,
+        talk_service: State<talk::Service>,
         Form(params): Form<CreateParams>,
     ) -> crate::Result<Markup> {
         let logged_sub = &logged_user.sub;
@@ -85,7 +85,7 @@ pub(super) mod api {
     pub async fn delete(
         id: Path<talk::Id>,
         logged_user: Extension<UserInfo>,
-        talk_service: State<TalkService>,
+        talk_service: State<talk::Service>,
     ) -> crate::Result<impl IntoResponse> {
         talk_service.delete(&id, &logged_user).await?;
 

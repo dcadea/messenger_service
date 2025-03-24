@@ -12,8 +12,50 @@ use crate::message::model::LastMessage;
 use crate::user::model::UserInfo;
 use crate::{event, message, talk, user};
 
+#[async_trait::async_trait]
+pub trait TalkService {
+    async fn create_chat(
+        &self,
+        logged_sub: &user::Sub,
+        recipient: &user::Sub,
+    ) -> super::Result<TalkDto>;
+
+    async fn create_group(
+        &self,
+        logged_sub: &user::Sub,
+        name: &str,
+        members: &[user::Sub],
+    ) -> super::Result<TalkDto>;
+
+    async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk>;
+
+    async fn find_by_id_and_sub(
+        &self,
+        id: &talk::Id,
+        logged_sub: &user::Sub,
+    ) -> super::Result<TalkDto>;
+
+    async fn find_all(&self, user_info: &UserInfo) -> super::Result<Vec<TalkDto>>;
+
+    async fn find_recipients(
+        &self,
+        talk_id: &talk::Id,
+        logged_sub: &user::Sub,
+    ) -> super::Result<HashSet<user::Sub>>;
+
+    async fn delete(&self, id: &talk::Id, logged_user: &UserInfo) -> super::Result<()>;
+
+    async fn update_last_message(
+        &self,
+        id: &talk::Id,
+        msg: Option<&LastMessage>,
+    ) -> super::Result<()>;
+
+    async fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()>;
+}
+
 #[derive(Clone)]
-pub struct TalkService {
+pub struct TalkServiceImpl {
     repo: Repository,
     validator: Arc<TalkValidator>,
     user_service: user::Service,
@@ -22,7 +64,7 @@ pub struct TalkService {
     redis: cache::Redis,
 }
 
-impl TalkService {
+impl TalkServiceImpl {
     pub fn new(
         repo: Repository,
         validator: TalkValidator,
@@ -42,8 +84,9 @@ impl TalkService {
     }
 }
 
-impl TalkService {
-    pub async fn create_chat(
+#[async_trait::async_trait]
+impl TalkService for TalkServiceImpl {
+    async fn create_chat(
         &self,
         logged_sub: &user::Sub,
         recipient: &user::Sub,
@@ -76,7 +119,7 @@ impl TalkService {
         Ok(talk_dto)
     }
 
-    pub async fn create_group(
+    async fn create_group(
         &self,
         logged_sub: &user::Sub,
         name: &str,
@@ -114,12 +157,12 @@ impl TalkService {
         Ok(talk_dto)
     }
 
-    pub async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk> {
+    async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk> {
         let talk = self.repo.find_by_id(id).await?;
         Ok(talk)
     }
 
-    pub async fn find_by_id_and_sub(
+    async fn find_by_id_and_sub(
         &self,
         id: &talk::Id,
         logged_sub: &user::Sub,
@@ -129,7 +172,7 @@ impl TalkService {
         Ok(dto)
     }
 
-    pub async fn find_all(&self, user_info: &UserInfo) -> super::Result<Vec<TalkDto>> {
+    async fn find_all(&self, user_info: &UserInfo) -> super::Result<Vec<TalkDto>> {
         let sub = &user_info.sub;
         let talks = self.repo.find_by_sub(sub).await?;
 
@@ -143,7 +186,7 @@ impl TalkService {
         Ok(talk_dtos)
     }
 
-    pub async fn find_recipients(
+    async fn find_recipients(
         &self,
         talk_id: &talk::Id,
         logged_sub: &user::Sub,
@@ -153,7 +196,7 @@ impl TalkService {
         Ok(recipients)
     }
 
-    pub async fn delete(&self, id: &talk::Id, logged_user: &UserInfo) -> super::Result<()> {
+    async fn delete(&self, id: &talk::Id, logged_user: &UserInfo) -> super::Result<()> {
         let logged_sub = &logged_user.sub;
         self.validator.check_member(id, logged_sub).await?;
 
@@ -174,9 +217,38 @@ impl TalkService {
 
         Ok(())
     }
+
+    async fn update_last_message(
+        &self,
+        id: &talk::Id,
+        msg: Option<&LastMessage>,
+    ) -> super::Result<()> {
+        self.repo.update_last_message(id, msg).await?;
+
+        if let Some(last_msg) = msg {
+            let recipients = self.find_recipients(id, &last_msg.owner).await?;
+
+            for r in recipients {
+                self.event_service
+                    .publish(
+                        &event::Subject::Notifications(&r),
+                        &event::Notification::NewMessage {
+                            talk_id: id.clone(),
+                            last_message: last_msg.clone(),
+                        },
+                    )
+                    .await;
+            }
+        }
+        Ok(())
+    }
+
+    async fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()> {
+        self.repo.mark_as_seen(id).await
+    }
 }
 
-impl TalkService {
+impl TalkServiceImpl {
     async fn talk_to_dto(&self, t: Talk, logged_sub: &user::Sub) -> TalkDto {
         let (name, picture, details) = match t.details {
             Details::Chat { members } => {
@@ -208,37 +280,6 @@ impl TalkService {
             details,
             last_message: t.last_message,
         }
-    }
-}
-
-impl TalkService {
-    pub async fn update_last_message(
-        &self,
-        id: &talk::Id,
-        msg: Option<&LastMessage>,
-    ) -> super::Result<()> {
-        self.repo.update_last_message(id, msg).await?;
-
-        if let Some(last_msg) = msg {
-            let recipients = self.find_recipients(id, &last_msg.owner).await?;
-
-            for r in recipients {
-                self.event_service
-                    .publish(
-                        &event::Subject::Notifications(&r),
-                        &event::Notification::NewMessage {
-                            talk_id: id.clone(),
-                            last_message: last_msg.clone(),
-                        },
-                    )
-                    .await;
-            }
-        }
-        Ok(())
-    }
-
-    pub async fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()> {
-        self.repo.mark_as_seen(id).await
     }
 }
 

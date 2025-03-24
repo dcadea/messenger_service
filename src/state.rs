@@ -6,10 +6,10 @@ use crate::auth::service::AuthServiceImpl;
 use crate::message::repository::MongoMessageRepository;
 use crate::message::service::MessageServiceImpl;
 use crate::talk::repository::MongoTalkRepository;
-use crate::talk::service::{TalkService, TalkValidator};
+use crate::talk::service::{TalkServiceImpl, TalkValidator};
 use crate::user::repository::MongoUserRepository;
 use crate::user::service::UserServiceImpl;
-use crate::{auth, message, user};
+use crate::{auth, message, talk, user};
 
 use super::event::service::EventService;
 use super::integration;
@@ -20,7 +20,7 @@ pub struct AppState {
 
     auth_service: auth::Service,
     user_service: user::Service,
-    talk_service: TalkService,
+    talk_service: talk::Service,
     talk_validator: TalkValidator,
     message_service: message::Service,
     event_service: EventService,
@@ -46,14 +46,14 @@ impl AppState {
         let message_repo = Arc::new(MongoMessageRepository::new(&db));
 
         let talk_validator = TalkValidator::new(talk_repo.clone(), redis.clone());
-        let talk_service = TalkService::new(
+        let talk_service = Arc::new(TalkServiceImpl::new(
             talk_repo.clone(),
             talk_validator.clone(),
             user_service.clone(),
             event_service.clone(),
             message_repo.clone(),
             redis.clone(),
-        );
+        ));
 
         let message_service = Arc::new(MessageServiceImpl::new(
             message_repo.clone(),
@@ -92,7 +92,7 @@ impl FromRef<AppState> for user::Service {
     }
 }
 
-impl FromRef<AppState> for TalkService {
+impl FromRef<AppState> for talk::Service {
     fn from_ref(s: &AppState) -> Self {
         s.talk_service.clone()
     }
