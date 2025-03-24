@@ -4,8 +4,8 @@ use std::sync::Arc;
 use futures::future::join_all;
 use log::error;
 
+use super::Repository;
 use super::model::{Details, DetailsDto, Talk, TalkDto};
-use super::repository::TalkRepository;
 use crate::event::service::EventService;
 use crate::integration::cache;
 use crate::message::model::LastMessage;
@@ -14,7 +14,7 @@ use crate::{event, message, talk, user};
 
 #[derive(Clone)]
 pub struct TalkService {
-    repo: Arc<TalkRepository>,
+    repo: Repository,
     validator: Arc<TalkValidator>,
     user_service: user::Service,
     event_service: Arc<EventService>,
@@ -24,7 +24,7 @@ pub struct TalkService {
 
 impl TalkService {
     pub fn new(
-        repo: TalkRepository,
+        repo: Repository,
         validator: TalkValidator,
         user_service: user::Service,
         event_service: EventService,
@@ -32,7 +32,7 @@ impl TalkService {
         redis: cache::Redis,
     ) -> Self {
         Self {
-            repo: Arc::new(repo),
+            repo,
             validator: Arc::new(validator),
             user_service,
             event_service: Arc::new(event_service),
@@ -244,16 +244,13 @@ impl TalkService {
 
 #[derive(Clone)]
 pub struct TalkValidator {
-    repo: Arc<TalkRepository>,
+    repo: Repository,
     redis: cache::Redis,
 }
 
 impl TalkValidator {
-    pub fn new(repo: TalkRepository, redis: cache::Redis) -> Self {
-        Self {
-            repo: Arc::new(repo),
-            redis,
-        }
+    pub fn new(repo: Repository, redis: cache::Redis) -> Self {
+        Self { repo, redis }
     }
 }
 
@@ -272,7 +269,7 @@ impl TalkValidator {
 
 async fn find_members(
     redis: &cache::Redis,
-    repo: Arc<TalkRepository>,
+    repo: Repository,
     talk_id: &talk::Id,
 ) -> super::Result<HashSet<user::Sub>> {
     let talk_key = cache::Key::Talk(talk_id.to_owned());

@@ -5,7 +5,7 @@ use axum::extract::FromRef;
 use crate::auth::service::AuthServiceImpl;
 use crate::message::repository::MongoMessageRepository;
 use crate::message::service::MessageServiceImpl;
-use crate::talk::repository::TalkRepository;
+use crate::talk::repository::MongoTalkRepository;
 use crate::talk::service::{TalkService, TalkValidator};
 use crate::user::repository::MongoUserRepository;
 use crate::user::service::UserServiceImpl;
@@ -42,7 +42,7 @@ impl AppState {
             redis.clone(),
         ));
 
-        let talk_repo = TalkRepository::new(&db);
+        let talk_repo = Arc::new(MongoTalkRepository::new(&db));
         let message_repo = Arc::new(MongoMessageRepository::new(&db));
 
         let talk_validator = TalkValidator::new(talk_repo.clone(), redis.clone());

@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
 use axum::{
     Router,
@@ -6,6 +6,7 @@ use axum::{
     routing::{delete, get, post},
 };
 use log::error;
+use repository::TalkRepository;
 use serde::{Deserialize, Serialize};
 
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
@@ -19,6 +20,7 @@ pub mod repository;
 pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
+pub type Repository = Arc<dyn TalkRepository + Send + Sync>;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
