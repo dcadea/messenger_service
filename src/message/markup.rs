@@ -17,11 +17,10 @@ pub struct InputBlank<'a>(pub &'a talk::Id);
 impl Render for InputBlank<'_> {
     fn render(&self) -> Markup {
         let send_message_handler = format!(
-            r#"
+            r"
                 on htmx:afterRequest reset() me
-                on htmx:afterRequest go to the bottom of the {}
-            "#,
-            MESSAGE_LIST_TARGET
+                on htmx:afterRequest go to the bottom of the {MESSAGE_LIST_TARGET}
+            "
         );
 
         html! {
@@ -118,48 +117,47 @@ impl<'a> MessageItem<'a> {
     }
 
     fn belongs_to_user(&self) -> bool {
-        match self.logged_sub {
-            Some(sub) => self.msg.owner == *sub,
-            None => false,
+        if let Some(sub) = self.logged_sub {
+            self.msg.owner == *sub
+        } else {
+            false
         }
     }
 
     fn hx_trigger(&self) -> Option<&'a str> {
-        match self.is_last {
-            true => Some("intersect once"),
-            false => None,
+        if self.is_last {
+            Some("intersect once")
+        } else {
+            None
         }
     }
 
     fn hx_swap(&self) -> Option<&'a str> {
-        match self.is_last {
-            true => Some("afterend"),
-            false => None,
-        }
+        if self.is_last { Some("afterend") } else { None }
     }
 
     fn next_page(&self) -> Option<String> {
-        match self.is_last {
-            true => {
-                let path = format!(
-                    "/api/messages?limit=20&talk_id={}&end_time={}",
-                    self.msg.talk_id, self.msg.timestamp
-                );
-                Some(path)
-            }
-            false => None,
+        if self.is_last {
+            let path = format!(
+                "/api/messages?limit=20&talk_id={}&end_time={}",
+                self.msg.talk_id, self.msg.timestamp
+            );
+            Some(path)
+        } else {
+            None
         }
     }
 
     fn controls_handler(&self) -> Option<&str> {
-        match self.belongs_to_user() {
-            true => Some(
-                r#"
+        if self.belongs_to_user() {
+            Some(
+                r"
                 on mouseover remove .hidden from the first <div.message-controls/> in me
                 on mouseout add .hidden to the first <div.message-controls/> in me
-                "#,
-            ),
-            false => None,
+                ",
+            )
+        } else {
+            None
         }
     }
 }

@@ -30,7 +30,7 @@ impl IntoResponse for Error {
 
         let status = StatusCode::from(self);
         if status.is_server_error() {
-            error_message = "Internal server error".to_owned();
+            "Internal server error".clone_into(&mut error_message);
         }
 
         let mut response = ErrorResponse { error_message }.render().into_response();

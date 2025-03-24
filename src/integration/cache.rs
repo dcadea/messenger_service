@@ -21,7 +21,7 @@ impl Redis {
     {
         let mut con = self.con.clone();
         if let Err(e) = con.set::<&Key, V, ()>(&key, value).await {
-            error!("Failed to set for key {key}. Reason: {e:?}")
+            error!("Failed to set for key {key}. Reason: {e:?}");
         }
     }
 
@@ -31,7 +31,7 @@ impl Redis {
     {
         let mut con = self.con.clone();
         if let Err(e) = con.set_ex::<&Key, V, ()>(&key, value, key.ttl()).await {
-            error!("Failed to set_ex for key {key}. Reason: {e:?}")
+            error!("Failed to set_ex for key {key}. Reason: {e:?}");
         }
     }
 
@@ -41,10 +41,10 @@ impl Redis {
     {
         let mut con = self.con.clone();
         if let Err(e) = con.json_set::<&Key, &str, V, ()>(&key, "$", &value).await {
-            error!("Failed to json_set for key {key}. Reason: {e:?}")
+            error!("Failed to json_set for key {key}. Reason: {e:?}");
         }
 
-        self.expire(key).await
+        self.expire(key).await;
     }
 
     pub async fn sadd<V>(&self, key: Key, value: V)
@@ -53,7 +53,7 @@ impl Redis {
     {
         let mut con = self.con.clone();
         if let Err(e) = con.sadd::<&Key, V, ()>(&key, value).await {
-            error!("Failed to sadd for key {key}. Reason: {e:?}")
+            error!("Failed to sadd for key {key}. Reason: {e:?}");
         }
     }
 
@@ -63,7 +63,7 @@ impl Redis {
     {
         let mut con = self.con.clone();
         if let Err(e) = con.srem::<&Key, V, ()>(&key, value).await {
-            error!("Failed to srem for key {key}. Reason: {e:?}")
+            error!("Failed to srem for key {key}. Reason: {e:?}");
         }
     }
 
@@ -129,21 +129,21 @@ impl Redis {
     pub async fn del(&self, key: Key) {
         let mut con = self.con.clone();
         if let Err(e) = con.del::<&Key, ()>(&key).await {
-            error!("Failed to del key {key}. Reason: {e:?}")
+            error!("Failed to del key {key}. Reason: {e:?}");
         }
     }
 
     pub async fn expire_after(&self, key: Key, seconds: u64) {
         let mut con = self.con.clone();
         if let Err(e) = con.expire::<&Key, ()>(&key, seconds as i64).await {
-            error!("Failed to expire key {key}. Reason: {e:?}")
+            error!("Failed to expire key {key}. Reason: {e:?}");
         }
     }
 
     pub async fn expire(&self, key: Key) {
         let mut con = self.con.clone();
         if let Err(e) = con.expire::<&Key, ()>(&key, key.ttl() as i64).await {
-            error!("Failed to expire key {key}. Reason: {e:?}")
+            error!("Failed to expire key {key}. Reason: {e:?}");
         }
     }
 }
@@ -171,12 +171,11 @@ impl Config {
             .parse()
             .ok();
 
-        match (host, port) {
-            (Some(host), Some(port)) => Some(Self { host, port }),
-            _ => {
-                warn!("REDIS env is not configured");
-                None
-            }
+        if let (Some(host), Some(port)) = (host, port) {
+            Some(Self { host, port })
+        } else {
+            warn!("REDIS env is not configured");
+            None
         }
     }
 
@@ -187,7 +186,7 @@ impl Config {
         };
         let con = match client.get_connection_manager().await {
             Ok(con) => con,
-            Err(e) => panic!("Failed create Redis connection manager: {}", e),
+            Err(e) => panic!("Failed create Redis connection manager: {e}"),
         };
 
         Redis { con }

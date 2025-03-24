@@ -63,15 +63,13 @@ impl Env {
 
     pub fn allow_methods(&self) -> AllowMethods {
         match self {
-            Env::Local | Env::Dev => AllowMethods::any(),
-            Env::Stage | Env::Production => AllowMethods::any(),
+            Env::Local | Env::Dev | Env::Stage | Env::Production => AllowMethods::any(),
         }
     }
 
     pub fn allow_headers(&self) -> AllowHeaders {
         match self {
-            Env::Local | Env::Dev => AllowHeaders::any(),
-            Env::Stage | Env::Production => AllowHeaders::any(),
+            Env::Local | Env::Dev | Env::Stage | Env::Production => AllowHeaders::any(),
         }
     }
 }
@@ -94,7 +92,7 @@ impl Default for Config {
         let rust_log = env::var("RUST_LOG").unwrap_or("info".into());
         let level = LevelFilter::from_str(&rust_log).unwrap_or(LevelFilter::Info);
         let log_file = env::var("SERVICE_NAME")
-            .map(|pkg| format!("{}.log", pkg))
+            .map(|pkg| format!("{pkg}.log"))
             .unwrap_or("service.log".into());
 
         CombinedLogger::init(vec![
@@ -118,7 +116,7 @@ impl Default for Config {
                 "dev" => Env::Dev,
                 "stg" => Env::Stage,
                 "prod" => Env::Production,
-                _ => panic!("Invalid environment: {}", env),
+                _ => panic!("Invalid environment: {env}"),
             })
             .unwrap_or(Env::Local);
 
@@ -160,7 +158,7 @@ pub fn init_http_client() -> reqwest::Client {
     {
         Ok(client) => client,
         Err(e) => {
-            panic!("Failed to initialize HTTP client: {}", e)
+            panic!("Failed to initialize HTTP client: {e}")
         }
     }
 }

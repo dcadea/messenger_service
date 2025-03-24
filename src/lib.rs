@@ -59,7 +59,7 @@ pub mod markup {
         }
     }
 
-    fn base(w: Wrappable) -> Markup {
+    fn base(w: &Wrappable) -> Markup {
         html! {
             (DOCTYPE)
             html {
@@ -89,23 +89,18 @@ pub mod markup {
             }
         }
 
+        #[must_use]
         pub fn with_sse(mut self) -> Self {
             self.sse = true;
             self
         }
 
         fn hx_ext_sse(&self) -> Option<&str> {
-            match self.sse {
-                true => Some("sse"),
-                false => None,
-            }
+            if self.sse { Some("sse") } else { None }
         }
 
         fn sse_connect(&self) -> Option<&str> {
-            match self.sse {
-                true => Some("/sse"),
-                false => None,
-            }
+            if self.sse { Some("/sse") } else { None }
         }
     }
 
@@ -130,7 +125,7 @@ pub mod markup {
     pub async fn wrap_in_base(mut resp: Response) -> impl IntoResponse {
         if let Some(w) = resp.extensions_mut().remove::<Wrappable>() {
             resp.headers_mut().remove(CONTENT_LENGTH);
-            *resp.body_mut() = Body::new(base(w).into_string());
+            *resp.body_mut() = Body::new(base(&w).into_string());
             return resp;
         }
 
@@ -147,7 +142,7 @@ pub mod middleware {
         let req_id = req
             .headers()
             .get(X_REQUEST_ID)
-            .map(|id| id.to_owned())
+            .map(ToOwned::to_owned)
             .or_else(|| {
                 let req_id = &uuid::Uuid::now_v7().to_string();
                 HeaderValue::from_str(req_id).ok()

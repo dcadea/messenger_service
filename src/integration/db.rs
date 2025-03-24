@@ -32,19 +32,18 @@ impl Config {
             .ok();
         let db = env::var("MONGO_DB").unwrap_or_else(|_e| String::from("messenger"));
 
-        match (host, port) {
-            (Some(host), Some(port)) => Some(Self { host, port, db }),
-            _ => {
-                warn!("MONGO env is not configured");
-                None
-            }
+        if let (Some(host), Some(port)) = (host, port) {
+            Some(Self { host, port, db })
+        } else {
+            warn!("MONGO env is not configured");
+            None
         }
     }
 
     pub fn connect(&self) -> mongodb::Database {
         let options = mongodb::options::ClientOptions::builder()
             .hosts(vec![mongodb::options::ServerAddress::Tcp {
-                host: self.host.to_owned(),
+                host: self.host.clone(),
                 port: Some(self.port),
             }])
             .server_selection_timeout(Some(Duration::from_secs(2)))
@@ -53,7 +52,7 @@ impl Config {
 
         match mongodb::Client::with_options(options).map(|client| client.database(&self.db)) {
             Ok(db) => db,
-            Err(e) => panic!("Failed to connect to MongoDB: {}", e),
+            Err(e) => panic!("Failed to connect to MongoDB: {e}"),
         }
     }
 }

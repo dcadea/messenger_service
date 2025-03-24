@@ -76,7 +76,7 @@ impl MessageRepository for MongoMessageRepository {
         let result = self.col.insert_many(msgs).await?;
 
         if result.inserted_ids.len() != msgs.len() {
-            error!("not all messages persisted")
+            error!("not all messages persisted");
         }
 
         Ok(())

@@ -86,8 +86,7 @@ impl From<Error> for StatusCode {
         match e {
             Error::NotFound(_) => StatusCode::NOT_FOUND,
             Error::NotOwner => StatusCode::FORBIDDEN,
-            Error::EmptyText => StatusCode::BAD_REQUEST,
-            Error::IdNotPresent => StatusCode::BAD_REQUEST,
+            Error::EmptyText | Error::IdNotPresent => StatusCode::BAD_REQUEST,
             Error::Unexpected(_) | Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

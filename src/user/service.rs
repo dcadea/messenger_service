@@ -60,13 +60,12 @@ impl UserService for UserServiceImpl {
     async fn find_user_info(&self, sub: &Sub) -> super::Result<UserInfo> {
         let cached = self.find_cached_user_info(sub).await;
 
-        match cached {
-            Some(user_info) => Ok(user_info),
-            None => {
-                let user_info = self.repo.find_by_sub(sub).await?.into();
-                self.cache_user_info(&user_info).await;
-                Ok(user_info)
-            }
+        if let Some(user_info) = cached {
+            Ok(user_info)
+        } else {
+            let user_info = self.repo.find_by_sub(sub).await?.into();
+            self.cache_user_info(&user_info).await;
+            Ok(user_info)
         }
     }
 
@@ -79,7 +78,7 @@ impl UserService for UserServiceImpl {
             .repo
             .search_by_nickname(nickname, logged_nickname)
             .await?;
-        Ok(users.into_iter().map(|user| user.into()).collect())
+        Ok(users.into_iter().map(Into::into).collect())
     }
 
     async fn find_contacts(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
@@ -171,19 +170,19 @@ impl UserServiceImpl {
 
         let _: () = self
             .redis
-            .sadd(cache::Key::Contacts(sub.to_owned()), &contacts)
+            .sadd(cache::Key::Contacts(sub.clone()), &contacts)
             .await;
 
-        Ok(HashSet::from_iter(contacts.iter().cloned()))
+        Ok(contacts.iter().cloned().collect::<HashSet<_>>())
     }
 
     async fn cache_user_info(&self, user_info: &UserInfo) {
-        let user_info_key = cache::Key::UserInfo(user_info.sub.to_owned());
-        self.redis.json_set_ex(user_info_key, user_info).await
+        let user_info_key = cache::Key::UserInfo(user_info.sub.clone());
+        self.redis.json_set_ex(user_info_key, user_info).await;
     }
 
     async fn find_cached_user_info(&self, sub: &Sub) -> Option<UserInfo> {
-        let user_info_key = cache::Key::UserInfo(sub.to_owned());
+        let user_info_key = cache::Key::UserInfo(sub.clone());
         self.redis.json_get::<UserInfo>(user_info_key).await
     }
 }

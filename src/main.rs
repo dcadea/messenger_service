@@ -34,7 +34,7 @@ async fn main() {
             return;
         }
     };
-    let router = app(app_state.clone(), &config.env);
+    let router = app(&app_state, &config.env);
 
     let addr = config.env.addr();
     let ssl_config = config.env.ssl_config();
@@ -51,10 +51,10 @@ async fn main() {
                 .await
         }
     }
-    .expect("Failed to start server")
+    .expect("Failed to start server");
 }
 
-fn app(s: AppState, env: &Env) -> Router {
+fn app(s: &AppState, env: &Env) -> Router {
     let protected_router = Router::new()
         .merge(talk::pages(s.clone()))
         .merge(event::api(s.clone()))

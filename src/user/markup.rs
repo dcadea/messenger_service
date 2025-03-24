@@ -35,12 +35,11 @@ const SEARCH_RESULTS_TARGET: &str = "#search-results";
 impl Render for Search {
     fn render(&self) -> Markup {
         let search_handler = format!(
-            r#"on keyup
+            r"on keyup
                 if the event's key is 'Escape'
                     set value of me to ''
-                    remove children of {}
-            "#,
-            SEARCH_RESULTS_TARGET
+                    remove children of {SEARCH_RESULTS_TARGET}
+            "
         );
 
         html! {
@@ -147,10 +146,7 @@ impl Render for Icon<'_> {
     fn render(&self) -> Markup {
         match self {
             Self::OnlineIndicator(os) => {
-                let i_class = match os.online {
-                    true => "fa-solid",
-                    false => "fa-regular",
-                };
+                let i_class = if os.online { "fa-solid" } else { "fa-regular" };
 
                 html! {
                     i #(os.attr()) .(i_class) ."fa-circle text-green-600 mr-2 text-sm" {}

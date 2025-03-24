@@ -169,7 +169,7 @@ pub mod ws {
         loop {
             tokio::select! {
                 // close is notified => stop 'write' task
-                _ = close.notified() => break,
+                () = close.notified() => break,
 
                 // new message is received from subject => send it to the client
                 msg = msg_stream.next() => {
@@ -207,7 +207,7 @@ pub mod ws {
         loop {
             tokio::select! {
                 // close is notified => stop 'read' task
-                _ = close.notified() => break,
+                () = close.notified() => break,
 
                 // read next frame from WS connection
                 frame = receiver.next() => {

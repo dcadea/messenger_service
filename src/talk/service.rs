@@ -131,7 +131,7 @@ impl TalkService for TalkServiceImpl {
 
         let talk = Talk::new(Details::Group {
             name: name.into(),
-            picture: "".into(), // TODO: https://crates.io/crates/identicon-rs
+            picture: String::new(), // TODO: https://crates.io/crates/identicon-rs
             owner: logged_sub.clone(),
             members: members.into(),
         });

@@ -59,7 +59,7 @@ impl EventService for EventServiceImpl {
     }
 
     async fn publish_all(&self, s: &Subject<'_>, payloads: Vec<Bytes>) {
-        for p in payloads.into_iter() {
+        for p in payloads {
             self.publish(s, p).await;
         }
     }

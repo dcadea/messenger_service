@@ -48,15 +48,15 @@ impl Config {
     }
 
     pub fn init_client(&self) -> oauth2::basic::BasicClient {
-        let client_id = ClientId::new(self.client_id.to_owned());
-        let client_secret = ClientSecret::new(self.client_secret.to_owned());
-        let auth_url = AuthUrl::new(self.auth_url.to_owned()).expect("Invalid authorization URL");
-        let token_url = TokenUrl::new(self.token_url.to_owned()).expect("Invalid token URL");
+        let client_id = ClientId::new(self.client_id.clone());
+        let client_secret = ClientSecret::new(self.client_secret.clone());
+        let auth_url = AuthUrl::new(self.auth_url.clone()).expect("Invalid authorization URL");
+        let token_url = TokenUrl::new(self.token_url.clone()).expect("Invalid token URL");
         let redirect_url =
-            RedirectUrl::new(self.redirect_url.to_owned()).expect("Invalid redirect URL");
+            RedirectUrl::new(self.redirect_url.clone()).expect("Invalid redirect URL");
 
         let revocation_url =
-            RevocationUrl::new(self.revocation_url.to_owned()).expect("Invalid revocation URL");
+            RevocationUrl::new(self.revocation_url.clone()).expect("Invalid revocation URL");
 
         BasicClient::new(client_id, Some(client_secret), auth_url, Some(token_url))
             .set_redirect_uri(redirect_url)

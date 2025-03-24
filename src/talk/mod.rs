@@ -79,11 +79,11 @@ impl From<Error> for StatusCode {
         match e {
             Error::NotFound(_) => StatusCode::NOT_FOUND,
             Error::NotMember => StatusCode::FORBIDDEN,
-            Error::NotCreated => StatusCode::INTERNAL_SERVER_ERROR,
-            Error::NotDeleted => StatusCode::INTERNAL_SERVER_ERROR,
             Error::AlreadyExists => StatusCode::CONFLICT,
             Error::NotEnoughMembers(_) => StatusCode::BAD_REQUEST,
-            Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::NotCreated | Error::NotDeleted | Error::_MongoDB(_) => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
         }
     }
 }

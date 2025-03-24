@@ -32,7 +32,7 @@ impl AppState {
         let redis = cfg.redis.connect().await;
         let pubsub = cfg.pubsub.connect().await;
 
-        let auth_service = Arc::new(AuthServiceImpl::try_new(&cfg.idp, redis.clone())?);
+        let auth_service = Arc::new(AuthServiceImpl::try_new(&cfg.idp, redis.clone()));
         let event_service = Arc::new(EventServiceImpl::new(pubsub));
 
         let user_repo = Arc::new(MongoUserRepository::new(&db));

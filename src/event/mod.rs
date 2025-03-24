@@ -154,8 +154,7 @@ pub enum Error {
 impl From<Error> for StatusCode {
     fn from(e: Error) -> Self {
         match e {
-            Error::NotOwner => StatusCode::FORBIDDEN,
-            Error::NotRecipient => StatusCode::FORBIDDEN,
+            Error::NotOwner | Error::NotRecipient => StatusCode::FORBIDDEN,
             Error::_NatsSub(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

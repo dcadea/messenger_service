@@ -25,19 +25,18 @@ impl Config {
             .parse()
             .ok();
 
-        match (host, port) {
-            (Some(host), Some(port)) => Some(Self { host, port }),
-            _ => {
-                warn!("NATS env is not configured");
-                None
-            }
+        if let (Some(host), Some(port)) = (host, port) {
+            Some(Self { host, port })
+        } else {
+            warn!("NATS env is not configured");
+            None
         }
     }
 
     pub async fn connect(&self) -> async_nats::Client {
         match async_nats::connect(&format!("{}:{}", self.host, self.port)).await {
             Ok(con) => con,
-            Err(e) => panic!("Failed to connect to NATS: {}", e),
+            Err(e) => panic!("Failed to connect to NATS: {e}"),
         }
     }
 }

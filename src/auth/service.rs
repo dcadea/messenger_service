@@ -52,7 +52,7 @@ pub struct AuthServiceImpl {
 }
 
 impl AuthServiceImpl {
-    pub fn try_new(cfg: &idp::Config, redis: cache::Redis) -> super::Result<Self> {
+    pub fn try_new(cfg: &idp::Config, redis: cache::Redis) -> Self {
         let mut jwt_validator = Validation::new(jsonwebtoken::Algorithm::RS256);
         jwt_validator.set_required_spec_claims(&cfg.required_claims);
         jwt_validator.set_issuer(&[&cfg.issuer]);
@@ -81,7 +81,7 @@ impl AuthServiceImpl {
             }
         });
 
-        Ok(service)
+        service
     }
 }
 
@@ -182,12 +182,11 @@ impl AuthService for AuthServiceImpl {
     }
 
     async fn find_token(&self, sid: &str) -> Option<String> {
-        match Uuid::parse_str(sid) {
-            Ok(sid) => self.redis.get::<String>(cache::Key::Session(sid)).await,
-            Err(_) => {
-                warn!("Could not find token for sid: {sid}");
-                None
-            }
+        if let Ok(sid) = Uuid::parse_str(sid) {
+            self.redis.get::<String>(cache::Key::Session(sid)).await
+        } else {
+            warn!("Could not find token for sid: {sid}");
+            None
         }
     }
 }
@@ -195,7 +194,7 @@ impl AuthService for AuthServiceImpl {
 impl AuthServiceImpl {
     async fn cache_csrf(&self, csrf: &str) {
         let csrf_key = cache::Key::Csrf(csrf.into());
-        self.redis.set_ex(csrf_key, csrf).await
+        self.redis.set_ex(csrf_key, csrf).await;
     }
 
     async fn validate_state(&self, csrf: &str) -> super::Result<()> {
@@ -218,7 +217,7 @@ async fn fetch_jwk_decoding_keys(
 
     let mut jwk_decoding_keys = HashMap::new();
 
-    for jwk in jwk_set.keys.iter() {
+    for jwk in &jwk_set.keys {
         if let Some(kid) = jwk.clone().common.key_id {
             let key = DecodingKey::from_jwk(jwk)?;
             jwk_decoding_keys.insert(kid, key);
