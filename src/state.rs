@@ -4,15 +4,15 @@ use axum::extract::FromRef;
 
 use crate::auth::service::AuthServiceImpl;
 use crate::message::repository::MongoMessageRepository;
+use crate::message::service::MessageServiceImpl;
 use crate::talk::repository::TalkRepository;
 use crate::talk::service::{TalkService, TalkValidator};
 use crate::user::repository::MongoUserRepository;
 use crate::user::service::UserServiceImpl;
-use crate::{auth, user};
+use crate::{auth, message, user};
 
 use super::event::service::EventService;
 use super::integration;
-use super::message::service::MessageService;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -22,7 +22,7 @@ pub struct AppState {
     user_service: user::Service,
     talk_service: TalkService,
     talk_validator: TalkValidator,
-    message_service: MessageService,
+    message_service: message::Service,
     event_service: EventService,
 }
 
@@ -55,12 +55,12 @@ impl AppState {
             redis.clone(),
         );
 
-        let message_service = MessageService::new(
+        let message_service = Arc::new(MessageServiceImpl::new(
             message_repo.clone(),
             talk_service.clone(),
             talk_validator.clone(),
             event_service.clone(),
-        );
+        ));
 
         Ok(Self {
             cfg,
@@ -104,7 +104,7 @@ impl FromRef<AppState> for TalkValidator {
     }
 }
 
-impl FromRef<AppState> for MessageService {
+impl FromRef<AppState> for message::Service {
     fn from_ref(s: &AppState) -> Self {
         s.message_service.clone()
     }

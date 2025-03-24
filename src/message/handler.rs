@@ -14,7 +14,6 @@ pub(super) mod api {
 
     use crate::message::markup;
     use crate::message::model::{LastMessage, Message};
-    use crate::message::service::MessageService;
 
     #[derive(Deserialize)]
     pub struct CreateParams {
@@ -24,7 +23,7 @@ pub(super) mod api {
 
     pub async fn create(
         user_info: Extension<UserInfo>,
-        message_service: State<MessageService>,
+        message_service: State<message::Service>,
         talk_service: State<TalkService>,
         Form(params): Form<CreateParams>,
     ) -> crate::Result<Markup> {
@@ -54,7 +53,7 @@ pub(super) mod api {
         Query(params): Query<FindAllParams>,
         talk_validator: State<TalkValidator>,
         talk_service: State<TalkService>,
-        message_service: State<MessageService>,
+        message_service: State<message::Service>,
     ) -> crate::Result<impl IntoResponse> {
         let talk_id = params
             .talk_id
@@ -83,7 +82,7 @@ pub(super) mod api {
 
     pub async fn update(
         user_info: Extension<UserInfo>,
-        message_service: State<MessageService>,
+        message_service: State<message::Service>,
         Form(params): Form<UpdateParams>,
     ) -> crate::Result<impl IntoResponse> {
         let msg = message_service
@@ -100,7 +99,7 @@ pub(super) mod api {
     pub async fn delete(
         user_info: Extension<UserInfo>,
         Path(id): Path<message::Id>,
-        message_service: State<MessageService>,
+        message_service: State<message::Service>,
         talk_service: State<TalkService>,
     ) -> crate::Result<()> {
         if let Some(deleted_msg) = message_service.delete(&user_info.sub, &id).await? {
@@ -133,7 +132,7 @@ pub(super) mod templates {
     use serde::Deserialize;
 
     use crate::{
-        message::{self, markup, service::MessageService},
+        message::{self, markup},
         talk,
         user::model::UserInfo,
     };
@@ -155,7 +154,7 @@ pub(super) mod templates {
     pub async fn message_input_edit(
         user_info: Extension<UserInfo>,
         params: Query<EditParams>,
-        message_service: State<MessageService>,
+        message_service: State<message::Service>,
     ) -> crate::Result<Markup> {
         let msg = message_service.find_by_id(&params.message_id).await?;
 

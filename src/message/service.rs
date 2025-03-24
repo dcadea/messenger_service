@@ -12,8 +12,42 @@ use super::model::Message;
 
 const MAX_MESSAGE_LENGTH: usize = 1000;
 
+#[async_trait::async_trait]
+pub trait MessageService {
+    async fn create(&self, msg: &Message) -> super::Result<Vec<Message>>;
+
+    async fn find_by_id(&self, id: &message::Id) -> super::Result<Message>;
+
+    async fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<Message>>;
+
+    async fn update(
+        &self,
+        logged_sub: &user::Sub,
+        id: &message::Id,
+        text: &str,
+    ) -> super::Result<Message>;
+
+    async fn delete(
+        &self,
+        logged_sub: &user::Sub,
+        id: &message::Id,
+    ) -> super::Result<Option<Message>>;
+
+    async fn find_by_talk_id_and_params(
+        &self,
+        logged_sub: &user::Sub,
+        talk_id: &talk::Id,
+        limit: Option<usize>,
+        end_time: Option<i64>,
+    ) -> super::Result<(Vec<Message>, usize)>;
+
+    async fn mark_as_seen(&self, logged_sub: &user::Sub, msgs: &[Message]) -> super::Result<usize>;
+
+    async fn is_last_message(&self, msg: &Message) -> super::Result<bool>;
+}
+
 #[derive(Clone)]
-pub struct MessageService {
+pub struct MessageServiceImpl {
     repo: Repository,
     talk_service: Arc<TalkService>,
     talk_validator: Arc<TalkValidator>,
@@ -21,7 +55,7 @@ pub struct MessageService {
     splitter: Arc<TextSplitter<Characters>>,
 }
 
-impl MessageService {
+impl MessageServiceImpl {
     pub fn new(
         repo: Repository,
         talk_service: TalkService,
@@ -38,8 +72,9 @@ impl MessageService {
     }
 }
 
-impl MessageService {
-    pub async fn create(&self, msg: &Message) -> super::Result<Vec<Message>> {
+#[async_trait::async_trait]
+impl MessageService for MessageServiceImpl {
+    async fn create(&self, msg: &Message) -> super::Result<Vec<Message>> {
         if msg.text.is_empty() {
             return Err(super::Error::EmptyText);
         }
@@ -61,15 +96,15 @@ impl MessageService {
         Ok(msgs)
     }
 
-    pub async fn find_by_id(&self, id: &message::Id) -> super::Result<Message> {
+    async fn find_by_id(&self, id: &message::Id) -> super::Result<Message> {
         self.repo.find_by_id(id).await
     }
 
-    pub async fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<Message>> {
+    async fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<Message>> {
         self.repo.find_most_recent(talk_id).await
     }
 
-    pub async fn update(
+    async fn update(
         &self,
         logged_sub: &user::Sub,
         id: &message::Id,
@@ -88,7 +123,7 @@ impl MessageService {
         Ok(msg)
     }
 
-    pub async fn delete(
+    async fn delete(
         &self,
         logged_sub: &user::Sub,
         id: &message::Id,
@@ -113,13 +148,11 @@ impl MessageService {
 
         Ok(None)
     }
-}
 
-impl MessageService {
     // This method is designed to be callen when recipient requests messages related to selected talk.
     // It also marks all messages as seen where logged user is recipient.
     // Due to this side effect consider using other methods for read-only messages retrieval.
-    pub async fn find_by_talk_id_and_params(
+    async fn find_by_talk_id_and_params(
         &self,
         logged_sub: &user::Sub,
         talk_id: &talk::Id,
@@ -142,11 +175,7 @@ impl MessageService {
         Ok((msgs, seen_qty))
     }
 
-    pub async fn mark_as_seen(
-        &self,
-        logged_sub: &user::Sub,
-        msgs: &[Message],
-    ) -> super::Result<usize> {
+    async fn mark_as_seen(&self, logged_sub: &user::Sub, msgs: &[Message]) -> super::Result<usize> {
         if msgs.is_empty() {
             debug!("attempting to mark as seen but messages list is empty");
             return Ok(0);
@@ -197,7 +226,7 @@ impl MessageService {
         Ok(seen_qty)
     }
 
-    pub async fn is_last_message(&self, msg: &Message) -> super::Result<bool> {
+    async fn is_last_message(&self, msg: &Message) -> super::Result<bool> {
         let talk = self
             .talk_service
             .find_by_id(&msg.talk_id)
@@ -215,7 +244,7 @@ impl MessageService {
     }
 }
 
-impl MessageService {
+impl MessageServiceImpl {
     async fn notify_new(&self, talk_id: &talk::Id, owner: &user::Sub, msgs: &[Message]) {
         match self.talk_service.find_recipients(talk_id, owner).await {
             Ok(recipients) => {
