@@ -7,7 +7,7 @@ use axum_extra::extract::CookieJar;
 use oauth2::AccessToken;
 
 use crate::auth;
-use crate::user::{self, service::UserService};
+use crate::user;
 
 pub async fn validate_sid(
     auth_service: State<auth::Service>,
@@ -31,7 +31,7 @@ pub async fn validate_sid(
 }
 
 pub async fn authorize(
-    user_service: State<UserService>,
+    user_service: State<user::Service>,
     auth_service: State<auth::Service>,
     jar: CookieJar,
     mut req: Request,

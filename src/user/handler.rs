@@ -3,7 +3,7 @@ pub(super) mod api {
     use maud::{Markup, Render, html};
     use serde::Deserialize;
 
-    use crate::user::{markup, model::UserInfo, service::UserService};
+    use crate::user::{self, markup, model::UserInfo};
 
     #[derive(Deserialize)]
     pub struct FindParams {
@@ -12,7 +12,7 @@ pub(super) mod api {
 
     pub async fn search(
         user_info: Extension<UserInfo>,
-        user_service: State<UserService>,
+        user_service: State<user::Service>,
         params: Form<FindParams>,
     ) -> crate::Result<Markup> {
         if params.nickname.is_empty() {

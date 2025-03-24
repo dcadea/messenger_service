@@ -2,24 +2,24 @@ use std::sync::Arc;
 
 use axum::extract::FromRef;
 
-use crate::auth;
 use crate::auth::service::AuthServiceImpl;
 use crate::talk::repository::TalkRepository;
 use crate::talk::service::{TalkService, TalkValidator};
 use crate::user::repository::MongoUserRepository;
+use crate::user::service::UserServiceImpl;
+use crate::{auth, user};
 
 use super::event::service::EventService;
 use super::integration;
 use super::message::repository::MessageRepository;
 use super::message::service::MessageService;
-use super::user::service::UserService;
 
 #[derive(Clone)]
 pub struct AppState {
     cfg: integration::Config,
 
     auth_service: auth::Service,
-    user_service: UserService,
+    user_service: user::Service,
     talk_service: TalkService,
     talk_validator: TalkValidator,
     message_service: MessageService,
@@ -32,11 +32,15 @@ impl AppState {
         let redis = cfg.redis.connect().await;
         let pubsub = cfg.pubsub.connect().await;
 
-        let auth_service = AuthServiceImpl::try_new(&cfg.idp, redis.clone())?;
+        let auth_service = Arc::new(AuthServiceImpl::try_new(&cfg.idp, redis.clone())?);
         let event_service = EventService::new(pubsub);
 
         let user_repo = Arc::new(MongoUserRepository::new(&db));
-        let user_service = UserService::new(user_repo, event_service.clone(), redis.clone());
+        let user_service = Arc::new(UserServiceImpl::new(
+            user_repo,
+            event_service.clone(),
+            redis.clone(),
+        ));
 
         let talk_repo = TalkRepository::new(&db);
         let message_repo = MessageRepository::new(&db);
@@ -60,7 +64,7 @@ impl AppState {
 
         Ok(Self {
             cfg,
-            auth_service: Arc::new(auth_service),
+            auth_service,
             user_service,
             talk_service,
             talk_validator,
@@ -71,18 +75,18 @@ impl AppState {
 }
 
 impl FromRef<AppState> for integration::Config {
-    fn from_ref(s: &AppState) -> integration::Config {
+    fn from_ref(s: &AppState) -> Self {
         s.cfg.clone()
     }
 }
 
 impl FromRef<AppState> for auth::Service {
-    fn from_ref(s: &AppState) -> auth::Service {
+    fn from_ref(s: &AppState) -> Self {
         s.auth_service.clone()
     }
 }
 
-impl FromRef<AppState> for UserService {
+impl FromRef<AppState> for user::Service {
     fn from_ref(s: &AppState) -> Self {
         s.user_service.clone()
     }

@@ -5,6 +5,7 @@ use log::error;
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use repository::UserRepository;
 use serde::{Deserialize, Serialize};
+use service::UserService;
 
 use crate::state::AppState;
 
@@ -16,6 +17,7 @@ pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
 pub type Repository = Arc<dyn UserRepository + Send + Sync>;
+pub type Service = Arc<dyn UserService + Send + Sync>;
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);

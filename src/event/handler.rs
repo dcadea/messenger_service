@@ -3,7 +3,6 @@ pub mod sse {
     use crate::event::{Notification, Subject};
     use crate::user;
     use crate::user::model::UserInfo;
-    use crate::user::service::UserService;
     use async_stream;
     use axum::Extension;
     use axum::extract::State;
@@ -16,7 +15,7 @@ pub mod sse {
 
     pub async fn notifications(
         Extension(user_info): Extension<UserInfo>,
-        State(user_service): State<UserService>,
+        State(user_service): State<user::Service>,
         State(event_service): State<EventService>,
     ) -> sse::Sse<impl Stream<Item = Result<sse::Event, Infallible>>> {
         let sub = user_info.sub;
@@ -53,7 +52,7 @@ pub mod sse {
         )
     }
 
-    struct OnlineStatusDropper<'a>(&'a user::Sub, &'a UserService);
+    struct OnlineStatusDropper<'a>(&'a user::Sub, &'a user::Service);
 
     impl Drop for OnlineStatusDropper<'_> {
         fn drop(&mut self) {

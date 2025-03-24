@@ -11,14 +11,13 @@ use crate::integration::cache;
 use crate::message::model::LastMessage;
 use crate::message::repository::MessageRepository;
 use crate::user::model::UserInfo;
-use crate::user::service::UserService;
 use crate::{event, talk, user};
 
 #[derive(Clone)]
 pub struct TalkService {
     repo: Arc<TalkRepository>,
     validator: Arc<TalkValidator>,
-    user_service: Arc<UserService>,
+    user_service: user::Service,
     event_service: Arc<EventService>,
     message_repo: Arc<MessageRepository>,
     redis: cache::Redis,
@@ -28,7 +27,7 @@ impl TalkService {
     pub fn new(
         repo: TalkRepository,
         validator: TalkValidator,
-        user_service: UserService,
+        user_service: user::Service,
         event_service: EventService,
         message_repo: MessageRepository,
         redis: cache::Redis,
@@ -36,7 +35,7 @@ impl TalkService {
         Self {
             repo: Arc::new(repo),
             validator: Arc::new(validator),
-            user_service: Arc::new(user_service),
+            user_service: user_service.clone(),
             event_service: Arc::new(event_service),
             message_repo: Arc::new(message_repo),
             redis,

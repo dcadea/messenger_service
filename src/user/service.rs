@@ -11,14 +11,39 @@ use crate::user::model::{User, UserInfo};
 use super::model::OnlineStatus;
 use super::{Repository, Sub};
 
+#[async_trait::async_trait]
+pub trait UserService {
+    async fn create(&self, user: &User) -> super::Result<()>;
+
+    async fn find_user_info(&self, sub: &Sub) -> super::Result<UserInfo>;
+
+    async fn search_user_info(
+        &self,
+        nickname: &str,
+        logged_nickname: &str,
+    ) -> super::Result<Vec<UserInfo>>;
+
+    async fn find_contacts(&self, sub: &Sub) -> super::Result<HashSet<Sub>>;
+
+    // TODO: revisit this
+    async fn _create_contact(&self, subs: &[Sub; 2]) -> super::Result<()>;
+
+    // TODO: revisit this
+    async fn _delete_contact(&self, subs: &[Sub; 2]) -> super::Result<()>;
+
+    async fn notify_online(&self, sub: &Sub);
+
+    async fn notify_offline(&self, sub: &Sub);
+}
+
 #[derive(Clone)]
-pub struct UserService {
+pub struct UserServiceImpl {
     repo: Repository,
     event_service: Arc<EventService>,
     redis: cache::Redis,
 }
 
-impl UserService {
+impl UserServiceImpl {
     pub fn new(repo: Repository, event_service: EventService, redis: cache::Redis) -> Self {
         Self {
             repo: repo.clone(),
@@ -28,12 +53,13 @@ impl UserService {
     }
 }
 
-impl UserService {
-    pub async fn create(&self, user: &User) -> super::Result<()> {
+#[async_trait::async_trait]
+impl UserService for UserServiceImpl {
+    async fn create(&self, user: &User) -> super::Result<()> {
         self.repo.insert(user).await
     }
 
-    pub async fn find_user_info(&self, sub: &Sub) -> super::Result<UserInfo> {
+    async fn find_user_info(&self, sub: &Sub) -> super::Result<UserInfo> {
         let cached = self.find_cached_user_info(sub).await;
 
         match cached {
@@ -46,7 +72,7 @@ impl UserService {
         }
     }
 
-    pub async fn search_user_info(
+    async fn search_user_info(
         &self,
         nickname: &str,
         logged_nickname: &str,
@@ -58,7 +84,7 @@ impl UserService {
         Ok(users.into_iter().map(|user| user.into()).collect())
     }
 
-    pub async fn find_contacts(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
+    async fn find_contacts(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
         let contacts = self
             .redis
             .smembers::<HashSet<Sub>>(cache::Key::Contacts(sub.to_owned()))
@@ -71,7 +97,7 @@ impl UserService {
     }
 
     // TODO: revisit this
-    pub async fn _create_contact(&self, subs: &[Sub; 2]) -> super::Result<()> {
+    async fn _create_contact(&self, subs: &[Sub; 2]) -> super::Result<()> {
         let me = &subs[0];
         let you = &subs[1];
         assert_ne!(me, you);
@@ -87,7 +113,7 @@ impl UserService {
     }
 
     // TODO: revisit this
-    pub async fn _delete_contact(&self, subs: &[Sub; 2]) -> super::Result<()> {
+    async fn _delete_contact(&self, subs: &[Sub; 2]) -> super::Result<()> {
         let me = &subs[0];
         let you = &subs[1];
         assert_ne!(me, you);
@@ -103,18 +129,18 @@ impl UserService {
 
         Ok(())
     }
-}
 
-// notifications
-impl UserService {
-    pub async fn notify_online(&self, sub: &Sub) {
+    async fn notify_online(&self, sub: &Sub) {
         self.notify_online_status_change(sub, true).await;
     }
 
-    pub async fn notify_offline(&self, sub: &Sub) {
+    async fn notify_offline(&self, sub: &Sub) {
         self.notify_online_status_change(sub, false).await;
     }
+}
 
+// notifications
+impl UserServiceImpl {
     async fn notify_online_status_change(&self, sub: &Sub, online: bool) {
         match self.repo.find_contacts_for_sub(sub).await {
             Ok(contact) => {
@@ -137,7 +163,7 @@ impl UserService {
 }
 
 // cache operations
-impl UserService {
+impl UserServiceImpl {
     async fn cache_contacts(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
         let contacts = self.repo.find_contacts_for_sub(sub).await?;
 
