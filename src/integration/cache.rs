@@ -135,15 +135,27 @@ impl Redis {
 
     pub async fn expire_after(&self, key: Key, seconds: u64) {
         let mut con = self.con.clone();
-        if let Err(e) = con.expire::<&Key, ()>(&key, seconds as i64).await {
-            error!("Failed to expire key {key}. Reason: {e:?}");
+
+        match i64::try_from(seconds) {
+            Ok(s) => {
+                if let Err(e) = con.expire::<&Key, ()>(&key, s).await {
+                    error!("Failed to expire key {key}. Reason: {e:?}");
+                }
+            }
+            Err(e) => error!("Failed to cast to i64: {e:?}"),
         }
     }
 
     pub async fn expire(&self, key: Key) {
         let mut con = self.con.clone();
-        if let Err(e) = con.expire::<&Key, ()>(&key, key.ttl() as i64).await {
-            error!("Failed to expire key {key}. Reason: {e:?}");
+
+        match i64::try_from(key.ttl()) {
+            Ok(ttl) => {
+                if let Err(e) = con.expire::<&Key, ()>(&key, ttl).await {
+                    error!("Failed to expire key {key}. Reason: {e:?}");
+                }
+            }
+            Err(e) => error!("Failed to cast to i64: {e:?}"),
         }
     }
 }
@@ -206,12 +218,10 @@ impl Key {
     /// Returns a time-to-live value in seconds for the key.
     pub fn ttl(&self) -> u64 {
         match self {
-            Key::UserInfo(_) => 3600,
-            Key::Contacts(_) => u64::MAX,
-            Key::Talk(_) => 3600,
             // Just in case if token response does not provide an expiration claim
-            // fallback with this value
-            Key::Session(_) => 3600,
+            // fallback with 3600 for Key::Session
+            Key::UserInfo(_) | Key::Talk(_) | Key::Session(_) => 3600,
+            Key::Contacts(_) => u64::MAX,
             // Since most of IDPs don't provide a code exchange TTL through
             // introspection endpoint - we set a limit of 120 seconds.
             Key::Csrf(_) => 120,

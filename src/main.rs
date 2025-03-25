@@ -94,6 +94,6 @@ fn app(s: &AppState, env: &Env) -> Router {
                         .allow_methods(env.allow_methods())
                         .allow_headers(env.allow_headers()),
                 )
-                .layer(map_response(wrap_in_base)),
+                .layer(map_response(async |r| wrap_in_base(r))),
         )
 }

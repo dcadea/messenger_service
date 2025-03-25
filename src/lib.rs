@@ -122,7 +122,7 @@ pub mod markup {
         }
     }
 
-    pub async fn wrap_in_base(mut resp: Response) -> impl IntoResponse {
+    pub fn wrap_in_base(mut resp: Response) -> impl IntoResponse {
         if let Some(w) = resp.extensions_mut().remove::<Wrappable>() {
             resp.headers_mut().remove(CONTENT_LENGTH);
             *resp.body_mut() = Body::new(base(&w).into_string());

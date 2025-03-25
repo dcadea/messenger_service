@@ -35,7 +35,7 @@ pub trait MessageService {
         &self,
         logged_sub: &user::Sub,
         talk_id: &talk::Id,
-        limit: Option<usize>,
+        limit: Option<i64>,
         end_time: Option<i64>,
     ) -> super::Result<(Vec<Message>, usize)>;
 
@@ -154,7 +154,7 @@ impl MessageService for MessageServiceImpl {
         &self,
         logged_sub: &user::Sub,
         talk_id: &talk::Id,
-        limit: Option<usize>,
+        limit: Option<i64>,
         end_time: Option<i64>,
     ) -> super::Result<(Vec<Message>, usize)> {
         let msgs = match (limit, end_time) {

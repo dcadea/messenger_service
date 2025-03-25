@@ -63,7 +63,7 @@ pub enum Error {
     _Reqwest(#[from] reqwest::Error),
 
     #[error("unexpected error happened: {0}")]
-    _Unexpected(String),
+    Unexpected(String),
 }
 
 impl From<Error> for StatusCode {
@@ -76,7 +76,7 @@ impl From<Error> for StatusCode {
             | Error::_JsonWebtoken(_)
             | Error::_Uuid(_)
             | Error::_Reqwest(_)
-            | Error::_Unexpected(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            | Error::Unexpected(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }

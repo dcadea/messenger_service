@@ -21,7 +21,7 @@ pub trait MessageRepository {
     async fn find_by_talk_id_limited(
         &self,
         talk_id: &talk::Id,
-        limit: usize,
+        limit: i64,
     ) -> super::Result<Vec<Message>>;
 
     async fn find_by_talk_id_before(
@@ -33,7 +33,7 @@ pub trait MessageRepository {
     async fn find_by_talk_id_limited_before(
         &self,
         talk_id: &talk::Id,
-        limit: usize,
+        limit: i64,
         before: i64,
     ) -> super::Result<Vec<Message>>;
 
@@ -104,13 +104,13 @@ impl MessageRepository for MongoMessageRepository {
     async fn find_by_talk_id_limited(
         &self,
         talk_id: &talk::Id,
-        limit: usize,
+        limit: i64,
     ) -> super::Result<Vec<Message>> {
         let cursor = self
             .col
             .find(doc! {"talk_id": talk_id})
             .sort(doc! {"timestamp": -1})
-            .limit(limit as i64)
+            .limit(limit)
             .await?;
 
         let messages = cursor.try_collect::<Vec<Message>>().await?;
@@ -140,7 +140,7 @@ impl MessageRepository for MongoMessageRepository {
     async fn find_by_talk_id_limited_before(
         &self,
         talk_id: &talk::Id,
-        limit: usize,
+        limit: i64,
         before: i64,
     ) -> super::Result<Vec<Message>> {
         let cursor = self
@@ -150,7 +150,7 @@ impl MessageRepository for MongoMessageRepository {
                 "timestamp": {"$lt": before}
             })
             .sort(doc! {"timestamp": -1})
-            .limit(limit as i64)
+            .limit(limit)
             .await?;
 
         let msgs = cursor.try_collect::<Vec<Message>>().await?;

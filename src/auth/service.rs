@@ -126,7 +126,7 @@ impl AuthService for AuthServiceImpl {
 
                 Ok((access_token, expires_in))
             }
-            Err(e) => Err(super::Error::_Unexpected(e.to_string())),
+            Err(e) => Err(super::Error::Unexpected(e.to_string())),
         }
     }
 

@@ -44,7 +44,7 @@ pub(super) mod api {
     pub struct FindAllParams {
         talk_id: Option<talk::Id>,
         end_time: Option<i64>,
-        limit: Option<usize>,
+        limit: Option<i64>,
     }
 
     pub async fn find_all(
