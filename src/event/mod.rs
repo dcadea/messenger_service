@@ -122,7 +122,7 @@ impl Render for Message {
                         "message deleted..."
                     }
                 },
-                Message::Seen(msg) => div #(msg._id.attr()) hx-swap-oob="beforeend" {
+                Message::Seen(msg) => div #(msg.id.attr()) hx-swap-oob="beforeend" {
                     (message::markup::Icon::Seen)
                 },
             }

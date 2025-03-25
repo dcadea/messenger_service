@@ -6,7 +6,8 @@ use super::Id;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Talk {
-    pub _id: Id,
+    #[serde(rename = "_id")]
+    pub id: Id,
     pub details: Details,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_message: Option<LastMessage>,
@@ -15,7 +16,7 @@ pub struct Talk {
 impl Talk {
     pub fn new(details: Details) -> Self {
         Self {
-            _id: Id::random(),
+            id: Id::random(),
             details,
             last_message: None,
         }

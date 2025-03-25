@@ -6,7 +6,8 @@ use super::Id;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Message {
-    pub _id: Id,
+    #[serde(rename = "_id")]
+    pub id: Id,
     pub talk_id: talk::Id,
     pub owner: user::Sub,
     pub text: String,
@@ -17,7 +18,7 @@ pub struct Message {
 impl Message {
     pub fn new(talk_id: talk::Id, owner: user::Sub, text: impl Into<String>) -> Self {
         Self {
-            _id: Id::random(),
+            id: Id::random(),
             talk_id,
             owner,
             text: text.into(),
@@ -28,7 +29,7 @@ impl Message {
 
     pub fn with_random_id(&self) -> Self {
         Self {
-            _id: Id::random(),
+            id: Id::random(),
             ..self.clone()
         }
     }
@@ -53,7 +54,7 @@ pub struct LastMessage {
 impl From<&Message> for LastMessage {
     fn from(msg: &Message) -> Self {
         Self {
-            id: msg._id.clone(),
+            id: msg.id.clone(),
             text: msg.text.clone(),
             owner: msg.owner.clone(),
             timestamp: msg.timestamp,

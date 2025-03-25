@@ -273,7 +273,7 @@ impl TalkServiceImpl {
         };
 
         TalkDto {
-            id: t._id,
+            id: t.id,
             picture,
             name,
             details,

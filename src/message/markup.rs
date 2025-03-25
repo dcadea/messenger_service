@@ -175,7 +175,7 @@ impl Render for MessageItem<'_> {
             DateTime::from_timestamp(self.msg.timestamp, 0).map(|dt| dt.format("%H:%M"));
 
         html! {
-            div #(self.msg._id.attr())
+            div #(self.msg.id.attr())
                 .(MESSAGE_CLASS)
                 .justify-end[belongs_to_user]
                 hx-trigger=[self.hx_trigger()]
@@ -185,7 +185,7 @@ impl Render for MessageItem<'_> {
             {
                 @if belongs_to_user {
                     div ."message-controls hidden pb-2" {
-                        (Icon::Delete(&self.msg._id))
+                        (Icon::Delete(&self.msg.id))
                         (Icon::Edit(&self.msg))
                     }
 
@@ -305,7 +305,7 @@ impl Render for Icon<'_> {
             @match self {
                 Self::Edit(msg) =>{
                     i ."fa-pen fa-solid ml-2 text-green-700 cursor-pointer"
-                        hx-get={"/templates/messages/input/edit?message_id=" (msg._id)}
+                        hx-get={"/templates/messages/input/edit?message_id=" (msg.id)}
                         hx-target=(MESSAGE_INPUT_TARGET)
                         hx-swap="outerHTML" {}
                 },
@@ -410,7 +410,7 @@ mod test {
         let logged_sub = "google|jora";
         let msg = Message::new(talk_id, user::Sub(logged_sub.into()), "Lorem ipsum");
 
-        let msg_id = &msg._id;
+        let msg_id = &msg.id;
         let msg_timestamp = DateTime::from_timestamp(msg.timestamp, 0)
             .map(|dt| dt.format("%H:%M"))
             .unwrap();
@@ -446,7 +446,7 @@ mod test {
         let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
         let msg = Message::new(talk_id, user::Sub("auth0|valera".into()), "Lorem ipsum");
 
-        let msg_id = &msg._id;
+        let msg_id = &msg.id;
         let msg_timestamp = DateTime::from_timestamp(msg.timestamp, 0)
             .map(|dt| dt.format("%H:%M"))
             .unwrap();
@@ -474,7 +474,7 @@ mod test {
         let logged_sub = user::Sub("google|jora".into());
 
         let msg1 = Message::new(talk_id.clone(), logged_sub.clone(), "Lorem ipsum");
-        let msg1_id = &msg1._id;
+        let msg1_id = &msg1.id;
         let msg1_timestamp = DateTime::from_timestamp(msg1.timestamp, 0)
             .map(|dt| dt.format("%H:%M"))
             .unwrap();
@@ -484,7 +484,7 @@ mod test {
             user::Sub("auth0|valera".into()),
             "Sed ut perspiciatis",
         );
-        let msg2_id = &msg2._id;
+        let msg2_id = &msg2.id;
         let msg2_timestamp = DateTime::from_timestamp(msg2.timestamp, 0)
             .map(|dt| dt.format("%H:%M"))
             .unwrap();
@@ -527,7 +527,7 @@ mod test {
         let logged_sub = user::Sub("google|jora".into());
 
         let msg1 = Message::new(talk_id.clone(), logged_sub.clone(), "Lorem ipsum");
-        let msg1_id = &msg1._id;
+        let msg1_id = &msg1.id;
         let msg1_timestamp = DateTime::from_timestamp(msg1.timestamp, 0)
             .map(|dt| dt.format("%H:%M"))
             .unwrap();
@@ -537,7 +537,7 @@ mod test {
             user::Sub("auth0|valera".into()),
             "Sed ut perspiciatis",
         );
-        let msg2_id = &msg2._id;
+        let msg2_id = &msg2.id;
         let msg2_timestamp = DateTime::from_timestamp(msg2.timestamp, 0)
             .map(|dt| dt.format("%H:%M"))
             .unwrap();
@@ -699,7 +699,7 @@ mod test {
 
         let expected = format!(
             "<i class=\"fa-pen fa-solid ml-2 text-green-700 cursor-pointer\" hx-get=\"/templates/messages/input/edit?message_id={}\" hx-target=\"#message-input\" hx-swap=\"outerHTML\"></i>",
-            &msg._id
+            &msg.id
         );
 
         let actual = Icon::Edit(&msg).render();

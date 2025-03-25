@@ -6,8 +6,8 @@ use super::{Id, Sub};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct User {
-    #[serde(skip)]
-    _id: Option<Id>,
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    id: Option<Id>,
     sub: Sub,
     nickname: String,
     name: String,
@@ -65,7 +65,7 @@ impl From<User> for UserInfo {
 impl From<UserInfo> for User {
     fn from(info: UserInfo) -> Self {
         Self {
-            _id: None,
+            id: None,
             sub: info.sub,
             nickname: info.nickname,
             name: info.name,

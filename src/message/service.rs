@@ -201,7 +201,7 @@ impl MessageService for MessageServiceImpl {
 
         let unseen_ids = unseen_msgs
             .iter()
-            .map(|msg| msg._id.clone())
+            .map(|msg| msg.id.clone())
             .collect::<Vec<_>>();
 
         self.repo.mark_as_seen(&unseen_ids).await?;
@@ -231,12 +231,12 @@ impl MessageService for MessageServiceImpl {
             .find_by_id(&msg.talk_id)
             .await
             .map_err(|e| match e {
-                talk::Error::NotFound(_) => message::Error::NotFound(Some(msg._id.clone())),
+                talk::Error::NotFound(_) => message::Error::NotFound(Some(msg.id.clone())),
                 e => message::Error::Unexpected(e.to_string()),
             })?;
 
         if let Some(last_message) = talk.last_message {
-            return Ok(last_message.id == msg._id);
+            return Ok(last_message.id == msg.id);
         }
 
         Ok(false)
@@ -296,7 +296,7 @@ impl MessageServiceImpl {
                     self.event_service
                         .publish(
                             &event::Subject::Messages(&r, talk_id),
-                            event::Message::Deleted(msg._id.clone()).into(),
+                            event::Message::Deleted(msg.id.clone()).into(),
                         )
                         .await;
                 }

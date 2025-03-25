@@ -161,6 +161,6 @@ pub(super) mod templates {
             return Err(crate::error::Error::from(message::Error::NotOwner));
         }
 
-        Ok(markup::InputEdit::new(&msg._id, &msg.text).render())
+        Ok(markup::InputEdit::new(&msg.id, &msg.text).render())
     }
 }
