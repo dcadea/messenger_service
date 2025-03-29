@@ -3,6 +3,8 @@ use std::sync::Arc;
 use axum::extract::FromRef;
 
 use crate::auth::service::AuthServiceImpl;
+use crate::contact::repository::MongoContactRepository;
+use crate::contact::service::ContactServiceImpl;
 use crate::event::service::EventServiceImpl;
 use crate::message::repository::MongoMessageRepository;
 use crate::message::service::MessageServiceImpl;
@@ -10,7 +12,7 @@ use crate::talk::repository::MongoTalkRepository;
 use crate::talk::service::{TalkServiceImpl, TalkValidatorImpl};
 use crate::user::repository::MongoUserRepository;
 use crate::user::service::UserServiceImpl;
-use crate::{auth, event, message, talk, user};
+use crate::{auth, contact, event, message, talk, user};
 
 use super::integration;
 
@@ -20,6 +22,7 @@ pub struct AppState {
 
     auth_service: auth::Service,
     user_service: user::Service,
+    contact_service: contact::Service,
     talk_service: talk::Service,
     talk_validator: talk::Validator,
     message_service: message::Service,
@@ -35,9 +38,14 @@ impl AppState {
         let auth_service = Arc::new(AuthServiceImpl::try_new(&cfg.idp, redis.clone()));
         let event_service = Arc::new(EventServiceImpl::new(pubsub));
 
+        let contact_repo = Arc::new(MongoContactRepository::new(&db));
+        let contact_service =
+            Arc::new(ContactServiceImpl::new(contact_repo.clone(), redis.clone()));
+
         let user_repo = Arc::new(MongoUserRepository::new(&db));
         let user_service = Arc::new(UserServiceImpl::new(
             user_repo,
+            contact_service.clone(),
             event_service.clone(),
             redis.clone(),
         ));
@@ -66,6 +74,7 @@ impl AppState {
             cfg,
             auth_service,
             user_service,
+            contact_service,
             talk_service,
             talk_validator,
             message_service,
@@ -89,6 +98,12 @@ impl FromRef<AppState> for auth::Service {
 impl FromRef<AppState> for user::Service {
     fn from_ref(s: &AppState) -> Self {
         s.user_service.clone()
+    }
+}
+
+impl FromRef<AppState> for contact::Service {
+    fn from_ref(s: &AppState) -> Self {
+        s.contact_service.clone()
     }
 }
 

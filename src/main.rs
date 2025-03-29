@@ -14,6 +14,7 @@ use tower_http::services::ServeDir;
 use crate::state::AppState;
 
 mod auth;
+mod contact;
 mod error;
 mod event;
 mod integration;

@@ -1,10 +1,8 @@
-use std::collections::HashSet;
-
 use log::error;
 
-use crate::event;
 use crate::integration::cache;
 use crate::user::model::{User, UserInfo};
+use crate::{contact, event};
 
 use super::model::OnlineStatus;
 use super::{Repository, Sub};
@@ -18,16 +16,8 @@ pub trait UserService {
     async fn search_user_info(
         &self,
         nickname: &str,
-        logged_nickname: &str,
+        logged_user: &UserInfo,
     ) -> super::Result<Vec<UserInfo>>;
-
-    async fn find_contacts(&self, sub: &Sub) -> super::Result<HashSet<Sub>>;
-
-    // TODO: revisit this
-    async fn _create_contact(&self, subs: &[Sub; 2]) -> super::Result<()>;
-
-    // TODO: revisit this
-    async fn _delete_contact(&self, subs: &[Sub; 2]) -> super::Result<()>;
 
     async fn notify_online(&self, sub: &Sub);
 
@@ -37,14 +27,21 @@ pub trait UserService {
 #[derive(Clone)]
 pub struct UserServiceImpl {
     repo: Repository,
+    contact_service: contact::Service,
     event_service: event::Service,
     redis: cache::Redis,
 }
 
 impl UserServiceImpl {
-    pub fn new(repo: Repository, event_service: event::Service, redis: cache::Redis) -> Self {
+    pub fn new(
+        repo: Repository,
+        contact_service: contact::Service,
+        event_service: event::Service,
+        redis: cache::Redis,
+    ) -> Self {
         Self {
             repo,
+            contact_service,
             event_service,
             redis,
         }
@@ -72,59 +69,14 @@ impl UserService for UserServiceImpl {
     async fn search_user_info(
         &self,
         nickname: &str,
-        logged_nickname: &str,
+        logged_user: &UserInfo,
     ) -> super::Result<Vec<UserInfo>> {
         let users = self
             .repo
-            .search_by_nickname(nickname, logged_nickname)
+            .search_by_nickname(nickname, &logged_user.nickname)
             .await?;
+
         Ok(users.into_iter().map(Into::into).collect())
-    }
-
-    async fn find_contacts(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
-        let contacts = self
-            .redis
-            .smembers::<HashSet<Sub>>(cache::Key::Contacts(sub.to_owned()))
-            .await;
-
-        match contacts {
-            Some(c) => Ok(c),
-            None => self.cache_contacts(sub).await,
-        }
-    }
-
-    // TODO: revisit this
-    async fn _create_contact(&self, subs: &[Sub; 2]) -> super::Result<()> {
-        let me = &subs[0];
-        let you = &subs[1];
-        assert_ne!(me, you);
-
-        tokio::try_join!(
-            self.repo.add_contact(me, you),
-            self.repo.add_contact(you, me),
-            self.cache_contacts(me),
-            self.cache_contacts(you)
-        )?;
-
-        Ok(())
-    }
-
-    // TODO: revisit this
-    async fn _delete_contact(&self, subs: &[Sub; 2]) -> super::Result<()> {
-        let me = &subs[0];
-        let you = &subs[1];
-        assert_ne!(me, you);
-
-        self.repo.remove_contact(me, you).await?;
-
-        tokio::join!(
-            self.redis
-                .srem(cache::Key::Contacts(me.to_owned()), you.to_owned()),
-            self.redis
-                .srem(cache::Key::Contacts(you.to_owned()), me.to_owned()),
-        );
-
-        Ok(())
     }
 
     async fn notify_online(&self, sub: &Sub) {
@@ -139,7 +91,7 @@ impl UserService for UserServiceImpl {
 // notifications
 impl UserServiceImpl {
     async fn notify_online_status_change(&self, sub: &Sub, online: bool) {
-        match self.repo.find_contacts_for_sub(sub).await {
+        match self.contact_service.find_contact_subs(sub).await {
             Ok(contact) => {
                 let status = OnlineStatus::new(sub.to_owned(), online);
 
@@ -161,21 +113,6 @@ impl UserServiceImpl {
 
 // cache operations
 impl UserServiceImpl {
-    async fn cache_contacts(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
-        let contacts = self.repo.find_contacts_for_sub(sub).await?;
-
-        if contacts.is_empty() {
-            return Ok(HashSet::with_capacity(0));
-        }
-
-        let _: () = self
-            .redis
-            .sadd(cache::Key::Contacts(sub.clone()), &contacts)
-            .await;
-
-        Ok(contacts.iter().cloned().collect::<HashSet<_>>())
-    }
-
     async fn cache_user_info(&self, user_info: &UserInfo) {
         let user_info_key = cache::Key::UserInfo(user_info.sub.clone());
         self.redis.json_set_ex(user_info_key, user_info).await;
