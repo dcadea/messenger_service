@@ -223,7 +223,7 @@ pub mod ws {
                                 close.notify_one(); // notify 'write' task to stop
                                 break;
                             },
-                            Ok(frame) => warn!("Received WS frame: {:?}", frame)
+                            Ok(frame) => warn!("Received WS frame: {frame:?}")
                         }
                     }
                 }

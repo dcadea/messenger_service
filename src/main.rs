@@ -31,7 +31,7 @@ async fn main() {
     let app_state = match AppState::init(config.clone()).await {
         Ok(s) => s,
         Err(e) => {
-            error!("Failed to initialize app state: {:?}", e);
+            error!("Failed to initialize app state: {e:?}");
             return;
         }
     };
