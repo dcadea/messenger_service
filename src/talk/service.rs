@@ -5,10 +5,11 @@ use log::error;
 
 use super::model::{Details, DetailsDto, Talk, TalkDto};
 use super::{Repository, Validator};
+use crate::contact::model::Contact;
 use crate::integration::cache;
 use crate::message::model::LastMessage;
 use crate::user::model::UserInfo;
-use crate::{event, message, talk, user};
+use crate::{contact, event, message, talk, user};
 
 #[async_trait::async_trait]
 pub trait TalkService {
@@ -57,6 +58,7 @@ pub struct TalkServiceImpl {
     repo: Repository,
     validator: Validator,
     user_service: user::Service,
+    contact_service: contact::Service,
     event_service: event::Service,
     message_repo: message::Repository,
     redis: cache::Redis,
@@ -67,6 +69,7 @@ impl TalkServiceImpl {
         repo: Repository,
         validator: Validator,
         user_service: user::Service,
+        contact_service: contact::Service,
         event_service: event::Service,
         message_repo: message::Repository,
         redis: cache::Redis,
@@ -75,6 +78,7 @@ impl TalkServiceImpl {
             repo,
             validator,
             user_service,
+            contact_service,
             event_service,
             message_repo,
             redis,
@@ -96,11 +100,12 @@ impl TalkService for TalkServiceImpl {
             return Err(talk::Error::AlreadyExists);
         }
 
-        // TODO: revisit this
-        // if let Err(e) = self.user_service.create_contact(&members).await {
-        //     error!("could not create contact: {e:?}");
-        //     return Err(talk::Error::NotCreated);
-        // }
+        // TODO: split contact and talk creation in separate flows
+        let contact = Contact::from(members.clone());
+        if let Err(e) = self.contact_service.add(&contact).await {
+            error!("could not create contact: {e:?}");
+            return Err(talk::Error::NotCreated);
+        }
 
         let talk = Talk::new(Details::Chat { members });
         self.repo.create(talk.clone()).await?;

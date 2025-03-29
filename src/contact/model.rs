@@ -31,3 +31,9 @@ impl Contact {
         }
     }
 }
+
+impl From<[user::Sub; 2]> for Contact {
+    fn from(v: [user::Sub; 2]) -> Self {
+        Self::new(v[0].clone(), v[1].clone())
+    }
+}

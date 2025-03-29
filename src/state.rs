@@ -58,6 +58,7 @@ impl AppState {
             talk_repo.clone(),
             talk_validator.clone(),
             user_service.clone(),
+            contact_service.clone(),
             event_service.clone(),
             message_repo.clone(),
             redis.clone(),
