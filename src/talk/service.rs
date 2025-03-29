@@ -203,13 +203,14 @@ impl TalkService for TalkServiceImpl {
         let logged_sub = &logged_user.sub;
         self.validator.check_member(id, logged_sub).await?;
 
-        // TODO: revisit this
-        // let talk = self.find_by_id_and_sub(id, logged_sub).await?;
-        // let contacts = [talk.sender, talk.recipient];
-        // if let Err(e) = self.user_service.delete_contact(&contacts).await {
-        //     error!("could not delete contact: {e:?}");
-        //     return Err(talk::Error::NotDeleted);
-        // }
+        // TODO: split contact and talk deletion in separate flows
+        let talk = self.find_by_id_and_sub(id, logged_sub).await?;
+        if let DetailsDto::Chat { sender, recipient } = talk.details {
+            if let Err(e) = self.contact_service.delete(&sender, &recipient).await {
+                error!("could not delete contact: {e:?}");
+                return Err(talk::Error::NotDeleted);
+            }
+        }
 
         self.repo.delete(id).await?;
         if let Err(e) = self.message_repo.delete_by_talk_id(id).await {

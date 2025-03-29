@@ -92,11 +92,7 @@ impl TalkRepository for MongoTalkRepository {
     async fn exists(&self, members: &[user::Sub; 2]) -> super::Result<bool> {
         let count = self
             .col
-            .count_documents(doc! {
-                // FIXME: this will prevent creating groups
-                // if a private chat with 2 such members exists
-                "details.members": { "$all": members.to_vec() }
-            })
+            .count_documents(doc! { "details.members": { "$all": members.to_vec() } })
             .await?;
 
         Ok(count > 0)
