@@ -58,8 +58,16 @@ async fn main() {
 }
 
 fn app(s: &AppState, env: &Env) -> Router {
+    let tabs_router = Router::new()
+        .route("/tabs/chats", get(handler::chats_tab))
+        .route("/tabs/groups", get(handler::groups_tab))
+        .route("/tabs/contacts", get(handler::contacts_tab))
+        .route("/tabs/settings", get(handler::settings_tab))
+        .with_state(s.clone());
+
     let protected_router = Router::new()
         .route("/", get(handler::home))
+        .merge(tabs_router)
         .merge(talk::pages(s.clone()))
         .merge(event::api(s.clone()))
         .nest(

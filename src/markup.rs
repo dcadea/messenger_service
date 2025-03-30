@@ -131,12 +131,46 @@ pub fn wrap_in_base(mut resp: Response) -> impl IntoResponse {
     resp
 }
 
-pub struct Tabs;
+#[derive(PartialEq)]
+pub enum SelectedTab {
+    Chats,
+    Groups,
+    Contacts,
+    Settings,
+}
 
-impl Render for Tabs {
+impl Render for SelectedTab {
     fn render(&self) -> Markup {
         html! {
-            #tabs hx-get="/talks" hx-trigger="load" hx-target="#tabs" hx-swap="innerHTML" {}
+            div role="tablist" {
+                button hx-get="/tabs/chats" role="tab" aria-selected=(self == &SelectedTab::Chats) aria-controls="tab-content" {"Chats"}
+                button hx-get="/tabs/groups" role="tab" aria-selected=(self == &SelectedTab::Groups) aria-controls="tab-content" {"Groups"}
+                button hx-get="/tabs/contacts" role="tab" aria-selected=(self == &SelectedTab::Contacts) aria-controls="tab-content" {"Contacts"}
+                button hx-get="/tabs/settings" role="tab" aria-selected=(self == &SelectedTab::Settings) aria-controls="tab-content" {"Settings"}
+            }
+        }
+    }
+}
+
+pub struct Tab {
+    selected: SelectedTab,
+    content: Markup,
+}
+
+impl Tab {
+    pub fn new(selected: SelectedTab, content: Markup) -> Self {
+        Self { selected, content }
+    }
+}
+
+impl Render for Tab {
+    fn render(&self) -> Markup {
+        html! {
+            #tab-content role="tabpanel" {
+                (self.content)
+            }
+
+            (self.selected)
         }
     }
 }
