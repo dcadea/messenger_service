@@ -1,3 +1,4 @@
+use crate::markup::wrap_in_base;
 use auth::middleware::{authorize, validate_sid};
 use axum::Router;
 use axum::http::StatusCode;
@@ -5,7 +6,6 @@ use axum::middleware::{from_fn, from_fn_with_state, map_response};
 use axum::routing::get;
 use integration::Env;
 use log::error;
-use messenger_service::markup::wrap_in_base;
 use messenger_service::middleware::attach_request_id;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
@@ -17,7 +17,9 @@ mod auth;
 mod contact;
 mod error;
 mod event;
+mod handler;
 mod integration;
+mod markup;
 mod message;
 mod state;
 mod talk;
@@ -57,6 +59,7 @@ async fn main() {
 
 fn app(s: &AppState, env: &Env) -> Router {
     let protected_router = Router::new()
+        .route("/", get(handler::home))
         .merge(talk::pages(s.clone()))
         .merge(event::api(s.clone()))
         .nest(
@@ -74,7 +77,8 @@ fn app(s: &AppState, env: &Env) -> Router {
             ServiceBuilder::new()
                 .layer(from_fn_with_state(s.clone(), validate_sid))
                 .layer(from_fn_with_state(s.clone(), authorize)),
-        );
+        )
+        .with_state(s.clone());
 
     Router::new()
         .nest_service("/static", ServeDir::new("static"))

@@ -4,20 +4,11 @@ pub(super) mod pages {
         extract::{Path, State},
     };
     use maud::{Markup, html};
-    use messenger_service::markup::Wrappable;
 
     use crate::{
         talk::{self, markup},
         user::model::UserInfo,
     };
-
-    pub async fn home(
-        user_info: Extension<UserInfo>,
-        talk_service: State<talk::Service>,
-    ) -> crate::Result<Wrappable> {
-        let talks = talk_service.find_all(&user_info).await?;
-        Ok(Wrappable::new(markup::TalkWindow::new(&user_info, &talks)).with_sse())
-    }
 
     pub async fn active_talk(
         id: Path<talk::Id>,

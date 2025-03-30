@@ -42,7 +42,6 @@ impl Display for Id {
 
 pub fn pages<S>(s: AppState) -> Router<S> {
     Router::new()
-        .route("/", get(handler::pages::home))
         .route("/talks/{id}", get(handler::pages::active_talk))
         .with_state(s)
 }

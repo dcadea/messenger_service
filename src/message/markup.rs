@@ -1,8 +1,7 @@
 use chrono::DateTime;
 use maud::{Markup, Render, html};
-use messenger_service::markup::Id;
 
-use crate::{message, talk, user};
+use crate::{markup::IdExt, message, talk, user};
 
 use super::model::{LastMessage, Message};
 
@@ -282,7 +281,7 @@ pub fn last_message(
     }
 }
 
-impl messenger_service::markup::Id for message::Id {
+impl crate::markup::IdExt for message::Id {
     fn attr(&self) -> String {
         format!("m-{}", self.0)
     }
@@ -326,9 +325,9 @@ impl Render for Icon<'_> {
 mod test {
     use chrono::DateTime;
     use maud::Render;
-    use messenger_service::markup::Id;
 
     use crate::{
+        markup::IdExt,
         message::{
             self,
             markup::MessageItem,

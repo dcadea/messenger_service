@@ -22,7 +22,7 @@ pub(super) mod api {
         params: Form<FindParams>,
     ) -> crate::Result<Markup> {
         if params.nickname.is_empty() {
-            return Ok(html! {(messenger_service::markup::EMPTY)});
+            return Ok(html! {(crate::markup::EMPTY)});
         }
 
         let users = user_service

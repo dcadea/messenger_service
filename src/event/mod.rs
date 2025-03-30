@@ -6,10 +6,10 @@ use bytes::Bytes;
 use futures::Stream;
 use log::error;
 use maud::{Markup, Render, html};
-use messenger_service::markup::Id;
 use serde::{Deserialize, Serialize};
 use service::EventService;
 
+use crate::markup::IdExt;
 use crate::message::markup::MESSAGE_LIST_ID;
 use crate::state::AppState;
 use crate::{message, talk, user};

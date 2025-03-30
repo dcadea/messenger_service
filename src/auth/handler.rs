@@ -1,6 +1,5 @@
 pub(super) mod pages {
-    use crate::auth::markup;
-    use messenger_service::markup::Wrappable;
+    use crate::{auth::markup, markup::Wrappable};
 
     pub async fn login() -> Wrappable {
         Wrappable::new(markup::Login)

@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use maud::{Markup, Render, html};
-use messenger_service::markup::Id;
 
+use crate::markup::IdExt;
 use crate::message::markup::{MESSAGE_INPUT_TARGET, MESSAGE_LIST_ID};
 use crate::talk::model::DetailsDto;
 use crate::user::model::UserInfo;
@@ -146,7 +146,7 @@ impl Render for TalkControls<'_> {
     }
 }
 
-impl messenger_service::markup::Id for talk::Id {
+impl crate::markup::IdExt for talk::Id {
     fn attr(&self) -> String {
         format!("t-{}", self.0)
     }

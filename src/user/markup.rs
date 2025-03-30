@@ -1,9 +1,8 @@
 use std::collections::HashSet;
 
 use maud::{Markup, Render, html};
-use messenger_service::markup::Id;
 
-use crate::talk::markup::TALK_WINDOW_TARGET;
+use crate::{markup::IdExt, talk::markup::TALK_WINDOW_TARGET};
 
 use super::{
     Sub,
@@ -115,7 +114,7 @@ impl Render for SearchResult<'_> {
     }
 }
 
-impl messenger_service::markup::Id for OnlineStatus {
+impl crate::markup::IdExt for OnlineStatus {
     fn attr(&self) -> String {
         format!("os-{}", self.id())
     }
