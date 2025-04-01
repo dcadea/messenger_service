@@ -16,18 +16,31 @@ pub async fn home(
 }
 
 // GET /tabs/chats
-pub async fn chats_tab() -> impl IntoResponse {
-    // TODO: filter by details == chat
-    // let talks = talk_service.find_all(&user_info).await?;
+pub async fn chats_tab(
+    logged_sub: Extension<UserInfo>,
+    talk_service: State<talk::Service>,
+) -> impl IntoResponse {
+    // TODO: return html
+    let _chats = talk_service
+        .find_all_chats(&logged_sub)
+        .await
+        .expect("FIXME: handle error");
+
     Tab::new(SelectedTab::Chats, html! {"chats"})
         .render()
         .into_response()
 }
 
 // GET /tabs/groups
-pub async fn groups_tab() -> impl IntoResponse {
-    // TODO: filter by details == group
-    // let talks = talk_service.find_all(&user_info).await?;
+pub async fn groups_tab(
+    logged_sub: Extension<UserInfo>,
+    talk_service: State<talk::Service>,
+) -> impl IntoResponse {
+    let _groups = talk_service
+        .find_all_groups(&logged_sub)
+        .await
+        .expect("FIXME: handle error");
+
     Tab::new(SelectedTab::Groups, html! {"groups"})
         .render()
         .into_response()

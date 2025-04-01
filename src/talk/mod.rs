@@ -25,6 +25,20 @@ pub type Repository = Arc<dyn TalkRepository + Send + Sync>;
 pub type Service = Arc<dyn TalkService + Send + Sync>;
 pub type Validator = Arc<dyn TalkValidator + Send + Sync>;
 
+pub fn pages<S>(s: AppState) -> Router<S> {
+    Router::new()
+        .route("/talks/{id}", get(handler::pages::active_talk))
+        .with_state(s)
+}
+
+pub fn api<S>(s: AppState) -> Router<S> {
+    Router::new()
+        .route("/talks/{id}", get(handler::api::find_one))
+        .route("/talks", post(handler::api::create))
+        .route("/talks/{id}", delete(handler::api::delete))
+        .with_state(s)
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
@@ -40,18 +54,10 @@ impl Display for Id {
     }
 }
 
-pub fn pages<S>(s: AppState) -> Router<S> {
-    Router::new()
-        .route("/talks/{id}", get(handler::pages::active_talk))
-        .with_state(s)
-}
-
-pub fn api<S>(s: AppState) -> Router<S> {
-    Router::new()
-        .route("/talks/{id}", get(handler::api::find_one))
-        .route("/talks", post(handler::api::create))
-        .route("/talks/{id}", delete(handler::api::delete))
-        .with_state(s)
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub enum Kind {
+    Chat,
+    Group,
 }
 
 #[derive(thiserror::Error, Debug)]

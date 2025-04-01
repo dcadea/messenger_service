@@ -2,12 +2,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{message::model::LastMessage, user};
 
-use super::Id;
+use super::{Id, Kind};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Talk {
     #[serde(rename = "_id")]
     pub id: Id,
+    pub kind: Kind,
     pub details: Details,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_message: Option<LastMessage>,
@@ -15,8 +16,14 @@ pub struct Talk {
 
 impl Talk {
     pub fn new(details: Details) -> Self {
+        let kind = match details {
+            Details::Chat { .. } => Kind::Chat,
+            Details::Group { .. } => Kind::Group,
+        };
+
         Self {
             id: Id::random(),
+            kind,
             details,
             last_message: None,
         }

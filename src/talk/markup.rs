@@ -18,6 +18,7 @@ pub struct TalkWindow<'a> {
     talks: Rc<[TalkDto]>,
 }
 
+// TODO: create separate markups for chat and group
 impl<'a> TalkWindow<'a> {
     pub fn new(user_info: &'a UserInfo, talks: &[TalkDto]) -> Self {
         Self {

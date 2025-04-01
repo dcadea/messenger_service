@@ -1,7 +1,10 @@
 use futures::TryStreamExt;
 use mongodb::bson::doc;
 
-use super::model::Talk;
+use super::{
+    Kind,
+    model::{Details, Talk},
+};
 use crate::{message::model::LastMessage, talk, user};
 
 const TALKS_COLLECTION: &str = "talks";
@@ -11,6 +14,12 @@ pub trait TalkRepository {
     async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk>;
 
     async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Talk>>;
+
+    async fn find_by_sub_and_kind(
+        &self,
+        sub: &user::Sub,
+        kind: &talk::Kind,
+    ) -> super::Result<Vec<Talk>>;
 
     async fn find_by_id_and_sub(&self, id: &talk::Id, sub: &user::Sub) -> super::Result<Talk>;
 
@@ -62,6 +71,25 @@ impl TalkRepository for MongoTalkRepository {
         Ok(talks)
     }
 
+    async fn find_by_sub_and_kind(
+        &self,
+        sub: &user::Sub,
+        kind: &talk::Kind,
+    ) -> super::Result<Vec<Talk>> {
+        let cursor = self
+            .col
+            .find(doc! {
+                "details.members": sub,
+                "kind": kind
+            })
+            .sort(doc! {"last_message.timestamp": -1})
+            .await?;
+
+        let talks: Vec<Talk> = cursor.try_collect().await?;
+
+        Ok(talks)
+    }
+
     async fn find_by_id_and_sub(&self, id: &talk::Id, sub: &user::Sub) -> super::Result<Talk> {
         let talk = self
             .col
@@ -75,6 +103,11 @@ impl TalkRepository for MongoTalkRepository {
     }
 
     async fn create(&self, talk: Talk) -> super::Result<()> {
+        match talk.details {
+            Details::Chat { .. } => assert_eq!(talk.kind, Kind::Chat),
+            Details::Group { .. } => assert_eq!(talk.kind, Kind::Group),
+        };
+
         let res = self.col.insert_one(talk).await?;
 
         if let mongodb::bson::Bson::Null = res.inserted_id {
