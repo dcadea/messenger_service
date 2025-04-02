@@ -33,7 +33,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Status {
     Pending,
     Accepted,
@@ -47,6 +47,8 @@ pub enum Error {
     AlreadyExists(user::Sub, user::Sub),
     #[error("cannot create contact with oneself")]
     SelfReference,
+    #[error("contacts should be different, got both: {0:?}")]
+    SameSubs(user::Sub),
 
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
@@ -57,6 +59,7 @@ impl From<Error> for StatusCode {
         match e {
             Error::AlreadyExists(..) => StatusCode::CONFLICT,
             Error::SelfReference => StatusCode::BAD_REQUEST,
+            Error::SameSubs(_) => StatusCode::BAD_REQUEST,
             Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

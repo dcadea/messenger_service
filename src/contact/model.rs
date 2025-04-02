@@ -10,7 +10,7 @@ pub struct Contact {
     id: Option<Id>,
     pub sub1: user::Sub,
     pub sub2: user::Sub,
-    status: Status,
+    pub status: Status,
 }
 
 impl Contact {

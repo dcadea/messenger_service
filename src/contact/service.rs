@@ -6,6 +6,8 @@ use super::{Repository, model::Contact};
 
 #[async_trait::async_trait]
 pub trait ContactService {
+    async fn find(&self, sub1: &user::Sub, sub2: &user::Sub) -> super::Result<Option<Contact>>;
+
     async fn find_contact_subs(&self, sub: &user::Sub) -> super::Result<HashSet<user::Sub>>;
 
     async fn add(&self, c: &Contact) -> super::Result<()>;
@@ -27,6 +29,15 @@ impl ContactServiceImpl {
 
 #[async_trait::async_trait]
 impl ContactService for ContactServiceImpl {
+    async fn find(&self, sub1: &user::Sub, sub2: &user::Sub) -> super::Result<Option<Contact>> {
+        if sub1.eq(sub2) {
+            return Err(super::Error::SameSubs(sub1.clone()));
+        }
+
+        // TODO: cache
+        self.repo.find(sub1, sub2).await
+    }
+
     async fn find_contact_subs(&self, sub: &user::Sub) -> super::Result<HashSet<user::Sub>> {
         let contacts = self
             .redis

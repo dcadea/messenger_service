@@ -9,6 +9,8 @@ const CONTACTS_COLLECTION: &str = "contacts";
 
 #[async_trait::async_trait]
 pub trait ContactRepository {
+    async fn find(&self, sub1: &user::Sub, sub2: &user::Sub) -> super::Result<Option<Contact>>;
+
     async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Contact>>;
 
     async fn add(&self, contact: &Contact) -> super::Result<()>;
@@ -32,6 +34,12 @@ impl MongoContactRepository {
 
 #[async_trait::async_trait]
 impl ContactRepository for MongoContactRepository {
+    async fn find(&self, sub1: &user::Sub, sub2: &user::Sub) -> super::Result<Option<Contact>> {
+        let filter = doc! { "$or": [ {"sub1": sub1, "sub2": sub2}, {"sub2": sub1, "sub1": sub2} ] };
+
+        self.col.find_one(filter).await.map_err(super::Error::from)
+    }
+
     async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Contact>> {
         let filter = doc! { "$or": [ {"sub1": sub}, {"sub2": sub} ] };
 

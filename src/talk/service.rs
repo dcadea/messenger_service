@@ -5,7 +5,6 @@ use log::error;
 
 use super::model::{Details, DetailsDto, Talk, TalkDto};
 use super::{Kind, Repository, Validator};
-use crate::contact::model::Contact;
 use crate::integration::cache;
 use crate::message::model::LastMessage;
 use crate::{auth, contact, event, message, talk, user};
@@ -105,11 +104,17 @@ impl TalkService for TalkServiceImpl {
             return Err(talk::Error::AlreadyExists);
         }
 
-        // TODO: split contact and talk creation in separate flows
-        let contact = Contact::from(members.clone());
-        if let Err(e) = self.contact_service.add(&contact).await {
-            error!("could not create contact: {e:?}");
-            return Err(talk::Error::NotCreated);
+        let contact = self
+            .contact_service
+            .find(auth_sub, recipient)
+            .await
+            .map_err(|e| {
+                error!("could not create contact: {e:?}");
+                talk::Error::NotCreated
+            })?;
+
+        if contact.is_none_or(|c| c.status.ne(&contact::Status::Accepted)) {
+            return Err(talk::Error::UnsupportedStatus);
         }
 
         let talk = Talk::new(Details::Chat { members });

@@ -121,8 +121,10 @@ impl Render for SearchResult<'_> {
                             strong .px-3 {(user.name)} (user.nickname)
 
                             @if self.contacts.contains(&user.sub) {
-                                // TODO: should create on first interaction
+                                // TODO:
+                                // 1. should create on first interaction
                                 // and open existing chat on subsequent
+                                // 2. contact status should be Accepted
                                 (StartTalk(&user.sub))
                             } @else {
                                 (AddContact(&user.sub))

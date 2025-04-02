@@ -74,6 +74,8 @@ pub enum Error {
     AlreadyExists,
     #[error("not enough members: {0:?}")]
     NotEnoughMembers(usize),
+    #[error("contact is missing or in non-accepted status")]
+    UnsupportedStatus,
 
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
@@ -85,7 +87,7 @@ impl From<Error> for StatusCode {
             Error::NotFound(_) => StatusCode::NOT_FOUND,
             Error::NotMember => StatusCode::FORBIDDEN,
             Error::AlreadyExists => StatusCode::CONFLICT,
-            Error::NotEnoughMembers(_) => StatusCode::BAD_REQUEST,
+            Error::NotEnoughMembers(_) | Error::UnsupportedStatus => StatusCode::BAD_REQUEST,
             Error::NotCreated | Error::NotDeleted | Error::_MongoDB(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR
             }
