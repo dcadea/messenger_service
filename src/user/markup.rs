@@ -68,9 +68,25 @@ impl Render for StartTalk<'_> {
                 hx-target=(TALK_WINDOW_TARGET)
             {
                 input type="hidden" name="sub" value=(self.0) {}
-                input ."px-2 py-1 text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-xs focus:outline-none"
+                input ."px-2 py-1 text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-xs focus:outline-none"
                     type="submit"
                     value="Start talk" {}
+            }
+        }
+    }
+}
+
+struct AddContact<'a>(&'a Sub);
+
+impl Render for AddContact<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            form .float-right hx-post="/api/contacts"
+            {
+                input type="hidden" name="sub" value=(self.0) {}
+                input ."px-2 py-1 text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-xs focus:outline-none"
+                    type="submit"
+                    value="Add contact" {}
             }
         }
     }
@@ -104,8 +120,12 @@ impl Render for SearchResult<'_> {
                                 alt="User avatar" {}
                             strong .px-3 {(user.name)} (user.nickname)
 
-                            @if !self.contacts.contains(&user.sub) {
+                            @if self.contacts.contains(&user.sub) {
+                                // TODO: should create on first interaction
+                                // and open existing chat on subsequent
                                 (StartTalk(&user.sub))
+                            } @else {
+                                (AddContact(&user.sub))
                             }
                         }
                     }

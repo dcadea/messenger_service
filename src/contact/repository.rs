@@ -41,6 +41,8 @@ impl ContactRepository for MongoContactRepository {
     }
 
     async fn add(&self, c: &Contact) -> super::Result<()> {
+        assert_ne!(c.sub1, c.sub2);
+
         self.col.insert_one(c).await?;
 
         Ok(())

@@ -4,7 +4,7 @@ use log::error;
 use maud::{Markup, Render, html};
 use serde::Serialize;
 
-use crate::{auth, event, message, talk, user};
+use crate::{auth, contact, event, message, talk, user};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -13,6 +13,8 @@ pub enum Error {
 
     #[error(transparent)]
     _Auth(#[from] auth::Error),
+    #[error(transparent)]
+    _Contact(#[from] contact::Error),
     #[error(transparent)]
     _Talk(#[from] talk::Error),
     #[error(transparent)]
@@ -47,6 +49,7 @@ impl From<Error> for StatusCode {
         match e {
             Error::QueryParamRequired(_) => StatusCode::BAD_REQUEST,
             Error::_Auth(a) => a.into(),
+            Error::_Contact(c) => c.into(),
             Error::_Talk(t) => t.into(),
             Error::_Event(e) => e.into(),
             Error::_Message(m) => m.into(),

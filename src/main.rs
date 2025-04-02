@@ -73,6 +73,7 @@ fn app(s: &AppState, env: &Env) -> Router {
         .nest(
             "/api",
             Router::new()
+                .merge(contact::api(s.clone()))
                 .merge(message::api(s.clone()))
                 .merge(talk::api(s.clone()))
                 .merge(user::api(s.clone())),
