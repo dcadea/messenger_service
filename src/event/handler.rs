@@ -100,9 +100,7 @@ pub mod ws {
         State(message_service): State<message::Service>,
         State(talk_service): State<talk::Service>,
     ) -> crate::Result<Response> {
-        talk_validator
-            .check_member(&talk_id, &user_info.sub)
-            .await?;
+        talk_validator.check_member(&talk_id, &user_info).await?;
 
         Ok(ws.on_upgrade(move |socket| {
             handle(

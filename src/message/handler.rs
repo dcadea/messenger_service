@@ -60,7 +60,7 @@ pub(super) mod api {
 
         let logged_sub = &user_info.sub;
 
-        talk_validator.check_member(&talk_id, logged_sub).await?;
+        talk_validator.check_member(&talk_id, &user_info).await?;
 
         let (msgs, seen_qty) = message_service
             .find_by_talk_id_and_params(logged_sub, &talk_id, params.limit, params.end_time)
@@ -80,28 +80,28 @@ pub(super) mod api {
     }
 
     pub async fn update(
-        user_info: Extension<UserInfo>,
+        logged_sub: Extension<UserInfo>,
         message_service: State<message::Service>,
         Form(params): Form<UpdateParams>,
     ) -> crate::Result<impl IntoResponse> {
         let msg = message_service
-            .update(&user_info.sub, &params.message_id, &params.text)
+            .update(&logged_sub, &params.message_id, &params.text)
             .await?;
 
         Ok((
             StatusCode::OK,
             [("HX-Trigger", "msg:afterUpdate")],
-            markup::MessageItem::new(&msg, Some(&user_info.sub)).render(),
+            markup::MessageItem::new(&msg, Some(&logged_sub.sub)).render(),
         ))
     }
 
     pub async fn delete(
-        user_info: Extension<UserInfo>,
+        logged_sub: Extension<UserInfo>,
         Path(id): Path<message::Id>,
         message_service: State<message::Service>,
         talk_service: State<talk::Service>,
     ) -> crate::Result<()> {
-        if let Some(deleted_msg) = message_service.delete(&user_info.sub, &id).await? {
+        if let Some(deleted_msg) = message_service.delete(&logged_sub, &id).await? {
             let is_last = message_service.is_last_message(&deleted_msg).await?;
             if is_last {
                 let talk_id = &deleted_msg.talk_id;

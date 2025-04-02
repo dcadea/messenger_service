@@ -224,17 +224,7 @@ impl TalkService for TalkServiceImpl {
     }
 
     async fn delete(&self, id: &talk::Id, logged_user: &UserInfo) -> super::Result<()> {
-        let logged_sub = &logged_user.sub;
-        self.validator.check_member(id, logged_sub).await?;
-
-        // TODO: split contact and talk deletion in separate flows
-        let talk = self.find_by_id_and_sub(id, logged_sub).await?;
-        if let DetailsDto::Chat { sender, recipient } = talk.details {
-            if let Err(e) = self.contact_service.delete(&sender, &recipient).await {
-                error!("could not delete contact: {e:?}");
-                return Err(talk::Error::NotDeleted);
-            }
-        }
+        self.validator.check_member(id, logged_user).await?;
 
         self.repo.delete(id).await?;
         if let Err(e) = self.message_repo.delete_by_talk_id(id).await {
@@ -314,7 +304,7 @@ impl TalkServiceImpl {
 
 #[async_trait::async_trait]
 pub trait TalkValidator {
-    async fn check_member(&self, talk_id: &talk::Id, sub: &user::Sub) -> super::Result<()>;
+    async fn check_member(&self, talk_id: &talk::Id, logged_user: &UserInfo) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -331,9 +321,9 @@ impl TalkValidatorImpl {
 
 #[async_trait::async_trait]
 impl TalkValidator for TalkValidatorImpl {
-    async fn check_member(&self, talk_id: &talk::Id, sub: &user::Sub) -> super::Result<()> {
+    async fn check_member(&self, talk_id: &talk::Id, logged_user: &UserInfo) -> super::Result<()> {
         let members = find_members(&self.redis, self.repo.clone(), talk_id).await?;
-        let belongs_to_talk = members.contains(sub);
+        let belongs_to_talk = members.contains(&logged_user.sub);
 
         if !belongs_to_talk {
             return Err(talk::Error::NotMember);

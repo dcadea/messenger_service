@@ -3,6 +3,7 @@ use std::sync::Arc;
 use log::{debug, error};
 use text_splitter::{Characters, TextSplitter};
 
+use crate::user::model::UserInfo;
 use crate::{event, message, talk, user};
 
 use super::Repository;
@@ -20,14 +21,14 @@ pub trait MessageService {
 
     async fn update(
         &self,
-        logged_sub: &user::Sub,
+        logged_user: &UserInfo,
         id: &message::Id,
         text: &str,
     ) -> super::Result<Message>;
 
     async fn delete(
         &self,
-        logged_sub: &user::Sub,
+        logged_user: &UserInfo,
         id: &message::Id,
     ) -> super::Result<Option<Message>>;
 
@@ -104,13 +105,13 @@ impl MessageService for MessageServiceImpl {
 
     async fn update(
         &self,
-        logged_sub: &user::Sub,
+        logged_user: &UserInfo,
         id: &message::Id,
         text: &str,
     ) -> super::Result<Message> {
         let msg = self.repo.find_by_id(id).await?;
 
-        if msg.owner.ne(logged_sub) {
+        if msg.owner.ne(&logged_user.sub) {
             return Err(super::Error::NotOwner);
         }
 
@@ -123,17 +124,18 @@ impl MessageService for MessageServiceImpl {
 
     async fn delete(
         &self,
-        logged_sub: &user::Sub,
+        logged_user: &UserInfo,
         id: &message::Id,
     ) -> super::Result<Option<Message>> {
         let msg = self.repo.find_by_id(id).await?;
         let talk_id = &msg.talk_id;
+
         self.talk_validator
-            .check_member(talk_id, logged_sub)
+            .check_member(talk_id, &logged_user)
             .await
             .map_err(|_| super::Error::NotOwner)?;
 
-        if msg.owner.ne(logged_sub) {
+        if msg.owner.ne(&logged_user.sub) {
             return Err(super::Error::NotOwner);
         }
 
