@@ -3,8 +3,7 @@ use std::sync::Arc;
 use log::{debug, error};
 use text_splitter::{Characters, TextSplitter};
 
-use crate::user::model::UserInfo;
-use crate::{event, message, talk, user};
+use crate::{auth, event, message, talk, user};
 
 use super::Repository;
 use super::model::Message;
@@ -21,26 +20,26 @@ pub trait MessageService {
 
     async fn update(
         &self,
-        logged_user: &UserInfo,
+        auth_user: &auth::User,
         id: &message::Id,
         text: &str,
     ) -> super::Result<Message>;
 
     async fn delete(
         &self,
-        logged_user: &UserInfo,
+        auth_user: &auth::User,
         id: &message::Id,
     ) -> super::Result<Option<Message>>;
 
     async fn find_by_talk_id_and_params(
         &self,
-        logged_sub: &user::Sub,
+        auth_sub: &user::Sub,
         talk_id: &talk::Id,
         limit: Option<i64>,
         end_time: Option<i64>,
     ) -> super::Result<(Vec<Message>, usize)>;
 
-    async fn mark_as_seen(&self, logged_sub: &user::Sub, msgs: &[Message]) -> super::Result<usize>;
+    async fn mark_as_seen(&self, auth_sub: &user::Sub, msgs: &[Message]) -> super::Result<usize>;
 
     async fn is_last_message(&self, msg: &Message) -> super::Result<bool>;
 }
@@ -105,13 +104,13 @@ impl MessageService for MessageServiceImpl {
 
     async fn update(
         &self,
-        logged_user: &UserInfo,
+        auth_user: &auth::User,
         id: &message::Id,
         text: &str,
     ) -> super::Result<Message> {
         let msg = self.repo.find_by_id(id).await?;
 
-        if msg.owner.ne(&logged_user.sub) {
+        if msg.owner.ne(&auth_user.sub) {
             return Err(super::Error::NotOwner);
         }
 
@@ -124,18 +123,18 @@ impl MessageService for MessageServiceImpl {
 
     async fn delete(
         &self,
-        logged_user: &UserInfo,
+        auth_user: &auth::User,
         id: &message::Id,
     ) -> super::Result<Option<Message>> {
         let msg = self.repo.find_by_id(id).await?;
         let talk_id = &msg.talk_id;
 
         self.talk_validator
-            .check_member(talk_id, &logged_user)
+            .check_member(talk_id, &auth_user)
             .await
             .map_err(|_| super::Error::NotOwner)?;
 
-        if msg.owner.ne(&logged_user.sub) {
+        if msg.owner.ne(&auth_user.sub) {
             return Err(super::Error::NotOwner);
         }
 
@@ -150,11 +149,11 @@ impl MessageService for MessageServiceImpl {
     }
 
     // This method is designed to be callen when recipient requests messages related to selected talk.
-    // It also marks all messages as seen where logged user is recipient.
+    // It also marks all messages as seen where auth user is recipient.
     // Due to this side effect consider using other methods for read-only messages retrieval.
     async fn find_by_talk_id_and_params(
         &self,
-        logged_sub: &user::Sub,
+        auth_sub: &user::Sub,
         talk_id: &talk::Id,
         limit: Option<i64>,
         end_time: Option<i64>,
@@ -170,12 +169,12 @@ impl MessageService for MessageServiceImpl {
             }
         }?;
 
-        let seen_qty = self.mark_as_seen(logged_sub, &msgs).await?;
+        let seen_qty = self.mark_as_seen(auth_sub, &msgs).await?;
 
         Ok((msgs, seen_qty))
     }
 
-    async fn mark_as_seen(&self, logged_sub: &user::Sub, msgs: &[Message]) -> super::Result<usize> {
+    async fn mark_as_seen(&self, auth_sub: &user::Sub, msgs: &[Message]) -> super::Result<usize> {
         if msgs.is_empty() {
             debug!("attempting to mark as seen but messages list is empty");
             return Ok(0);
@@ -183,11 +182,11 @@ impl MessageService for MessageServiceImpl {
 
         let anothers_messages = msgs
             .iter()
-            .filter(|msg| msg.owner.ne(logged_sub))
+            .filter(|msg| msg.owner.ne(auth_sub))
             .collect::<Vec<_>>();
 
         if anothers_messages.is_empty() {
-            debug!("all messages belong to logged user, skipping mark as seen");
+            debug!("all messages belong to authenticated user, skipping mark as seen");
             return Ok(0);
         }
 
@@ -277,7 +276,7 @@ impl MessageServiceImpl {
                             &event::Subject::Messages(&r, talk_id),
                             event::Message::Updated {
                                 msg: msg.clone(),
-                                logged_sub: sub.clone(),
+                                auth_sub: sub.clone(),
                             }
                             .into(),
                         )

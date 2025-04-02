@@ -2,7 +2,7 @@ use log::error;
 
 use crate::integration::cache;
 use crate::user::model::{User, UserInfo};
-use crate::{contact, event};
+use crate::{auth, contact, event};
 
 use super::model::OnlineStatus;
 use super::{Repository, Sub};
@@ -16,7 +16,7 @@ pub trait UserService {
     async fn search_user_info(
         &self,
         nickname: &str,
-        logged_user: &UserInfo,
+        auth_user: &auth::User,
     ) -> super::Result<Vec<UserInfo>>;
 
     async fn notify_online(&self, sub: &Sub);
@@ -69,11 +69,11 @@ impl UserService for UserServiceImpl {
     async fn search_user_info(
         &self,
         nickname: &str,
-        logged_user: &UserInfo,
+        auth_user: &auth::User,
     ) -> super::Result<Vec<UserInfo>> {
         let users = self
             .repo
-            .search_by_nickname(nickname, &logged_user.nickname)
+            .search_by_nickname(nickname, &auth_user.nickname)
             .await?;
 
         Ok(users.into_iter().map(Into::into).collect())

@@ -10,7 +10,7 @@ pub trait ContactService {
 
     async fn add(&self, c: &Contact) -> super::Result<()>;
 
-    async fn delete(&self, logged_sub: &user::Sub, contact: &user::Sub) -> super::Result<()>;
+    async fn delete(&self, auth_sub: &user::Sub, contact: &user::Sub) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -58,19 +58,19 @@ impl ContactService for ContactServiceImpl {
         Ok(())
     }
 
-    async fn delete(&self, logged_sub: &user::Sub, contact: &user::Sub) -> super::Result<()> {
-        assert_ne!(logged_sub, contact);
+    async fn delete(&self, auth_sub: &user::Sub, contact: &user::Sub) -> super::Result<()> {
+        assert_ne!(auth_sub, contact);
 
-        self.repo.delete(logged_sub, contact).await?;
+        self.repo.delete(auth_sub, contact).await?;
 
         tokio::join!(
             self.redis.srem(
-                cache::Key::Contacts(logged_sub.to_owned()),
+                cache::Key::Contacts(auth_sub.to_owned()),
                 contact.to_owned()
             ),
             self.redis.srem(
                 cache::Key::Contacts(contact.to_owned()),
-                logged_sub.to_owned()
+                auth_sub.to_owned()
             )
         );
 

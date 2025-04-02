@@ -2,14 +2,14 @@ use std::collections::HashSet;
 
 use maud::{Markup, Render, html};
 
-use crate::{markup::IdExt, talk::markup::TALK_WINDOW_TARGET};
+use crate::{auth, markup::IdExt, talk::markup::TALK_WINDOW_TARGET};
 
 use super::{
     Sub,
     model::{OnlineStatus, UserInfo},
 };
 
-pub struct Header<'a>(pub &'a UserInfo);
+pub struct Header<'a>(pub &'a auth::User);
 
 impl Render for Header<'_> {
     fn render(&self) -> Markup {

@@ -56,7 +56,8 @@ pub async fn authorize(
         Err(e) => return Err(e.into()),
     };
 
-    req.extensions_mut().insert(user_info);
+    let auth_user = auth::User::from(user_info);
+    req.extensions_mut().insert(auth_user);
 
     Ok(next.run(req).await)
 }

@@ -6,8 +6,8 @@ pub(super) mod api {
     use serde::Deserialize;
 
     use crate::{
-        contact,
-        user::{self, markup, model::UserInfo},
+        auth, contact,
+        user::{self, markup},
     };
 
     #[derive(Deserialize)]
@@ -16,7 +16,7 @@ pub(super) mod api {
     }
 
     pub async fn search(
-        user_info: Extension<UserInfo>,
+        auth_user: Extension<auth::User>,
         user_service: State<user::Service>,
         contact_service: State<contact::Service>,
         params: Form<FindParams>,
@@ -26,11 +26,11 @@ pub(super) mod api {
         }
 
         let users = user_service
-            .search_user_info(&params.nickname, &user_info)
+            .search_user_info(&params.nickname, &auth_user)
             .await?;
 
         let contacts = contact_service
-            .find_contact_subs(&user_info.sub)
+            .find_contact_subs(&auth_user.sub)
             .await
             .unwrap_or(HashSet::with_capacity(0));
 

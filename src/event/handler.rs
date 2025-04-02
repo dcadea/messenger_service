@@ -1,7 +1,6 @@
 pub mod sse {
     use crate::event::{self, Subject};
-    use crate::user;
-    use crate::user::model::UserInfo;
+    use crate::{auth, user};
     use async_stream;
     use axum::Extension;
     use axum::extract::State;
@@ -13,19 +12,19 @@ pub mod sse {
     use std::time::Duration;
 
     pub async fn notifications(
-        Extension(user_info): Extension<UserInfo>,
+        Extension(auth_user): Extension<auth::User>,
         State(user_service): State<user::Service>,
         State(event_service): State<event::Service>,
     ) -> sse::Sse<impl Stream<Item = Result<sse::Event, Infallible>>> {
-        let sub = user_info.sub;
+        let auth_sub = auth_user.sub;
 
         let stream = async_stream::stream! {
             let mut noti_stream = event_service
-                .subscribe_noti(&Subject::Notifications(&sub))
+                .subscribe_noti(&Subject::Notifications(&auth_sub))
                 .await
                 .expect("failed to subscribe to subject"); // FIXME
 
-            let _osd = OnlineStatusDropper(&sub, &user_service);
+            let _osd = OnlineStatusDropper(&auth_sub, &user_service);
 
             let mut interval = time::interval(Duration::from_secs(15));
             loop {
@@ -37,7 +36,7 @@ pub mod sse {
                         }
                     },
                     _ = interval.tick() => {
-                        user_service.notify_online(&sub).await;
+                        user_service.notify_online(&auth_sub).await;
                     }
                 }
             }
@@ -69,9 +68,9 @@ pub mod ws {
     use std::sync::Arc;
 
     use crate::{
+        auth,
         event::{self, Message, Subject},
-        message, talk,
-        user::{self, model::UserInfo},
+        message, talk, user,
     };
     use axum::extract::ws::Message::{Close, Text};
     use axum::{
@@ -92,7 +91,7 @@ pub mod ws {
     };
 
     pub async fn talk(
-        Extension(user_info): Extension<UserInfo>,
+        Extension(auth_user): Extension<auth::User>,
         ws: WebSocketUpgrade,
         Path(talk_id): Path<talk::Id>,
         State(talk_validator): State<talk::Validator>,
@@ -100,11 +99,11 @@ pub mod ws {
         State(message_service): State<message::Service>,
         State(talk_service): State<talk::Service>,
     ) -> crate::Result<Response> {
-        talk_validator.check_member(&talk_id, &user_info).await?;
+        talk_validator.check_member(&talk_id, &auth_user).await?;
 
         Ok(ws.on_upgrade(move |socket| {
             handle(
-                user_info.sub,
+                auth_user.sub,
                 talk_id,
                 socket,
                 event_service,
@@ -115,7 +114,7 @@ pub mod ws {
     }
 
     async fn handle(
-        logged_sub: user::Sub,
+        auth_sub: user::Sub,
         talk_id: talk::Id,
         ws: WebSocket,
         event_service: event::Service,
@@ -128,7 +127,7 @@ pub mod ws {
         let read = read(close.clone(), receiver);
         let write = write(
             close.clone(),
-            logged_sub,
+            auth_sub,
             talk_id,
             sender,
             event_service,
@@ -144,7 +143,7 @@ pub mod ws {
 
     async fn write(
         close: Arc<Notify>,
-        logged_sub: user::Sub,
+        auth_sub: user::Sub,
         talk_id: talk::Id,
         sender: SplitSink<WebSocket, axum::extract::ws::Message>,
         event_service: event::Service,
@@ -152,7 +151,7 @@ pub mod ws {
         talk_service: talk::Service,
     ) {
         let mut msg_stream = match event_service
-            .subscribe_event(&Subject::Messages(&logged_sub, &talk_id))
+            .subscribe_event(&Subject::Messages(&auth_sub, &talk_id))
             .await
         {
             Ok(stream) => stream,
@@ -183,7 +182,7 @@ pub mod ws {
 
                             if let Message::New(msg) = msg {
                                 let talk_id = msg.talk_id.clone();
-                                match message_service.mark_as_seen(&logged_sub, &[msg]).await {
+                                match message_service.mark_as_seen(&auth_sub, &[msg]).await {
                                     Ok(seen_qty) => {
                                         if seen_qty > 0 {
                                             if let Err(e) = talk_service.mark_as_seen(&talk_id).await {

@@ -14,11 +14,11 @@ pub trait UserRepository {
 
     async fn find_by_sub(&self, sub: &Sub) -> super::Result<User>;
 
-    // search users by nickname excluding the logged user
+    // search users by nickname excluding the authenticated user
     async fn search_by_nickname(
         &self,
         nickname: &str,
-        logged_nickname: &str,
+        auth_nickname: &str,
     ) -> super::Result<Vec<User>>;
 }
 
@@ -47,15 +47,15 @@ impl UserRepository for MongoUserRepository {
         result.ok_or(super::Error::NotFound(sub.to_owned()))
     }
 
-    // search users by nickname excluding the logged user
+    // search users by nickname excluding the authenticated user
     async fn search_by_nickname(
         &self,
         nickname: &str,
-        logged_nickname: &str,
+        auth_nickname: &str,
     ) -> super::Result<Vec<User>> {
         let filter = doc! {
             "$and": [
-                { "nickname": { "$ne": logged_nickname } },
+                { "nickname": { "$ne": auth_nickname } },
                 { "nickname": { "$regex": nickname, "$options": "i" } },
             ]
         };

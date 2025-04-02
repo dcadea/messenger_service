@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::state::AppState;
 use crate::user;
+use crate::user::model::UserInfo;
 use axum::Router;
 use axum::http::StatusCode;
 use axum::routing::get;
@@ -35,6 +36,25 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .route("/logout", get(handler::api::logout))
         .route("/callback", get(handler::api::callback))
         .with_state(s)
+}
+
+#[derive(Clone)]
+pub struct User {
+    pub sub: user::Sub,
+    pub nickname: String,
+    pub name: String,
+    pub picture: String,
+}
+
+impl From<UserInfo> for User {
+    fn from(user_info: UserInfo) -> Self {
+        User {
+            sub: user_info.sub,
+            nickname: user_info.nickname,
+            name: user_info.name,
+            picture: user_info.picture,
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]

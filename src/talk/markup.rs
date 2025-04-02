@@ -5,8 +5,7 @@ use maud::{Markup, Render, html};
 use crate::markup::IdExt;
 use crate::message::markup::{MESSAGE_INPUT_TARGET, MESSAGE_LIST_ID};
 use crate::talk::model::DetailsDto;
-use crate::user::model::UserInfo;
-use crate::{message, talk, user};
+use crate::{auth, message, talk, user};
 
 use super::model::TalkDto;
 
@@ -14,24 +13,24 @@ const TALK_WINDOW_ID: &str = "talk-window";
 pub const TALK_WINDOW_TARGET: &str = "#talk-window";
 
 pub struct TalkWindow<'a> {
-    user_info: &'a UserInfo,
+    auth_user: &'a auth::User,
     talks: Rc<[TalkDto]>,
     kind: talk::Kind,
 }
 
 // TODO: create separate markups for chat and group
 impl<'a> TalkWindow<'a> {
-    pub fn chat(user_info: &'a UserInfo, talks: &[TalkDto]) -> Self {
+    pub fn chat(auth_user: &'a auth::User, talks: &[TalkDto]) -> Self {
         Self {
-            user_info,
+            auth_user,
             talks: talks.into(),
             kind: talk::Kind::Chat,
         }
     }
 
-    pub fn group(user_info: &'a UserInfo, talks: &[TalkDto]) -> Self {
+    pub fn group(auth_user: &'a auth::User, talks: &[TalkDto]) -> Self {
         Self {
-            user_info,
+            auth_user,
             talks: talks.into(),
             kind: talk::Kind::Group,
         }
@@ -46,7 +45,7 @@ impl Render for TalkWindow<'_> {
     fn render(&self) -> Markup {
         html! {
             div #(TALK_WINDOW_ID) ."flex flex-col h-full" {
-                (user::markup::Header(self.user_info))
+                (user::markup::Header(self.auth_user))
 
                 @if self.kind == talk::Kind::Chat {
                     (user::markup::Search)

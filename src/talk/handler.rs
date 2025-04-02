@@ -6,18 +6,16 @@ pub(super) mod pages {
     use maud::{Markup, html};
 
     use crate::{
+        auth,
         talk::{self, markup},
-        user::model::UserInfo,
     };
 
     pub async fn active_talk(
         id: Path<talk::Id>,
-        logged_user: Extension<UserInfo>,
+        auth_user: Extension<auth::User>,
         talk_service: State<talk::Service>,
     ) -> crate::Result<Markup> {
-        let talk = &talk_service
-            .find_by_id_and_sub(&id, &logged_user.sub)
-            .await?;
+        let talk = &talk_service.find_by_id_and_sub(&id, &auth_user.sub).await?;
 
         Ok(html! {(markup::ActiveTalk(&talk))})
     }
@@ -33,16 +31,17 @@ pub(super) mod api {
     use serde::Deserialize;
 
     use crate::{
+        auth,
         talk::{self, markup},
-        user::{self, model::UserInfo},
+        user,
     };
 
     pub async fn find_one(
-        user_info: Extension<UserInfo>,
+        auth_user: Extension<auth::User>,
         talk_service: State<talk::Service>,
         Path(id): Path<talk::Id>,
     ) -> crate::Result<Markup> {
-        let talk = talk_service.find_by_id_and_sub(&id, &user_info.sub).await?;
+        let talk = talk_service.find_by_id_and_sub(&id, &auth_user.sub).await?;
         Ok(html! { (talk) })
     }
 
@@ -58,15 +57,15 @@ pub(super) mod api {
     }
 
     pub async fn create(
-        Extension(logged_user): Extension<UserInfo>,
+        Extension(auth_user): Extension<auth::User>,
         talk_service: State<talk::Service>,
         Form(params): Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let logged_sub = &logged_user.sub;
+        let auth_sub = &auth_user.sub;
         let talk = match params {
-            CreateParams::Chat { sub } => talk_service.create_chat(logged_sub, &sub).await,
+            CreateParams::Chat { sub } => talk_service.create_chat(auth_sub, &sub).await,
             CreateParams::Group { name, members } => {
-                talk_service.create_group(logged_sub, &name, &members).await
+                talk_service.create_group(auth_sub, &name, &members).await
             }
         }?;
 
@@ -75,10 +74,10 @@ pub(super) mod api {
 
     pub async fn delete(
         id: Path<talk::Id>,
-        logged_user: Extension<UserInfo>,
+        auth_user: Extension<auth::User>,
         talk_service: State<talk::Service>,
     ) -> crate::Result<impl IntoResponse> {
-        talk_service.delete(&id, &logged_user).await?;
+        talk_service.delete(&id, &auth_user).await?;
 
         Ok([("HX-Redirect", "/")])
     }

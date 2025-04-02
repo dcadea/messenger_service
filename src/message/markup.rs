@@ -97,15 +97,15 @@ impl Render for SendButton {
 
 pub struct MessageItem<'a> {
     msg: &'a Message,
-    logged_sub: Option<&'a user::Sub>,
+    auth_sub: Option<&'a user::Sub>,
     is_last: bool,
 }
 
 impl<'a> MessageItem<'a> {
-    pub fn new(msg: &'a Message, logged_sub: Option<&'a user::Sub>) -> Self {
+    pub fn new(msg: &'a Message, auth_sub: Option<&'a user::Sub>) -> Self {
         Self {
             msg,
-            logged_sub,
+            auth_sub,
             is_last: false,
         }
     }
@@ -116,7 +116,7 @@ impl<'a> MessageItem<'a> {
     }
 
     fn belongs_to_user(&self) -> bool {
-        if let Some(sub) = self.logged_sub {
+        if let Some(sub) = self.auth_sub {
             self.msg.owner == *sub
         } else {
             false
@@ -404,10 +404,10 @@ mod test {
     }
 
     #[test]
-    fn should_render_message_item_where_logged_user_is_owner() {
+    fn should_render_message_item_where_auth_user_is_owner() {
         let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
-        let logged_sub = "google|jora";
-        let msg = Message::new(talk_id, user::Sub(logged_sub.into()), "Lorem ipsum");
+        let auth_sub = "google|jora";
+        let msg = Message::new(talk_id, user::Sub(auth_sub.into()), "Lorem ipsum");
 
         let msg_id = &msg.id;
         let msg_timestamp = DateTime::from_timestamp(msg.timestamp, 0)
@@ -435,13 +435,13 @@ mod test {
             msg_id, msg_id, msg_id, msg_id, msg_timestamp
         );
 
-        let actual = MessageItem::new(&msg, Some(&user::Sub(logged_sub.into()))).render();
+        let actual = MessageItem::new(&msg, Some(&user::Sub(auth_sub.into()))).render();
 
         assert_eq!(expected, actual.into_string())
     }
 
     #[test]
-    fn should_render_message_item_where_logged_user_is_not_owner() {
+    fn should_render_message_item_where_auth_user_is_not_owner() {
         let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
         let msg = Message::new(talk_id, user::Sub("auth0|valera".into()), "Lorem ipsum");
 
@@ -470,9 +470,9 @@ mod test {
     #[test]
     fn should_render_message_list_as_prepend() {
         let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
-        let logged_sub = user::Sub("google|jora".into());
+        let auth_sub = user::Sub("google|jora".into());
 
-        let msg1 = Message::new(talk_id.clone(), logged_sub.clone(), "Lorem ipsum");
+        let msg1 = Message::new(talk_id.clone(), auth_sub.clone(), "Lorem ipsum");
         let msg1_id = &msg1.id;
         let msg1_timestamp = DateTime::from_timestamp(msg1.timestamp, 0)
             .map(|dt| dt.format("%H:%M"))
@@ -515,7 +515,7 @@ mod test {
             msg1_id, msg1_id, msg1_id, msg1_id, msg1_timestamp, msg2_id, msg2_timestamp,
         );
 
-        let actual = MessageList::prepend(&[msg1, msg2], &logged_sub).render();
+        let actual = MessageList::prepend(&[msg1, msg2], &auth_sub).render();
 
         assert_eq!(expected, actual.into_string())
     }
@@ -523,9 +523,9 @@ mod test {
     #[test]
     fn should_render_message_list_as_append() {
         let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
-        let logged_sub = user::Sub("google|jora".into());
+        let auth_sub = user::Sub("google|jora".into());
 
-        let msg1 = Message::new(talk_id.clone(), logged_sub.clone(), "Lorem ipsum");
+        let msg1 = Message::new(talk_id.clone(), auth_sub.clone(), "Lorem ipsum");
         let msg1_id = &msg1.id;
         let msg1_timestamp = DateTime::from_timestamp(msg1.timestamp, 0)
             .map(|dt| dt.format("%H:%M"))
@@ -576,7 +576,7 @@ mod test {
             msg2_timestamp,
         );
 
-        let actual = MessageList::append(&[msg1, msg2], &logged_sub).render();
+        let actual = MessageList::append(&[msg1, msg2], &auth_sub).render();
 
         assert_eq!(expected, actual.into_string())
     }
@@ -639,10 +639,10 @@ mod test {
     }
 
     #[test]
-    fn should_render_logged_subs_last_message() {
+    fn should_render_auth_subs_last_message() {
         let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
-        let logged_sub = user::Sub("auth0|valera".into());
-        let msg = Message::new(talk_id.clone(), logged_sub.clone(), "Lorem ipsum");
+        let auth_sub = user::Sub("auth0|valera".into());
+        let msg = Message::new(talk_id.clone(), auth_sub.clone(), "Lorem ipsum");
         let last_msg = LastMessage::from(&msg);
         let expected = concat!(
             r#"<div class="last-message text-sm text-gray-500" id="lm-67dff625c469e51787ba173d">"#,
@@ -650,7 +650,7 @@ mod test {
             "</div>"
         );
 
-        let actual = last_message(Some(&last_msg), &talk_id, Some(&logged_sub));
+        let actual = last_message(Some(&last_msg), &talk_id, Some(&auth_sub));
 
         assert_eq!(expected, actual.into_string())
     }
@@ -658,10 +658,10 @@ mod test {
     #[test]
     fn should_render_trimmed_last_message_when_length_greater_than_25() {
         let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
-        let logged_sub = user::Sub("auth0|valera".into());
+        let auth_sub = user::Sub("auth0|valera".into());
         let msg = Message::new(
             talk_id.clone(),
-            logged_sub.clone(),
+            auth_sub.clone(),
             "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
         );
         let last_msg = LastMessage::from(&msg);
@@ -671,7 +671,7 @@ mod test {
             "</div>"
         );
 
-        let actual = last_message(Some(&last_msg), &talk_id, Some(&logged_sub));
+        let actual = last_message(Some(&last_msg), &talk_id, Some(&auth_sub));
 
         assert_eq!(expected, actual.into_string())
     }
@@ -693,8 +693,8 @@ mod test {
     #[test]
     fn should_render_edit_icon() {
         let talk_id = talk::Id("67dff625c469e51787ba173d".to_string());
-        let logged_sub = user::Sub("auth0|valera".into());
-        let msg = Message::new(talk_id.clone(), logged_sub.clone(), "Lorem ipsum");
+        let auth_sub = user::Sub("auth0|valera".into());
+        let msg = Message::new(talk_id.clone(), auth_sub.clone(), "Lorem ipsum");
 
         let expected = format!(
             "<i class=\"fa-pen fa-solid ml-2 text-green-700 cursor-pointer\" hx-get=\"/templates/messages/input/edit?message_id={}\" hx-target=\"#message-input\" hx-swap=\"outerHTML\"></i>",

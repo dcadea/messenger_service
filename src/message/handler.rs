@@ -8,8 +8,7 @@ pub(super) mod api {
     use serde::Deserialize;
 
     use crate::error::Error;
-    use crate::user::model::UserInfo;
-    use crate::{message, talk};
+    use crate::{auth, message, talk};
 
     use crate::message::markup;
     use crate::message::model::{LastMessage, Message};
@@ -21,12 +20,12 @@ pub(super) mod api {
     }
 
     pub async fn create(
-        user_info: Extension<UserInfo>,
+        auth_user: Extension<auth::User>,
         message_service: State<message::Service>,
         talk_service: State<talk::Service>,
         Form(params): Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let msg = Message::new(params.talk_id, user_info.sub.clone(), params.text.trim());
+        let msg = Message::new(params.talk_id, auth_user.sub.clone(), params.text.trim());
 
         let msgs = message_service.create(&msg).await?;
 
@@ -37,7 +36,7 @@ pub(super) mod api {
                 .await?;
         }
 
-        Ok(markup::MessageList::prepend(&msgs, &user_info.sub).render())
+        Ok(markup::MessageList::prepend(&msgs, &auth_user.sub).render())
     }
 
     #[derive(Deserialize)]
@@ -48,7 +47,7 @@ pub(super) mod api {
     }
 
     pub async fn find_all(
-        user_info: Extension<UserInfo>,
+        auth_user: Extension<auth::User>,
         Query(params): Query<FindAllParams>,
         talk_validator: State<talk::Validator>,
         talk_service: State<talk::Service>,
@@ -58,19 +57,18 @@ pub(super) mod api {
             .talk_id
             .ok_or(Error::QueryParamRequired("talk_id".to_owned()))?;
 
-        let logged_sub = &user_info.sub;
+        talk_validator.check_member(&talk_id, &auth_user).await?;
 
-        talk_validator.check_member(&talk_id, &user_info).await?;
-
+        let auth_sub = &auth_user.sub;
         let (msgs, seen_qty) = message_service
-            .find_by_talk_id_and_params(logged_sub, &talk_id, params.limit, params.end_time)
+            .find_by_talk_id_and_params(auth_sub, &talk_id, params.limit, params.end_time)
             .await?;
 
         if seen_qty > 0 {
             talk_service.mark_as_seen(&talk_id).await?;
         }
 
-        Ok(markup::MessageList::append(&msgs, logged_sub).render())
+        Ok(markup::MessageList::append(&msgs, auth_sub).render())
     }
 
     #[derive(Deserialize)]
@@ -80,28 +78,28 @@ pub(super) mod api {
     }
 
     pub async fn update(
-        logged_sub: Extension<UserInfo>,
+        auth_user: Extension<auth::User>,
         message_service: State<message::Service>,
         Form(params): Form<UpdateParams>,
     ) -> crate::Result<impl IntoResponse> {
         let msg = message_service
-            .update(&logged_sub, &params.message_id, &params.text)
+            .update(&auth_user, &params.message_id, &params.text)
             .await?;
 
         Ok((
             StatusCode::OK,
             [("HX-Trigger", "msg:afterUpdate")],
-            markup::MessageItem::new(&msg, Some(&logged_sub.sub)).render(),
+            markup::MessageItem::new(&msg, Some(&auth_user.sub)).render(),
         ))
     }
 
     pub async fn delete(
-        logged_sub: Extension<UserInfo>,
+        auth_user: Extension<auth::User>,
         Path(id): Path<message::Id>,
         message_service: State<message::Service>,
         talk_service: State<talk::Service>,
     ) -> crate::Result<()> {
-        if let Some(deleted_msg) = message_service.delete(&logged_sub, &id).await? {
+        if let Some(deleted_msg) = message_service.delete(&auth_user, &id).await? {
             let is_last = message_service.is_last_message(&deleted_msg).await?;
             if is_last {
                 let talk_id = &deleted_msg.talk_id;
@@ -131,9 +129,9 @@ pub(super) mod templates {
     use serde::Deserialize;
 
     use crate::{
+        auth,
         message::{self, markup},
         talk,
-        user::model::UserInfo,
     };
 
     #[derive(Deserialize)]
@@ -151,13 +149,13 @@ pub(super) mod templates {
     }
 
     pub async fn message_input_edit(
-        user_info: Extension<UserInfo>,
+        auth_user: Extension<auth::User>,
         params: Query<EditParams>,
         message_service: State<message::Service>,
     ) -> crate::Result<Markup> {
         let msg = message_service.find_by_id(&params.message_id).await?;
 
-        if msg.owner != user_info.sub {
+        if msg.owner.ne(&auth_user.sub) {
             return Err(crate::error::Error::from(message::Error::NotOwner));
         }
 

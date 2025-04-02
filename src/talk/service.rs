@@ -8,20 +8,19 @@ use super::{Kind, Repository, Validator};
 use crate::contact::model::Contact;
 use crate::integration::cache;
 use crate::message::model::LastMessage;
-use crate::user::model::UserInfo;
-use crate::{contact, event, message, talk, user};
+use crate::{auth, contact, event, message, talk, user};
 
 #[async_trait::async_trait]
 pub trait TalkService {
     async fn create_chat(
         &self,
-        logged_sub: &user::Sub,
+        auth_sub: &user::Sub,
         recipient: &user::Sub,
     ) -> super::Result<TalkDto>;
 
     async fn create_group(
         &self,
-        logged_sub: &user::Sub,
+        auth_sub: &user::Sub,
         name: &str,
         members: &[user::Sub],
     ) -> super::Result<TalkDto>;
@@ -31,24 +30,24 @@ pub trait TalkService {
     async fn find_by_id_and_sub(
         &self,
         id: &talk::Id,
-        logged_sub: &user::Sub,
+        auth_sub: &user::Sub,
     ) -> super::Result<TalkDto>;
 
-    async fn find_all(&self, user_info: &UserInfo) -> super::Result<Vec<TalkDto>>;
+    async fn find_all(&self, auth_user: &auth::User) -> super::Result<Vec<TalkDto>>;
 
     async fn find_all_by_kind(
         &self,
-        user_info: &UserInfo,
+        auth_user: &auth::User,
         kind: &Kind,
     ) -> super::Result<Vec<TalkDto>>;
 
     async fn find_recipients(
         &self,
         talk_id: &talk::Id,
-        logged_sub: &user::Sub,
+        auth_sub: &user::Sub,
     ) -> super::Result<HashSet<user::Sub>>;
 
-    async fn delete(&self, id: &talk::Id, logged_user: &UserInfo) -> super::Result<()>;
+    async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
 
     async fn update_last_message(
         &self,
@@ -96,12 +95,12 @@ impl TalkServiceImpl {
 impl TalkService for TalkServiceImpl {
     async fn create_chat(
         &self,
-        logged_sub: &user::Sub,
+        auth_sub: &user::Sub,
         recipient: &user::Sub,
     ) -> super::Result<TalkDto> {
-        assert_ne!(logged_sub, recipient);
+        assert_ne!(auth_sub, recipient);
 
-        let members = [logged_sub.clone(), recipient.clone()];
+        let members = [auth_sub.clone(), recipient.clone()];
         if self.repo.exists(&members).await? {
             return Err(talk::Error::AlreadyExists);
         }
@@ -116,7 +115,7 @@ impl TalkService for TalkServiceImpl {
         let talk = Talk::new(Details::Chat { members });
         self.repo.create(talk.clone()).await?;
 
-        let talk_dto = self.talk_to_dto(talk, logged_sub).await;
+        let talk_dto = self.talk_to_dto(talk, auth_sub).await;
 
         self.event_service
             .publish(
@@ -130,11 +129,11 @@ impl TalkService for TalkServiceImpl {
 
     async fn create_group(
         &self,
-        logged_sub: &user::Sub,
+        auth_sub: &user::Sub,
         name: &str,
         members: &[user::Sub],
     ) -> super::Result<TalkDto> {
-        assert!(members.contains(logged_sub));
+        assert!(members.contains(auth_sub));
 
         if members.len() < 3 {
             return Err(talk::Error::NotEnoughMembers(members.len()));
@@ -143,15 +142,15 @@ impl TalkService for TalkServiceImpl {
         let talk = Talk::new(Details::Group {
             name: name.into(),
             picture: String::new(), // TODO: https://crates.io/crates/identicon-rs
-            owner: logged_sub.clone(),
+            owner: auth_sub.clone(),
             members: members.into(),
         });
         self.repo.create(talk.clone()).await?;
 
-        let talk_dto = self.talk_to_dto(talk, logged_sub).await;
+        let talk_dto = self.talk_to_dto(talk, auth_sub).await;
 
         for m in members {
-            if m.eq(logged_sub) {
+            if m.eq(auth_sub) {
                 continue;
             }
 
@@ -174,15 +173,15 @@ impl TalkService for TalkServiceImpl {
     async fn find_by_id_and_sub(
         &self,
         id: &talk::Id,
-        logged_sub: &user::Sub,
+        auth_sub: &user::Sub,
     ) -> super::Result<TalkDto> {
-        let talk = self.repo.find_by_id_and_sub(id, logged_sub).await?;
-        let dto = self.talk_to_dto(talk, logged_sub).await;
+        let talk = self.repo.find_by_id_and_sub(id, auth_sub).await?;
+        let dto = self.talk_to_dto(talk, auth_sub).await;
         Ok(dto)
     }
 
-    async fn find_all(&self, user_info: &UserInfo) -> super::Result<Vec<TalkDto>> {
-        let sub = &user_info.sub;
+    async fn find_all(&self, auth_user: &auth::User) -> super::Result<Vec<TalkDto>> {
+        let sub = &auth_user.sub;
         let talks = self.repo.find_by_sub(sub).await?;
 
         let talk_dtos = join_all(
@@ -197,10 +196,10 @@ impl TalkService for TalkServiceImpl {
 
     async fn find_all_by_kind(
         &self,
-        user_info: &UserInfo,
+        auth_user: &auth::User,
         kind: &Kind,
     ) -> super::Result<Vec<TalkDto>> {
-        let sub = &user_info.sub;
+        let sub = &auth_user.sub;
         let groups = self.repo.find_by_sub_and_kind(sub, kind).await?;
 
         let group_dtos = join_all(
@@ -216,15 +215,15 @@ impl TalkService for TalkServiceImpl {
     async fn find_recipients(
         &self,
         talk_id: &talk::Id,
-        logged_sub: &user::Sub,
+        auth_sub: &user::Sub,
     ) -> super::Result<HashSet<user::Sub>> {
         let mut recipients = find_members(&self.redis, self.repo.clone(), talk_id).await?;
-        recipients.remove(logged_sub);
+        recipients.remove(auth_sub);
         Ok(recipients)
     }
 
-    async fn delete(&self, id: &talk::Id, logged_user: &UserInfo) -> super::Result<()> {
-        self.validator.check_member(id, logged_user).await?;
+    async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
+        self.validator.check_member(id, auth_user).await?;
 
         self.repo.delete(id).await?;
         if let Err(e) = self.message_repo.delete_by_talk_id(id).await {
@@ -268,13 +267,13 @@ impl TalkService for TalkServiceImpl {
 }
 
 impl TalkServiceImpl {
-    async fn talk_to_dto(&self, t: Talk, logged_sub: &user::Sub) -> TalkDto {
+    async fn talk_to_dto(&self, t: Talk, auth_sub: &user::Sub) -> TalkDto {
         let (name, picture, details) = match t.details {
             Details::Chat { members } => {
-                assert!(members.contains(logged_sub));
+                assert!(members.contains(auth_sub));
 
                 let (sender, recipient) = {
-                    if members[0].eq(logged_sub) {
+                    if members[0].eq(auth_sub) {
                         (members[0].clone(), members[1].clone())
                     } else {
                         (members[1].clone(), members[0].clone())
@@ -304,7 +303,7 @@ impl TalkServiceImpl {
 
 #[async_trait::async_trait]
 pub trait TalkValidator {
-    async fn check_member(&self, talk_id: &talk::Id, logged_user: &UserInfo) -> super::Result<()>;
+    async fn check_member(&self, talk_id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -321,9 +320,9 @@ impl TalkValidatorImpl {
 
 #[async_trait::async_trait]
 impl TalkValidator for TalkValidatorImpl {
-    async fn check_member(&self, talk_id: &talk::Id, logged_user: &UserInfo) -> super::Result<()> {
+    async fn check_member(&self, talk_id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
         let members = find_members(&self.redis, self.repo.clone(), talk_id).await?;
-        let belongs_to_talk = members.contains(&logged_user.sub);
+        let belongs_to_talk = members.contains(&auth_user.sub);
 
         if !belongs_to_talk {
             return Err(talk::Error::NotMember);

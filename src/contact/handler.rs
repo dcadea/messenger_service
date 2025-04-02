@@ -7,8 +7,9 @@ pub(super) mod api {
     use serde::Deserialize;
 
     use crate::{
+        auth,
         contact::{self, model::Contact},
-        user::{self, model::UserInfo},
+        user,
     };
 
     #[derive(Deserialize)]
@@ -18,22 +19,22 @@ pub(super) mod api {
 
     #[axum::debug_handler]
     pub async fn create(
-        Extension(logged_user): Extension<UserInfo>,
+        Extension(auth_user): Extension<auth::User>,
         contact_service: State<contact::Service>,
         Form(params): Form<CreateParams>,
     ) -> crate::Result<()> {
         contact_service
-            .add(&Contact::new(logged_user.sub, params.sub))
+            .add(&Contact::new(auth_user.sub, params.sub))
             .await?;
         Ok(())
     }
 
     pub async fn delete(
-        logged_user: Extension<UserInfo>,
+        auth_user: Extension<auth::User>,
         sub: Query<user::Sub>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        contact_service.delete(&logged_user.sub, &sub).await?;
+        contact_service.delete(&auth_user.sub, &sub).await?;
         Ok(())
     }
 }
