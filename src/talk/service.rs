@@ -36,9 +36,11 @@ pub trait TalkService {
 
     async fn find_all(&self, user_info: &UserInfo) -> super::Result<Vec<TalkDto>>;
 
-    async fn find_all_chats(&self, user_info: &UserInfo) -> super::Result<Vec<TalkDto>>;
-
-    async fn find_all_groups(&self, user_info: &UserInfo) -> super::Result<Vec<TalkDto>>;
+    async fn find_all_by_kind(
+        &self,
+        user_info: &UserInfo,
+        kind: &Kind,
+    ) -> super::Result<Vec<TalkDto>>;
 
     async fn find_recipients(
         &self,
@@ -193,12 +195,22 @@ impl TalkService for TalkServiceImpl {
         Ok(talk_dtos)
     }
 
-    async fn find_all_chats(&self, user_info: &UserInfo) -> super::Result<Vec<TalkDto>> {
-        self.find_all_by_kind(user_info, &Kind::Chat).await
-    }
+    async fn find_all_by_kind(
+        &self,
+        user_info: &UserInfo,
+        kind: &Kind,
+    ) -> super::Result<Vec<TalkDto>> {
+        let sub = &user_info.sub;
+        let groups = self.repo.find_by_sub_and_kind(sub, kind).await?;
 
-    async fn find_all_groups(&self, user_info: &UserInfo) -> super::Result<Vec<TalkDto>> {
-        self.find_all_by_kind(user_info, &Kind::Group).await
+        let group_dtos = join_all(
+            groups
+                .into_iter()
+                .map(|t| async { self.talk_to_dto(t, sub).await }),
+        )
+        .await;
+
+        Ok(group_dtos)
     }
 
     async fn find_recipients(
@@ -297,24 +309,6 @@ impl TalkServiceImpl {
             details,
             last_message: t.last_message,
         }
-    }
-
-    async fn find_all_by_kind(
-        &self,
-        user_info: &UserInfo,
-        kind: &Kind,
-    ) -> super::Result<Vec<TalkDto>> {
-        let sub = &user_info.sub;
-        let groups = self.repo.find_by_sub_and_kind(sub, kind).await?;
-
-        let group_dtos = join_all(
-            groups
-                .into_iter()
-                .map(|t| async { self.talk_to_dto(t, sub).await }),
-        )
-        .await;
-
-        Ok(group_dtos)
     }
 }
 

@@ -19,6 +19,7 @@ impl Render for Header<'_> {
                     src=(self.0.picture)
                     alt="User avatar" {}
                 h2 .text-2xl {(self.0.name)}
+                // TODO: move to settings
                 a ."bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
                     href="/logout" { "Logout" }
             }

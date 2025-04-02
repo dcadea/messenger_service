@@ -48,7 +48,7 @@ impl Render for MainContent<'_> {
         html! {
             div ."main-content"
                 ."max-w-lg h-3/5 md:h-4/5 md:w-4/5 w-full h-full"
-                ."bg-white rounded-2xl p-6"
+                ."bg-white rounded-2xl"
                 ."relative overflow-hidden"
             {
                 div #errors {}
@@ -141,12 +141,45 @@ pub enum SelectedTab {
 
 impl Render for SelectedTab {
     fn render(&self) -> Markup {
+        let btn_class = "basis-64 py-4 hover:bg-gray-300 cursor-pointer";
         html! {
-            div role="tablist" {
-                button hx-get="/tabs/chats" role="tab" aria-selected=(self == &SelectedTab::Chats) aria-controls="tab-content" {"Chats"}
-                button hx-get="/tabs/groups" role="tab" aria-selected=(self == &SelectedTab::Groups) aria-controls="tab-content" {"Groups"}
-                button hx-get="/tabs/contacts" role="tab" aria-selected=(self == &SelectedTab::Contacts) aria-controls="tab-content" {"Contacts"}
-                button hx-get="/tabs/settings" role="tab" aria-selected=(self == &SelectedTab::Settings) aria-controls="tab-content" {"Settings"}
+            div .flex .flex-row .text-2xl role="tablist" {
+                button .(btn_class)
+                    hx-get="/tabs/chats"
+                    role="tab"
+                    .bg-gray-100[self == &SelectedTab::Chats]
+                    aria-selected=(self == &SelectedTab::Chats)
+                    aria-controls="tab-content"
+                {
+                    i class="fa-regular fa-message" {}
+                }
+                button .(btn_class)
+                    hx-get="/tabs/groups"
+                    role="tab"
+                    .bg-gray-100[self == &SelectedTab::Groups]
+                    aria-selected=(self == &SelectedTab::Groups)
+                    aria-controls="tab-content"
+                {
+                    i class="fa-solid fa-people-group" {}
+                }
+                button .(btn_class)
+                    hx-get="/tabs/contacts"
+                    role="tab"
+                    .bg-gray-100[self == &SelectedTab::Contacts]
+                    aria-selected=(self == &SelectedTab::Contacts)
+                    aria-controls="tab-content"
+                {
+                    i class="fa-regular fa-address-book" {}
+                }
+                button .(btn_class)
+                    hx-get="/tabs/settings"
+                    role="tab"
+                    .bg-gray-100[self == &SelectedTab::Settings]
+                    aria-selected=(self == &SelectedTab::Settings)
+                    aria-controls="tab-content"
+                {
+                    i class="fa-solid fa-gears" {}
+                }
             }
         }
     }
@@ -158,19 +191,37 @@ pub struct Tab {
 }
 
 impl Tab {
-    pub fn new(selected: SelectedTab, content: Markup) -> Self {
-        Self { selected, content }
+    pub fn new(selected: SelectedTab, content: impl Render) -> Self {
+        Self {
+            selected,
+            content: content.render(),
+        }
     }
 }
 
 impl Render for Tab {
     fn render(&self) -> Markup {
         html! {
-            #tab-content role="tabpanel" {
+            #tab-content .flex-1 .px-6 .pt-6 role="tabpanel" {
                 (self.content)
             }
 
             (self.selected)
+        }
+    }
+}
+
+pub struct Tabs;
+
+impl Render for Tabs {
+    fn render(&self) -> Markup {
+        html! {
+            #tabs
+                ."flex flex-col w-full h-full"
+                hx-get="/tabs/chats"
+                hx-trigger="load"
+                hx-target="#tabs"
+                hx-swap="innerHTML" {}
         }
     }
 }

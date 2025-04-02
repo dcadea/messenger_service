@@ -1,6 +1,9 @@
-use crate::markup::{SelectedTab, Tab, Wrappable};
+use crate::{
+    markup::{SelectedTab, Tab, Tabs, Wrappable},
+    talk::markup::TalkWindow,
+};
 use axum::{Extension, extract::State, response::IntoResponse};
-use maud::{Render, html};
+use maud::{Markup, Render, html};
 
 use crate::{talk, user::model::UserInfo};
 
@@ -9,45 +12,38 @@ pub async fn home(
     _talk_service: State<talk::Service>,
 ) -> crate::Result<Wrappable> {
     // first shown component is chats page
-    Ok(Wrappable::new(html! {
-        #tabs hx-get="/tabs/chats" hx-trigger="load" hx-target="#tabs" hx-swap="innerHTML" {}
-    })
-    .with_sse())
+    Ok(Wrappable::new(Tabs {}).with_sse())
 }
 
 // GET /tabs/chats
 pub async fn chats_tab(
     logged_sub: Extension<UserInfo>,
     talk_service: State<talk::Service>,
-) -> impl IntoResponse {
-    // TODO: return html
-    let _chats = talk_service
-        .find_all_chats(&logged_sub)
-        .await
-        .expect("FIXME: handle error");
+) -> crate::Result<Markup> {
+    let chats = talk_service
+        .find_all_by_kind(&logged_sub, &talk::Kind::Chat)
+        .await?;
 
-    Tab::new(SelectedTab::Chats, html! {"chats"})
-        .render()
-        .into_response()
+    let tab_content = TalkWindow::chat(&logged_sub, &chats);
+    Ok(Tab::new(SelectedTab::Chats, tab_content).render())
 }
 
 // GET /tabs/groups
 pub async fn groups_tab(
     logged_sub: Extension<UserInfo>,
     talk_service: State<talk::Service>,
-) -> impl IntoResponse {
-    let _groups = talk_service
-        .find_all_groups(&logged_sub)
-        .await
-        .expect("FIXME: handle error");
+) -> crate::Result<Markup> {
+    let groups = talk_service
+        .find_all_by_kind(&logged_sub, &talk::Kind::Group)
+        .await?;
 
-    Tab::new(SelectedTab::Groups, html! {"groups"})
-        .render()
-        .into_response()
+    let tab_content = TalkWindow::group(&logged_sub, &groups);
+    Ok(Tab::new(SelectedTab::Groups, tab_content).render())
 }
 
 // GET /tabs/contacts
 pub async fn contacts_tab() -> impl IntoResponse {
+    // TODO
     Tab::new(SelectedTab::Contacts, html! {"contacts"})
         .render()
         .into_response()
@@ -55,6 +51,7 @@ pub async fn contacts_tab() -> impl IntoResponse {
 
 // GET /tabs/settings
 pub async fn settings_tab() -> impl IntoResponse {
+    // TODO
     Tab::new(SelectedTab::Settings, html! {"settings"})
         .render()
         .into_response()

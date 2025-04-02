@@ -16,14 +16,24 @@ pub const TALK_WINDOW_TARGET: &str = "#talk-window";
 pub struct TalkWindow<'a> {
     user_info: &'a UserInfo,
     talks: Rc<[TalkDto]>,
+    kind: talk::Kind,
 }
 
 // TODO: create separate markups for chat and group
 impl<'a> TalkWindow<'a> {
-    pub fn new(user_info: &'a UserInfo, talks: &[TalkDto]) -> Self {
+    pub fn chat(user_info: &'a UserInfo, talks: &[TalkDto]) -> Self {
         Self {
             user_info,
             talks: talks.into(),
+            kind: talk::Kind::Chat,
+        }
+    }
+
+    pub fn group(user_info: &'a UserInfo, talks: &[TalkDto]) -> Self {
+        Self {
+            user_info,
+            talks: talks.into(),
+            kind: talk::Kind::Group,
         }
     }
 
@@ -37,7 +47,13 @@ impl Render for TalkWindow<'_> {
         html! {
             div #(TALK_WINDOW_ID) ."flex flex-col h-full" {
                 (user::markup::Header(self.user_info))
-                (user::markup::Search)
+
+                @if self.kind == talk::Kind::Chat {
+                    (user::markup::Search)
+                }
+                // if self.kind == Group
+                //     allow creation of group
+
                 (TalkList::new(self.get_talks()))
             }
         }
@@ -67,6 +83,7 @@ impl Render for TalkList {
                     (talk)
                 }
 
+                // TODO: move to settings
                 i #noti-bell
                     ."fa-regular fa-bell-slash"
                     ."text-green-700 text-3xl"
