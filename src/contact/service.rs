@@ -1,14 +1,25 @@
-use std::collections::HashSet;
-
 use crate::{integration::cache, user};
 
-use super::{Repository, model::Contact};
+use super::{
+    Repository, Status,
+    model::{Contact, ContactDto},
+};
 
 #[async_trait::async_trait]
 pub trait ContactService {
-    async fn find(&self, sub1: &user::Sub, sub2: &user::Sub) -> super::Result<Option<Contact>>;
+    async fn find(
+        &self,
+        auth_sub: &user::Sub,
+        recipient: &user::Sub,
+    ) -> super::Result<Option<ContactDto>>;
 
-    async fn find_contact_subs(&self, sub: &user::Sub) -> super::Result<HashSet<user::Sub>>;
+    async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<ContactDto>>;
+
+    async fn find_by_sub_and_status(
+        &self,
+        sub: &user::Sub,
+        s: &Status,
+    ) -> super::Result<Vec<ContactDto>>;
 
     async fn add(&self, c: &Contact) -> super::Result<()>;
 
@@ -29,25 +40,57 @@ impl ContactServiceImpl {
 
 #[async_trait::async_trait]
 impl ContactService for ContactServiceImpl {
-    async fn find(&self, sub1: &user::Sub, sub2: &user::Sub) -> super::Result<Option<Contact>> {
-        if sub1.eq(sub2) {
-            return Err(super::Error::SameSubs(sub1.clone()));
+    async fn find(
+        &self,
+        auth_sub: &user::Sub,
+        recipient: &user::Sub,
+    ) -> super::Result<Option<ContactDto>> {
+        if auth_sub.eq(recipient) {
+            return Err(super::Error::SameSubs(auth_sub.clone()));
         }
 
         // TODO: cache
-        self.repo.find(sub1, sub2).await
+        self.repo
+            .find(auth_sub, recipient)
+            .await
+            .map(|c| c.map(|c| map_to_dto(auth_sub, &c)))
     }
 
-    async fn find_contact_subs(&self, sub: &user::Sub) -> super::Result<HashSet<user::Sub>> {
-        let contacts = self
-            .redis
-            .smembers::<HashSet<user::Sub>>(cache::Key::Contacts(sub.to_owned()))
-            .await;
+    async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<ContactDto>> {
+        // TODO: cache contacts
+        // let contacts = self
+        //     .redis
+        //     .smembers::<HashSet<user::Sub>>(cache::Key::Contacts(sub.to_owned()))
+        //     .await;
 
-        match contacts {
-            Some(c) => Ok(c),
-            None => self.cache_contacts(sub).await,
-        }
+        // match contacts {
+        //     Some(c) => Ok(c),
+        //     None => self.cache_contacts(sub).await,
+        // }
+
+        let contacts = self.repo.find_by_sub(sub).await?;
+        let dtos = contacts
+            .iter()
+            .map(|c| map_to_dto(sub, c))
+            .collect::<Vec<_>>();
+
+        Ok(dtos)
+    }
+
+    async fn find_by_sub_and_status(
+        &self,
+        sub: &user::Sub,
+        s: &Status,
+    ) -> super::Result<Vec<ContactDto>> {
+        // TODO: cache contacts
+        let contacts = self.repo.find_by_sub_and_status(sub, s).await?;
+
+        let dtos = contacts
+            .iter()
+            .map(|c| map_to_dto(sub, c))
+            .collect::<Vec<_>>();
+
+        Ok(dtos)
     }
 
     async fn add(&self, c: &Contact) -> super::Result<()> {
@@ -62,8 +105,9 @@ impl ContactService for ContactServiceImpl {
 
         tokio::try_join!(
             self.repo.add(c),
-            self.cache_contacts(&c.sub1),
-            self.cache_contacts(&c.sub2)
+            // TODO
+            // self.cache_contacts(&c.sub1),
+            // self.cache_contacts(&c.sub2)
         )?;
 
         Ok(())
@@ -90,23 +134,37 @@ impl ContactService for ContactServiceImpl {
 }
 
 impl ContactServiceImpl {
-    async fn cache_contacts(&self, sub: &user::Sub) -> super::Result<HashSet<user::Sub>> {
-        let contacts = self.repo.find_by_sub(sub).await?;
+    // TODO: cache contacts
+    // async fn cache_contacts(&self, sub: &user::Sub) -> super::Result<HashSet<user::Sub>> {
+    //     let contacts = self.repo.find_by_sub(sub).await?;
 
-        if contacts.is_empty() {
-            return Ok(HashSet::with_capacity(0));
-        }
+    //     if contacts.is_empty() {
+    //         return Ok(HashSet::with_capacity(0));
+    //     }
 
-        let contacts = contacts
-            .iter()
-            .map(|c| c.get_recipient(sub).clone())
-            .collect::<HashSet<_>>();
+    //     let contacts = contacts
+    //         .iter()
+    //         .map(|c| c.get_recipient(sub).clone())
+    //         .collect::<HashSet<_>>();
 
-        let _: () = self
-            .redis
-            .sadd(cache::Key::Contacts(sub.clone()), &contacts)
-            .await;
+    //     let _: () = self
+    //         .redis
+    //         .sadd(cache::Key::Contacts(sub.clone()), &contacts)
+    //         .await;
 
-        Ok(contacts.iter().cloned().collect::<HashSet<_>>())
+    //     Ok(contacts.iter().cloned().collect::<HashSet<_>>())
+    // }
+}
+
+fn map_to_dto(sub: &user::Sub, c: &Contact) -> ContactDto {
+    let recipient = if sub.eq(&c.sub1) {
+        c.sub2.clone()
+    } else {
+        c.sub1.clone()
+    };
+
+    ContactDto {
+        recipient,
+        status: c.status.clone(),
     }
 }

@@ -20,7 +20,7 @@ pub struct TalkWindow<'a> {
 
 // TODO: create separate markups for chat and group
 impl<'a> TalkWindow<'a> {
-    pub fn chat(auth_user: &'a auth::User, talks: &[TalkDto]) -> Self {
+    pub fn chats(auth_user: &'a auth::User, talks: &[TalkDto]) -> Self {
         Self {
             auth_user,
             talks: talks.into(),
@@ -28,7 +28,7 @@ impl<'a> TalkWindow<'a> {
         }
     }
 
-    pub fn group(auth_user: &'a auth::User, talks: &[TalkDto]) -> Self {
+    pub fn groups(auth_user: &'a auth::User, talks: &[TalkDto]) -> Self {
         Self {
             auth_user,
             talks: talks.into(),
@@ -45,13 +45,19 @@ impl Render for TalkWindow<'_> {
     fn render(&self) -> Markup {
         html! {
             div #(TALK_WINDOW_ID) ."flex flex-col h-full" {
-                (user::markup::Header(self.auth_user))
-
-                @if self.kind == talk::Kind::Chat {
-                    (user::markup::Search)
+                @match self.kind {
+                    talk::Kind::Chat => {
+                        (user::markup::Header(self.auth_user))
+                        (user::markup::Search)
+                    },
+                    talk::Kind::Group => {
+                        header ."text-center mb-4"{
+                            h2.text-2xl { "Groups" }
+                        }
+                        // if self.kind == Group
+                        //     allow creation of group
+                    },
                 }
-                // if self.kind == Group
-                //     allow creation of group
 
                 (TalkList::new(self.get_talks()))
             }
@@ -81,13 +87,6 @@ impl Render for TalkList {
                 @for talk in self.get_talks() {
                     (talk)
                 }
-
-                // TODO: move to settings
-                i #noti-bell
-                    ."fa-regular fa-bell-slash"
-                    ."text-green-700 text-3xl"
-                    ."absolute right-5 bottom-5"
-                    _="on click askNotificationPermission()"{}
             }
         }
     }

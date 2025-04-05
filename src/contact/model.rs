@@ -22,18 +22,15 @@ impl Contact {
             status: Status::Pending,
         }
     }
-
-    pub fn get_recipient(&self, sub: &user::Sub) -> &user::Sub {
-        if sub.eq(&self.sub1) {
-            &self.sub2
-        } else {
-            &self.sub1
-        }
-    }
 }
 
 impl From<[user::Sub; 2]> for Contact {
     fn from(v: [user::Sub; 2]) -> Self {
         Self::new(v[0].clone(), v[1].clone())
     }
+}
+
+pub struct ContactDto {
+    pub recipient: user::Sub,
+    pub status: Status,
 }

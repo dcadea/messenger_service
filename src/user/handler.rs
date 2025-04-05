@@ -1,6 +1,4 @@
 pub(super) mod api {
-    use std::collections::HashSet;
-
     use axum::{Extension, Form, extract::State};
     use maud::{Markup, Render, html};
     use serde::Deserialize;
@@ -30,9 +28,9 @@ pub(super) mod api {
             .await?;
 
         let contacts = contact_service
-            .find_contact_subs(&auth_user.sub)
+            .find_by_sub(&auth_user.sub)
             .await
-            .unwrap_or(HashSet::with_capacity(0));
+            .unwrap_or(Vec::with_capacity(0));
 
         Ok(markup::SearchResult::new(&contacts, &users).render())
     }

@@ -130,7 +130,7 @@ impl MessageService for MessageServiceImpl {
         let talk_id = &msg.talk_id;
 
         self.talk_validator
-            .check_member(talk_id, &auth_user)
+            .check_member(talk_id, auth_user)
             .await
             .map_err(|_| super::Error::NotOwner)?;
 

@@ -21,6 +21,7 @@ mod handler;
 mod integration;
 mod markup;
 mod message;
+mod settings;
 mod state;
 mod talk;
 mod user;

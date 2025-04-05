@@ -4,7 +4,7 @@ use std::{env, str::FromStr};
 use log::warn;
 use mongodb::bson::{doc, oid};
 
-use crate::{message, talk, user};
+use crate::{contact, message, talk, user};
 
 #[derive(Clone)]
 pub struct Config {
@@ -53,6 +53,17 @@ impl Config {
         match mongodb::Client::with_options(options).map(|client| client.database(&self.db)) {
             Ok(db) => db,
             Err(e) => panic!("Failed to connect to MongoDB: {e}"),
+        }
+    }
+}
+
+impl From<contact::Status> for mongodb::bson::Bson {
+    fn from(val: contact::Status) -> Self {
+        match val {
+            contact::Status::Pending => mongodb::bson::Bson::String("pending".to_string()),
+            contact::Status::Accepted => mongodb::bson::Bson::String("accepted".to_string()),
+            contact::Status::Rejected => mongodb::bson::Bson::String("rejected".to_string()),
+            contact::Status::Blocked => mongodb::bson::Bson::String("blocked".to_string()),
         }
     }
 }

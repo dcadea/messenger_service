@@ -3,7 +3,7 @@ use mongodb::{Database, bson::doc};
 
 use crate::user;
 
-use super::model::Contact;
+use super::{Status, model::Contact};
 
 const CONTACTS_COLLECTION: &str = "contacts";
 
@@ -12,6 +12,12 @@ pub trait ContactRepository {
     async fn find(&self, sub1: &user::Sub, sub2: &user::Sub) -> super::Result<Option<Contact>>;
 
     async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Contact>>;
+
+    async fn find_by_sub_and_status(
+        &self,
+        sub: &user::Sub,
+        s: &Status,
+    ) -> super::Result<Vec<Contact>>;
 
     async fn add(&self, contact: &Contact) -> super::Result<()>;
 
@@ -42,6 +48,18 @@ impl ContactRepository for MongoContactRepository {
 
     async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Contact>> {
         let filter = doc! { "$or": [ {"sub1": sub}, {"sub2": sub} ] };
+
+        let cursor = self.col.find(filter).await?;
+
+        cursor.try_collect().await.map_err(super::Error::from)
+    }
+
+    async fn find_by_sub_and_status(
+        &self,
+        sub: &user::Sub,
+        s: &Status,
+    ) -> super::Result<Vec<Contact>> {
+        let filter = doc! { "$or": [ {"sub1": sub, "status": s}, {"sub2": sub, "status": s} ] };
 
         let cursor = self.col.find(filter).await?;
 

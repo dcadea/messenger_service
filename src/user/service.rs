@@ -91,14 +91,18 @@ impl UserService for UserServiceImpl {
 // notifications
 impl UserServiceImpl {
     async fn notify_online_status_change(&self, sub: &Sub, online: bool) {
-        match self.contact_service.find_contact_subs(sub).await {
-            Ok(contact) => {
+        match self
+            .contact_service
+            .find_by_sub_and_status(sub, &contact::Status::Accepted)
+            .await
+        {
+            Ok(contacts) => {
                 let status = OnlineStatus::new(sub.to_owned(), online);
 
-                for c in contact {
+                for c in contacts {
                     self.event_service
                         .publish(
-                            &event::Subject::Notifications(&c),
+                            &event::Subject::Notifications(&c.recipient),
                             event::Notification::OnlineStatusChange(status.clone()).into(),
                         )
                         .await;

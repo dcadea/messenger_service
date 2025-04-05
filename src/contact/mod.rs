@@ -58,8 +58,7 @@ impl From<Error> for StatusCode {
     fn from(e: Error) -> Self {
         match e {
             Error::AlreadyExists(..) => StatusCode::CONFLICT,
-            Error::SelfReference => StatusCode::BAD_REQUEST,
-            Error::SameSubs(_) => StatusCode::BAD_REQUEST,
+            Error::SelfReference | Error::SameSubs(_) => StatusCode::BAD_REQUEST,
             Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

@@ -2,11 +2,12 @@ use crate::{
     auth,
     contact::{self, markup::ContactInfos},
     markup::{SelectedTab, Tab, Tabs, Wrappable},
+    settings,
     talk::markup::TalkWindow,
     user,
 };
-use axum::{Extension, extract::State, response::IntoResponse};
-use maud::{Markup, Render, html};
+use axum::{Extension, extract::State};
+use maud::{Markup, Render};
 
 use crate::{talk, user::model::UserInfo};
 
@@ -24,7 +25,7 @@ pub async fn chats_tab(
         .find_all_by_kind(&auth_user, &talk::Kind::Chat)
         .await?;
 
-    let tab_content = TalkWindow::chat(&auth_user, &chats);
+    let tab_content = TalkWindow::chats(&auth_user, &chats);
     Ok(Tab::new(SelectedTab::Chats, tab_content).render())
 }
 
@@ -37,7 +38,7 @@ pub async fn groups_tab(
         .find_all_by_kind(&auth_user, &talk::Kind::Group)
         .await?;
 
-    let tab_content = TalkWindow::group(&auth_user, &groups);
+    let tab_content = TalkWindow::groups(&auth_user, &groups);
     Ok(Tab::new(SelectedTab::Groups, tab_content).render())
 }
 
@@ -47,11 +48,11 @@ pub async fn contacts_tab(
     contact_service: State<contact::Service>,
     user_service: State<user::Service>,
 ) -> crate::Result<Markup> {
-    let contacts = contact_service.find_contact_subs(&auth_user.sub).await?;
+    let contacts = contact_service.find_by_sub(&auth_user.sub).await?;
 
     let mut contact_infos: Vec<UserInfo> = Vec::with_capacity(contacts.len());
     for c in contacts {
-        let ui = user_service.find_user_info(&c).await?;
+        let ui = user_service.find_user_info(&c.recipient).await?;
         contact_infos.push(ui);
     }
 
@@ -59,9 +60,7 @@ pub async fn contacts_tab(
 }
 
 // GET /tabs/settings
-pub async fn settings_tab() -> impl IntoResponse {
+pub async fn settings_tab() -> Markup {
     // TODO
-    Tab::new(SelectedTab::Settings, html! {"settings"})
-        .render()
-        .into_response()
+    Tab::new(SelectedTab::Settings, settings::List).render()
 }

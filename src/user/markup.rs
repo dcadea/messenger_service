@@ -1,8 +1,11 @@
-use std::collections::HashSet;
-
 use maud::{Markup, Render, html};
 
-use crate::{auth, markup::IdExt, talk::markup::TALK_WINDOW_TARGET};
+use crate::{
+    auth,
+    contact::{self, model::ContactDto},
+    markup::IdExt,
+    talk::markup::TALK_WINDOW_TARGET,
+};
 
 use super::{
     Sub,
@@ -14,14 +17,11 @@ pub struct Header<'a>(pub &'a auth::User);
 impl Render for Header<'_> {
     fn render(&self) -> Markup {
         html! {
-            header #user-header ."flex justify-between items-center mb-4" {
-                img ."w-12 h-12 rounded-full mr-2"
+            header #user-header ."flex items-center place-content-center mb-4" {
+                img ."w-12 h-12 rounded-full mr-3"
                     src=(self.0.picture)
                     alt="User avatar" {}
                 h2 .text-2xl {(self.0.name)}
-                // TODO: move to settings
-                a ."bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                    href="/logout" { "Logout" }
             }
         }
     }
@@ -93,12 +93,12 @@ impl Render for AddContact<'_> {
 }
 
 pub struct SearchResult<'a> {
-    contacts: &'a HashSet<Sub>,
+    contacts: &'a [ContactDto],
     users: &'a [UserInfo],
 }
 
 impl<'a> SearchResult<'a> {
-    pub fn new(contacts: &'a HashSet<Sub>, users: &'a [UserInfo]) -> Self {
+    pub fn new(contacts: &'a [ContactDto], users: &'a [UserInfo]) -> Self {
         Self { contacts, users }
     }
 }
@@ -120,14 +120,27 @@ impl Render for SearchResult<'_> {
                                 alt="User avatar" {}
                             strong .px-3 {(user.name)} (user.nickname)
 
-                            @if self.contacts.contains(&user.sub) {
-                                // TODO:
-                                // 1. should create on first interaction
-                                // and open existing chat on subsequent
-                                // 2. contact status should be Accepted
-                                (StartTalk(&user.sub))
-                            } @else {
-                                (AddContact(&user.sub))
+                            @match self.contacts.iter().find(|c| c.recipient.eq(&user.sub)) {
+                                Some(c) => @match c.status {
+                                    contact::Status::Pending => {
+                                        span .float-right
+                                            ."px-2 py-1 text-white bg-gray-400 font-medium rounded-lg text-xs focus:outline-none" {
+                                            "Pending"
+                                        }
+                                    },
+                                    contact::Status::Accepted => (StartTalk(&user.sub)),
+                                    contact::Status::Rejected => {
+                                        span ."px-2 py-1 text-white bg-red-500 font-medium rounded-lg text-xs focus:outline-none" {
+                                            "Rejected"
+                                        }
+                                    },
+                                    contact::Status::Blocked => {
+                                        span ."px-2 py-1 text-white bg-red-700 font-medium rounded-lg text-xs focus:outline-none" {
+                                            "Blocked"
+                                        }
+                                    },
+                                },
+                                None => (AddContact(&user.sub))
                             }
                         }
                     }
