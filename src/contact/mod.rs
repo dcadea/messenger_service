@@ -29,7 +29,7 @@ pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 pub fn api<S>(s: AppState) -> Router<S> {
     Router::new()
         .route("/contacts", post(handler::api::create))
-        .route("/messages/{id}", delete(handler::api::delete))
+        .route("/contacts/{id}", delete(handler::api::delete))
         .with_state(s)
 }
 
