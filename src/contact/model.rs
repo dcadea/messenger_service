@@ -17,9 +17,9 @@ impl Contact {
     pub fn new(sub1: user::Sub, sub2: user::Sub) -> Self {
         Self {
             id: None,
-            sub1,
+            sub1: sub1.clone(),
             sub2,
-            status: Status::Pending,
+            status: Status::Pending { initiator: sub1 },
         }
     }
 
@@ -27,21 +27,27 @@ impl Contact {
         let mut changed = true;
 
         match (&self.status, t) {
-            (Status::Pending, StatusTransition::Accept) => self.status = Status::Accepted,
-            (Status::Pending, StatusTransition::Reject) => self.status = Status::Rejected,
-            (Status::Accepted, StatusTransition::Block) => self.status = Status::Blocked,
+            (Status::Pending { initiator }, StatusTransition::Accept { responder }) => {
+                if initiator.eq(&responder) {
+                    return false;
+                }
+                self.status = Status::Accepted;
+            }
+            (Status::Pending { initiator }, StatusTransition::Reject { responder }) => {
+                if initiator.eq(&responder) {
+                    return false;
+                }
+                self.status = Status::Rejected;
+            }
+            (Status::Accepted, StatusTransition::Block { initiator }) => {
+                self.status = Status::Blocked { initiator }
+            }
             (_, _) => {
                 changed = false; /* no change */
             }
         };
 
         changed
-    }
-}
-
-impl From<[user::Sub; 2]> for Contact {
-    fn from(v: [user::Sub; 2]) -> Self {
-        Self::new(v[0].clone(), v[1].clone())
     }
 }
 

@@ -123,7 +123,7 @@ impl Render for SearchResult<'_> {
 
                             @match self.contacts.iter().find(|c| c.recipient.eq(&user.sub)) {
                                 Some(c) => @match c.status {
-                                    contact::Status::Pending => {
+                                    contact::Status::Pending{ .. } => {
                                         span .float-right
                                             ."px-2 py-1 text-white bg-gray-400 font-medium rounded-lg text-xs focus:outline-none" {
                                             "Pending"
@@ -135,7 +135,7 @@ impl Render for SearchResult<'_> {
                                             "Rejected"
                                         }
                                     },
-                                    contact::Status::Blocked => {
+                                    contact::Status::Blocked { .. } => {
                                         span ."px-2 py-1 text-white bg-red-700 font-medium rounded-lg text-xs focus:outline-none" {
                                             "Blocked"
                                         }

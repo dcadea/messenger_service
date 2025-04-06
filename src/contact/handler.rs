@@ -38,39 +38,42 @@ pub(super) mod api {
     }
 
     pub async fn accept(
+        Extension(auth_user): Extension<auth::User>,
         id: Path<contact::Id>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        // TODO: validate
+        let responder = auth_user.sub;
 
         contact_service
-            .transition_status(&id, contact::StatusTransition::Accept)
+            .transition_status(&id, contact::StatusTransition::Accept { responder })
             .await?;
 
         Ok(())
     }
 
     pub async fn reject(
+        Extension(auth_user): Extension<auth::User>,
         id: Path<contact::Id>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        // TODO: validate
+        let responder = auth_user.sub;
 
         contact_service
-            .transition_status(&id, contact::StatusTransition::Reject)
+            .transition_status(&id, contact::StatusTransition::Reject { responder })
             .await?;
 
         Ok(())
     }
 
     pub async fn block(
+        Extension(auth_user): Extension<auth::User>,
         id: Path<contact::Id>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        // TODO: validate
+        let initiator = auth_user.sub;
 
         contact_service
-            .transition_status(&id, contact::StatusTransition::Block)
+            .transition_status(&id, contact::StatusTransition::Block { initiator })
             .await?;
 
         Ok(())

@@ -60,28 +60,34 @@ impl Config {
 impl From<contact::Id> for mongodb::bson::Bson {
     fn from(val: contact::Id) -> Self {
         match oid::ObjectId::from_str(&val.0) {
-            Ok(oid) => mongodb::bson::Bson::ObjectId(oid),
-            Err(_) => mongodb::bson::Bson::String(val.0.clone()),
+            Ok(oid) => Self::ObjectId(oid),
+            Err(_) => Self::String(val.0.clone()),
         }
     }
 }
 
 impl From<contact::Status> for mongodb::bson::Bson {
     fn from(val: contact::Status) -> Self {
-        match val {
-            contact::Status::Pending => mongodb::bson::Bson::String("pending".to_string()),
-            contact::Status::Accepted => mongodb::bson::Bson::String("accepted".to_string()),
-            contact::Status::Rejected => mongodb::bson::Bson::String("rejected".to_string()),
-            contact::Status::Blocked => mongodb::bson::Bson::String("blocked".to_string()),
-        }
+        let doc = match val {
+            contact::Status::Pending { initiator } => {
+                doc! { "indicator": "pending", "initiator": initiator }
+            }
+            contact::Status::Accepted => doc! {"indicator": "accepted"},
+            contact::Status::Rejected => doc! {"indicator": "rejected"},
+            contact::Status::Blocked { initiator } => {
+                doc! {"indicator": "blocked", "initiator": initiator}
+            }
+        };
+
+        Self::Document(doc)
     }
 }
 
 impl From<talk::Id> for mongodb::bson::Bson {
     fn from(val: talk::Id) -> Self {
         match oid::ObjectId::from_str(&val.0) {
-            Ok(oid) => mongodb::bson::Bson::ObjectId(oid),
-            Err(_) => mongodb::bson::Bson::String(val.0.clone()),
+            Ok(oid) => Self::ObjectId(oid),
+            Err(_) => Self::String(val.0.clone()),
         }
     }
 }
@@ -89,8 +95,8 @@ impl From<talk::Id> for mongodb::bson::Bson {
 impl From<message::Id> for mongodb::bson::Bson {
     fn from(val: message::Id) -> Self {
         match oid::ObjectId::from_str(&val.0) {
-            Ok(oid) => mongodb::bson::Bson::ObjectId(oid),
-            Err(_) => mongodb::bson::Bson::String(val.0.clone()),
+            Ok(oid) => Self::ObjectId(oid),
+            Err(_) => Self::String(val.0.clone()),
         }
     }
 }
@@ -98,15 +104,15 @@ impl From<message::Id> for mongodb::bson::Bson {
 impl From<user::Id> for mongodb::bson::Bson {
     fn from(val: user::Id) -> Self {
         match oid::ObjectId::from_str(&val.0) {
-            Ok(oid) => mongodb::bson::Bson::ObjectId(oid),
-            Err(_) => mongodb::bson::Bson::String(val.0.clone()),
+            Ok(oid) => Self::ObjectId(oid),
+            Err(_) => Self::String(val.0.clone()),
         }
     }
 }
 
 impl From<user::Sub> for mongodb::bson::Bson {
     fn from(val: user::Sub) -> Self {
-        mongodb::bson::Bson::String(val.0.to_string())
+        Self::String(val.0.to_string())
     }
 }
 

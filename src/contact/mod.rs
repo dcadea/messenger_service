@@ -43,18 +43,18 @@ pub fn api<S>(s: AppState) -> Router<S> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
-#[serde(rename_all = "snake_case")]
+#[serde(tag = "indicator", rename_all = "snake_case")]
 pub enum Status {
-    Pending,
+    Pending { initiator: user::Sub },
     Accepted,
     Rejected,
-    Blocked,
+    Blocked { initiator: user::Sub },
 }
 
 pub enum StatusTransition {
-    Accept,
-    Reject,
-    Block,
+    Accept { responder: user::Sub },
+    Reject { responder: user::Sub },
+    Block { initiator: user::Sub },
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -67,6 +67,8 @@ pub enum Error {
     SelfReference,
     #[error("contacts should be different, got both: {0:?}")]
     SameSubs(user::Sub),
+    #[error("could not transition contact status")]
+    StatusTransitionFailed,
 
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
@@ -77,7 +79,9 @@ impl From<Error> for StatusCode {
         match e {
             Error::NotFound(_) => StatusCode::NOT_FOUND,
             Error::AlreadyExists(..) => StatusCode::CONFLICT,
-            Error::SelfReference | Error::SameSubs(_) => StatusCode::BAD_REQUEST,
+            Error::SelfReference | Error::SameSubs(_) | Error::StatusTransitionFailed => {
+                StatusCode::BAD_REQUEST
+            }
             Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

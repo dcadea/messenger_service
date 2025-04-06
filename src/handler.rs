@@ -56,7 +56,11 @@ pub async fn contacts_tab(
         contact_infos.push((c, ui));
     }
 
-    Ok(Tab::new(SelectedTab::Contacts, ContactInfos(&contact_infos)).render())
+    Ok(Tab::new(
+        SelectedTab::Contacts,
+        ContactInfos::new(&auth_user, &contact_infos),
+    )
+    .render())
 }
 
 // GET /tabs/settings

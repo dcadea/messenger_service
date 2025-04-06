@@ -119,9 +119,10 @@ impl ContactService for ContactServiceImpl {
         let contact = self.repo.find_by_id(id).await?;
         match contact {
             Some(mut c) => {
-                if c.transition(st) {
-                    self.repo.update(&c).await?;
+                if !c.transition(st) {
+                    return Err(super::Error::StatusTransitionFailed);
                 }
+                self.repo.update(&c).await?;
             }
             None => return Err(super::Error::NotFound(id.clone())),
         };

@@ -70,7 +70,12 @@ impl ContactRepository for MongoContactRepository {
         sub: &user::Sub,
         s: &Status,
     ) -> super::Result<Vec<Contact>> {
-        let filter = doc! { "$or": [ {"sub1": sub, "status": s}, {"sub2": sub, "status": s} ] };
+        let filter = doc! {
+            "$or": [
+                { "sub1": sub, "status": s },
+                { "sub2": sub, "status.indicator": s }
+            ]
+        };
 
         let cursor = self.col.find(filter).await?;
 
