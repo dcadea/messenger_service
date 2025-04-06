@@ -23,7 +23,7 @@ impl Render for InputBlank<'_> {
         );
 
         html! {
-            form #(MESSAGE_INPUT_ID) ."border-gray-200 flex"
+            form #(MESSAGE_INPUT_ID) ."border-gray-200 flex mb-3"
                 hx-post="/api/messages"
                 hx-target=(MESSAGE_LIST_TARGET)
                 hx-swap="afterbegin"
@@ -51,7 +51,7 @@ impl<'a> InputEdit<'a> {
 impl Render for InputEdit<'_> {
     fn render(&self) -> Markup {
         html! {
-            form #(MESSAGE_INPUT_ID) ."border-gray-200 flex"
+            form #(MESSAGE_INPUT_ID) ."border-gray-200 flex mb-3"
                 hx-put="/api/messages"
                 hx-target=(self.id.target())
                 hx-swap="outerHTML"

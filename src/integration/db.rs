@@ -69,10 +69,10 @@ impl From<contact::Id> for mongodb::bson::Bson {
 impl From<contact::Status> for mongodb::bson::Bson {
     fn from(val: contact::Status) -> Self {
         match val {
-            contact::Status::Pending => mongodb::bson::Bson::String("Pending".to_string()),
-            contact::Status::Accepted => mongodb::bson::Bson::String("Accepted".to_string()),
-            contact::Status::Rejected => mongodb::bson::Bson::String("Rejected".to_string()),
-            contact::Status::Blocked => mongodb::bson::Bson::String("Blocked".to_string()),
+            contact::Status::Pending => mongodb::bson::Bson::String("pending".to_string()),
+            contact::Status::Accepted => mongodb::bson::Bson::String("accepted".to_string()),
+            contact::Status::Rejected => mongodb::bson::Bson::String("rejected".to_string()),
+            contact::Status::Blocked => mongodb::bson::Bson::String("blocked".to_string()),
         }
     }
 }

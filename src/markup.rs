@@ -49,9 +49,8 @@ impl Render for MainContent<'_> {
             div ."main-content"
                 ."max-w-lg h-3/5 md:h-4/5 md:w-4/5 w-full h-full"
                 ."bg-white rounded-2xl"
-                ."relative overflow-hidden"
+                ."overflow-hidden"
             {
-                div #errors {}
                 (self.0)
             }
         }
@@ -188,7 +187,7 @@ pub enum SelectedTab {
 impl Render for SelectedTab {
     fn render(&self) -> Markup {
         html! {
-            div ."flex flex-row text-2xl mt-3" role="tablist" {
+            div ."flex flex-row text-2xl" role="tablist" {
                 (TabControl::Chats(self))
                 (TabControl::Groups(self))
                 (TabControl::Contacts(self))
@@ -215,7 +214,9 @@ impl Tab {
 impl Render for Tab {
     fn render(&self) -> Markup {
         html! {
-            #tab-content .flex-1 .px-6 .pt-6 role="tabpanel" {
+            #tab-content ."flex-1 px-6 pt-6 relative" role="tabpanel" {
+                #errors {}
+
                 (self.content)
             }
 
