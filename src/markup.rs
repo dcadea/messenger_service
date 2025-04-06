@@ -131,6 +131,52 @@ pub fn wrap_in_base(mut resp: Response) -> impl IntoResponse {
     resp
 }
 
+enum TabControl<'a> {
+    Chats(&'a SelectedTab),
+    Groups(&'a SelectedTab),
+    Contacts(&'a SelectedTab),
+    Settings(&'a SelectedTab),
+}
+
+impl Render for TabControl<'_> {
+    fn render(&self) -> Markup {
+        let (path, selected, i_class) = match self {
+            TabControl::Chats(st) => (
+                "/tabs/chats",
+                SelectedTab::Chats.eq(st),
+                "fa-regular fa-message",
+            ),
+            TabControl::Groups(st) => (
+                "/tabs/groups",
+                SelectedTab::Groups.eq(st),
+                "fa-solid fa-people-group",
+            ),
+            TabControl::Contacts(st) => (
+                "/tabs/contacts",
+                SelectedTab::Contacts.eq(st),
+                "fa-regular fa-address-book",
+            ),
+            TabControl::Settings(st) => (
+                "/tabs/settings",
+                SelectedTab::Settings.eq(st),
+                "fa-solid fa-gears",
+            ),
+        };
+
+        html! {
+            button ."basis-64 py-4 hover:bg-gray-300 cursor-pointer"
+                hx-get=(path)
+                role="tab"
+                .bg-gray-100[selected]
+                aria-selected=(selected)
+                aria-controls="tab-content"
+            {
+                i .(i_class) {}
+            }
+        }
+    }
+}
+
 #[derive(PartialEq)]
 pub enum SelectedTab {
     Chats,
@@ -141,45 +187,12 @@ pub enum SelectedTab {
 
 impl Render for SelectedTab {
     fn render(&self) -> Markup {
-        let btn_class = "basis-64 py-4 hover:bg-gray-300 cursor-pointer";
         html! {
-            div .flex .flex-row .text-2xl role="tablist" {
-                button .(btn_class)
-                    hx-get="/tabs/chats"
-                    role="tab"
-                    .bg-gray-100[self == &SelectedTab::Chats]
-                    aria-selected=(self == &SelectedTab::Chats)
-                    aria-controls="tab-content"
-                {
-                    i class="fa-regular fa-message" {}
-                }
-                button .(btn_class)
-                    hx-get="/tabs/groups"
-                    role="tab"
-                    .bg-gray-100[self == &SelectedTab::Groups]
-                    aria-selected=(self == &SelectedTab::Groups)
-                    aria-controls="tab-content"
-                {
-                    i class="fa-solid fa-people-group" {}
-                }
-                button .(btn_class)
-                    hx-get="/tabs/contacts"
-                    role="tab"
-                    .bg-gray-100[self == &SelectedTab::Contacts]
-                    aria-selected=(self == &SelectedTab::Contacts)
-                    aria-controls="tab-content"
-                {
-                    i class="fa-regular fa-address-book" {}
-                }
-                button .(btn_class)
-                    hx-get="/tabs/settings"
-                    role="tab"
-                    .bg-gray-100[self == &SelectedTab::Settings]
-                    aria-selected=(self == &SelectedTab::Settings)
-                    aria-controls="tab-content"
-                {
-                    i class="fa-solid fa-gears" {}
-                }
+            div ."flex flex-row text-2xl mt-3" role="tablist" {
+                (TabControl::Chats(self))
+                (TabControl::Groups(self))
+                (TabControl::Contacts(self))
+                (TabControl::Settings(self))
             }
         }
     }

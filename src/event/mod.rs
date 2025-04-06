@@ -59,15 +59,13 @@ impl Render for Notification {
     fn render(&self) -> Markup {
         match self {
             Notification::OnlineStatusChange(os) => {
-                html! { (user::markup::Icon::OnlineIndicator(&os)) }
+                user::markup::Icon::OnlineIndicator(os).render()
             }
-            Notification::NewTalk(..) => todo!(),
+            Notification::NewTalk(talk_dto) => talk_dto.render(),
             Notification::NewMessage {
                 talk_id,
                 last_message,
-            } => html! {
-                (message::markup::last_message(Some(last_message), talk_id, None))
-            },
+            } => message::markup::last_message(Some(last_message), talk_id, None),
         }
     }
 }
