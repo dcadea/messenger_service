@@ -3,13 +3,15 @@ use mongodb::{Database, bson::doc};
 
 use crate::user;
 
-use super::{Status, model::Contact};
+use super::{Id, Status, model::Contact};
 
 const CONTACTS_COLLECTION: &str = "contacts";
 
 #[async_trait::async_trait]
 pub trait ContactRepository {
     async fn find(&self, sub1: &user::Sub, sub2: &user::Sub) -> super::Result<Option<Contact>>;
+
+    async fn find_by_id(&self, id: &Id) -> super::Result<Option<Contact>>;
 
     async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Contact>>;
 
@@ -20,6 +22,8 @@ pub trait ContactRepository {
     ) -> super::Result<Vec<Contact>>;
 
     async fn add(&self, contact: &Contact) -> super::Result<()>;
+
+    async fn update(&self, c: &Contact) -> super::Result<()>;
 
     async fn delete(&self, from: &user::Sub, contact: &user::Sub) -> super::Result<()>;
 
@@ -46,6 +50,13 @@ impl ContactRepository for MongoContactRepository {
         self.col.find_one(filter).await.map_err(super::Error::from)
     }
 
+    async fn find_by_id(&self, id: &Id) -> super::Result<Option<Contact>> {
+        self.col
+            .find_one(doc! { "_id": id })
+            .await
+            .map_err(super::Error::from)
+    }
+
     async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Contact>> {
         let filter = doc! { "$or": [ {"sub1": sub}, {"sub2": sub} ] };
 
@@ -70,6 +81,23 @@ impl ContactRepository for MongoContactRepository {
         assert_ne!(c.sub1, c.sub2);
 
         self.col.insert_one(c).await?;
+
+        Ok(())
+    }
+
+    async fn update(&self, c: &Contact) -> super::Result<()> {
+        self.col
+            .update_one(
+                doc! { "_id": &c.id },
+                doc! {
+                    "$set": {
+                        "sub1": &c.sub1,
+                        "sub2": &c.sub2,
+                        "status": &c.status
+                    }
+                },
+            )
+            .await?;
 
         Ok(())
     }

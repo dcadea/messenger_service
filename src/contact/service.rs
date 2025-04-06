@@ -1,7 +1,7 @@
 use crate::{integration::cache, user};
 
 use super::{
-    Repository, Status,
+    Id, Repository, Status, StatusTransition,
     model::{Contact, ContactDto},
 };
 
@@ -22,6 +22,8 @@ pub trait ContactService {
     ) -> super::Result<Vec<ContactDto>>;
 
     async fn add(&self, c: &Contact) -> super::Result<()>;
+
+    async fn transition_status(&self, id: &Id, t: StatusTransition) -> super::Result<()>;
 
     async fn delete(&self, auth_sub: &user::Sub, contact: &user::Sub) -> super::Result<()>;
 }
@@ -110,6 +112,19 @@ impl ContactService for ContactServiceImpl {
             // self.cache_contacts(&c.sub2)
         )?;
 
+        Ok(())
+    }
+
+    async fn transition_status(&self, id: &Id, st: StatusTransition) -> super::Result<()> {
+        let contact = self.repo.find_by_id(id).await?;
+        match contact {
+            Some(mut c) => {
+                if c.transition(st) {
+                    self.repo.update(&c).await?;
+                }
+            }
+            None => return Err(super::Error::NotFound(id.clone())),
+        };
         Ok(())
     }
 

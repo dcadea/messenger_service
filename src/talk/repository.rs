@@ -1,10 +1,7 @@
 use futures::TryStreamExt;
 use mongodb::bson::doc;
 
-use super::{
-    Kind,
-    model::{Details, Talk},
-};
+use super::model::Talk;
 use crate::{message::model::LastMessage, talk, user};
 
 const TALKS_COLLECTION: &str = "talks";
@@ -79,8 +76,8 @@ impl TalkRepository for MongoTalkRepository {
         let cursor = self
             .col
             .find(doc! {
+                "kind": kind,
                 "details.members": sub,
-                "kind": kind
             })
             .sort(doc! {"last_message.timestamp": -1})
             .await?;
@@ -103,11 +100,6 @@ impl TalkRepository for MongoTalkRepository {
     }
 
     async fn create(&self, talk: Talk) -> super::Result<()> {
-        match talk.details {
-            Details::Chat { .. } => assert_eq!(talk.kind, Kind::Chat),
-            Details::Group { .. } => assert_eq!(talk.kind, Kind::Group),
-        };
-
         let res = self.col.insert_one(talk).await?;
 
         if let mongodb::bson::Bson::Null = res.inserted_id {

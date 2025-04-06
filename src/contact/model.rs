@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::user;
 
-use super::{Id, Status};
+use super::{Id, Status, StatusTransition};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Contact {
@@ -21,6 +21,23 @@ impl Contact {
             sub2,
             status: Status::Pending,
         }
+    }
+
+    pub fn transition(&mut self, t: StatusTransition) -> bool {
+        let mut changed = true;
+
+        match (&self.status, t) {
+            (Status::Pending, StatusTransition::Accept) => self.status = Status::Accepted,
+            (Status::Pending, StatusTransition::Reject) => self.status = Status::Rejected,
+            (Status::Pending | Status::Accepted, StatusTransition::Block) => {
+                self.status = Status::Blocked;
+            }
+            (_, _) => {
+                changed = false; /* no change */
+            }
+        };
+
+        changed
     }
 }
 

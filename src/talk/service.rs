@@ -205,16 +205,16 @@ impl TalkService for TalkServiceImpl {
         kind: &Kind,
     ) -> super::Result<Vec<TalkDto>> {
         let sub = &auth_user.sub;
-        let groups = self.repo.find_by_sub_and_kind(sub, kind).await?;
+        let talks = self.repo.find_by_sub_and_kind(sub, kind).await?;
 
-        let group_dtos = join_all(
-            groups
+        let talk_dtos = join_all(
+            talks
                 .into_iter()
                 .map(|t| async { self.talk_to_dto(t, sub).await }),
         )
         .await;
 
-        Ok(group_dtos)
+        Ok(talk_dtos)
     }
 
     async fn find_recipients(

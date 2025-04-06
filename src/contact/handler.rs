@@ -2,7 +2,7 @@ pub(super) mod api {
 
     use axum::{
         Extension, Form,
-        extract::{Query, State},
+        extract::{Path, Query, State},
     };
     use serde::Deserialize;
 
@@ -17,7 +17,6 @@ pub(super) mod api {
         sub: user::Sub,
     }
 
-    #[axum::debug_handler]
     pub async fn create(
         Extension(auth_user): Extension<auth::User>,
         contact_service: State<contact::Service>,
@@ -35,6 +34,45 @@ pub(super) mod api {
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
         contact_service.delete(&auth_user.sub, &sub).await?;
+        Ok(())
+    }
+
+    pub async fn accept(
+        id: Path<contact::Id>,
+        contact_service: State<contact::Service>,
+    ) -> crate::Result<()> {
+        // TODO: validate
+
+        contact_service
+            .transition_status(&id, contact::StatusTransition::Accept)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn reject(
+        id: Path<contact::Id>,
+        contact_service: State<contact::Service>,
+    ) -> crate::Result<()> {
+        // TODO: validate
+
+        contact_service
+            .transition_status(&id, contact::StatusTransition::Reject)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn block(
+        id: Path<contact::Id>,
+        contact_service: State<contact::Service>,
+    ) -> crate::Result<()> {
+        // TODO: validate
+
+        contact_service
+            .transition_status(&id, contact::StatusTransition::Block)
+            .await?;
+
         Ok(())
     }
 }
