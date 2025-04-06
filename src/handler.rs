@@ -1,6 +1,6 @@
 use crate::{
     auth,
-    contact::{self, markup::ContactInfos},
+    contact::{self, markup::ContactInfos, model::ContactDto},
     markup::{SelectedTab, Tab, Tabs, Wrappable},
     settings,
     talk::markup::TalkWindow,
@@ -50,10 +50,10 @@ pub async fn contacts_tab(
 ) -> crate::Result<Markup> {
     let contacts = contact_service.find_by_sub(&auth_user.sub).await?;
 
-    let mut contact_infos: Vec<UserInfo> = Vec::with_capacity(contacts.len());
+    let mut contact_infos: Vec<(ContactDto, UserInfo)> = Vec::with_capacity(contacts.len());
     for c in contacts {
         let ui = user_service.find_user_info(&c.recipient).await?;
-        contact_infos.push(ui);
+        contact_infos.push((c, ui));
     }
 
     Ok(Tab::new(SelectedTab::Contacts, ContactInfos(&contact_infos)).render())

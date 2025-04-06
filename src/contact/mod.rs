@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt::Display, sync::Arc};
 
 use axum::{
     Router,
@@ -33,12 +33,23 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
 pub enum Status {
     Pending,
     Accepted,
     Rejected,
     Blocked,
+}
+
+impl Display for Status {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Status::Pending => f.write_str("pending"),
+            Status::Accepted => f.write_str("accepted"),
+            Status::Rejected => f.write_str("rejected"),
+            Status::Blocked => f.write_str("blocked"),
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
