@@ -46,8 +46,7 @@ pub(super) mod api {
     }
 
     #[derive(Deserialize)]
-    #[serde(untagged)]
-    #[serde(rename_all = "snake_case")]
+    #[serde(untagged, rename_all = "snake_case")]
     pub enum CreateParams {
         Chat {
             sub: user::Sub,

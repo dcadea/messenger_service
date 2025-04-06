@@ -25,8 +25,7 @@ impl Talk {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(tag = "kind", content = "details")]
-#[serde(rename_all = "snake_case")]
+#[serde(tag = "kind", content = "details", rename_all = "snake_case")]
 pub enum Details {
     Chat {
         members: [user::Sub; 2],

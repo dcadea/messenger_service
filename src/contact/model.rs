@@ -29,9 +29,7 @@ impl Contact {
         match (&self.status, t) {
             (Status::Pending, StatusTransition::Accept) => self.status = Status::Accepted,
             (Status::Pending, StatusTransition::Reject) => self.status = Status::Rejected,
-            (Status::Pending | Status::Accepted, StatusTransition::Block) => {
-                self.status = Status::Blocked;
-            }
+            (Status::Accepted, StatusTransition::Block) => self.status = Status::Blocked,
             (_, _) => {
                 changed = false; /* no change */
             }
