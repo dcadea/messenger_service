@@ -9,7 +9,7 @@ const MESSAGE_INPUT_ID: &str = "message-input";
 pub const MESSAGE_INPUT_TARGET: &str = "#message-input";
 
 pub const MESSAGE_LIST_ID: &str = "message-list";
-const MESSAGE_LIST_TARGET: &str = "#message-list";
+pub const MESSAGE_LIST_TARGET: &str = "#message-list";
 
 pub struct InputBlank<'a>(pub &'a talk::Id);
 

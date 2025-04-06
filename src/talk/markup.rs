@@ -3,7 +3,7 @@ use std::rc::Rc;
 use maud::{Markup, Render, html};
 
 use crate::markup::IdExt;
-use crate::message::markup::{MESSAGE_INPUT_TARGET, MESSAGE_LIST_ID};
+use crate::message::markup::{MESSAGE_INPUT_TARGET, MESSAGE_LIST_ID, MESSAGE_LIST_TARGET};
 use crate::talk::model::DetailsDto;
 use crate::{auth, message, talk, user};
 
@@ -126,7 +126,8 @@ impl Render for ActiveTalk<'_> {
             {
                 div #(MESSAGE_LIST_ID) ."sticky flex flex-col-reverse overflow-auto h-full"
                     hx-get={ "/api/messages?limit=20&talk_id=" (self.0.id) }
-                    hx-trigger="load" {}
+                    hx-trigger="load"
+                    hx-target=(MESSAGE_LIST_TARGET) {}
             }
 
             (message::markup::InputBlank(&self.0.id))
