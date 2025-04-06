@@ -54,10 +54,19 @@ impl Display for Id {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone)]
 pub enum Kind {
     Chat,
     Group,
+}
+
+impl Kind {
+    fn as_str(&self) -> &str {
+        match self {
+            Kind::Chat => "chat",
+            Kind::Group => "group",
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]

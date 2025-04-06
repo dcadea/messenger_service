@@ -76,7 +76,7 @@ impl TalkRepository for MongoTalkRepository {
         let cursor = self
             .col
             .find(doc! {
-                "kind": kind,
+                "kind": kind.as_str(),
                 "details.members": sub,
             })
             .sort(doc! {"last_message.timestamp": -1})

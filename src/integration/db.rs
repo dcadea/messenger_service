@@ -86,15 +86,6 @@ impl From<talk::Id> for mongodb::bson::Bson {
     }
 }
 
-impl From<talk::Kind> for mongodb::bson::Bson {
-    fn from(val: talk::Kind) -> Self {
-        match val {
-            talk::Kind::Chat => mongodb::bson::Bson::String("chat".to_string()),
-            talk::Kind::Group => mongodb::bson::Bson::String("group".to_string()),
-        }
-    }
-}
-
 impl From<message::Id> for mongodb::bson::Bson {
     fn from(val: message::Id) -> Self {
         match oid::ObjectId::from_str(&val.0) {
