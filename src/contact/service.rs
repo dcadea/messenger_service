@@ -53,7 +53,7 @@ impl ContactService for ContactServiceImpl {
         self.repo
             .find(auth_sub, recipient)
             .await
-            .map(|c| c.map(|c| map_to_dto(auth_sub, &c)))
+            .map(|c| c.map(|c| map_to_dto(auth_sub, c)))
     }
 
     async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<ContactDto>> {
@@ -70,7 +70,7 @@ impl ContactService for ContactServiceImpl {
 
         let contacts = self.repo.find_by_sub(sub).await?;
         let dtos = contacts
-            .iter()
+            .into_iter()
             .map(|c| map_to_dto(sub, c))
             .collect::<Vec<_>>();
 
@@ -86,7 +86,7 @@ impl ContactService for ContactServiceImpl {
         let contacts = self.repo.find_by_sub_and_status(sub, s).await?;
 
         let dtos = contacts
-            .iter()
+            .into_iter()
             .map(|c| map_to_dto(sub, c))
             .collect::<Vec<_>>();
 
@@ -156,15 +156,12 @@ impl ContactServiceImpl {
     // }
 }
 
-fn map_to_dto(sub: &user::Sub, c: &Contact) -> ContactDto {
-    let recipient = if sub.eq(&c.sub1) {
-        c.sub2.clone()
-    } else {
-        c.sub1.clone()
-    };
+fn map_to_dto(auth_sub: &user::Sub, c: Contact) -> ContactDto {
+    let recipient = if auth_sub.eq(&c.sub1) { c.sub2 } else { c.sub1 };
 
     ContactDto {
+        id: c.id.expect("id must be present"),
         recipient,
-        status: c.status.clone(),
+        status: c.status,
     }
 }

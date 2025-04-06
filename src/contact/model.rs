@@ -7,7 +7,7 @@ use super::{Id, Status};
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Contact {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
-    id: Option<Id>,
+    pub id: Option<Id>,
     pub sub1: user::Sub,
     pub sub2: user::Sub,
     pub status: Status,
@@ -31,6 +31,7 @@ impl From<[user::Sub; 2]> for Contact {
 }
 
 pub struct ContactDto {
+    pub id: Id,
     pub recipient: user::Sub,
     pub status: Status,
 }
