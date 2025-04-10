@@ -16,14 +16,14 @@ serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 text-splitter = "0.25.1"
 
-tokio = { version = "1.44.1", features = ["macros", "sync", "rt-multi-thread"] }
+tokio = { version = "1.44.2", features = ["macros", "sync", "rt-multi-thread"] }
 async-stream = "0.3.6"
 async-trait = "0.1.88"
 futures = { version = "0.3.31", default-features = false }
 
-axum = { version = "0.8.1", features = ["ws", "macros"] }
+axum = { version = "0.8.3", features = ["ws", "macros"] }
 axum-server = { version = "0.7.2", features = ["tls-openssl"] }
-axum-extra = { version = "0.10.0", features = [
+axum-extra = { version = "0.10.1", features = [
     "cookie",
     "query",
     "typed-header",
@@ -37,7 +37,7 @@ oauth2 = "4.4.2"
 maud = { version = "0.27.0", features = ["axum"] }
 
 mongodb = "3.2.3"
-redis = { version = "0.29.2", features = [
+redis = { version = "0.29.5", features = [
     "connection-manager",
     "tokio-comp",
     "json",
