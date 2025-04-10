@@ -1,37 +1,39 @@
 name: messenger_dev
 services:
-  messenger_service:
-    image: messenger_service:latest
-    container_name: awg.dev.messenger_service
-    restart: always
-    ports:
-      - 8000:8000
-    environment:
-      ENV: dev
+  # messenger_service:
+  #   image: messenger_service:latest
+  #   container_name: awg.dev.messenger_service
+  #   restart: always
+  #   ports:
+  #     - 8000:8000
+  #   environment:
+  #     ENV: dev
 
-      RUST_LOG: debug
-      RUST_BACKTRACE: 1
+  #     RUST_LOG: debug
+  #     RUST_BACKTRACE: 1
 
-      CLIENT_ID: /secrets/auth0/client_id
-      CLIENT_SECRET: /secrets/auth0/client_secret
-      REDIRECT_URL: http://localhost:8000/callback
-      ISSUER: https://dcadea.auth0.com/
-      AUDIENCE: https://messenger.angelwing.io/api/v1
-      REQUIRED_CLAIMS: iss,sub,aud,exp,permissions
+  #     CLIENT_ID: /secrets/auth0/client_id
+  #     CLIENT_SECRET: /secrets/auth0/client_secret
+  #     REDIRECT_URL: http://localhost:8000/callback
+  #     ISSUER: https://dcadea.auth0.com/
+  #     AUDIENCE: https://messenger.angelwing.io/api/v1
+  #     REQUIRED_CLAIMS: iss,sub,aud,exp,permissions
 
-      REDIS_HOST: awg.dev.redis
-      MONGO_HOST: awg.dev.mongo
-      MONGO_DB: dev-messenger
-      NATS_HOST: awg.dev.nats
-    volumes:
-      - ./docker-volumes/dev/messenger_service/service.log:/usr/local/bin/service.log
-    depends_on:
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      nats:
-        condition: service_healthy
+  #     REDIS_HOST: awg.dev.redis
+  #     MONGO_HOST: awg.dev.mongo
+  #     MONGO_DB: dev-messenger
+  #     NATS_HOST: awg.dev.nats
+  #   volumes:
+  #     - ./docker-volumes/dev/messenger_service/service.log:/usr/local/bin/service.log
+  #   depends_on:
+  #     mongo:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #     nats:
+  #       condition: service_healthy
+  #     minio:
+  #       condition: service_healthy
 
   mongo:
     image: mongo:latest
@@ -85,5 +87,24 @@ services:
     healthcheck:
       test: wget http://localhost:8222/healthz -q -S -O -
       interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: awg.dev.minio
+    command: server --console-address ":9001" /data/minio
+    restart: always
+    ports:
+      - 9000:9000
+      - 9001:9001
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+    - ./docker-volumes/dev/minio/data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
       timeout: 5s
       retries: 5
