@@ -44,8 +44,10 @@ impl Render for ContactInfos<'_> {
                                 } @else {
                                     ."grow text-right text-2xl" {
                                         i ."fa-solid fa-check text-green-500 cursor-pointer"
+                                            hx-swap="none" // TODO: remove icons after accept
                                             hx-put={"/api/contacts/" (c.id) "/accept"} {}
                                         i ."fa-solid fa-xmark ml-3 text-red-500 cursor-pointer"
+                                            hx-swap="none" // TODO: remove icons after reject
                                             hx-put={"/api/contacts/" (c.id) "/reject"} {}
                                     }
                                 }
@@ -53,6 +55,7 @@ impl Render for ContactInfos<'_> {
                             Status::Accepted => {
                                 ."grow text-right text-2xl" {
                                     i ."fa-solid fa-ban ml-3 cursor-pointer"
+                                        hx-swap="none" // TODO: remove icon after block
                                         hx-put={"/api/contacts/" (c.id) "/block"} {}
                                 }
                             },

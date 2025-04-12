@@ -214,7 +214,7 @@ impl Tab {
 impl Render for Tab {
     fn render(&self) -> Markup {
         html! {
-            #tab-content ."flex-1 px-6 pt-6 relative" role="tabpanel" {
+            #tab-content ."flex-1 px-6 pt-6 relative overflow-auto" role="tabpanel" {
                 #errors {}
 
                 (self.content)
