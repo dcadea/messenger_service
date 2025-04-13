@@ -1,5 +1,5 @@
 pub mod sse {
-    use crate::event::{self, Notification, Subject};
+    use crate::event::{self, Subject};
     use crate::{auth, user};
     use async_stream;
     use axum::Extension;
