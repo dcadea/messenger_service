@@ -22,11 +22,9 @@ impl Render for Head<'_> {
             head {
                 meta charset="utf-8" {}
                 title { (self.0) }
-                script src="https://unpkg.com/htmx.org@2.0.3"
-                    integrity="sha384-0895/pl2MU10Hqc6jd4RvrthNlDiE9U1tWmX7WRESftEDRosgxNsQG/Ze9YMRzHq"
-                    crossorigin="anonymous" {}
-                script src="https://unpkg.com/htmx-ext-ws@2.0.2/ws.js" {}
-                script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js" {}
+                script src="https://unpkg.com/htmx.org@2.0.4" {}
+                script src="https://unpkg.com/htmx-ext-ws@2.0.3/ws.js" {}
+                script src="https://unpkg.com/htmx-ext-sse@2.2.3/sse.js" {}
                 script src="https://unpkg.com/hyperscript.org@0.9.13" {}
 
                 script src="https://unpkg.com/@tailwindcss/browser@4" {}

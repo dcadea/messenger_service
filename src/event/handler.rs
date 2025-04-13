@@ -1,5 +1,5 @@
 pub mod sse {
-    use crate::event::{self, Subject};
+    use crate::event::{self, Notification, Subject};
     use crate::{auth, user};
     use async_stream;
     use axum::Extension;
@@ -177,7 +177,7 @@ pub mod ws {
 
                             let markup = msg.render();
                             if let Err(e) = sender.send(Text(markup.into_string().into())).await {
-                                error!("Failed to send notification to client: {e}");
+                                error!("Failed to send event message to client: {e}");
                             }
 
                             if let Message::New(msg) = msg {

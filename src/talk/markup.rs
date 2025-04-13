@@ -102,7 +102,7 @@ impl Render for Header<'_> {
                 a ."cursor-pointer border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
                     hx-get="/tabs/chats"
                     hx-target="#tabs"
-                    hx-swat="innerHTML" { "X" }
+                    hx-swap="innerHTML" { "X" }
                 ."flex text-2xl" {
                     @if let DetailsDto::Chat{recipient, ..} = &self.0.details {
                         (user::model::OnlineStatus::new(recipient.clone(), false))
