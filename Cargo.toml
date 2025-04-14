@@ -42,4 +42,4 @@ redis = { version = "0.29.5", features = [
     "tokio-comp",
     "json",
 ] }
-async-nats = "0.39.0"
+async-nats = "0.40.0"
