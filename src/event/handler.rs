@@ -65,14 +65,15 @@ pub mod sse {
 }
 
 pub mod ws {
-    use std::sync::Arc;
-
     use crate::{
         auth,
         event::{self, Message, Subject},
         message, talk, user,
     };
-    use axum::extract::ws::Message::{Close, Text};
+    use axum::extract::ws::{
+        Message::{Close, Text},
+        Utf8Bytes,
+    };
     use axum::{
         Extension,
         extract::{Path, State, WebSocketUpgrade, ws::WebSocket},
@@ -85,13 +86,9 @@ pub mod ws {
     };
     use log::{debug, error, warn};
     use maud::Render;
-    use tokio::{
-        sync::{Notify, RwLock},
-        try_join,
-    };
 
     pub async fn talk(
-        Extension(auth_user): Extension<auth::User>,
+        auth_user: Extension<auth::User>,
         ws: WebSocketUpgrade,
         Path(talk_id): Path<talk::Id>,
         State(talk_validator): State<talk::Validator>,
@@ -99,11 +96,12 @@ pub mod ws {
         State(message_service): State<message::Service>,
         State(talk_service): State<talk::Service>,
     ) -> crate::Result<Response> {
+        debug!("Upgrading to WS for talk: {}", &talk_id);
         talk_validator.check_member(&talk_id, &auth_user).await?;
 
         Ok(ws.on_upgrade(move |socket| {
             handle(
-                auth_user.sub,
+                auth_user.sub.clone(),
                 talk_id,
                 socket,
                 event_service,
@@ -121,12 +119,10 @@ pub mod ws {
         message_service: message::Service,
         talk_service: talk::Service,
     ) {
-        let (sender, receiver) = ws.split();
+        let (sender, recv) = ws.split();
 
-        let close = Arc::new(Notify::new());
-        let read = read(close.clone(), receiver);
+        let read = read(recv);
         let write = write(
-            close.clone(),
             auth_sub,
             talk_id,
             sender,
@@ -134,18 +130,22 @@ pub mod ws {
             message_service,
             talk_service,
         );
+        let mut send_task = tokio::spawn(write);
+        let mut recv_task = tokio::spawn(read);
 
-        match try_join!(tokio::spawn(read), tokio::spawn(write)) {
-            Ok(_) => debug!("WS talk disconnected gracefully"),
-            Err(e) => error!("WS talk disconnected with error: {e}"),
+        // If any one of the tasks exit, abort the other.
+        tokio::select! {
+            _ = (&mut send_task) => recv_task.abort(),
+            _ = (&mut recv_task) => send_task.abort(),
         }
+
+        debug!("WS talk disconnected gracefully");
     }
 
     async fn write(
-        close: Arc<Notify>,
         auth_sub: user::Sub,
         talk_id: talk::Id,
-        sender: SplitSink<WebSocket, axum::extract::ws::Message>,
+        mut sender: SplitSink<WebSocket, axum::extract::ws::Message>,
         event_service: event::Service,
         message_service: message::Service,
         talk_service: talk::Service,
@@ -157,73 +157,60 @@ pub mod ws {
             Ok(stream) => stream,
             Err(e) => {
                 error!("Failed to subscribe to subject: {e}");
-                close.notify_one();
                 return;
             }
         };
 
-        let sender = Arc::new(RwLock::new(sender));
-        loop {
-            tokio::select! {
-                // close is notified => stop 'write' task
-                () = close.notified() => break,
+        while let Some(msg) = msg_stream.next().await {
+            let markup = msg.render();
+            if let Err(e) = sender.send(Text(markup.into_string().into())).await {
+                error!("Failed to send event message to client: {e}");
+            }
 
-                // new message is received from subject => send it to the client
-                msg = msg_stream.next() => {
-                    match msg {
-                        None => break,
-                        Some(msg) => {
-                            let mut sender = sender.write().await;
-
-                            let markup = msg.render();
-                            if let Err(e) = sender.send(Text(markup.into_string().into())).await {
-                                error!("Failed to send event message to client: {e}");
-                            }
-
-                            if let Message::New(msg) = msg {
-                                let talk_id = msg.talk_id.clone();
-                                match message_service.mark_as_seen(&auth_sub, &[msg]).await {
-                                    Ok(seen_qty) => {
-                                        if seen_qty > 0 {
-                                            if let Err(e) = talk_service.mark_as_seen(&talk_id).await {
-                                                error!("Failed to mark talk as seen: {e}");
-                                            }
-                                        }
-                                    }
-                                    Err(e) => error!("Failed to mark message as seen: {e}"),
-                                }
-                            }
+            if let Message::New(msg) = msg {
+                let talk_id = msg.talk_id.clone();
+                match message_service.mark_as_seen(&auth_sub, &[msg]).await {
+                    Ok(seen_qty) if seen_qty > 0 => {
+                        if let Err(e) = talk_service.mark_as_seen(&talk_id).await {
+                            error!("Failed to mark talk as seen: {e}");
                         }
                     }
-                },
+                    Ok(_) => continue,
+                    Err(e) => error!("Failed to mark message as seen: {e}"),
+                }
             }
+        }
+
+        if let Err(e) = sender
+            .send(Close(Some(axum::extract::ws::CloseFrame {
+                code: axum::extract::ws::close_code::NORMAL,
+                reason: Utf8Bytes::from_static("Goodbye"),
+            })))
+            .await
+        {
+            error!("Failed to send close frame to client: {e}");
         }
     }
 
-    async fn read(close: Arc<Notify>, mut receiver: SplitStream<WebSocket>) {
-        loop {
-            tokio::select! {
-                // close is notified => stop 'read' task
-                () = close.notified() => break,
-
-                // read next frame from WS connection
-                frame = receiver.next() => {
-                    if let Some(message) = frame {
-                        match message {
-                            Err(e) => {
-                                error!("Failed to read WS frame: {e}");
-                                close.notify_one(); // notify 'write' task to stop
-                                break;
-                            },
-                            Ok(Close(_)) => {
-                                debug!("WS connection closed by client");
-                                close.notify_one(); // notify 'write' task to stop
-                                break;
-                            },
-                            Ok(frame) => warn!("Received WS frame: {frame:?}")
-                        }
-                    }
+    async fn read(mut recv: SplitStream<WebSocket>) {
+        while let Some(msg) = recv.next().await {
+            match msg {
+                Err(e) => {
+                    error!("Failed to read WS frame: {e}");
+                    break;
                 }
+                Ok(Close(c)) => {
+                    if let Some(cf) = c {
+                        debug!(
+                            "Client sent close with code {} and reason `{}`",
+                            cf.code, cf.reason
+                        );
+                    } else {
+                        debug!("Client sent close message without CloseFrame");
+                    }
+                    break;
+                }
+                Ok(frame) => warn!("Received WS frame: {frame:?}"),
             }
         }
     }

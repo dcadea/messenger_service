@@ -14,3 +14,6 @@ stg: image
 
 compose:
 	docker-compose -f docker-compose.dev.yaml up -d
+
+clippy:
+	cargo fmt && cargo clippy -- -W clippy::pedantic
