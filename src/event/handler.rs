@@ -84,7 +84,7 @@ pub mod ws {
         SinkExt,
         stream::{SplitSink, SplitStream},
     };
-    use log::{debug, error, warn};
+    use log::{debug, error};
     use maud::Render;
 
     pub async fn talk(
@@ -210,7 +210,7 @@ pub mod ws {
                     }
                     break;
                 }
-                Ok(frame) => warn!("Received WS frame: {frame:?}"),
+                Ok(frame) => debug!("Received WS frame: {frame:?}"),
             }
         }
     }
