@@ -1,7 +1,12 @@
 use std::pin::Pin;
 use std::sync::Arc;
 
-use axum::{Router, http::StatusCode, response::sse, routing::get};
+use axum::{
+    Router,
+    http::StatusCode,
+    response::sse,
+    routing::{any, get},
+};
 use bytes::Bytes;
 use futures::Stream;
 use log::error;
@@ -23,7 +28,7 @@ pub type Service = Arc<dyn EventService + Send + Sync>;
 pub fn api<S>(s: AppState) -> Router<S> {
     Router::new()
         .route("/sse", get(handler::sse::notifications))
-        .route("/ws/{talk_id}", get(handler::ws::talk))
+        .route("/ws/{talk_id}", any(handler::ws::talk))
         .with_state(s)
 }
 
