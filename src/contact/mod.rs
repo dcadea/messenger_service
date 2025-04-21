@@ -51,6 +51,24 @@ pub enum Status {
     Blocked { initiator: user::Sub },
 }
 
+impl Status {
+    pub fn is_pending(&self) -> bool {
+        matches!(self, Status::Pending { .. })
+    }
+
+    pub fn is_accepted(&self) -> bool {
+        matches!(self, Status::Accepted)
+    }
+
+    pub fn is_rejected(&self) -> bool {
+        matches!(self, Status::Rejected)
+    }
+
+    pub fn is_blocked(&self) -> bool {
+        matches!(self, Status::Blocked { .. })
+    }
+}
+
 pub enum StatusTransition {
     Accept { responder: user::Sub },
     Reject { responder: user::Sub },

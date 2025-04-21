@@ -1,6 +1,6 @@
-use maud::{Render, html};
+use maud::{Markup, Render, html};
 
-use crate::{auth, contact::Status, user::model::UserInfo};
+use crate::{auth, contact, contact::Status, user::model::UserInfo};
 
 use super::model::ContactDto;
 
@@ -37,50 +37,78 @@ impl Render for ContactInfos<'_> {
                             alt="User avatar" {}
                         (ui.name)
 
-                        @match &c.status {
-                            Status::Pending { initiator } => {
-                                @if initiator.eq(auth_sub) {
-                                    ."grow text-right text-blue-500" {
-                                        i ."fa-solid fa-hourglass-half mr-2" {}
-                                        "Pending action"
-                                    }
-                                } @else {
-                                    ."grow text-right text-2xl" {
-                                        i ."fa-solid fa-check text-green-500 cursor-pointer"
-                                            hx-swap="none" // TODO: remove icons after accept
-                                            hx-put={"/api/contacts/" (c.id) "/accept"} {}
-                                        i ."fa-solid fa-xmark ml-3 text-red-500 cursor-pointer"
-                                            hx-swap="none" // TODO: remove icons after reject
-                                            hx-put={"/api/contacts/" (c.id) "/reject"} {}
-                                    }
-                                }
-                            },
-                            Status::Accepted => {
-                                ."grow text-right text-2xl" {
-                                    i ."fa-solid fa-ban ml-3 cursor-pointer"
-                                        hx-swap="none" // TODO: remove icon after block
-                                        hx-put={"/api/contacts/" (c.id) "/block"} {}
-                                }
-                            },
-                            Status::Rejected => {
-                                ."grow text-right text-red-500" {
-                                    i ."fa-solid fa-xmark mr-2" {}
-                                    "Request rejected"
-                                }
-                            },
-                            Status::Blocked { initiator } => {
-                                ."grow text-right text-blue-500" {
-                                    i ."fa-solid fa-ban mr-2" {}
+                        div #{"ci-status-" (c.id)}
+                            ."grow text-right"
+                            .text-blue-500[c.status.is_pending()]
+                            .text-red-500[c.status.is_rejected()]
+                            .text-blue-500[c.status.is_blocked()]
+                        {
+                            @match &c.status {
+                                Status::Pending { initiator } => {
                                     @if initiator.eq(auth_sub) {
+                                        (Icon::Pending)
+                                    } @else {
+                                        (Icon::Accept(&c.id))
+                                        (Icon::Reject(&c.id))
+                                    }
+                                },
+                                Status::Accepted => (Icon::Block(&c.id)),
+                                Status::Rejected => (Icon::Rejected),
+                                Status::Blocked { initiator } => {
+                                    (Icon::Blocked)
+                                    @if initiator.eq(auth_sub) {
+                                        // todo: add unblock
                                         "Blocked"
                                     } @else {
                                         "Blocked you"
                                     }
-                                }
-                            },
+                                },
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+enum Icon<'a> {
+    Pending,
+    Accept(&'a contact::Id),
+    Reject(&'a contact::Id),
+    Block(&'a contact::Id),
+    Rejected,
+    Blocked,
+}
+
+impl Render for Icon<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            @match self {
+                Self::Pending => {
+                    i ."fa-solid fa-hourglass-half mr-2" {}
+                    "Pending action"
+                },
+                Self::Accept(id) => {
+                    i ."fa-solid fa-check text-2xl text-green-500 cursor-pointer"
+                        hx-swap="none" // TODO: remove icons after accept
+                        hx-put={"/api/contacts/" (id) "/accept"} {}
+                },
+                Self::Reject(id) => {
+                    i ."fa-solid fa-xmark ml-3 text-2xl text-red-500 cursor-pointer"
+                        hx-swap="none" // TODO: remove icons after reject
+                        hx-put={"/api/contacts/" (id) "/reject"} {}
+                },
+                Self::Block(id) => {
+                    i ."fa-solid fa-ban ml-3 text-2xl cursor-pointer"
+                        hx-swap="none" // TODO: remove icon after block
+                        hx-put={"/api/contacts/" (id) "/block"} {}
+                },
+                Self::Rejected => {
+                    i ."fa-solid fa-xmark mr-2" {}
+                    "Request rejected"
+                },
+                Self::Blocked => i ."fa-solid fa-ban mr-2" {},
             }
         }
     }
