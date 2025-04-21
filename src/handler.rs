@@ -65,6 +65,5 @@ pub async fn contacts_tab(
 
 // GET /tabs/settings
 pub async fn settings_tab() -> Markup {
-    // TODO
     Tab::new(SelectedTab::Settings, settings::List).render()
 }

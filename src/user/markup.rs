@@ -64,7 +64,7 @@ impl Render for StartTalk<'_> {
     fn render(&self) -> Markup {
         html! {
             form .float-right
-                hx-post="/api/talks"
+                hx-post="/api/talks" // TODO: hx-get when chat exists
                 hx-target=(TALK_WINDOW_TARGET)
             {
                 input type="hidden" name="type" value="chat" {}

@@ -18,6 +18,9 @@ impl<'a> ContactInfos<'a> {
     }
 }
 
+const CONTACT_ITEM_CLASS: &str =
+    "px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center";
+
 impl Render for ContactInfos<'_> {
     fn render(&self) -> maud::Markup {
         let auth_sub = &self.auth_user.sub;
@@ -26,9 +29,9 @@ impl Render for ContactInfos<'_> {
             header ."text-center mb-4"{
                 h2.text-2xl { "Contacts" }
             }
-            ul ."flex flex-col" {
+            ul ."flex flex-col space-y-2" {
                 @for (c, ui) in self.contact_infos {
-                    li ."flex items-center mb-3" {
+                    li .(CONTACT_ITEM_CLASS) {
                         img ."w-9 h-9 rounded-full float-left mr-2"
                             src=(ui.picture)
                             alt="User avatar" {}

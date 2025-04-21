@@ -169,7 +169,7 @@ pub mod ws {
             error!("Failed to flush ws sender: {e}");
         }
 
-        debug!("WS write task stopped for talk: {}", talk_id);
+        debug!("WS write task stopped for talk: {talk_id}");
     }
 
     async fn receive(talk_id: talk::Id, mut recv: SplitStream<WebSocket>, close: Arc<Notify>) {
@@ -195,6 +195,6 @@ pub mod ws {
             }
         }
 
-        debug!("WS read task stopped for talk: {}", talk_id);
+        debug!("WS read task stopped for talk: {talk_id}");
     }
 }
