@@ -10,8 +10,6 @@ const TALKS_COLLECTION: &str = "talks";
 pub trait TalkRepository {
     async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk>;
 
-    async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Talk>>;
-
     async fn find_by_sub_and_kind(
         &self,
         sub: &user::Sub,
@@ -54,18 +52,6 @@ impl TalkRepository for MongoTalkRepository {
         let talk = self.col.find_one(doc! { "_id": id }).await?;
 
         talk.ok_or(talk::Error::NotFound(Some(id.to_owned())))
-    }
-
-    async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Talk>> {
-        let cursor = self
-            .col
-            .find(doc! {"details.members": sub})
-            .sort(doc! {"last_message.timestamp": -1})
-            .await?;
-
-        let talks: Vec<Talk> = cursor.try_collect().await?;
-
-        Ok(talks)
     }
 
     async fn find_by_sub_and_kind(

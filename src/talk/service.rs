@@ -32,8 +32,6 @@ pub trait TalkService {
         auth_sub: &user::Sub,
     ) -> super::Result<TalkDto>;
 
-    async fn find_all(&self, auth_user: &auth::User) -> super::Result<Vec<TalkDto>>;
-
     async fn find_all_by_kind(
         &self,
         auth_user: &auth::User,
@@ -183,20 +181,6 @@ impl TalkService for TalkServiceImpl {
         let talk = self.repo.find_by_id_and_sub(id, auth_sub).await?;
         let dto = self.talk_to_dto(talk, auth_sub).await;
         Ok(dto)
-    }
-
-    async fn find_all(&self, auth_user: &auth::User) -> super::Result<Vec<TalkDto>> {
-        let sub = &auth_user.sub;
-        let talks = self.repo.find_by_sub(sub).await?;
-
-        let talk_dtos = join_all(
-            talks
-                .into_iter()
-                .map(|t| async { self.talk_to_dto(t, sub).await }),
-        )
-        .await;
-
-        Ok(talk_dtos)
     }
 
     async fn find_all_by_kind(
