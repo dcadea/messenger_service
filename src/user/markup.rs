@@ -83,7 +83,8 @@ impl Render for AddContact<'_> {
     fn render(&self) -> Markup {
         html! {
             form .float-right hx-post="/api/contacts"
-                hx-swap="none" // TODO: hide "add contact" button/form
+                hx-target="this"
+                hx-swap="outerHTML"
             {
                 input type="hidden" name="sub" value=(self.0) {}
                 input ."px-2 py-1 text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-xs focus:outline-none"
@@ -110,9 +111,6 @@ impl Render for SearchResult<'_> {
         let search_result_class =
             "absolute w-full bg-white border border-gray-300 rounded-md shadow-lg";
 
-        let status_class =
-            "float-right px-2 py-1 text-white font-medium rounded-lg text-xs focus:outline-none";
-
         html! {
             ul .(search_result_class) {
                 @if self.users.is_empty() {
@@ -127,16 +125,30 @@ impl Render for SearchResult<'_> {
 
                             @match self.contacts.iter().find(|c| c.recipient.eq(&user.sub)) {
                                 Some(c) => @match c.status {
-                                    contact::Status::Pending{ .. } => span .(status_class) .bg-gray-400 { "Pending" },
                                     contact::Status::Accepted => (StartTalk(&user.sub)),
-                                    contact::Status::Rejected => span .(status_class) .bg-red-500 { "Rejected" },
-                                    contact::Status::Blocked { .. } => span .(status_class) .bg-red-700 { "Blocked" },
+                                    _ => (c.status)
                                 },
                                 None => (AddContact(&user.sub))
                             }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+impl Render for contact::Status {
+    fn render(&self) -> Markup {
+        let status_class =
+            "float-right px-2 py-1 text-white font-medium rounded-lg text-xs focus:outline-none";
+
+        html! {
+            @match self {
+                contact::Status::Pending{ .. } => span .(status_class) .bg-gray-400 { "Pending" },
+                contact::Status::Accepted => span .(status_class) .bg-green-700 { "Accepted" },
+                contact::Status::Rejected => span .(status_class) .bg-red-500 { "Rejected" },
+                contact::Status::Blocked { .. } => span .(status_class) .bg-red-700 { "Blocked" },
             }
         }
     }

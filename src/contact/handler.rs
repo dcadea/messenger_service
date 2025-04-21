@@ -4,6 +4,7 @@ pub(super) mod api {
         Extension, Form,
         extract::{Path, Query, State},
     };
+    use maud::{Markup, Render};
     use serde::Deserialize;
 
     use crate::{
@@ -21,11 +22,10 @@ pub(super) mod api {
         Extension(auth_user): Extension<auth::User>,
         contact_service: State<contact::Service>,
         Form(params): Form<CreateParams>,
-    ) -> crate::Result<()> {
-        contact_service
-            .add(&Contact::new(auth_user.sub, params.sub))
-            .await?;
-        Ok(())
+    ) -> crate::Result<Markup> {
+        let c = Contact::new(auth_user.sub, params.sub);
+        contact_service.add(&c).await?;
+        Ok(c.status.render())
     }
 
     pub async fn delete(
