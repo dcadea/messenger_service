@@ -13,6 +13,8 @@ pub trait ContactService {
         recipient: &user::Sub,
     ) -> super::Result<Option<ContactDto>>;
 
+    async fn find_by_id(&self, auth_sub: &user::Sub, id: &Id) -> super::Result<ContactDto>;
+
     async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<ContactDto>>;
 
     async fn find_by_sub_and_status(
@@ -56,6 +58,14 @@ impl ContactService for ContactServiceImpl {
             .find(auth_sub, recipient)
             .await
             .map(|c| c.map(|c| map_to_dto(auth_sub, c)))
+    }
+
+    async fn find_by_id(&self, auth_sub: &user::Sub, id: &Id) -> super::Result<ContactDto> {
+        // TODO: cache
+        let c = self.repo.find_by_id(id).await?;
+
+        c.map(|c| map_to_dto(auth_sub, c))
+            .ok_or(super::Error::NotFound(id.clone()))
     }
 
     async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<ContactDto>> {

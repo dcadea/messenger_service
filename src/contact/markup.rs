@@ -41,7 +41,6 @@ impl Render for ContactInfos<'_> {
                             ."grow text-right"
                             .text-blue-500[c.status.is_pending()]
                             .text-red-500[c.status.is_rejected()]
-                            .text-blue-500[c.status.is_blocked()]
                         {
                             @match &c.status {
                                 Status::Pending { initiator } => {
@@ -55,10 +54,9 @@ impl Render for ContactInfos<'_> {
                                 Status::Accepted => (Icon::Block(&c.id)),
                                 Status::Rejected => (Icon::Rejected),
                                 Status::Blocked { initiator } => {
-                                    (Icon::Blocked)
                                     @if initiator.eq(auth_sub) {
-                                        // todo: add unblock
                                         "Blocked"
+                                        (Icon::Unblock(&c.id))
                                     } @else {
                                         "Blocked you"
                                     }
@@ -77,8 +75,8 @@ enum Icon<'a> {
     Accept(&'a contact::Id),
     Reject(&'a contact::Id),
     Block(&'a contact::Id),
+    Unblock(&'a contact::Id),
     Rejected,
-    Blocked,
 }
 
 impl Render for Icon<'_> {
@@ -104,11 +102,15 @@ impl Render for Icon<'_> {
                         hx-swap="none" // TODO: remove icon after block
                         hx-put={"/api/contacts/" (id) "/block"} {}
                 },
+                Self::Unblock(id) => {
+                    i ."fa-solid fa-lock-open ml-3 text-green-500 text-xl cursor-pointer"
+                        hx-swap="none" // TODO: remove icon after unblock
+                        hx-put={"/api/contacts/" (id) "/unblock"} {}
+                },
                 Self::Rejected => {
                     i ."fa-solid fa-xmark mr-2" {}
                     "Request rejected"
                 },
-                Self::Blocked => i ."fa-solid fa-ban mr-2" {},
             }
         }
     }

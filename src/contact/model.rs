@@ -42,6 +42,12 @@ impl Contact {
             (Status::Accepted, StatusTransition::Block { initiator }) => {
                 self.status = Status::Blocked { initiator }
             }
+            (Status::Blocked { initiator }, StatusTransition::Unblock { target }) => {
+                if initiator.eq(&target) {
+                    return false;
+                }
+                self.status = Status::Accepted;
+            }
             (_, _) => {
                 changed = false; /* no change */
             }

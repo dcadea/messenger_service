@@ -78,4 +78,18 @@ pub(super) mod api {
 
         Ok(())
     }
+
+    pub async fn unblock(
+        Extension(auth_user): Extension<auth::User>,
+        Path(id): Path<contact::Id>,
+        contact_service: State<contact::Service>,
+    ) -> crate::Result<()> {
+        let c = contact_service.find_by_id(&auth_user.sub, &id).await?;
+        let target = c.recipient;
+        contact_service
+            .transition_status(&id, contact::StatusTransition::Unblock { target })
+            .await?;
+
+        Ok(())
+    }
 }

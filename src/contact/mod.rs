@@ -39,6 +39,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .route("/contacts/{id}/accept", put(handler::api::accept))
         .route("/contacts/{id}/reject", put(handler::api::reject))
         .route("/contacts/{id}/block", put(handler::api::block))
+        .route("/contacts/{id}/unblock", put(handler::api::unblock))
         .with_state(s)
 }
 
@@ -56,16 +57,8 @@ impl Status {
         matches!(self, Status::Pending { .. })
     }
 
-    pub fn is_accepted(&self) -> bool {
-        matches!(self, Status::Accepted)
-    }
-
     pub fn is_rejected(&self) -> bool {
         matches!(self, Status::Rejected)
-    }
-
-    pub fn is_blocked(&self) -> bool {
-        matches!(self, Status::Blocked { .. })
     }
 }
 
@@ -73,6 +66,7 @@ pub enum StatusTransition {
     Accept { responder: user::Sub },
     Reject { responder: user::Sub },
     Block { initiator: user::Sub },
+    Unblock { target: user::Sub },
 }
 
 #[derive(thiserror::Error, Debug)]
