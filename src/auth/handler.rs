@@ -14,6 +14,7 @@ pub(super) mod api {
     };
     use axum_extra::extract::cookie::{self, Cookie};
     use axum_extra::extract::{CookieJar, Query};
+    use log::debug;
     use serde::Deserialize;
 
     pub async fn sso_login(auth_service: State<auth::Service>) -> impl IntoResponse {
@@ -25,10 +26,13 @@ pub(super) mod api {
         jar: CookieJar,
     ) -> crate::Result<impl IntoResponse> {
         if let Some(sid) = jar.get(auth::SESSION_ID) {
-            auth_service.invalidate_token(sid.value()).await?;
+            let sid = sid.value();
+            debug!("Logging out user with session: {}", &sid);
+            auth_service.invalidate_token(sid).await?;
             return Ok((CookieJar::new(), Redirect::to("/login")));
         }
 
+        debug!("No session found, redirecting to login");
         Ok((jar, Redirect::to("/login")))
     }
 

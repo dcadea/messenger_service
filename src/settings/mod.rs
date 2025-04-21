@@ -12,17 +12,18 @@ impl Render for List {
                 h2.text-2xl { "Settings" }
             }
 
-            // TODO: align
             ul .space-y-2 {
                 li .(SETTING_ITEM_CLASS) {
-                    i .mr-2 ."fa-solid fa-arrow-right-from-bracket" {}
-                    a href="/logout" { "Logout" }
-                }
-                li .(SETTING_ITEM_CLASS) {
-                    span _="on click askNotificationPermission()" {
-                        i .mr-2 ."fa-regular fa-bell-slash" {}
-                        "Enable notifications"
+                    a .flex-grow href="/logout" {
+                        i .mr-2 ."fa-solid fa-arrow-right-from-bracket" {}
+                        "Logout"
                     }
+                }
+                li .(SETTING_ITEM_CLASS)
+                    _="on click askNotificationPermission()"
+                {
+                    i .mr-2 ."fa-regular fa-bell-slash" {}
+                    "Enable notifications"
                 }
             }
         }
