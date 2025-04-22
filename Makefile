@@ -17,3 +17,6 @@ compose:
 
 clippy:
 	cargo fmt && cargo clippy -- -W clippy::pedantic
+
+cov:
+	cargo llvm-cov --open
