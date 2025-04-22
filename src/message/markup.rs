@@ -343,7 +343,7 @@ mod test {
         let talk_id = &talk::Id("67dff625c469e51787ba173d".to_string());
 
         let expected = concat!(
-            "<form class=\"border-gray-200 flex\" id=\"message-input\" hx-post=\"/api/messages\" hx-target=\"#message-list\" hx-swap=\"afterbegin\" ",
+            "<form class=\"border-gray-200 flex mb-3\" id=\"message-input\" hx-post=\"/api/messages\" hx-target=\"#message-list\" hx-swap=\"afterbegin\" ",
             r#"_="
                 on htmx:afterRequest reset() me
                 on htmx:afterRequest go to the bottom of the #message-list
@@ -364,7 +364,7 @@ mod test {
         let message_id = &message::Id("67dff625c469e51787ba173d".to_string());
 
         let expected = concat!(
-            "<form class=\"border-gray-200 flex\" id=\"message-input\" hx-put=\"/api/messages\" hx-target=\"#m-67dff625c469e51787ba173d\" hx-swap=\"outerHTML\">",
+            "<form class=\"border-gray-200 flex mb-3\" id=\"message-input\" hx-put=\"/api/messages\" hx-target=\"#m-67dff625c469e51787ba173d\" hx-swap=\"outerHTML\">",
             r#"<input type="hidden" name="message_id" value="67dff625c469e51787ba173d"></input>"#,
             r#"<input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none" type="text" name="text" value="old text" placeholder="Type your message..." autocomplete="off" hx-disabled-elt="this" _="on keyup if the event's key is 'Escape' set value of me to ''"></input>"#,
             r#"<input class="bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700" hx-disabled-elt="this" type="submit" value="Send"></input>"#,
