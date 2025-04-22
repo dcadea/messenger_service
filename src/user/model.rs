@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{Id, Sub};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub struct User {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     id: Option<Id>,
@@ -11,6 +11,27 @@ pub struct User {
     name: String,
     picture: String,
     email: String,
+}
+
+#[cfg(test)]
+impl User {
+    pub fn new(
+        id: Id,
+        sub: Sub,
+        nickname: impl Into<String>,
+        name: impl Into<String>,
+        picture: impl Into<String>,
+        email: impl Into<String>,
+    ) -> Self {
+        Self {
+            id: Some(id),
+            sub,
+            nickname: nickname.into(),
+            name: name.into(),
+            picture: picture.into(),
+            email: email.into(),
+        }
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize)]

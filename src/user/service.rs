@@ -73,7 +73,7 @@ impl UserService for UserServiceImpl {
     ) -> super::Result<Vec<UserInfo>> {
         let users = self
             .repo
-            .search_by_nickname(nickname, &auth_user.nickname)
+            .search_by_nickname_excluding(nickname, &auth_user.nickname)
             .await?;
 
         Ok(users.into_iter().map(Into::into).collect())

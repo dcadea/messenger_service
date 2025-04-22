@@ -19,8 +19,15 @@ type Result<T> = std::result::Result<T, Error>;
 pub type Repository = Arc<dyn UserRepository + Send + Sync>;
 pub type Service = Arc<dyn UserService + Send + Sync>;
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq, Debug)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
+
+#[cfg(test)]
+impl Id {
+    pub fn random() -> Self {
+        Self(mongodb::bson::oid::ObjectId::new().to_hex())
+    }
+}
 
 pub fn api<S>(s: AppState) -> Router<S> {
     Router::new()

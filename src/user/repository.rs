@@ -14,11 +14,10 @@ pub trait UserRepository {
 
     async fn find_by_sub(&self, sub: &Sub) -> super::Result<User>;
 
-    // search users by nickname excluding the authenticated user
-    async fn search_by_nickname(
+    async fn search_by_nickname_excluding(
         &self,
         nickname: &str,
-        auth_nickname: &str,
+        exclude: &str,
     ) -> super::Result<Vec<User>>;
 }
 
@@ -48,14 +47,14 @@ impl UserRepository for MongoUserRepository {
     }
 
     // search users by nickname excluding the authenticated user
-    async fn search_by_nickname(
+    async fn search_by_nickname_excluding(
         &self,
         nickname: &str,
-        auth_nickname: &str,
+        exclude: &str,
     ) -> super::Result<Vec<User>> {
         let filter = doc! {
             "$and": [
-                { "nickname": { "$ne": auth_nickname } },
+                { "nickname": { "$ne": exclude } },
                 { "nickname": { "$regex": nickname, "$options": "i" } },
             ]
         };
@@ -63,5 +62,112 @@ impl UserRepository for MongoUserRepository {
         let cursor = self.col.find(filter).await?;
 
         cursor.try_collect().await.map_err(super::Error::from)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use testcontainers_modules::{mongo::Mongo, testcontainers::runners::AsyncRunner};
+
+    use super::MongoUserRepository;
+
+    use crate::user::{self, model::User, repository::UserRepository};
+
+    const DB_NAME: &str = "users";
+
+    #[tokio::test]
+    async fn should_insert_user() {
+        // TODO: switch to reusable containers (https://github.com/testcontainers/testcontainers-rs/issues/742)
+        let node = Mongo::default().start().await.unwrap();
+        let host = node.get_host().await.unwrap();
+        let port = node.get_host_port_ipv4(27017).await.unwrap();
+        let client = mongodb::Client::with_uri_str(format!("mongodb://{host}:{port}/"))
+            .await
+            .unwrap();
+        let db = client.database(DB_NAME);
+
+        let repo = MongoUserRepository::new(&db);
+
+        let sub = user::Sub("test|123".into());
+        let user = User::new(
+            user::Id::random(),
+            sub.clone(),
+            "valera_kardan".to_owned(),
+            "valera".to_owned(),
+            "picture".to_owned(),
+            "valera@test.com".to_owned(),
+        );
+
+        repo.insert(&user).await.unwrap();
+
+        let found = repo.find_by_sub(&sub).await.unwrap();
+        assert_eq!(found, user);
+    }
+
+    #[tokio::test]
+    async fn should_search_by_nickname_excluding() {
+        let node = Mongo::default().start().await.unwrap();
+        let host = node.get_host().await.unwrap();
+        let port = node.get_host_port_ipv4(27017).await.unwrap();
+        let client = mongodb::Client::with_uri_str(format!("mongodb://{host}:{port}/"))
+            .await
+            .unwrap();
+        let db = client.database(DB_NAME);
+
+        let repo = MongoUserRepository::new(&db);
+
+        let valera = &User::new(
+            user::Id::random(),
+            user::Sub("test|123".into()),
+            "valera_kardan",
+            "valera",
+            "picture",
+            "valera@test.com",
+        );
+
+        let jora = &User::new(
+            user::Id::random(),
+            user::Sub("test|456".into()),
+            "jora_partizan",
+            "jora",
+            "picture",
+            "jora@test.com",
+        );
+
+        let radu = &User::new(
+            user::Id::random(),
+            user::Sub("test|135".into()),
+            "radu_carlig",
+            "radu",
+            "picture",
+            "radu@test.com",
+        );
+
+        let igor = &User::new(
+            user::Id::random(),
+            user::Sub("test|246".into()),
+            "igor_frina",
+            "igor",
+            "picture",
+            "igor@test.com",
+        );
+
+        tokio::try_join!(
+            repo.insert(valera),
+            repo.insert(jora),
+            repo.insert(radu),
+            repo.insert(igor)
+        )
+        .unwrap();
+
+        let mut expected = vec![valera, jora].into_iter();
+
+        let found = repo
+            .search_by_nickname_excluding("ra", "radu_carlig")
+            .await
+            .unwrap();
+
+        assert_eq!(expected.len(), found.len());
+        assert!(expected.all(|u| found.contains(u)));
     }
 }
