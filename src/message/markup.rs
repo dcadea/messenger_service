@@ -462,7 +462,7 @@ mod test {
             msg_id, msg_timestamp
         );
 
-        let actual = MessageItem::new(&msg, Some(&user::Sub("google|jora".into()))).render();
+        let actual = MessageItem::new(&msg, None).render();
 
         assert_eq!(expected, actual.into_string())
     }
