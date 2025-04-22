@@ -135,7 +135,7 @@ impl ContactService for ContactServiceImpl {
                 self.repo.update(&c).await?;
             }
             None => return Err(super::Error::NotFound(id.clone())),
-        };
+        }
         Ok(())
     }
 

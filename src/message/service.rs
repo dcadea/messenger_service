@@ -261,7 +261,7 @@ impl MessageServiceImpl {
                 }
             }
             Err(e) => error!("could not find talk recipients: {e:?}"),
-        };
+        }
     }
 
     async fn notify_updated(&self, msg: &Message) {
@@ -284,7 +284,7 @@ impl MessageServiceImpl {
                 }
             }
             Err(e) => error!("could not find talk recipients: {e:?}"),
-        };
+        }
     }
 
     async fn notify_deleted(&self, msg: &Message) {
@@ -303,7 +303,7 @@ impl MessageServiceImpl {
                 }
             }
             Err(e) => error!("could not find talk recipients: {e:?}"),
-        };
+        }
     }
 }
 

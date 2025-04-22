@@ -32,7 +32,7 @@ pub mod sse {
                     noti = noti_stream.next() => {
                         match noti {
                             Some(noti) => yield Ok(sse::Event::from(noti)),
-                            None => continue,
+                            None => {},
                         }
                     },
                     _ = interval.tick() => {
@@ -152,12 +152,15 @@ pub mod ws {
                     if let Message::New(msg) = msg {
                         let talk_id = msg.talk_id.clone();
                         match message_service.mark_as_seen(&auth_sub, &[msg]).await {
-                            Ok(seen_qty) if seen_qty > 0 => {
+                            Ok(seen_qty) => {
+                                if seen_qty == 0 {
+                                    continue;
+                                }
+
                                 if let Err(e) = talk_service.mark_as_seen(&talk_id).await {
                                     error!("Failed to mark talk as seen: {e}");
                                 }
                             }
-                            Ok(_) => continue,
                             Err(e) => error!("Failed to mark message as seen: {e}"),
                         }
                     }

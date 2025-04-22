@@ -75,7 +75,7 @@ impl Contact {
             (_, _) => {
                 changed = false; /* no change */
             }
-        };
+        }
 
         changed
     }
