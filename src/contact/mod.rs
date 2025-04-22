@@ -43,7 +43,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Hash, Debug)]
 #[serde(tag = "indicator", rename_all = "snake_case")]
 pub enum Status {
     Pending { initiator: user::Sub },
