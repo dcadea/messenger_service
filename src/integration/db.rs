@@ -57,6 +57,24 @@ impl Config {
     }
 }
 
+#[cfg(test)]
+use testcontainers_modules::mongo::Mongo;
+
+#[cfg(test)]
+impl Config {
+    pub async fn test(
+        node: &testcontainers_modules::testcontainers::ContainerAsync<Mongo>,
+    ) -> Self {
+        let host = node.get_host().await.unwrap();
+        let port = node.get_host_port_ipv4(27017).await.unwrap();
+        Self {
+            host: host.to_string(),
+            port,
+            db: "test".into(),
+        }
+    }
+}
+
 impl From<contact::Id> for mongodb::bson::Bson {
     fn from(val: contact::Id) -> Self {
         match oid::ObjectId::from_str(&val.0) {

@@ -116,7 +116,7 @@ impl TalkService for TalkServiceImpl {
         }
 
         let talk = Talk::new(Details::Chat { members });
-        self.repo.create(talk.clone()).await?;
+        self.repo.create(&talk).await?;
 
         let talk_dto = self.talk_to_dto(talk, auth_sub).await;
 
@@ -148,7 +148,7 @@ impl TalkService for TalkServiceImpl {
             owner: auth_sub.clone(),
             members: members.into(),
         });
-        self.repo.create(talk.clone()).await?;
+        self.repo.create(&talk).await?;
 
         let talk_dto = self.talk_to_dto(talk, auth_sub).await;
 

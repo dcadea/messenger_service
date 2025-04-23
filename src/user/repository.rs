@@ -69,22 +69,18 @@ impl UserRepository for MongoUserRepository {
 mod test {
     use testcontainers_modules::{mongo::Mongo, testcontainers::runners::AsyncRunner};
 
-    use super::MongoUserRepository;
+    use super::{MongoUserRepository, UserRepository};
 
-    use crate::user::{self, model::User, repository::UserRepository};
-
-    const DB_NAME: &str = "users";
+    use crate::{
+        integration::db,
+        user::{self, model::User},
+    };
 
     #[tokio::test]
     async fn should_insert_user() {
         // TODO: switch to reusable containers (https://github.com/testcontainers/testcontainers-rs/issues/742)
         let node = Mongo::default().start().await.unwrap();
-        let host = node.get_host().await.unwrap();
-        let port = node.get_host_port_ipv4(27017).await.unwrap();
-        let client = mongodb::Client::with_uri_str(format!("mongodb://{host}:{port}/"))
-            .await
-            .unwrap();
-        let db = client.database(DB_NAME);
+        let db = db::Config::test(&node).await.connect();
 
         let repo = MongoUserRepository::new(&db);
 
@@ -100,19 +96,14 @@ mod test {
 
         repo.insert(&user).await.unwrap();
 
-        let found = repo.find_by_sub(&sub).await.unwrap();
-        assert_eq!(found, user);
+        let actual = repo.find_by_sub(&sub).await.unwrap();
+        assert_eq!(actual, user);
     }
 
     #[tokio::test]
     async fn should_search_by_nickname_excluding() {
         let node = Mongo::default().start().await.unwrap();
-        let host = node.get_host().await.unwrap();
-        let port = node.get_host_port_ipv4(27017).await.unwrap();
-        let client = mongodb::Client::with_uri_str(format!("mongodb://{host}:{port}/"))
-            .await
-            .unwrap();
-        let db = client.database(DB_NAME);
+        let db = db::Config::test(&node).await.connect();
 
         let repo = MongoUserRepository::new(&db);
 
@@ -162,12 +153,12 @@ mod test {
 
         let mut expected = vec![valera, jora].into_iter();
 
-        let found = repo
+        let actual = repo
             .search_by_nickname_excluding("ra", "radu_carlig")
             .await
             .unwrap();
 
-        assert_eq!(expected.len(), found.len());
-        assert!(expected.all(|u| found.contains(u)));
+        assert_eq!(expected.len(), actual.len());
+        assert!(expected.all(|u| actual.contains(u)));
     }
 }

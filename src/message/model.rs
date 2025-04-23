@@ -42,7 +42,7 @@ impl Message {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Eq, PartialEq, Debug)]
 pub struct LastMessage {
     pub id: Id,
     pub text: String,

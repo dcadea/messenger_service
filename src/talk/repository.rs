@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use futures::TryStreamExt;
 use mongodb::bson::doc;
 
@@ -18,9 +19,9 @@ pub trait TalkRepository {
 
     async fn find_by_id_and_sub(&self, id: &talk::Id, sub: &user::Sub) -> super::Result<Talk>;
 
-    async fn create(&self, talk: Talk) -> super::Result<()>;
+    async fn create(&self, talk: &Talk) -> super::Result<()>;
 
-    async fn delete(&self, id: &talk::Id) -> super::Result<()>;
+    async fn delete(&self, id: &talk::Id) -> super::Result<bool>;
 
     async fn exists(&self, members: &[user::Sub; 2]) -> super::Result<bool>;
 
@@ -46,7 +47,7 @@ impl MongoTalkRepository {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl TalkRepository for MongoTalkRepository {
     async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk> {
         let talk = self.col.find_one(doc! { "_id": id }).await?;
@@ -85,19 +86,16 @@ impl TalkRepository for MongoTalkRepository {
         talk.ok_or(talk::Error::NotFound(Some(id.to_owned())))
     }
 
-    async fn create(&self, talk: Talk) -> super::Result<()> {
-        let res = self.col.insert_one(talk).await?;
-
-        if let mongodb::bson::Bson::Null = res.inserted_id {
-            return Err(talk::Error::NotCreated);
-        }
+    async fn create(&self, talk: &Talk) -> super::Result<()> {
+        self.col.insert_one(talk).await?;
 
         Ok(())
     }
 
-    async fn delete(&self, id: &talk::Id) -> super::Result<()> {
-        self.col.delete_one(doc! {"_id": id}).await?;
-        Ok(())
+    async fn delete(&self, id: &talk::Id) -> super::Result<bool> {
+        let res = self.col.delete_one(doc! {"_id": id}).await?;
+
+        Ok(res.deleted_count > 0)
     }
 
     async fn exists(&self, members: &[user::Sub; 2]) -> super::Result<bool> {
@@ -128,12 +126,401 @@ impl TalkRepository for MongoTalkRepository {
     async fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()> {
         self.col
             .update_one(
-                doc! { "_id": id },
+                doc! {
+                    "$and": [
+                        {"_id": id },
+                        { "last_message.seen": { "$exists": true }}
+                    ]
+                },
                 doc! {"$set": {
                     "last_message.seen": true,
                 }},
             )
             .await?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use testcontainers_modules::{mongo::Mongo, testcontainers::runners::AsyncRunner};
+
+    use crate::{
+        integration::db,
+        message::{self, model::LastMessage},
+        talk::{
+            self,
+            model::{Details, Talk},
+        },
+        user,
+    };
+
+    use super::{MongoTalkRepository, TalkRepository};
+
+    #[tokio::test]
+    async fn should_find_by_id() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let expected = Talk::new(Details::Chat {
+            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+        });
+        repo.create(&expected).await.unwrap();
+
+        let actual = repo.find_by_id(&expected.id).await.unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn should_not_find_by_id() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let talk_id = talk::Id::random();
+        let actual = repo.find_by_id(&talk_id).await.unwrap_err();
+
+        assert!(matches!(actual, talk::Error::NotFound(Some(id)) if id.eq(&talk_id)));
+    }
+
+    #[tokio::test]
+    async fn should_find_by_sub_and_kind() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let t1 = &Talk::new(Details::Chat {
+            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+        });
+        let t2 = &Talk::new(Details::Chat {
+            members: [user::Sub("jora".into()), user::Sub("igor".into())],
+        });
+        let t3 = &Talk::new(Details::Chat {
+            members: [user::Sub("radu".into()), user::Sub("igor".into())],
+        });
+        let t4 = &Talk::new(Details::Group {
+            name: "g1".into(),
+            picture: "picture".into(),
+            owner: user::Sub("radu".into()),
+            members: vec![
+                user::Sub("jora".into()),
+                user::Sub("radu".into()),
+                user::Sub("igor".into()),
+            ],
+        });
+
+        tokio::try_join!(
+            repo.create(t1),
+            repo.create(t2),
+            repo.create(t3),
+            repo.create(t4),
+        )
+        .unwrap();
+
+        let mut expected = vec![t1, t2].into_iter();
+
+        let actual = repo
+            .find_by_sub_and_kind(&user::Sub("jora".into()), &talk::Kind::Chat)
+            .await
+            .unwrap();
+
+        assert_eq!(expected.len(), actual.len());
+        assert!(expected.all(|t| actual.contains(t)));
+    }
+
+    #[tokio::test]
+    async fn should_not_find_by_sub_and_kind() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let t1 = &Talk::new(Details::Chat {
+            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+        });
+        let t2 = &Talk::new(Details::Group {
+            name: "g1".into(),
+            picture: "picture".into(),
+            owner: user::Sub("radu".into()),
+            members: vec![
+                user::Sub("jora".into()),
+                user::Sub("radu".into()),
+                user::Sub("igor".into()),
+            ],
+        });
+
+        tokio::try_join!(repo.create(t1), repo.create(t2),).unwrap();
+
+        let actual = repo
+            .find_by_sub_and_kind(&user::Sub("radu".into()), &talk::Kind::Chat)
+            .await
+            .unwrap();
+
+        assert!(actual.is_empty());
+    }
+
+    #[tokio::test]
+    async fn should_find_chat_by_id_and_sub1() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let expected = Talk::new(Details::Chat {
+            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+        });
+        repo.create(&expected).await.unwrap();
+
+        let actual = repo
+            .find_by_id_and_sub(&expected.id, &user::Sub("jora".into()))
+            .await
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn should_find_chat_by_id_and_sub2() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let expected = Talk::new(Details::Chat {
+            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+        });
+        repo.create(&expected).await.unwrap();
+
+        let actual = repo
+            .find_by_id_and_sub(&expected.id, &user::Sub("valera".into()))
+            .await
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn should_find_group_by_id_and_sub1() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let expected = Talk::new(Details::Group {
+            name: "g1".into(),
+            picture: "picture".into(),
+            owner: user::Sub("radu".into()),
+            members: vec![
+                user::Sub("jora".into()),
+                user::Sub("radu".into()),
+                user::Sub("igor".into()),
+            ],
+        });
+        repo.create(&expected).await.unwrap();
+
+        let actual = repo
+            .find_by_id_and_sub(&expected.id, &user::Sub("jora".into()))
+            .await
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn should_not_find_by_id_and_sub() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let talk_id = talk::Id::random();
+        let actual = repo
+            .find_by_id_and_sub(&talk_id, &user::Sub("valera".into()))
+            .await
+            .unwrap_err();
+
+        assert!(matches!(actual, talk::Error::NotFound(Some(id)) if id.eq(&talk_id)));
+    }
+
+    #[tokio::test]
+    async fn should_delete() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let t = Talk::new(Details::Chat {
+            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+        });
+        repo.create(&t).await.unwrap();
+
+        let deleted = repo.delete(&t.id).await.unwrap();
+
+        assert!(deleted);
+    }
+
+    #[tokio::test]
+    async fn should_not_delete() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let talk_id = talk::Id::random();
+        let deleted = repo.delete(&talk_id).await.unwrap();
+
+        assert!(!deleted);
+    }
+
+    #[tokio::test]
+    async fn should_return_true_when_talk_with_given_subs_exists() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let t = Talk::new(Details::Chat {
+            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+        });
+        repo.create(&t).await.unwrap();
+
+        let exists = repo
+            .exists(&[user::Sub("valera".into()), user::Sub("jora".into())])
+            .await
+            .unwrap();
+
+        assert!(exists);
+    }
+
+    #[tokio::test]
+    async fn should_return_false_when_talk_with_given_subs_does_not_exist() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let exists = repo
+            .exists(&[user::Sub("valera".into()), user::Sub("jora".into())])
+            .await
+            .unwrap();
+
+        assert!(!exists);
+    }
+
+    #[tokio::test]
+    async fn should_update_last_message() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let t = Talk::new(Details::Chat {
+            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+        });
+        repo.create(&t).await.unwrap();
+
+        let pm = LastMessage {
+            id: message::Id::random(),
+            text: "hi!".into(),
+            owner: user::Sub("jora".into()),
+            timestamp: chrono::Utc::now().timestamp(),
+            seen: true,
+        };
+
+        let lm = LastMessage {
+            id: message::Id::random(),
+            text: "bye!".into(),
+            owner: user::Sub("valera".into()),
+            timestamp: chrono::Utc::now().timestamp(),
+            seen: false,
+        };
+
+        repo.update_last_message(&t.id, Some(&pm)).await.unwrap();
+        repo.update_last_message(&t.id, Some(&lm)).await.unwrap();
+
+        let res = repo.find_by_id(&t.id).await.unwrap();
+
+        assert!(res.last_message.is_some_and(|r| r.eq(&lm)))
+    }
+
+    #[tokio::test]
+    async fn should_set_last_message_to_none() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let t = Talk::new(Details::Chat {
+            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+        });
+        repo.create(&t).await.unwrap();
+
+        let lm = LastMessage {
+            id: message::Id::random(),
+            text: "bye!".into(),
+            owner: user::Sub("valera".into()),
+            timestamp: chrono::Utc::now().timestamp(),
+            seen: false,
+        };
+
+        repo.update_last_message(&t.id, Some(&lm)).await.unwrap();
+        repo.update_last_message(&t.id, None).await.unwrap();
+
+        let res = repo.find_by_id(&t.id).await.unwrap();
+
+        assert!(res.last_message.is_none())
+    }
+
+    #[tokio::test]
+    async fn should_mark_as_seen() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let t = Talk::new(Details::Chat {
+            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+        });
+        repo.create(&t).await.unwrap();
+
+        let lm = LastMessage {
+            id: message::Id::random(),
+            text: "bye!".into(),
+            owner: user::Sub("valera".into()),
+            timestamp: chrono::Utc::now().timestamp(),
+            seen: false,
+        };
+
+        repo.update_last_message(&t.id, Some(&lm)).await.unwrap();
+        repo.mark_as_seen(&t.id).await.unwrap();
+
+        let res = repo.find_by_id(&t.id).await.unwrap();
+
+        assert!(res.last_message.is_some_and(|r| r.seen))
+    }
+
+    #[tokio::test]
+    async fn should_not_mark_as_seen_when_last_message_is_missing() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+
+        let repo = MongoTalkRepository::new(&db);
+
+        let t = Talk::new(Details::Chat {
+            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+        });
+        repo.create(&t).await.unwrap();
+
+        repo.update_last_message(&t.id, None).await.unwrap();
+        repo.mark_as_seen(&t.id).await.unwrap();
+
+        let res = repo.find_by_id(&t.id).await.unwrap();
+
+        assert!(res.last_message.is_none())
     }
 }
