@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use futures::TryStreamExt;
 use log::error;
 use mongodb::Database;
@@ -8,7 +9,7 @@ use crate::{message, talk};
 
 const MESSAGES_COLLECTION: &str = "messages";
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait MessageRepository {
     async fn insert(&self, msg: &Message) -> super::Result<()>;
 
@@ -41,9 +42,9 @@ pub trait MessageRepository {
 
     async fn update(&self, id: &Id, text: &str) -> super::Result<()>;
 
-    async fn delete(&self, id: &Id) -> super::Result<u64>;
+    async fn delete(&self, id: &Id) -> super::Result<bool>;
 
-    async fn delete_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<()>;
+    async fn delete_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<u64>;
 
     async fn mark_as_seen(&self, ids: &[Id]) -> super::Result<()>;
 }
@@ -61,7 +62,7 @@ impl MongoMessageRepository {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl MessageRepository for MongoMessageRepository {
     async fn insert(&self, msg: &Message) -> super::Result<()> {
         let result = self.col.insert_one(msg).await?;
@@ -178,16 +179,16 @@ impl MessageRepository for MongoMessageRepository {
         Ok(())
     }
 
-    async fn delete(&self, id: &Id) -> super::Result<u64> {
-        let count = self.col.delete_one(doc! {"_id": id}).await?.deleted_count;
+    async fn delete(&self, id: &Id) -> super::Result<bool> {
+        let res = self.col.delete_one(doc! {"_id": id}).await?;
 
-        Ok(count)
+        Ok(res.deleted_count > 0)
     }
 
-    async fn delete_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<()> {
-        self.col.delete_many(doc! {"talk_id": talk_id}).await?;
+    async fn delete_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<u64> {
+        let res = self.col.delete_many(doc! {"talk_id": talk_id}).await?;
 
-        Ok(())
+        Ok(res.deleted_count)
     }
 
     async fn mark_as_seen(&self, ids: &[Id]) -> super::Result<()> {

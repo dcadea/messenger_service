@@ -138,9 +138,7 @@ impl MessageService for MessageServiceImpl {
             return Err(super::Error::NotOwner);
         }
 
-        let deleted_count = self.repo.delete(id).await?;
-
-        if deleted_count > 0 {
+        if self.repo.delete(id).await? {
             self.notify_deleted(&msg).await;
             return Ok(Some(msg));
         }
