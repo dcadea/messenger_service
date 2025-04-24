@@ -57,14 +57,14 @@ impl ContactService for ContactServiceImpl {
         self.repo
             .find(auth_sub, recipient)
             .await
-            .map(|c| c.map(|c| map_to_dto(auth_sub, c)))
+            .map(|c| c.map(|c| map_to_dto(auth_sub, &c)))
     }
 
     async fn find_by_id(&self, auth_sub: &user::Sub, id: &Id) -> super::Result<ContactDto> {
         // TODO: cache
         let c = self.repo.find_by_id(id).await?;
 
-        c.map(|c| map_to_dto(auth_sub, c))
+        c.map(|c| map_to_dto(auth_sub, &c))
             .ok_or(super::Error::NotFound(id.clone()))
     }
 
@@ -82,7 +82,7 @@ impl ContactService for ContactServiceImpl {
 
         let contacts = self.repo.find_by_sub(sub).await?;
         let dtos = contacts
-            .into_iter()
+            .iter()
             .map(|c| map_to_dto(sub, c))
             .collect::<Vec<_>>();
 
@@ -98,7 +98,7 @@ impl ContactService for ContactServiceImpl {
         let contacts = self.repo.find_by_sub_and_status(sub, s).await?;
 
         let dtos = contacts
-            .into_iter()
+            .iter()
             .map(|c| map_to_dto(sub, c))
             .collect::<Vec<_>>();
 
@@ -106,13 +106,16 @@ impl ContactService for ContactServiceImpl {
     }
 
     async fn add(&self, c: &Contact) -> super::Result<()> {
-        if c.sub1.eq(&c.sub2) {
+        if c.sub1().eq(c.sub2()) {
             return Err(super::Error::SelfReference);
         }
 
-        let exists = self.repo.exists(&c.sub1, &c.sub2).await?;
+        let exists = self.repo.exists(c.sub1(), c.sub2()).await?;
         if exists {
-            return Err(super::Error::AlreadyExists(c.sub1.clone(), c.sub2.clone()));
+            return Err(super::Error::AlreadyExists(
+                c.sub1().clone(),
+                c.sub2().clone(),
+            ));
         }
 
         tokio::try_join!(
@@ -132,7 +135,7 @@ impl ContactService for ContactServiceImpl {
                 if !c.transition(st) {
                     return Err(super::Error::StatusTransitionFailed);
                 }
-                self.repo.update(&c).await?;
+                self.repo.update_status(&c).await?;
             }
             None => return Err(super::Error::NotFound(id.clone())),
         }
@@ -182,12 +185,16 @@ impl ContactServiceImpl {
     // }
 }
 
-fn map_to_dto(auth_sub: &user::Sub, c: Contact) -> ContactDto {
-    let recipient = if auth_sub.eq(&c.sub1) { c.sub2 } else { c.sub1 };
+fn map_to_dto(auth_sub: &user::Sub, c: &Contact) -> ContactDto {
+    let recipient = if auth_sub.eq(c.sub1()) {
+        c.sub2()
+    } else {
+        c.sub1()
+    };
 
     ContactDto {
-        id: c.id.expect("id must be present"),
-        recipient,
-        status: c.status,
+        id: c.id().clone(),
+        recipient: recipient.clone(),
+        status: c.status().clone(),
     }
 }

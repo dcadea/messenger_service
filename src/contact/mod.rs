@@ -23,8 +23,14 @@ type Result<T> = std::result::Result<T, Error>;
 pub type Repository = Arc<dyn ContactRepository + Send + Sync>;
 pub type Service = Arc<dyn ContactService + Send + Sync>;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
+
+impl Id {
+    pub fn random() -> Self {
+        Self(mongodb::bson::oid::ObjectId::new().to_hex())
+    }
+}
 
 impl Display for Id {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

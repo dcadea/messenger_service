@@ -19,13 +19,13 @@ pub(super) mod api {
     }
 
     pub async fn create(
-        Extension(auth_user): Extension<auth::User>,
+        auth_user: Extension<auth::User>,
         contact_service: State<contact::Service>,
-        Form(params): Form<CreateParams>,
+        params: Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let c = Contact::new(auth_user.sub, params.sub);
+        let c = Contact::new(&auth_user.sub, &params.sub);
         contact_service.add(&c).await?;
-        Ok(c.status.render())
+        Ok(c.status().render())
     }
 
     pub async fn delete(

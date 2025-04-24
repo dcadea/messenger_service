@@ -4,23 +4,41 @@ use crate::user;
 
 use super::{Id, Status, StatusTransition};
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug)]
 pub struct Contact {
-    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
-    pub id: Option<Id>,
-    pub sub1: user::Sub,
-    pub sub2: user::Sub,
-    pub status: Status,
+    #[serde(rename = "_id")]
+    id: Id,
+    sub1: user::Sub,
+    sub2: user::Sub,
+    status: Status,
 }
 
 impl Contact {
-    pub fn new(initiator: user::Sub, responder: user::Sub) -> Self {
+    pub fn new(initiator: &user::Sub, responder: &user::Sub) -> Self {
         Self {
-            id: None,
+            id: Id::random(),
             sub1: initiator.clone(),
-            sub2: responder,
-            status: Status::Pending { initiator },
+            sub2: responder.clone(),
+            status: Status::Pending {
+                initiator: initiator.clone(),
+            },
         }
+    }
+
+    pub fn id(&self) -> &Id {
+        &self.id
+    }
+
+    pub fn sub1(&self) -> &user::Sub {
+        &self.sub1
+    }
+
+    pub fn sub2(&self) -> &user::Sub {
+        &self.sub2
+    }
+
+    pub fn status(&self) -> &Status {
+        &self.status
     }
 
     /// Possible transitions:
@@ -100,6 +118,13 @@ pub struct ContactDto {
 }
 
 #[cfg(test)]
+impl Contact {
+    pub fn set_status(&mut self, status: Status) {
+        self.status = status;
+    }
+}
+
+#[cfg(test)]
 mod test {
     use crate::{
         contact::{Status, StatusTransition},
@@ -108,31 +133,20 @@ mod test {
 
     use super::Contact;
 
-    impl Contact {
-        fn with_status(&mut self, status: Status) {
-            self.status = status;
-        }
-    }
-
     #[test]
     fn should_create_in_pending_state() {
-        let c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
+        let initiator = user::Sub("123".into());
+        let c = Contact::new(&initiator, &user::Sub("456".into()));
 
-        assert_eq!(
-            c.status,
-            Status::Pending {
-                initiator: user::Sub("123".into())
-            }
-        );
+        assert_eq!(c.status, Status::Pending { initiator });
     }
 
     #[test]
     fn should_transition_from_pending_to_accepted() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
+        let responder = user::Sub("456".into());
+        let mut c = Contact::new(&user::Sub("123".into()), &responder);
 
-        let transitioned = c.transition(StatusTransition::Accept {
-            responder: user::Sub("456".into()),
-        });
+        let transitioned = c.transition(StatusTransition::Accept { responder });
 
         assert!(transitioned);
         assert_eq!(c.status, Status::Accepted);
@@ -140,45 +154,36 @@ mod test {
 
     #[test]
     fn should_not_transition_from_pending_to_accepted_when_responder_not_a_member() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
+        let initiator = user::Sub("123".into());
+        let mut c = Contact::new(&initiator, &user::Sub("456".into()));
 
         let transitioned = c.transition(StatusTransition::Accept {
             responder: user::Sub("789".into()),
         });
 
         assert!(!transitioned);
-        assert_eq!(
-            c.status,
-            Status::Pending {
-                initiator: user::Sub("123".into())
-            }
-        );
+        assert_eq!(c.status, Status::Pending { initiator });
     }
 
     #[test]
     fn should_not_transition_from_pending_to_accepted_when_same_subs() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("123".into()));
+        let initiator = user::Sub("123".into());
+        let mut c = Contact::new(&initiator, &initiator);
 
         let transitioned = c.transition(StatusTransition::Accept {
-            responder: user::Sub("123".into()),
+            responder: initiator.clone(),
         });
 
         assert!(!transitioned);
-        assert_eq!(
-            c.status,
-            Status::Pending {
-                initiator: user::Sub("123".into())
-            }
-        );
+        assert_eq!(c.status, Status::Pending { initiator });
     }
 
     #[test]
     fn should_transition_from_pending_to_rejected() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
+        let responder = user::Sub("456".into());
+        let mut c = Contact::new(&user::Sub("123".into()), &responder);
 
-        let transitioned = c.transition(StatusTransition::Reject {
-            responder: user::Sub("456".into()),
-        });
+        let transitioned = c.transition(StatusTransition::Reject { responder });
 
         assert!(transitioned);
         assert_eq!(c.status, Status::Rejected);
@@ -186,78 +191,62 @@ mod test {
 
     #[test]
     fn should_not_transition_from_pending_to_rejected_when_responder_not_a_member() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
+        let initiator = user::Sub("123".into());
+        let mut c = Contact::new(&initiator, &user::Sub("456".into()));
 
         let transitioned = c.transition(StatusTransition::Reject {
             responder: user::Sub("789".into()),
         });
 
         assert!(!transitioned);
-        assert_eq!(
-            c.status,
-            Status::Pending {
-                initiator: user::Sub("123".into())
-            }
-        );
+        assert_eq!(c.status, Status::Pending { initiator });
     }
 
     #[test]
     fn should_not_transition_from_pending_to_rejected_when_same_subs() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("123".into()));
+        let initiator = user::Sub("123".into());
+        let mut c = Contact::new(&initiator, &initiator);
 
         let transitioned = c.transition(StatusTransition::Reject {
-            responder: user::Sub("123".into()),
+            responder: initiator.clone(),
         });
 
         assert!(!transitioned);
-        assert_eq!(
-            c.status,
-            Status::Pending {
-                initiator: user::Sub("123".into())
-            }
-        );
+        assert_eq!(c.status, Status::Pending { initiator });
     }
 
     #[test]
     fn should_transition_from_accepted_to_blocked_when_initiator_is_sub1() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
-        c.with_status(Status::Accepted);
+        let initiator = user::Sub("123".into());
+        let mut c = Contact::new(&initiator, &user::Sub("456".into()));
+        c.set_status(Status::Accepted);
 
         let transitioned = c.transition(StatusTransition::Block {
-            initiator: user::Sub("123".into()),
+            initiator: initiator.clone(),
         });
 
         assert!(transitioned);
-        assert_eq!(
-            c.status,
-            Status::Blocked {
-                initiator: user::Sub("123".into())
-            }
-        );
+        assert_eq!(c.status, Status::Blocked { initiator });
     }
 
     #[test]
     fn should_transition_from_accepted_to_blocked_when_initiator_is_sub2() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
-        c.with_status(Status::Accepted);
+        let initiator = user::Sub("456".into());
+        let mut c = Contact::new(&user::Sub("123".into()), &initiator);
+        c.set_status(Status::Accepted);
 
         let transitioned = c.transition(StatusTransition::Block {
-            initiator: user::Sub("456".into()),
+            initiator: initiator.clone(),
         });
 
         assert!(transitioned);
-        assert_eq!(
-            c.status,
-            Status::Blocked {
-                initiator: user::Sub("456".into())
-            }
-        );
+        assert_eq!(c.status, Status::Blocked { initiator });
     }
 
     #[test]
     fn should_not_transition_from_accepted_to_blocked_when_initiator_is_not_a_member() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
-        c.with_status(Status::Accepted);
+        let mut c = Contact::new(&user::Sub("123".into()), &user::Sub("456".into()));
+        c.set_status(Status::Accepted);
 
         let transitioned = c.transition(StatusTransition::Block {
             initiator: user::Sub("789".into()),
@@ -269,14 +258,12 @@ mod test {
 
     #[test]
     fn should_transition_from_blocked_to_accepted() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
-        c.with_status(Status::Blocked {
-            initiator: user::Sub("123".into()),
-        });
+        let initiator = user::Sub("123".into());
+        let target = user::Sub("456".into());
+        let mut c = Contact::new(&initiator, &target);
+        c.set_status(Status::Blocked { initiator });
 
-        let transitioned = c.transition(StatusTransition::Unblock {
-            target: user::Sub("456".into()),
-        });
+        let transitioned = c.transition(StatusTransition::Unblock { target });
 
         assert!(transitioned);
         assert_eq!(c.status, Status::Accepted);
@@ -284,9 +271,10 @@ mod test {
 
     #[test]
     fn should_not_transition_from_blocked_to_accepted_when_target_is_not_a_member() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
-        c.with_status(Status::Blocked {
-            initiator: user::Sub("123".into()),
+        let initiator = user::Sub("123".into());
+        let mut c = Contact::new(&initiator, &user::Sub("456".into()));
+        c.set_status(Status::Blocked {
+            initiator: initiator.clone(),
         });
 
         let transitioned = c.transition(StatusTransition::Unblock {
@@ -294,76 +282,57 @@ mod test {
         });
 
         assert!(!transitioned);
-        assert_eq!(
-            c.status,
-            Status::Blocked {
-                initiator: user::Sub("123".into()),
-            }
-        );
+        assert_eq!(c.status, Status::Blocked { initiator });
     }
 
     #[test]
     fn should_not_transition_from_blocked_to_accepted_when_target_is_initiator() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
-        c.with_status(Status::Blocked {
-            initiator: user::Sub("123".into()),
+        let initiator = user::Sub("123".into());
+        let mut c = Contact::new(&initiator, &user::Sub("456".into()));
+        c.set_status(Status::Blocked {
+            initiator: initiator.clone(),
         });
 
         let transitioned = c.transition(StatusTransition::Unblock {
-            target: user::Sub("123".into()),
+            target: initiator.clone(),
         });
 
         assert!(!transitioned);
-        assert_eq!(
-            c.status,
-            Status::Blocked {
-                initiator: user::Sub("123".into()),
-            }
-        );
+        assert_eq!(c.status, Status::Blocked { initiator });
     }
 
     #[test]
     fn should_not_block_pending() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
+        let initiator = user::Sub("123".into());
+        let mut c = Contact::new(&initiator, &user::Sub("456".into()));
 
         let transitioned = c.transition(StatusTransition::Block {
-            initiator: user::Sub("123".into()),
+            initiator: initiator.clone(),
         });
 
         assert!(!transitioned);
-        assert_eq!(
-            c.status,
-            Status::Pending {
-                initiator: user::Sub("123".into()),
-            }
-        );
+        assert_eq!(c.status, Status::Pending { initiator });
     }
 
     #[test]
     fn should_not_unblock_pending() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
+        let initiator = user::Sub("123".into());
+        let target = user::Sub("456".into());
+        let mut c = Contact::new(&initiator, &target);
 
-        let transitioned = c.transition(StatusTransition::Unblock {
-            target: user::Sub("456".into()),
-        });
+        let transitioned = c.transition(StatusTransition::Unblock { target });
 
         assert!(!transitioned);
-        assert_eq!(
-            c.status,
-            Status::Pending {
-                initiator: user::Sub("123".into()),
-            }
-        );
+        assert_eq!(c.status, Status::Pending { initiator });
     }
 
     #[test]
     fn should_not_accept_accepted() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
-        c.with_status(Status::Accepted);
+        let responder = user::Sub("456".into());
+        let mut c = Contact::new(&user::Sub("123".into()), &responder);
+        c.set_status(Status::Accepted);
 
-        let transitioned = c.transition(StatusTransition::Accept {
-            responder: user::Sub("456".into()),
-        });
+        let transitioned = c.transition(StatusTransition::Accept { responder });
 
         assert!(!transitioned);
         assert_eq!(c.status, Status::Accepted);
@@ -371,12 +340,11 @@ mod test {
 
     #[test]
     fn should_not_reject_accepted() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
-        c.with_status(Status::Accepted);
+        let responder = user::Sub("456".into());
+        let mut c = Contact::new(&user::Sub("123".into()), &responder);
+        c.set_status(Status::Accepted);
 
-        let transitioned = c.transition(StatusTransition::Reject {
-            responder: user::Sub("456".into()),
-        });
+        let transitioned = c.transition(StatusTransition::Reject { responder });
 
         assert!(!transitioned);
         assert_eq!(c.status, Status::Accepted);
@@ -384,12 +352,11 @@ mod test {
 
     #[test]
     fn should_not_unblock_accepted() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
-        c.with_status(Status::Accepted);
+        let target = user::Sub("123".into());
+        let mut c = Contact::new(&target, &user::Sub("456".into()));
+        c.set_status(Status::Accepted);
 
-        let transitioned = c.transition(StatusTransition::Unblock {
-            target: user::Sub("123".into()),
-        });
+        let transitioned = c.transition(StatusTransition::Unblock { target });
 
         assert!(!transitioned);
         assert_eq!(c.status, Status::Accepted);
@@ -397,61 +364,46 @@ mod test {
 
     #[test]
     fn should_not_accept_blocked() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
-        c.with_status(Status::Blocked {
-            initiator: user::Sub("123".into()),
+        let initiator = user::Sub("123".into());
+        let responder = user::Sub("456".into());
+        let mut c = Contact::new(&initiator, &responder);
+        c.set_status(Status::Blocked {
+            initiator: initiator.clone(),
         });
 
-        let transitioned = c.transition(StatusTransition::Accept {
-            responder: user::Sub("456".into()),
-        });
+        let transitioned = c.transition(StatusTransition::Accept { responder });
 
         assert!(!transitioned);
-        assert_eq!(
-            c.status,
-            Status::Blocked {
-                initiator: user::Sub("123".into()),
-            }
-        );
+        assert_eq!(c.status, Status::Blocked { initiator });
     }
 
     #[test]
     fn should_not_reject_blocked() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
-        c.with_status(Status::Blocked {
-            initiator: user::Sub("123".into()),
+        let initiator = user::Sub("123".into());
+        let responder = user::Sub("456".into());
+        let mut c = Contact::new(&initiator, &responder);
+        c.set_status(Status::Blocked {
+            initiator: initiator.clone(),
         });
 
-        let transitioned = c.transition(StatusTransition::Reject {
-            responder: user::Sub("456".into()),
-        });
+        let transitioned = c.transition(StatusTransition::Reject { responder });
 
         assert!(!transitioned);
-        assert_eq!(
-            c.status,
-            Status::Blocked {
-                initiator: user::Sub("123".into()),
-            }
-        );
+        assert_eq!(c.status, Status::Blocked { initiator });
     }
 
     #[test]
     fn should_not_block_blocked() {
-        let mut c = Contact::new(user::Sub("123".into()), user::Sub("456".into()));
-        c.with_status(Status::Blocked {
-            initiator: user::Sub("123".into()),
+        let initiator = user::Sub("123".into());
+        let target = user::Sub("456".into());
+        let mut c = Contact::new(&initiator, &target);
+        c.set_status(Status::Blocked {
+            initiator: initiator.clone(),
         });
 
-        let transitioned = c.transition(StatusTransition::Block {
-            initiator: user::Sub("456".into()),
-        });
+        let transitioned = c.transition(StatusTransition::Block { initiator: target });
 
         assert!(!transitioned);
-        assert_eq!(
-            c.status,
-            Status::Blocked {
-                initiator: user::Sub("123".into()),
-            }
-        );
+        assert_eq!(c.status, Status::Blocked { initiator });
     }
 }
