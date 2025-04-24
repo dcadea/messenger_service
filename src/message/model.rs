@@ -4,7 +4,7 @@ use crate::{talk, user};
 
 use super::Id;
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Eq, PartialEq, Debug)]
 pub struct Message {
     #[serde(rename = "_id")]
     pub id: Id,

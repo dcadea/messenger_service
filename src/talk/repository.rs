@@ -161,7 +161,6 @@ mod test {
     async fn should_find_by_id() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let expected = Talk::new(Details::Chat {
@@ -178,7 +177,6 @@ mod test {
     async fn should_not_find_by_id() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let talk_id = talk::Id::random();
@@ -191,7 +189,6 @@ mod test {
     async fn should_find_by_sub_and_kind() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let t1 = &Talk::new(Details::Chat {
@@ -237,7 +234,6 @@ mod test {
     async fn should_not_find_by_sub_and_kind() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let t1 = &Talk::new(Details::Chat {
@@ -268,7 +264,6 @@ mod test {
     async fn should_find_chat_by_id_and_sub1() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let expected = Talk::new(Details::Chat {
@@ -288,7 +283,6 @@ mod test {
     async fn should_find_chat_by_id_and_sub2() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let expected = Talk::new(Details::Chat {
@@ -308,7 +302,6 @@ mod test {
     async fn should_find_group_by_id_and_sub1() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let expected = Talk::new(Details::Group {
@@ -335,7 +328,6 @@ mod test {
     async fn should_not_find_by_id_and_sub() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let talk_id = talk::Id::random();
@@ -351,7 +343,6 @@ mod test {
     async fn should_delete() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let t = Talk::new(Details::Chat {
@@ -368,7 +359,6 @@ mod test {
     async fn should_not_delete() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let talk_id = talk::Id::random();
@@ -381,7 +371,6 @@ mod test {
     async fn should_return_true_when_talk_with_given_subs_exists() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let t = Talk::new(Details::Chat {
@@ -401,7 +390,6 @@ mod test {
     async fn should_return_false_when_talk_with_given_subs_does_not_exist() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let exists = repo
@@ -416,7 +404,6 @@ mod test {
     async fn should_update_last_message() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let t = Talk::new(Details::Chat {
@@ -452,7 +439,6 @@ mod test {
     async fn should_set_last_message_to_none() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let t = Talk::new(Details::Chat {
@@ -480,7 +466,6 @@ mod test {
     async fn should_mark_as_seen() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let t = Talk::new(Details::Chat {
@@ -508,7 +493,6 @@ mod test {
     async fn should_not_mark_as_seen_when_last_message_is_missing() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoTalkRepository::new(&db);
 
         let t = Talk::new(Details::Chat {

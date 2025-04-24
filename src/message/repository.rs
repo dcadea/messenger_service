@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use futures::TryStreamExt;
-use log::error;
 use mongodb::Database;
 use mongodb::bson::doc;
 
@@ -40,13 +39,13 @@ pub trait MessageRepository {
 
     async fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<Message>>;
 
-    async fn update(&self, id: &Id, text: &str) -> super::Result<()>;
+    async fn update(&self, id: &Id, text: &str) -> super::Result<bool>;
 
     async fn delete(&self, id: &Id) -> super::Result<bool>;
 
     async fn delete_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<u64>;
 
-    async fn mark_as_seen(&self, ids: &[Id]) -> super::Result<()>;
+    async fn mark_as_seen(&self, ids: &[Id]) -> super::Result<u64>;
 }
 
 #[derive(Clone)]
@@ -74,11 +73,7 @@ impl MessageRepository for MongoMessageRepository {
     }
 
     async fn insert_many(&self, msgs: &[Message]) -> super::Result<()> {
-        let result = self.col.insert_many(msgs).await?;
-
-        if result.inserted_ids.len() != msgs.len() {
-            error!("not all messages persisted");
-        }
+        self.col.insert_many(msgs).await?;
 
         Ok(())
     }
@@ -172,11 +167,13 @@ impl MessageRepository for MongoMessageRepository {
         Ok(msg)
     }
 
-    async fn update(&self, id: &Id, text: &str) -> super::Result<()> {
-        self.col
+    async fn update(&self, id: &Id, text: &str) -> super::Result<bool> {
+        let res = self
+            .col
             .update_one(doc! {"_id": id}, doc! {"$set": {"text": text}})
             .await?;
-        Ok(())
+
+        Ok(res.modified_count > 0)
     }
 
     async fn delete(&self, id: &Id) -> super::Result<bool> {
@@ -191,13 +188,356 @@ impl MessageRepository for MongoMessageRepository {
         Ok(res.deleted_count)
     }
 
-    async fn mark_as_seen(&self, ids: &[Id]) -> super::Result<()> {
-        self.col
+    async fn mark_as_seen(&self, ids: &[Id]) -> super::Result<u64> {
+        let res = self
+            .col
             .update_many(
                 doc! {"_id": {"$in": ids}, "seen": false},
                 doc! {"$set": {"seen": true}},
             )
             .await?;
-        Ok(())
+        Ok(res.modified_count)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use testcontainers_modules::{mongo::Mongo, testcontainers::runners::AsyncRunner};
+
+    use crate::{integration::db, user};
+
+    use super::*;
+
+    #[tokio::test]
+    async fn should_insert() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let expected = Message::new(
+            talk::Id::random(),
+            user::Sub("jora".into()),
+            "Hello, world!",
+        );
+
+        repo.insert(&expected).await.unwrap();
+        let actual = repo.find_by_id(&expected.id).await.unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn should_insert_many() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let m1 = Message::new(
+            talk::Id::random(),
+            user::Sub("jora".into()),
+            "Hello, world!",
+        );
+        let m2 = Message::new(
+            talk::Id::random(),
+            user::Sub("val".into()),
+            "Goodbye, world!",
+        );
+
+        repo.insert_many(&[m1.clone(), m2.clone()]).await.unwrap();
+        let actual1 = repo.find_by_id(&m1.id).await.unwrap();
+        let actual2 = repo.find_by_id(&m2.id).await.unwrap();
+
+        assert_eq!([actual1, actual2], [m1, m2]);
+    }
+
+    #[tokio::test]
+    async fn should_not_insert_many() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let m1 = Message::new(
+            talk::Id::random(),
+            user::Sub("jora".into()),
+            "Hello, world!",
+        );
+        let m2 = Message::new(
+            talk::Id::random(),
+            user::Sub("val".into()),
+            "Goodbye, world!",
+        );
+        let m3 = m2.clone();
+
+        let res = repo
+            .insert_many(&[m1.clone(), m2.clone(), m3.clone()])
+            .await;
+
+        assert!(res.is_err())
+    }
+
+    #[tokio::test]
+    async fn should_find_by_talk_id() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let talk_id = talk::Id::random();
+        let m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
+        let m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
+        let m3 = Message::new(talk::Id::random(), user::Sub("radu".into()), "What's up?");
+
+        let expected = vec![m1.clone(), m2.clone()];
+
+        repo.insert_many(&[m1, m2, m3]).await.unwrap();
+        let actual = repo.find_by_talk_id(&talk_id).await.unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn should_find_by_talk_id_limited() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let talk_id = talk::Id::random();
+        let m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
+        let m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
+        let m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
+        let m4 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
+
+        let expected = vec![m1.clone(), m2.clone()];
+
+        repo.insert_many(&[m1, m2, m3, m4]).await.unwrap();
+        let actual = repo.find_by_talk_id_limited(&talk_id, 2).await.unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn should_find_by_talk_id_before() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let talk_id = talk::Id::random();
+        let now = chrono::Utc::now().timestamp();
+        let mut m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
+        m1.timestamp = now - 3000;
+        let mut m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
+        m2.timestamp = now - 2000;
+        let mut m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
+        m3.timestamp = now - 1000;
+        let m4 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
+
+        let expected = vec![m2.clone(), m1.clone()];
+        let before = m3.timestamp;
+
+        repo.insert_many(&[m1, m2, m3, m4]).await.unwrap();
+        let actual = repo.find_by_talk_id_before(&talk_id, before).await.unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn should_find_by_talk_id_limited_before() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let talk_id = talk::Id::random();
+        let now = chrono::Utc::now().timestamp();
+        let mut m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
+        m1.timestamp = now - 4000;
+        let mut m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
+        m2.timestamp = now - 3000;
+        let mut m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
+        m3.timestamp = now - 2000;
+        let mut m4 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
+        m4.timestamp = now - 1000;
+        let m5 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
+
+        let expected = vec![m3.clone(), m2.clone()];
+        let before = m4.timestamp;
+
+        repo.insert_many(&[m1, m2, m3, m4, m5]).await.unwrap();
+        let actual = repo
+            .find_by_talk_id_limited_before(&talk_id, 2, before)
+            .await
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn should_find_most_recent() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let talk_id = talk::Id::random();
+        let now = chrono::Utc::now().timestamp();
+        let mut m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
+        m1.timestamp = now - 3000;
+        let mut m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
+        m2.timestamp = now - 2000;
+        let mut m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
+        m3.timestamp = now - 1000;
+        let m4 = Message::new(talk::Id::random(), user::Sub("igor".into()), "Not mutch");
+
+        let expected = m3.clone();
+
+        repo.insert_many(&[m1, m2, m3, m4]).await.unwrap();
+        let actual = repo.find_most_recent(&talk_id).await.unwrap().unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[tokio::test]
+    async fn should_not_find_most_recent() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let m = Message::new(
+            talk::Id::random(),
+            user::Sub("jora".into()),
+            "Hello, world!",
+        );
+
+        repo.insert(&m).await.unwrap();
+        let actual = repo.find_most_recent(&talk::Id::random()).await.unwrap();
+
+        assert!(actual.is_none());
+    }
+
+    #[tokio::test]
+    async fn should_update_text() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let m = Message::new(
+            talk::Id::random(),
+            user::Sub("jora".into()),
+            "Hello, world!",
+        );
+
+        repo.insert(&m).await.unwrap();
+
+        let updated = repo.update(&m.id, "Goodbye, world!").await.unwrap();
+        assert!(updated);
+
+        let actual = repo.find_by_id(&m.id).await.unwrap();
+
+        assert_eq!(actual.text, "Goodbye, world!");
+    }
+
+    #[tokio::test]
+    async fn should_not_update_text() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let m = Message::new(
+            talk::Id::random(),
+            user::Sub("jora".into()),
+            "Hello, world!",
+        );
+
+        repo.insert(&m).await.unwrap();
+
+        let updated = repo
+            .update(&message::Id::random(), "Goodbye, world!")
+            .await
+            .unwrap();
+        assert!(!updated);
+
+        let actual = repo.find_by_id(&m.id).await.unwrap();
+
+        assert_eq!(actual.text, "Hello, world!");
+    }
+
+    #[tokio::test]
+    async fn should_delete() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let m = Message::new(
+            talk::Id::random(),
+            user::Sub("jora".into()),
+            "Hello, world!",
+        );
+
+        repo.insert(&m).await.unwrap();
+        assert!(repo.find_by_id(&m.id).await.is_ok());
+
+        let deleted = repo.delete(&m.id).await.unwrap();
+        assert!(deleted);
+
+        let actual = repo.find_by_id(&m.id).await.unwrap_err();
+
+        assert!(matches!(actual, message::Error::NotFound(Some(id)) if id.eq(&m.id)));
+    }
+
+    #[tokio::test]
+    async fn should_not_delete() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let m = Message::new(
+            talk::Id::random(),
+            user::Sub("jora".into()),
+            "Hello, world!",
+        );
+
+        repo.insert(&m).await.unwrap();
+        assert!(repo.find_by_id(&m.id).await.is_ok());
+
+        let deleted = repo.delete(&message::Id::random()).await.unwrap();
+        assert!(!deleted);
+
+        assert!(repo.find_by_id(&m.id).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn should_delete_by_talk_id() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let talk_id = talk::Id::random();
+        let m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
+        let m2 = Message::new(talk::Id::random(), user::Sub("val".into()), "Goodbye!");
+        let m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
+        let m4 = Message::new(talk::Id::random(), user::Sub("igor".into()), "Not mutch");
+
+        repo.insert_many(&[m1, m2, m3, m4]).await.unwrap();
+        let delete_count = repo.delete_by_talk_id(&talk_id).await.unwrap();
+
+        assert_eq!(delete_count, 2);
+    }
+
+    #[tokio::test]
+    async fn should_mark_as_seen() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoMessageRepository::new(&db);
+
+        let talk_id = talk::Id::random();
+        let m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
+        let m2 = Message::new(talk::Id::random(), user::Sub("val".into()), "Goodbye!");
+        let m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
+        let mut m4 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
+        m4.seen = true;
+
+        let ids = [m1.id.clone(), m2.id.clone(), m3.id.clone(), m4.id.clone()];
+
+        repo.insert_many(&[m1, m2, m3, m4]).await.unwrap();
+        let seen_qty = repo.mark_as_seen(&ids).await.unwrap();
+
+        assert_eq!(seen_qty, 3);
     }
 }
