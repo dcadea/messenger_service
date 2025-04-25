@@ -280,13 +280,13 @@ impl TalkServiceImpl {
             Details::Group { name, picture, .. } => (name, picture, DetailsDto::Group),
         };
 
-        TalkDto {
-            id: t.id().clone(),
+        TalkDto::new(
+            t.id().clone(),
             picture,
             name,
             details,
-            last_message: t.last_message().cloned(),
-        }
+            t.last_message().cloned(),
+        )
     }
 }
 

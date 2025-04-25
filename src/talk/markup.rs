@@ -104,11 +104,11 @@ impl Render for Header<'_> {
                     hx-target="#tabs"
                     hx-swap="innerHTML" { "X" }
                 ."flex text-2xl" {
-                    @if let DetailsDto::Chat{recipient, ..} = &self.0.details {
+                    @if let DetailsDto::Chat{ recipient, .. } = &self.0.details() {
                         (user::model::OnlineStatus::new(recipient.clone(), false))
                     }
 
-                    (self.0.name)
+                    (self.0.name())
                 }
                 (Icon::TalkControls)
             }
@@ -125,22 +125,22 @@ impl Render for ActiveTalk<'_> {
 
             div #active-talk ."flex-grow overflow-auto mt-4 mb-4"
                 hx-ext="ws"
-                ws-connect={ "/ws/" (self.0.id) }
+                ws-connect={ "/ws/" (self.0.id()) }
             {
                 div #(MESSAGE_LIST_ID) ."sticky flex flex-col-reverse overflow-auto h-full"
-                    hx-get={ "/api/messages?limit=20&talk_id=" (self.0.id) }
+                    hx-get={ "/api/messages?limit=20&talk_id=" (self.0.id()) }
                     hx-trigger="load"
                     hx-target=(MESSAGE_LIST_TARGET) {}
             }
 
-            (message::markup::InputBlank(&self.0.id))
-            (TalkControls(&self.0.id))
+            (message::markup::InputBlank(&self.0.id()))
+            (TalkControls(&self.0.id()))
 
             div .hidden
                 hx-trigger="msg:afterUpdate from:body"
                 hx-target=(MESSAGE_INPUT_TARGET)
                 hx-swap="outerHTML"
-                hx-get={"/templates/messages/input/blank?talk_id=" (self.0.id)} {}
+                hx-get={"/templates/messages/input/blank?talk_id=" (self.0.id())} {}
         }
     }
 }
@@ -179,31 +179,31 @@ impl crate::markup::IdExt for talk::Id {
 impl Render for TalkDto {
     fn render(&self) -> Markup {
         html! {
-            div #(self.id.attr())
+            div #(self.id().attr())
                 ."talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center"
-                hx-get={"/talks/" (self.id)}
+                hx-get={"/talks/" (self.id())}
                 hx-target=(TALK_WINDOW_TARGET)
                 hx-swap="innerHTML"
             {
-                @if let DetailsDto::Chat{recipient, ..} = &self.details {
+                @if let DetailsDto::Chat{recipient, ..} = &self.details() {
                     (user::model::OnlineStatus::new(recipient.clone(), false))
                 }
                 img ."w-8 h-8 rounded-full"
-                    src=(self.picture) alt="Talk avatar" {}
+                    src=(self.picture()) alt="Talk avatar" {}
 
-                span ."talk-recipient font-bold mx-2" { (self.name) }
+                span ."talk-recipient font-bold mx-2" { (self.name()) }
 
                 div ."flex-grow text-right truncate"
-                    sse-swap={"newMessage:"(self.id)}
-                    hx-target={"#lm-"(self.id)}
+                    sse-swap={"newMessage:"(self.id())}
+                    hx-target={"#lm-"(self.id())}
                 {
                     ({
-                        let sender = match &self.details {
+                        let sender = match &self.details() {
                             DetailsDto::Chat{sender, ..} => Some(sender),
                             DetailsDto::Group => None,
                         };
 
-                        message::markup::last_message(self.last_message.as_ref(), &self.id, sender)
+                        message::markup::last_message(self.last_message(), self.id(), sender)
                     })
                 }
             }
