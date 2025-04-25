@@ -115,3 +115,78 @@ impl Render for Icon<'_> {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn should_render_pending_icon() {
+        let expected = r#"<i class="fa-solid fa-hourglass-half mr-2"></i>Pending action"#;
+
+        let actual = Icon::Pending.render().into_string();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn should_render_accept_icon() {
+        let id = contact::Id::random();
+        let expected = format!(
+            r#"<i class="fa-solid fa-check text-2xl text-green-500 cursor-pointer" hx-swap="none" hx-put="/api/contacts/{}/accept"></i>"#,
+            &id
+        );
+
+        let actual = Icon::Accept(&id).render().into_string();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn should_render_reject_icon() {
+        let id = contact::Id::random();
+        let expected = format!(
+            r#"<i class="fa-solid fa-xmark ml-3 text-2xl text-red-500 cursor-pointer" hx-swap="none" hx-put="/api/contacts/{}/reject"></i>"#,
+            &id
+        );
+
+        let actual = Icon::Reject(&id).render().into_string();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn should_render_block_icon() {
+        let id = contact::Id::random();
+        let expected = format!(
+            r#"<i class="fa-solid fa-ban ml-3 text-2xl cursor-pointer" hx-swap="none" hx-put="/api/contacts/{}/block"></i>"#,
+            &id
+        );
+
+        let actual = Icon::Block(&id).render().into_string();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn should_render_unblock_icon() {
+        let id = contact::Id::random();
+        let expected = format!(
+            r#"<i class="fa-solid fa-lock-open ml-3 text-green-500 text-xl cursor-pointer" hx-swap="none" hx-put="/api/contacts/{}/unblock"></i>"#,
+            &id
+        );
+
+        let actual = Icon::Unblock(&id).render().into_string();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn should_render_rejected_icon() {
+        let expected = r#"<i class="fa-solid fa-xmark mr-2"></i>Request rejected"#;
+
+        let actual = Icon::Rejected.render().into_string();
+
+        assert_eq!(actual, expected);
+    }
+}
