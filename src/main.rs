@@ -38,10 +38,10 @@ async fn main() {
             return;
         }
     };
-    let router = app(&app_state, &config.env);
+    let router = app(&app_state, config.env());
 
-    let addr = config.env.addr();
-    let ssl_config = config.env.ssl_config();
+    let addr = config.env().addr();
+    let ssl_config = config.env().ssl_config();
 
     match ssl_config {
         Some(ssl_config) => {

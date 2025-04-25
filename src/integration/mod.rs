@@ -76,13 +76,51 @@ impl Env {
 
 #[derive(Clone)]
 pub struct Config {
-    pub env: Env,
+    env: Env,
 
-    pub redis: cache::Config,
-    pub mongo: db::Config,
-    pub pubsub: pubsub::Config,
+    redis: cache::Config,
+    mongo: db::Config,
+    pubsub: pubsub::Config,
 
-    pub idp: idp::Config,
+    idp: idp::Config,
+}
+
+impl Config {
+    pub fn new(
+        env: Env,
+        redis: cache::Config,
+        mongo: db::Config,
+        pubsub: pubsub::Config,
+        idp: idp::Config,
+    ) -> Self {
+        Self {
+            env,
+            redis,
+            mongo,
+            pubsub,
+            idp,
+        }
+    }
+
+    pub fn env(&self) -> &Env {
+        &self.env
+    }
+
+    pub fn redis(&self) -> &cache::Config {
+        &self.redis
+    }
+
+    pub fn mongo(&self) -> &db::Config {
+        &self.mongo
+    }
+
+    pub fn pubsub(&self) -> &pubsub::Config {
+        &self.pubsub
+    }
+
+    pub fn idp(&self) -> &idp::Config {
+        &self.idp
+    }
 }
 
 impl Default for Config {

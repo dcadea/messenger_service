@@ -12,12 +12,12 @@ pub struct Config {
     token_url: String,
     revocation_url: String,
     redirect_url: String,
-    pub userinfo_url: String,
-    pub jwks_url: String,
-    pub issuer: String,
-    pub audience: String,
-    pub required_claims: Arc<[String]>,
-    pub token_ttl: Duration,
+    userinfo_url: String,
+    jwks_url: String,
+    issuer: String,
+    audience: String,
+    required_claims: Arc<[String]>,
+    token_ttl: Duration,
 }
 
 impl Config {
@@ -47,6 +47,32 @@ impl Config {
         }
     }
 
+    pub fn userinfo_url(&self) -> &str {
+        &self.userinfo_url
+    }
+
+    pub fn jwks_url(&self) -> &str {
+        &self.jwks_url
+    }
+
+    pub fn issuer(&self) -> &str {
+        &self.issuer
+    }
+
+    pub fn audience(&self) -> &str {
+        &self.audience
+    }
+
+    pub fn required_claims(&self) -> &[String] {
+        &self.required_claims
+    }
+
+    pub fn token_ttl(&self) -> Duration {
+        self.token_ttl
+    }
+}
+
+impl Config {
     pub fn init_client(&self) -> oauth2::basic::BasicClient {
         let client_id = ClientId::new(self.client_id.clone());
         let client_secret = ClientSecret::new(self.client_secret.clone());

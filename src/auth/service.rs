@@ -54,9 +54,9 @@ pub struct AuthServiceImpl {
 impl AuthServiceImpl {
     pub fn try_new(cfg: &idp::Config, redis: cache::Redis) -> Self {
         let mut jwt_validator = Validation::new(jsonwebtoken::Algorithm::RS256);
-        jwt_validator.set_required_spec_claims(&cfg.required_claims);
-        jwt_validator.set_issuer(&[&cfg.issuer]);
-        jwt_validator.set_audience(&[&cfg.audience]);
+        jwt_validator.set_required_spec_claims(cfg.required_claims());
+        jwt_validator.set_issuer(&[cfg.issuer()]);
+        jwt_validator.set_audience(&[cfg.audience()]);
 
         let jwk_decoding_keys = Arc::new(RwLock::new(HashMap::new()));
         let service = Self {
@@ -69,7 +69,7 @@ impl AuthServiceImpl {
         };
 
         // FIXME: this occupies a resource for too long
-        let jwks_url = cfg.jwks_url.clone();
+        let jwks_url = cfg.jwks_url().to_string();
         tokio::spawn(async move {
             let http = integration::init_http_client();
             loop {
@@ -91,7 +91,7 @@ impl AuthService for AuthServiceImpl {
         let (auth_url, csrf) = self
             .oauth2
             .authorize_url(CsrfToken::new_random)
-            .add_extra_param("audience", self.cfg.audience.clone())
+            .add_extra_param("audience", self.cfg.audience())
             .add_scopes([
                 Scope::new("openid".to_string()),
                 Scope::new("profile".to_string()),
@@ -122,7 +122,7 @@ impl AuthService for AuthServiceImpl {
         match token_result {
             Ok(r) => {
                 let access_token = r.access_token().to_owned();
-                let expires_in = r.expires_in().unwrap_or(self.cfg.token_ttl);
+                let expires_in = r.expires_in().unwrap_or(self.cfg.token_ttl());
 
                 Ok((access_token, expires_in))
             }
@@ -154,7 +154,7 @@ impl AuthService for AuthServiceImpl {
     async fn get_user_info(&self, token: &str) -> super::Result<UserInfo> {
         let response = self
             .http
-            .get(&self.cfg.userinfo_url)
+            .get(self.cfg.userinfo_url())
             .bearer_auth(token)
             .send()
             .await?;
