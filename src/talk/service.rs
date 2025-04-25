@@ -257,7 +257,7 @@ impl TalkService for TalkServiceImpl {
 
 impl TalkServiceImpl {
     async fn talk_to_dto(&self, t: Talk, auth_sub: &user::Sub) -> TalkDto {
-        let (name, picture, details) = match t.details {
+        let (name, picture, details) = match t.details().clone() {
             Details::Chat { members } => {
                 assert!(members.contains(auth_sub));
 
@@ -281,11 +281,11 @@ impl TalkServiceImpl {
         };
 
         TalkDto {
-            id: t.id,
+            id: t.id().clone(),
             picture,
             name,
             details,
-            last_message: t.last_message,
+            last_message: t.last_message().cloned(),
         }
     }
 }
@@ -333,15 +333,15 @@ async fn find_members(
         Some(m) if !m.is_empty() => Ok(m),
         _ => {
             let talk = repo.find_by_id(talk_id).await?;
-            let members: HashSet<user::Sub> = match talk.details {
+            let m = match talk.details().clone() {
                 Details::Chat { members } => members.into(),
                 Details::Group { members, .. } => HashSet::from_iter(members),
             };
 
-            redis.sadd(talk_key.clone(), &members).await;
+            redis.sadd(talk_key.clone(), &m).await;
             redis.expire(talk_key).await;
 
-            Ok(members)
+            Ok(m)
         }
     }
 }

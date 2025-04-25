@@ -168,7 +168,7 @@ mod test {
         });
         repo.create(&expected).await.unwrap();
 
-        let actual = repo.find_by_id(&expected.id).await.unwrap();
+        let actual = repo.find_by_id(expected.id()).await.unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -272,7 +272,7 @@ mod test {
         repo.create(&expected).await.unwrap();
 
         let actual = repo
-            .find_by_id_and_sub(&expected.id, &user::Sub("jora".into()))
+            .find_by_id_and_sub(expected.id(), &user::Sub("jora".into()))
             .await
             .unwrap();
 
@@ -291,7 +291,7 @@ mod test {
         repo.create(&expected).await.unwrap();
 
         let actual = repo
-            .find_by_id_and_sub(&expected.id, &user::Sub("valera".into()))
+            .find_by_id_and_sub(expected.id(), &user::Sub("valera".into()))
             .await
             .unwrap();
 
@@ -317,7 +317,7 @@ mod test {
         repo.create(&expected).await.unwrap();
 
         let actual = repo
-            .find_by_id_and_sub(&expected.id, &user::Sub("jora".into()))
+            .find_by_id_and_sub(expected.id(), &user::Sub("jora".into()))
             .await
             .unwrap();
 
@@ -350,7 +350,7 @@ mod test {
         });
         repo.create(&t).await.unwrap();
 
-        let deleted = repo.delete(&t.id).await.unwrap();
+        let deleted = repo.delete(t.id()).await.unwrap();
 
         assert!(deleted);
     }
@@ -427,12 +427,12 @@ mod test {
             false,
         );
 
-        repo.update_last_message(&t.id, Some(&pm)).await.unwrap();
-        repo.update_last_message(&t.id, Some(&lm)).await.unwrap();
+        repo.update_last_message(t.id(), Some(&pm)).await.unwrap();
+        repo.update_last_message(t.id(), Some(&lm)).await.unwrap();
 
-        let res = repo.find_by_id(&t.id).await.unwrap();
+        let res = repo.find_by_id(t.id()).await.unwrap();
 
-        assert!(res.last_message.is_some_and(|r| r.eq(&lm)))
+        assert!(res.last_message().is_some_and(|r| lm.eq(&r)))
     }
 
     #[tokio::test]
@@ -454,12 +454,12 @@ mod test {
             false,
         );
 
-        repo.update_last_message(&t.id, Some(&lm)).await.unwrap();
-        repo.update_last_message(&t.id, None).await.unwrap();
+        repo.update_last_message(t.id(), Some(&lm)).await.unwrap();
+        repo.update_last_message(t.id(), None).await.unwrap();
 
-        let res = repo.find_by_id(&t.id).await.unwrap();
+        let res = repo.find_by_id(t.id()).await.unwrap();
 
-        assert!(res.last_message.is_none())
+        assert!(res.last_message().is_none())
     }
 
     #[tokio::test]
@@ -481,12 +481,12 @@ mod test {
             false,
         );
 
-        repo.update_last_message(&t.id, Some(&lm)).await.unwrap();
-        repo.mark_as_seen(&t.id).await.unwrap();
+        repo.update_last_message(t.id(), Some(&lm)).await.unwrap();
+        repo.mark_as_seen(t.id()).await.unwrap();
 
-        let res = repo.find_by_id(&t.id).await.unwrap();
+        let res = repo.find_by_id(t.id()).await.unwrap();
 
-        assert!(res.last_message.is_some_and(|r| r.seen()))
+        assert!(res.last_message().is_some_and(|r| r.seen()))
     }
 
     #[tokio::test]
@@ -500,11 +500,11 @@ mod test {
         });
         repo.create(&t).await.unwrap();
 
-        repo.update_last_message(&t.id, None).await.unwrap();
-        repo.mark_as_seen(&t.id).await.unwrap();
+        repo.update_last_message(t.id(), None).await.unwrap();
+        repo.mark_as_seen(t.id()).await.unwrap();
 
-        let res = repo.find_by_id(&t.id).await.unwrap();
+        let res = repo.find_by_id(t.id()).await.unwrap();
 
-        assert!(res.last_message.is_none())
+        assert!(res.last_message().is_none())
     }
 }

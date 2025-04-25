@@ -7,11 +7,11 @@ use super::Id;
 #[derive(Clone, Serialize, Deserialize, Eq, PartialEq, Debug)]
 pub struct Talk {
     #[serde(rename = "_id")]
-    pub id: Id,
+    id: Id,
     #[serde(flatten)]
-    pub details: Details,
+    details: Details,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_message: Option<LastMessage>,
+    last_message: Option<LastMessage>,
 }
 
 impl Talk {
@@ -21,6 +21,18 @@ impl Talk {
             details,
             last_message: None,
         }
+    }
+
+    pub fn id(&self) -> &Id {
+        &self.id
+    }
+
+    pub fn details(&self) -> &Details {
+        &self.details
+    }
+
+    pub fn last_message(&self) -> Option<&LastMessage> {
+        self.last_message.as_ref()
     }
 }
 

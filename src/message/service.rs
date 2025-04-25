@@ -234,7 +234,7 @@ impl MessageService for MessageServiceImpl {
                 e => message::Error::Unexpected(e.to_string()),
             })?;
 
-        if let Some(last_message) = talk.last_message {
+        if let Some(last_message) = talk.last_message() {
             return Ok(last_message.id().eq(msg.id()));
         }
 
