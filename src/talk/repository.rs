@@ -411,21 +411,21 @@ mod test {
         });
         repo.create(&t).await.unwrap();
 
-        let pm = LastMessage {
-            id: message::Id::random(),
-            text: "hi!".into(),
-            owner: user::Sub("jora".into()),
-            timestamp: chrono::Utc::now().timestamp(),
-            seen: true,
-        };
+        let pm = LastMessage::new(
+            message::Id::random(),
+            "hi!",
+            user::Sub("jora".into()),
+            chrono::Utc::now().timestamp(),
+            true,
+        );
 
-        let lm = LastMessage {
-            id: message::Id::random(),
-            text: "bye!".into(),
-            owner: user::Sub("valera".into()),
-            timestamp: chrono::Utc::now().timestamp(),
-            seen: false,
-        };
+        let lm = LastMessage::new(
+            message::Id::random(),
+            "bye!",
+            user::Sub("valera".into()),
+            chrono::Utc::now().timestamp(),
+            false,
+        );
 
         repo.update_last_message(&t.id, Some(&pm)).await.unwrap();
         repo.update_last_message(&t.id, Some(&lm)).await.unwrap();
@@ -446,13 +446,13 @@ mod test {
         });
         repo.create(&t).await.unwrap();
 
-        let lm = LastMessage {
-            id: message::Id::random(),
-            text: "bye!".into(),
-            owner: user::Sub("valera".into()),
-            timestamp: chrono::Utc::now().timestamp(),
-            seen: false,
-        };
+        let lm = LastMessage::new(
+            message::Id::random(),
+            "bye!",
+            user::Sub("valera".into()),
+            chrono::Utc::now().timestamp(),
+            false,
+        );
 
         repo.update_last_message(&t.id, Some(&lm)).await.unwrap();
         repo.update_last_message(&t.id, None).await.unwrap();
@@ -473,20 +473,20 @@ mod test {
         });
         repo.create(&t).await.unwrap();
 
-        let lm = LastMessage {
-            id: message::Id::random(),
-            text: "bye!".into(),
-            owner: user::Sub("valera".into()),
-            timestamp: chrono::Utc::now().timestamp(),
-            seen: false,
-        };
+        let lm = LastMessage::new(
+            message::Id::random(),
+            "bye!",
+            user::Sub("valera".into()),
+            chrono::Utc::now().timestamp(),
+            false,
+        );
 
         repo.update_last_message(&t.id, Some(&lm)).await.unwrap();
         repo.mark_as_seen(&t.id).await.unwrap();
 
         let res = repo.find_by_id(&t.id).await.unwrap();
 
-        assert!(res.last_message.is_some_and(|r| r.seen))
+        assert!(res.last_message.is_some_and(|r| r.seen()))
     }
 
     #[tokio::test]

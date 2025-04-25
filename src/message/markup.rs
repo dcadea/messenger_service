@@ -257,7 +257,7 @@ pub fn last_message(
     sender: Option<&user::Sub>,
 ) -> Markup {
     let trim = |lm: &LastMessage| {
-        let mut text = lm.text.clone();
+        let mut text = lm.text().to_string();
         if text.len() > MAX_LEN {
             text.truncate(MAX_LEN);
             text.push_str("...");
@@ -271,7 +271,7 @@ pub fn last_message(
                 (trim(last_msg))
 
                 @if let Some(s) = sender {
-                    @if !last_msg.seen && last_msg.owner != *s {
+                    @if !last_msg.seen() && last_msg.owner().ne(s) {
                         (talk::markup::Icon::Unseen)
                     }
                 } @else {

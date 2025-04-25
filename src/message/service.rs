@@ -235,7 +235,7 @@ impl MessageService for MessageServiceImpl {
             })?;
 
         if let Some(last_message) = talk.last_message {
-            return Ok(last_message.id.eq(msg.id()));
+            return Ok(last_message.id().eq(msg.id()));
         }
 
         Ok(false)

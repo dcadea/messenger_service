@@ -137,11 +137,11 @@ impl From<user::Sub> for mongodb::bson::Bson {
 impl From<message::model::LastMessage> for mongodb::bson::Bson {
     fn from(lm: message::model::LastMessage) -> Self {
         Self::Document(doc! {
-            "id": lm.id,
-            "text": lm.text,
-            "owner": lm.owner,
-            "timestamp": lm.timestamp,
-            "seen": lm.seen
+            "id": lm.id(),
+            "text": lm.text(),
+            "owner": lm.owner(),
+            "timestamp": lm.timestamp(),
+            "seen": lm.seen()
         })
     }
 }

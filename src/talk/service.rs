@@ -232,7 +232,7 @@ impl TalkService for TalkServiceImpl {
         self.repo.update_last_message(id, msg).await?;
 
         if let Some(last_msg) = msg {
-            let recipients = self.find_recipients(id, &last_msg.owner).await?;
+            let recipients = self.find_recipients(id, last_msg.owner()).await?;
 
             for r in recipients {
                 self.event_service

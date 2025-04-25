@@ -79,11 +79,49 @@ impl Message {
 
 #[derive(Deserialize, Serialize, Clone, Eq, PartialEq, Debug)]
 pub struct LastMessage {
-    pub id: Id,
-    pub text: String,
-    pub owner: user::Sub,
-    pub timestamp: i64,
-    pub seen: bool,
+    id: Id,
+    text: String,
+    owner: user::Sub,
+    timestamp: i64,
+    seen: bool,
+}
+
+impl LastMessage {
+    pub fn new(
+        id: Id,
+        text: impl Into<String>,
+        owner: user::Sub,
+        timestamp: i64,
+        seen: bool,
+    ) -> Self {
+        Self {
+            id,
+            text: text.into(),
+            owner,
+            timestamp,
+            seen,
+        }
+    }
+
+    pub fn id(&self) -> &Id {
+        &self.id
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    pub fn owner(&self) -> &user::Sub {
+        &self.owner
+    }
+
+    pub fn timestamp(&self) -> i64 {
+        self.timestamp
+    }
+
+    pub fn seen(&self) -> bool {
+        self.seen
+    }
 }
 
 impl From<&Message> for LastMessage {
