@@ -112,9 +112,43 @@ impl Contact {
 }
 
 pub struct ContactDto {
-    pub id: Id,
-    pub recipient: user::Sub,
-    pub status: Status,
+    id: Id,
+    recipient: user::Sub,
+    status: Status,
+}
+
+impl ContactDto {
+    pub fn new(id: Id, recipient: user::Sub, status: Status) -> Self {
+        Self {
+            id,
+            recipient,
+            status,
+        }
+    }
+
+    pub fn id(&self) -> &Id {
+        &self.id
+    }
+
+    pub fn recipient(&self) -> &user::Sub {
+        &self.recipient
+    }
+
+    pub fn status(&self) -> &Status {
+        &self.status
+    }
+
+    pub fn is_accepted(&self) -> bool {
+        matches!(self.status, Status::Accepted)
+    }
+
+    pub fn is_pending(&self) -> bool {
+        matches!(self.status, Status::Pending { .. })
+    }
+
+    pub fn is_rejected(&self) -> bool {
+        matches!(self.status, Status::Rejected)
+    }
 }
 
 #[cfg(test)]

@@ -37,26 +37,26 @@ impl Render for ContactInfos<'_> {
                             alt="User avatar" {}
                         (ui.name)
 
-                        div #{"ci-status-" (c.id)}
+                        div #{"ci-status-" (c.id())}
                             ."grow text-right"
-                            .text-blue-500[c.status.is_pending()]
-                            .text-red-500[c.status.is_rejected()]
+                            .text-blue-500[c.is_pending()]
+                            .text-red-500[c.is_rejected()]
                         {
-                            @match &c.status {
+                            @match c.status() {
                                 Status::Pending { initiator } => {
                                     @if initiator.eq(auth_sub) {
                                         (Icon::Pending)
                                     } @else {
-                                        (Icon::Accept(&c.id))
-                                        (Icon::Reject(&c.id))
+                                        (Icon::Accept(c.id()))
+                                        (Icon::Reject(c.id()))
                                     }
                                 },
-                                Status::Accepted => (Icon::Block(&c.id)),
+                                Status::Accepted => (Icon::Block(c.id())),
                                 Status::Rejected => (Icon::Rejected),
                                 Status::Blocked { initiator } => {
                                     @if initiator.eq(auth_sub) {
                                         "Blocked"
-                                        (Icon::Unblock(&c.id))
+                                        (Icon::Unblock(c.id()))
                                     } @else {
                                         "Blocked you"
                                     }

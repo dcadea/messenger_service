@@ -102,7 +102,7 @@ impl UserServiceImpl {
                 for c in contacts {
                     self.event_service
                         .publish(
-                            &event::Subject::Notifications(&c.recipient),
+                            &event::Subject::Notifications(c.recipient()),
                             event::Notification::OnlineStatusChange(status.clone()).into(),
                         )
                         .await;

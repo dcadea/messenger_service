@@ -123,10 +123,10 @@ impl Render for SearchResult<'_> {
                                 alt="User avatar" {}
                             strong .px-3 {(user.name)} (user.nickname)
 
-                            @match self.contacts.iter().find(|c| c.recipient.eq(&user.sub)) {
-                                Some(c) => @match c.status {
+                            @match self.contacts.iter().find(|c| user.sub.eq(c.recipient())) {
+                                Some(c) => @match c.status() {
                                     contact::Status::Accepted => (StartTalk(&user.sub)),
-                                    _ => (c.status)
+                                    _ => (c.status())
                                 },
                                 None => (AddContact(&user.sub))
                             }

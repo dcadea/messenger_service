@@ -85,7 +85,7 @@ pub(super) mod api {
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
         let c = contact_service.find_by_id(auth_user.sub(), &id).await?;
-        let target = c.recipient;
+        let target = c.recipient().clone();
         contact_service
             .transition_status(&id, contact::StatusTransition::Unblock { target })
             .await?;

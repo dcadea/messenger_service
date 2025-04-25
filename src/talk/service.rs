@@ -111,7 +111,7 @@ impl TalkService for TalkServiceImpl {
                 talk::Error::NotCreated
             })?;
 
-        if contact.is_none_or(|c| c.status.ne(&contact::Status::Accepted)) {
+        if contact.is_none_or(|c| !c.is_accepted()) {
             return Err(talk::Error::UnsupportedStatus);
         }
 
