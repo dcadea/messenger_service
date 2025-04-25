@@ -150,7 +150,7 @@ pub mod ws {
                     }
 
                     if let Message::New(msg) = msg {
-                        let talk_id = msg.talk_id.clone();
+                        let talk_id = msg.talk_id().clone();
                         match message_service.mark_as_seen(&auth_sub, &[msg]).await {
                             Ok(seen_qty) => {
                                 if seen_qty == 0 {

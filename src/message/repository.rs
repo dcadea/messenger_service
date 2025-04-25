@@ -221,7 +221,7 @@ mod test {
         );
 
         repo.insert(&expected).await.unwrap();
-        let actual = repo.find_by_id(&expected.id).await.unwrap();
+        let actual = repo.find_by_id(expected.id()).await.unwrap();
 
         assert_eq!(actual, expected);
     }
@@ -244,8 +244,8 @@ mod test {
         );
 
         repo.insert_many(&[m1.clone(), m2.clone()]).await.unwrap();
-        let actual1 = repo.find_by_id(&m1.id).await.unwrap();
-        let actual2 = repo.find_by_id(&m2.id).await.unwrap();
+        let actual1 = repo.find_by_id(m1.id()).await.unwrap();
+        let actual2 = repo.find_by_id(m2.id()).await.unwrap();
 
         assert_eq!([actual1, actual2], [m1, m2]);
     }
@@ -323,15 +323,15 @@ mod test {
         let talk_id = talk::Id::random();
         let now = chrono::Utc::now().timestamp();
         let mut m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
-        m1.timestamp = now - 3000;
+        m1.set_timestamp(now - 3000);
         let mut m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
-        m2.timestamp = now - 2000;
+        m2.set_timestamp(now - 2000);
         let mut m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
-        m3.timestamp = now - 1000;
+        m3.set_timestamp(now - 1000);
         let m4 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
 
         let expected = vec![m2.clone(), m1.clone()];
-        let before = m3.timestamp;
+        let before = m3.timestamp();
 
         repo.insert_many(&[m1, m2, m3, m4]).await.unwrap();
         let actual = repo.find_by_talk_id_before(&talk_id, before).await.unwrap();
@@ -348,17 +348,17 @@ mod test {
         let talk_id = talk::Id::random();
         let now = chrono::Utc::now().timestamp();
         let mut m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
-        m1.timestamp = now - 4000;
+        m1.set_timestamp(now - 4000);
         let mut m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
-        m2.timestamp = now - 3000;
+        m2.set_timestamp(now - 3000);
         let mut m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
-        m3.timestamp = now - 2000;
+        m3.set_timestamp(now - 2000);
         let mut m4 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
-        m4.timestamp = now - 1000;
+        m4.set_timestamp(now - 1000);
         let m5 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
 
         let expected = vec![m3.clone(), m2.clone()];
-        let before = m4.timestamp;
+        let before = m4.timestamp();
 
         repo.insert_many(&[m1, m2, m3, m4, m5]).await.unwrap();
         let actual = repo
@@ -378,11 +378,11 @@ mod test {
         let talk_id = talk::Id::random();
         let now = chrono::Utc::now().timestamp();
         let mut m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
-        m1.timestamp = now - 3000;
+        m1.set_timestamp(now - 3000);
         let mut m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
-        m2.timestamp = now - 2000;
+        m2.set_timestamp(now - 2000);
         let mut m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
-        m3.timestamp = now - 1000;
+        m3.set_timestamp(now - 1000);
         let m4 = Message::new(talk::Id::random(), user::Sub("igor".into()), "Not mutch");
 
         let expected = m3.clone();
@@ -425,12 +425,12 @@ mod test {
 
         repo.insert(&m).await.unwrap();
 
-        let updated = repo.update(&m.id, "Goodbye, world!").await.unwrap();
+        let updated = repo.update(m.id(), "Goodbye, world!").await.unwrap();
         assert!(updated);
 
-        let actual = repo.find_by_id(&m.id).await.unwrap();
+        let actual = repo.find_by_id(m.id()).await.unwrap();
 
-        assert_eq!(actual.text, "Goodbye, world!");
+        assert_eq!(actual.text(), "Goodbye, world!");
     }
 
     #[tokio::test]
@@ -453,9 +453,9 @@ mod test {
             .unwrap();
         assert!(!updated);
 
-        let actual = repo.find_by_id(&m.id).await.unwrap();
+        let actual = repo.find_by_id(m.id()).await.unwrap();
 
-        assert_eq!(actual.text, "Hello, world!");
+        assert_eq!(actual.text(), "Hello, world!");
     }
 
     #[tokio::test]
@@ -471,14 +471,14 @@ mod test {
         );
 
         repo.insert(&m).await.unwrap();
-        assert!(repo.find_by_id(&m.id).await.is_ok());
+        assert!(repo.find_by_id(m.id()).await.is_ok());
 
-        let deleted = repo.delete(&m.id).await.unwrap();
+        let deleted = repo.delete(m.id()).await.unwrap();
         assert!(deleted);
 
-        let actual = repo.find_by_id(&m.id).await.unwrap_err();
+        let actual = repo.find_by_id(m.id()).await.unwrap_err();
 
-        assert!(matches!(actual, message::Error::NotFound(Some(id)) if id.eq(&m.id)));
+        assert!(matches!(actual, message::Error::NotFound(Some(id)) if id.eq(m.id())));
     }
 
     #[tokio::test]
@@ -494,12 +494,12 @@ mod test {
         );
 
         repo.insert(&m).await.unwrap();
-        assert!(repo.find_by_id(&m.id).await.is_ok());
+        assert!(repo.find_by_id(m.id()).await.is_ok());
 
         let deleted = repo.delete(&message::Id::random()).await.unwrap();
         assert!(!deleted);
 
-        assert!(repo.find_by_id(&m.id).await.is_ok());
+        assert!(repo.find_by_id(m.id()).await.is_ok());
     }
 
     #[tokio::test]
@@ -531,9 +531,14 @@ mod test {
         let m2 = Message::new(talk::Id::random(), user::Sub("val".into()), "Goodbye!");
         let m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
         let mut m4 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
-        m4.seen = true;
+        m4.set_seen(true);
 
-        let ids = [m1.id.clone(), m2.id.clone(), m3.id.clone(), m4.id.clone()];
+        let ids = [
+            m1.id().clone(),
+            m2.id().clone(),
+            m3.id().clone(),
+            m4.id().clone(),
+        ];
 
         repo.insert_many(&[m1, m2, m3, m4]).await.unwrap();
         let seen_qty = repo.mark_as_seen(&ids).await.unwrap();

@@ -73,11 +73,11 @@ impl MessageServiceImpl {
 #[async_trait::async_trait]
 impl MessageService for MessageServiceImpl {
     async fn create(&self, msg: &Message) -> super::Result<Vec<Message>> {
-        if msg.text.is_empty() {
+        if msg.text().is_empty() {
             return Err(super::Error::EmptyText);
         }
 
-        let msgs = match msg.text.len() {
+        let msgs = match msg.text().len() {
             text_length if text_length <= MAX_MESSAGE_LENGTH => {
                 self.repo.insert(msg).await?;
                 vec![msg.clone()]
@@ -89,7 +89,7 @@ impl MessageService for MessageServiceImpl {
             }
         };
 
-        self.notify_new(&msg.talk_id, &msg.owner, &msgs).await;
+        self.notify_new(msg.talk_id(), msg.owner(), &msgs).await;
 
         Ok(msgs)
     }
@@ -110,7 +110,7 @@ impl MessageService for MessageServiceImpl {
     ) -> super::Result<Message> {
         let msg = self.repo.find_by_id(id).await?;
 
-        if msg.owner.ne(auth_user.sub()) {
+        if msg.owner().ne(auth_user.sub()) {
             return Err(super::Error::NotOwner);
         }
 
@@ -127,14 +127,14 @@ impl MessageService for MessageServiceImpl {
         id: &message::Id,
     ) -> super::Result<Option<Message>> {
         let msg = self.repo.find_by_id(id).await?;
-        let talk_id = &msg.talk_id;
+        let talk_id = msg.talk_id();
 
         self.talk_validator
             .check_member(talk_id, auth_user)
             .await
             .map_err(|_| super::Error::NotOwner)?;
 
-        if msg.owner.ne(auth_user.sub()) {
+        if msg.owner().ne(auth_user.sub()) {
             return Err(super::Error::NotOwner);
         }
 
@@ -180,7 +180,7 @@ impl MessageService for MessageServiceImpl {
 
         let anothers_messages = msgs
             .iter()
-            .filter(|msg| msg.owner.ne(auth_sub))
+            .filter(|msg| msg.owner().ne(auth_sub))
             .collect::<Vec<_>>();
 
         if anothers_messages.is_empty() {
@@ -190,7 +190,7 @@ impl MessageService for MessageServiceImpl {
 
         let unseen_msgs = anothers_messages
             .into_iter()
-            .filter(|msg| !msg.seen)
+            .filter(|msg| !msg.seen())
             .collect::<Vec<_>>();
 
         if unseen_msgs.is_empty() {
@@ -200,7 +200,7 @@ impl MessageService for MessageServiceImpl {
 
         let unseen_ids = unseen_msgs
             .iter()
-            .map(|msg| msg.id.clone())
+            .map(|msg| msg.id().clone())
             .collect::<Vec<_>>();
 
         self.repo.mark_as_seen(&unseen_ids).await?;
@@ -214,7 +214,7 @@ impl MessageService for MessageServiceImpl {
         for msg in unseen_msgs {
             self.event_service
                 .publish_all(
-                    &event::Subject::Messages(&msg.owner, &msg.talk_id),
+                    &event::Subject::Messages(msg.owner(), msg.talk_id()),
                     msg_evts.clone(),
                 )
                 .await;
@@ -227,15 +227,15 @@ impl MessageService for MessageServiceImpl {
     async fn is_last_message(&self, msg: &Message) -> super::Result<bool> {
         let talk = self
             .talk_service
-            .find_by_id(&msg.talk_id)
+            .find_by_id(msg.talk_id())
             .await
             .map_err(|e| match e {
-                talk::Error::NotFound(_) => message::Error::NotFound(Some(msg.id.clone())),
+                talk::Error::NotFound(_) => message::Error::NotFound(Some(msg.id().clone())),
                 e => message::Error::Unexpected(e.to_string()),
             })?;
 
         if let Some(last_message) = talk.last_message {
-            return Ok(last_message.id == msg.id);
+            return Ok(last_message.id.eq(msg.id()));
         }
 
         Ok(false)
@@ -263,8 +263,8 @@ impl MessageServiceImpl {
     }
 
     async fn notify_updated(&self, msg: &Message) {
-        let talk_id = &msg.talk_id;
-        let sub = &msg.owner;
+        let talk_id = msg.talk_id();
+        let sub = msg.owner();
 
         match self.talk_service.find_recipients(talk_id, sub).await {
             Ok(recipients) => {
@@ -286,8 +286,8 @@ impl MessageServiceImpl {
     }
 
     async fn notify_deleted(&self, msg: &Message) {
-        let talk_id = &msg.talk_id;
-        let sub = &msg.owner;
+        let talk_id = msg.talk_id();
+        let sub = msg.owner();
 
         match self.talk_service.find_recipients(talk_id, sub).await {
             Ok(recipients) => {
@@ -295,7 +295,7 @@ impl MessageServiceImpl {
                     self.event_service
                         .publish(
                             &event::Subject::Messages(&r, talk_id),
-                            event::Message::Deleted(msg.id.clone()).into(),
+                            event::Message::Deleted(msg.id().clone()).into(),
                         )
                         .await;
                 }
@@ -306,7 +306,7 @@ impl MessageServiceImpl {
 }
 
 fn split_message(splitter: &TextSplitter<Characters>, msg: &Message) -> Vec<Message> {
-    let chunks = splitter.chunks(&msg.text);
+    let chunks = splitter.chunks(msg.text());
 
     chunks
         .map(|text| msg.with_random_id().with_text(text))

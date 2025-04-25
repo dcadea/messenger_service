@@ -7,12 +7,12 @@ use super::Id;
 #[derive(Deserialize, Serialize, Clone, Eq, PartialEq, Debug)]
 pub struct Message {
     #[serde(rename = "_id")]
-    pub id: Id,
-    pub talk_id: talk::Id,
-    pub owner: user::Sub,
-    pub text: String,
-    pub timestamp: i64,
-    pub seen: bool,
+    id: Id,
+    talk_id: talk::Id,
+    owner: user::Sub,
+    text: String,
+    timestamp: i64,
+    seen: bool,
 }
 
 impl Message {
@@ -27,6 +27,30 @@ impl Message {
         }
     }
 
+    pub fn id(&self) -> &Id {
+        &self.id
+    }
+
+    pub fn talk_id(&self) -> &talk::Id {
+        &self.talk_id
+    }
+
+    pub fn owner(&self) -> &user::Sub {
+        &self.owner
+    }
+
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    pub fn timestamp(&self) -> i64 {
+        self.timestamp
+    }
+
+    pub fn seen(&self) -> bool {
+        self.seen
+    }
+
     pub fn with_random_id(&self) -> Self {
         Self {
             id: Id::random(),
@@ -39,6 +63,17 @@ impl Message {
             text: text.to_string(),
             ..self.clone()
         }
+    }
+}
+
+#[cfg(test)]
+impl Message {
+    pub fn set_timestamp(&mut self, timestamp: i64) {
+        self.timestamp = timestamp;
+    }
+
+    pub fn set_seen(&mut self, seen: bool) {
+        self.seen = seen;
     }
 }
 

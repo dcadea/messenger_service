@@ -33,7 +33,7 @@ pub(super) mod api {
         if let Some(last) = msgs.last() {
             let last_msg = LastMessage::from(last);
             talk_service
-                .update_last_message(&last.talk_id, Some(&last_msg))
+                .update_last_message(last.talk_id(), Some(&last_msg))
                 .await?;
         }
 
@@ -103,7 +103,7 @@ pub(super) mod api {
         if let Some(deleted_msg) = message_service.delete(&auth_user, &id).await? {
             let is_last = message_service.is_last_message(&deleted_msg).await?;
             if is_last {
-                let talk_id = &deleted_msg.talk_id;
+                let talk_id = deleted_msg.talk_id();
                 let last_msg = message_service
                     .find_most_recent(talk_id)
                     .await?
@@ -156,10 +156,10 @@ pub(super) mod templates {
     ) -> crate::Result<Markup> {
         let msg = message_service.find_by_id(&params.message_id).await?;
 
-        if msg.owner.ne(auth_user.sub()) {
+        if msg.owner().ne(auth_user.sub()) {
             return Err(crate::error::Error::from(message::Error::NotOwner));
         }
 
-        Ok(markup::InputEdit::new(&msg.id, &msg.text).render())
+        Ok(markup::InputEdit::new(msg.id(), msg.text()).render())
     }
 }
