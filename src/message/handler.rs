@@ -25,7 +25,8 @@ pub(super) mod api {
         talk_service: State<talk::Service>,
         Form(params): Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let msg = Message::new(params.talk_id, auth_user.sub.clone(), params.text.trim());
+        let auth_sub = auth_user.sub();
+        let msg = Message::new(params.talk_id, auth_sub.clone(), params.text.trim());
 
         let msgs = message_service.create(&msg).await?;
 
@@ -36,7 +37,7 @@ pub(super) mod api {
                 .await?;
         }
 
-        Ok(markup::MessageList::prepend(&msgs, &auth_user.sub).render())
+        Ok(markup::MessageList::prepend(&msgs, auth_sub).render())
     }
 
     #[derive(Deserialize)]
@@ -59,7 +60,7 @@ pub(super) mod api {
 
         talk_validator.check_member(&talk_id, &auth_user).await?;
 
-        let auth_sub = &auth_user.sub;
+        let auth_sub = auth_user.sub();
         let (msgs, seen_qty) = message_service
             .find_by_talk_id_and_params(auth_sub, &talk_id, params.limit, params.end_time)
             .await?;
@@ -89,7 +90,7 @@ pub(super) mod api {
         Ok((
             StatusCode::OK,
             [("HX-Trigger", "msg:afterUpdate")],
-            markup::MessageItem::new(&msg, Some(&auth_user.sub)).render(),
+            markup::MessageItem::new(&msg, Some(auth_user.sub())).render(),
         ))
     }
 
@@ -155,7 +156,7 @@ pub(super) mod templates {
     ) -> crate::Result<Markup> {
         let msg = message_service.find_by_id(&params.message_id).await?;
 
-        if msg.owner.ne(&auth_user.sub) {
+        if msg.owner.ne(auth_user.sub()) {
             return Err(crate::error::Error::from(message::Error::NotOwner));
         }
 

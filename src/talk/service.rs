@@ -188,13 +188,13 @@ impl TalkService for TalkServiceImpl {
         auth_user: &auth::User,
         kind: &Kind,
     ) -> super::Result<Vec<TalkDto>> {
-        let sub = &auth_user.sub;
-        let talks = self.repo.find_by_sub_and_kind(sub, kind).await?;
+        let auth_sub = auth_user.sub();
+        let talks = self.repo.find_by_sub_and_kind(auth_sub, kind).await?;
 
         let talk_dtos = join_all(
             talks
                 .into_iter()
-                .map(|t| async { self.talk_to_dto(t, sub).await }),
+                .map(|t| async { self.talk_to_dto(t, auth_sub).await }),
         )
         .await;
 
@@ -311,7 +311,7 @@ impl TalkValidatorImpl {
 impl TalkValidator for TalkValidatorImpl {
     async fn check_member(&self, talk_id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
         let members = find_members(&self.redis, self.repo.clone(), talk_id).await?;
-        let belongs_to_talk = members.contains(&auth_user.sub);
+        let belongs_to_talk = members.contains(auth_user.sub());
 
         if !belongs_to_talk {
             return Err(talk::Error::NotMember);

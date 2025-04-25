@@ -19,9 +19,9 @@ impl Render for Header<'_> {
         html! {
             header #user-header ."flex items-center place-content-center mb-4" {
                 img ."w-12 h-12 rounded-full mr-3"
-                    src=(self.0.picture)
+                    src=(self.0.picture())
                     alt="User avatar" {}
-                h2 .text-2xl {(self.0.name)}
+                h2 .text-2xl { (self.0.name()) }
             }
         }
     }

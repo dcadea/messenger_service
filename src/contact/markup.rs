@@ -23,7 +23,7 @@ const CONTACT_ITEM_CLASS: &str =
 
 impl Render for ContactInfos<'_> {
     fn render(&self) -> maud::Markup {
-        let auth_sub = &self.auth_user.sub;
+        let auth_sub = &self.auth_user.sub();
 
         html! {
             header ."text-center mb-4"{

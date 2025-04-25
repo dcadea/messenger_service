@@ -110,7 +110,7 @@ impl MessageService for MessageServiceImpl {
     ) -> super::Result<Message> {
         let msg = self.repo.find_by_id(id).await?;
 
-        if msg.owner.ne(&auth_user.sub) {
+        if msg.owner.ne(auth_user.sub()) {
             return Err(super::Error::NotOwner);
         }
 
@@ -134,7 +134,7 @@ impl MessageService for MessageServiceImpl {
             .await
             .map_err(|_| super::Error::NotOwner)?;
 
-        if msg.owner.ne(&auth_user.sub) {
+        if msg.owner.ne(auth_user.sub()) {
             return Err(super::Error::NotOwner);
         }
 

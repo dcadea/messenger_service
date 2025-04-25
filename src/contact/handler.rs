@@ -23,7 +23,7 @@ pub(super) mod api {
         contact_service: State<contact::Service>,
         params: Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let c = Contact::new(&auth_user.sub, &params.sub);
+        let c = Contact::new(auth_user.sub(), &params.sub);
         contact_service.add(&c).await?;
         Ok(c.status().render())
     }
@@ -33,7 +33,7 @@ pub(super) mod api {
         sub: Query<user::Sub>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        contact_service.delete(&auth_user.sub, &sub).await?;
+        contact_service.delete(auth_user.sub(), &sub).await?;
         Ok(())
     }
 
@@ -42,7 +42,7 @@ pub(super) mod api {
         id: Path<contact::Id>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        let responder = auth_user.sub;
+        let responder = auth_user.sub().clone();
 
         contact_service
             .transition_status(&id, contact::StatusTransition::Accept { responder })
@@ -56,7 +56,7 @@ pub(super) mod api {
         id: Path<contact::Id>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        let responder = auth_user.sub;
+        let responder = auth_user.sub().clone();
 
         contact_service
             .transition_status(&id, contact::StatusTransition::Reject { responder })
@@ -70,7 +70,7 @@ pub(super) mod api {
         id: Path<contact::Id>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        let initiator = auth_user.sub;
+        let initiator = auth_user.sub().clone();
 
         contact_service
             .transition_status(&id, contact::StatusTransition::Block { initiator })
@@ -84,7 +84,7 @@ pub(super) mod api {
         Path(id): Path<contact::Id>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        let c = contact_service.find_by_id(&auth_user.sub, &id).await?;
+        let c = contact_service.find_by_id(auth_user.sub(), &id).await?;
         let target = c.recipient;
         contact_service
             .transition_status(&id, contact::StatusTransition::Unblock { target })

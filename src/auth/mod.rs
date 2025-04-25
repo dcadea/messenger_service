@@ -40,10 +40,42 @@ pub fn api<S>(s: AppState) -> Router<S> {
 
 #[derive(Clone)]
 pub struct User {
-    pub sub: user::Sub,
-    pub nickname: String,
-    pub name: String,
-    pub picture: String,
+    sub: user::Sub,
+    nickname: String,
+    name: String,
+    picture: String,
+}
+
+impl User {
+    pub fn new(
+        sub: user::Sub,
+        nickname: impl Into<String>,
+        name: impl Into<String>,
+        picture: impl Into<String>,
+    ) -> Self {
+        User {
+            sub,
+            nickname: nickname.into(),
+            name: name.into(),
+            picture: picture.into(),
+        }
+    }
+
+    pub fn sub(&self) -> &user::Sub {
+        &self.sub
+    }
+
+    pub fn nickname(&self) -> &str {
+        &self.nickname
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn picture(&self) -> &str {
+        &self.picture
+    }
 }
 
 impl From<UserInfo> for User {

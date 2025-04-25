@@ -15,7 +15,9 @@ pub(super) mod pages {
         auth_user: Extension<auth::User>,
         talk_service: State<talk::Service>,
     ) -> crate::Result<Markup> {
-        let talk = &talk_service.find_by_id_and_sub(&id, &auth_user.sub).await?;
+        let talk = &talk_service
+            .find_by_id_and_sub(&id, auth_user.sub())
+            .await?;
 
         Ok(html! {(markup::ActiveTalk(&talk))})
     }
@@ -41,7 +43,9 @@ pub(super) mod api {
         talk_service: State<talk::Service>,
         Path(id): Path<talk::Id>,
     ) -> crate::Result<Markup> {
-        let talk = talk_service.find_by_id_and_sub(&id, &auth_user.sub).await?;
+        let talk = talk_service
+            .find_by_id_and_sub(&id, auth_user.sub())
+            .await?;
         Ok(html! { (talk) })
     }
 
@@ -62,7 +66,7 @@ pub(super) mod api {
         talk_service: State<talk::Service>,
         Form(params): Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let auth_sub = &auth_user.sub;
+        let auth_sub = auth_user.sub();
         let talk = match params {
             CreateParams::Chat { sub } => talk_service.create_chat(auth_sub, &sub).await,
             CreateParams::Group { name, members } => {

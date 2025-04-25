@@ -16,7 +16,7 @@ pub mod sse {
         State(user_service): State<user::Service>,
         State(event_service): State<event::Service>,
     ) -> sse::Sse<impl Stream<Item = Result<sse::Event, Infallible>>> {
-        let auth_sub = auth_user.sub;
+        let auth_sub = auth_user.sub().clone();
 
         let stream = async_stream::stream! {
             let mut noti_stream = event_service
@@ -99,7 +99,7 @@ pub mod ws {
         debug!("Upgrading to WS for talk: {}", &talk_id);
         talk_validator.check_member(&talk_id, &auth_user).await?;
 
-        let auth_sub = auth_user.sub.clone();
+        let auth_sub = auth_user.sub().clone();
         Ok(ws.on_upgrade(move |socket| async {
             let (sender, recv) = socket.split();
             let close = Arc::new(Notify::new());

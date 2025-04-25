@@ -28,7 +28,7 @@ pub(super) mod api {
             .await?;
 
         let contacts = contact_service
-            .find_by_sub(&auth_user.sub)
+            .find_by_sub(auth_user.sub())
             .await
             .unwrap_or(Vec::with_capacity(0));
 
