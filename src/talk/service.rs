@@ -275,7 +275,11 @@ impl TalkServiceImpl {
                     .await
                     .expect("recipient info should be present");
 
-                (r.name, r.picture, DetailsDto::Chat { sender, recipient })
+                (
+                    r.name().to_string(),
+                    r.picture().to_string(),
+                    DetailsDto::Chat { sender, recipient },
+                )
             }
             Details::Group { name, picture, .. } => (name, picture, DetailsDto::Group),
         };

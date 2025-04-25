@@ -119,16 +119,16 @@ impl Render for SearchResult<'_> {
                     @for user in self.users {
                         li ."px-3 py-2" {
                             img ."w-6 h-6 rounded-full float-left"
-                                src=(user.picture)
+                                src=(user.picture())
                                 alt="User avatar" {}
-                            strong .px-3 {(user.name)} (user.nickname)
+                            strong .px-3 {(user.name())} (user.nickname())
 
-                            @match self.contacts.iter().find(|c| user.sub.eq(c.recipient())) {
+                            @match self.contacts.iter().find(|c| user.sub().eq(c.recipient())) {
                                 Some(c) => @match c.status() {
-                                    contact::Status::Accepted => (StartTalk(&user.sub)),
+                                    contact::Status::Accepted => (StartTalk(user.sub())),
                                     _ => (c.status())
                                 },
-                                None => (AddContact(&user.sub))
+                                None => (AddContact(user.sub()))
                             }
                         }
                     }
@@ -185,7 +185,11 @@ impl Render for Icon<'_> {
     fn render(&self) -> Markup {
         match self {
             Self::OnlineIndicator(os) => {
-                let i_class = if os.online { "fa-solid" } else { "fa-regular" };
+                let i_class = if os.online() {
+                    "fa-solid"
+                } else {
+                    "fa-regular"
+                };
 
                 html! {
                     i #(os.attr()) .(i_class) ."fa-circle text-green-600 mr-2 text-sm" {}

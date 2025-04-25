@@ -38,7 +38,7 @@ impl User {
 pub struct OnlineStatus {
     // TODO: add lifetime
     sub: Sub,
-    pub online: bool,
+    online: bool,
 }
 
 impl OnlineStatus {
@@ -49,15 +49,41 @@ impl OnlineStatus {
     pub fn id(&self) -> &str {
         self.sub.id()
     }
+
+    pub fn online(&self) -> bool {
+        self.online
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UserInfo {
-    pub sub: Sub,
-    pub nickname: String,
-    pub name: String,
-    pub picture: String,
+    sub: Sub,
+    nickname: String,
+    name: String,
+    picture: String,
     email: String,
+}
+
+impl UserInfo {
+    pub fn sub(&self) -> &Sub {
+        &self.sub
+    }
+
+    pub fn nickname(&self) -> &str {
+        &self.nickname
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn email(&self) -> &str {
+        &self.email
+    }
+
+    pub fn picture(&self) -> &str {
+        &self.picture
+    }
 }
 
 impl From<User> for UserInfo {

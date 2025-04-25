@@ -33,9 +33,9 @@ impl Render for ContactInfos<'_> {
                 @for (c, ui) in self.contact_infos {
                     li .(CONTACT_ITEM_CLASS) {
                         img ."w-9 h-9 rounded-full float-left mr-2"
-                            src=(ui.picture)
+                            src=(ui.picture())
                             alt="User avatar" {}
-                        (ui.name)
+                        (ui.name())
 
                         div #{"ci-status-" (c.id())}
                             ."grow text-right"

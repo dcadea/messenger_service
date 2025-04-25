@@ -80,12 +80,12 @@ impl User {
 
 impl From<UserInfo> for User {
     fn from(user_info: UserInfo) -> Self {
-        User {
-            sub: user_info.sub,
-            nickname: user_info.nickname,
-            name: user_info.name,
-            picture: user_info.picture,
-        }
+        User::new(
+            user_info.sub().clone(),
+            user_info.nickname(),
+            user_info.name(),
+            user_info.picture(),
+        )
     }
 }
 
