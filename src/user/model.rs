@@ -110,3 +110,22 @@ impl From<UserInfo> for User {
         }
     }
 }
+
+#[cfg(test)]
+impl UserInfo {
+    pub fn new(
+        sub: Sub,
+        nickname: impl Into<String>,
+        name: impl Into<String>,
+        picture: impl Into<String>,
+        email: impl Into<String>,
+    ) -> Self {
+        Self {
+            sub,
+            nickname: nickname.into(),
+            name: name.into(),
+            picture: picture.into(),
+            email: email.into(),
+        }
+    }
+}
