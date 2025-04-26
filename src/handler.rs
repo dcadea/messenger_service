@@ -1,7 +1,7 @@
 use crate::{
     auth,
     contact::{self, markup::ContactInfos, model::ContactDto},
-    markup::{SelectedTab, Tab, Tabs, Wrappable},
+    markup::{Tab, TabControls, Tabs, Wrappable},
     settings,
     talk::markup::TalkWindow,
     user,
@@ -13,7 +13,7 @@ use crate::{talk, user::model::UserInfo};
 
 // first shown component is chats page
 pub async fn home() -> crate::Result<Wrappable> {
-    Ok(Wrappable::new(Tabs {}).with_sse())
+    Ok(Wrappable::new(Tabs {}))
 }
 
 // GET /tabs/chats
@@ -26,7 +26,7 @@ pub async fn chats_tab(
         .await?;
 
     let tab_content = TalkWindow::chats(&auth_user, &chats);
-    Ok(Tab::new(SelectedTab::Chats, tab_content).render())
+    Ok(Tab::new(TabControls::Chats, tab_content).render())
 }
 
 // GET /tabs/groups
@@ -39,7 +39,7 @@ pub async fn groups_tab(
         .await?;
 
     let tab_content = TalkWindow::groups(&auth_user, &groups);
-    Ok(Tab::new(SelectedTab::Groups, tab_content).render())
+    Ok(Tab::new(TabControls::Groups, tab_content).render())
 }
 
 // GET /tabs/contacts
@@ -57,7 +57,7 @@ pub async fn contacts_tab(
     }
 
     Ok(Tab::new(
-        SelectedTab::Contacts,
+        TabControls::Contacts,
         ContactInfos::new(&auth_user, &contact_infos),
     )
     .render())
@@ -65,5 +65,5 @@ pub async fn contacts_tab(
 
 // GET /tabs/settings
 pub async fn settings_tab() -> Markup {
-    Tab::new(SelectedTab::Settings, settings::List).render()
+    Tab::new(TabControls::Settings, settings::List).render()
 }
