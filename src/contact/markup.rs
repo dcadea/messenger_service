@@ -118,7 +118,163 @@ impl Render for Icon<'_> {
 
 #[cfg(test)]
 mod test {
+    use crate::user;
+
     use super::*;
+
+    #[test]
+    fn should_render_contact_infos() {
+        let expected = concat!(
+            r#"<header class="text-center mb-4">"#,
+            r#"<h2 class="text-2xl">Contacts</h2>"#,
+            "</header>",
+            r#"<ul class="flex flex-col space-y-2">"#,
+            r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
+            r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="jora://picture" alt="User avatar"></img>Jora"#,
+            r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071d8">"#,
+            r#"<i class="fa-solid fa-ban ml-3 text-2xl cursor-pointer" hx-swap="none" hx-put="/api/contacts/680d045617d7edcb069071d8/block"></i>"#,
+            "</div>",
+            "</li>",
+            r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
+            r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="igor://picture" alt="User avatar"></img>Igor"#,
+            r#"<div class="grow text-right text-red-500" id="ci-status-680d045617d7edcb069071d9">"#,
+            r#"<i class="fa-solid fa-xmark mr-2"></i>Request rejected"#,
+            "</div>",
+            "</li>",
+            r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
+            r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="radu://picture" alt="User avatar"></img>Radu"#,
+            r#"<div class="grow text-right text-blue-500" id="ci-status-680d045617d7edcb069071da">"#,
+            r#"<i class="fa-solid fa-hourglass-half mr-2"></i>Pending action"#,
+            "</div>",
+            "</li>",
+            r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
+            r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="gicu://picture" alt="User avatar"></img>Gicu"#,
+            r#"<div class="grow text-right text-blue-500" id="ci-status-680d045617d7edcb069071db">"#,
+            r#"<i class="fa-solid fa-check text-2xl text-green-500 cursor-pointer" hx-swap="none" hx-put="/api/contacts/680d045617d7edcb069071db/accept"></i>"#,
+            r#"<i class="fa-solid fa-xmark ml-3 text-2xl text-red-500 cursor-pointer" hx-swap="none" hx-put="/api/contacts/680d045617d7edcb069071db/reject"></i>"#,
+            "</div>",
+            "</li>",
+            r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
+            r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="toha://picture" alt="User avatar"></img>Toha"#,
+            r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071dc">Blocked"#,
+            r#"<i class="fa-solid fa-lock-open ml-3 text-green-500 text-xl cursor-pointer" hx-swap="none" hx-put="/api/contacts/680d045617d7edcb069071dc/unblock"></i>"#,
+            "</div>",
+            "</li>",
+            r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
+            r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="alex://picture" alt="User avatar"></img>Alex"#,
+            r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071dd">Blocked you</div>"#,
+            "</li>",
+            "</ul>"
+        );
+
+        let auth_user = auth::User::new(
+            user::Sub("valera".into()),
+            "valera",
+            "Valera",
+            "valera://picture",
+        );
+
+        let contact_infos = [
+            (
+                ContactDto::new(
+                    contact::Id("680d045617d7edcb069071d8".into()),
+                    user::Sub("jora".into()),
+                    contact::Status::Accepted,
+                ),
+                UserInfo::new(
+                    user::Sub("jora".into()),
+                    "jora",
+                    "Jora",
+                    "jora://picture",
+                    "jora@test.com",
+                ),
+            ),
+            (
+                ContactDto::new(
+                    contact::Id("680d045617d7edcb069071d9".into()),
+                    user::Sub("igor".into()),
+                    contact::Status::Rejected,
+                ),
+                UserInfo::new(
+                    user::Sub("igor".into()),
+                    "igor",
+                    "Igor",
+                    "igor://picture",
+                    "igor@test.com",
+                ),
+            ),
+            (
+                ContactDto::new(
+                    contact::Id("680d045617d7edcb069071da".into()),
+                    user::Sub("radu".into()),
+                    contact::Status::Pending {
+                        initiator: user::Sub("valera".into()),
+                    },
+                ),
+                UserInfo::new(
+                    user::Sub("radu".into()),
+                    "radu",
+                    "Radu",
+                    "radu://picture",
+                    "radu@test.com",
+                ),
+            ),
+            (
+                ContactDto::new(
+                    contact::Id("680d045617d7edcb069071db".into()),
+                    user::Sub("gicu".into()),
+                    contact::Status::Pending {
+                        initiator: user::Sub("gicu".into()),
+                    },
+                ),
+                UserInfo::new(
+                    user::Sub("gicu".into()),
+                    "gicu",
+                    "Gicu",
+                    "gicu://picture",
+                    "gicu@test.com",
+                ),
+            ),
+            (
+                ContactDto::new(
+                    contact::Id("680d045617d7edcb069071dc".into()),
+                    user::Sub("toha".into()),
+                    contact::Status::Blocked {
+                        initiator: user::Sub("valera".into()),
+                    },
+                ),
+                UserInfo::new(
+                    user::Sub("toha".into()),
+                    "toha",
+                    "Toha",
+                    "toha://picture",
+                    "toha@test.com",
+                ),
+            ),
+            (
+                ContactDto::new(
+                    contact::Id("680d045617d7edcb069071dd".into()),
+                    user::Sub("alex".into()),
+                    contact::Status::Blocked {
+                        initiator: user::Sub("alex".into()),
+                    },
+                ),
+                UserInfo::new(
+                    user::Sub("alex".into()),
+                    "alex",
+                    "Alex",
+                    "alex://picture",
+                    "alex@test.com",
+                ),
+            ),
+        ];
+
+        let actual = ContactInfos::new(&auth_user, &contact_infos)
+            .render()
+            .into_string();
+
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn should_render_pending_icon() {
