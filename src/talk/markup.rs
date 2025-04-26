@@ -123,7 +123,7 @@ impl Render for ActiveTalk<'_> {
         html! {
             (Header(self.0))
 
-            div #active-talk ."flex-grow overflow-auto mt-4 mb-4"
+            #active-talk ."flex-grow overflow-auto mt-4 mb-4"
                 hx-ext="ws"
                 ws-connect={ "/ws/" (self.0.id()) }
             {
@@ -145,6 +145,9 @@ impl Render for ActiveTalk<'_> {
     }
 }
 
+const TALK_CONTROLS_ID: &str = "talk-controls";
+pub const TALK_CONTROLS_TARGET: &str = "#talk-controls";
+
 struct TalkControls<'a>(&'a talk::Id);
 
 impl Render for TalkControls<'_> {
@@ -152,7 +155,7 @@ impl Render for TalkControls<'_> {
         let controls_item_class = "text-lg py-3 cursor-pointer hover:bg-gray-300";
 
         html! {
-            div #talk-controls ."flex flex-row h-full w-full absolute top-0 left-0 invisible" {
+            div #(TALK_CONTROLS_ID) ."flex flex-row h-full w-full absolute top-0 left-0 invisible" {
                 div ."talk-controls-overlay w-2/3 bg-gray-300 bg-opacity-50"
                     _="on click add .invisible to #talk-controls" {}
 
@@ -222,11 +225,333 @@ impl Render for Icon {
             @match self {
                 Self::TalkControls => {
                     i ."fa-solid fa-bars text-2xl cursor-pointer"
-                        _="on click toggle .invisible on #talk-controls" {}
+                        _={ "on click toggle .invisible on " (TALK_CONTROLS_TARGET) } {}
                 },
                 Self::Unseen => i ."fa-solid fa-envelope text-green-600 ml-2" {}
             }
 
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::message::model::LastMessage;
+
+    use super::*;
+
+    #[test]
+    fn should_render_chat_talk_window() {
+        let expected = concat!(
+            r#"<div class="flex flex-col h-full" id="talk-window">"#,
+            r#"<header class="flex items-center place-content-center mb-4" id="user-header">"#,
+            r#"<img class="w-12 h-12 rounded-full mr-3" src="jora://picture" alt="User avatar"></img>"#,
+            r#"<h2 class="text-2xl">Jora</h2>"#,
+            "</header>",
+            r##"<input class="mb-4 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none" type="search" name="nickname" placeholder="Search users..." autocomplete="off" hx-post="/api/users/search" hx-trigger="input changed delay:500ms" hx-target="#search-results" "##,
+            r#"_="on keyup
+                if the event's key is 'Escape'
+                    set value of me to ''
+                    remove children of #search-results">"#,
+            "</input>",
+            r#"<div class="relative" id="search-results"></div>"#,
+            r##"<div class="flex flex-col space-y-2 h-full overflow-y-auto" id="talk-list" sse-swap="newTalk" hx-swap="beforeend" hx-target="#talk-list">"##,
+            r##"<div class="talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" id="t-680d0fa361f9e3c2a1b25c4f" hx-get="/talks/680d0fa361f9e3c2a1b25c4f" hx-target="#talk-window" hx-swap="innerHTML">"##,
+            r##"<div sse-swap="onlineStatusChange:valera" hx-target="#os-valera" hx-swap="outerHTML">"##,
+            r#"<i class="fa-regular fa-circle text-green-600 mr-2 text-sm" id="os-valera"></i>"#,
+            "</div>",
+            r#"<img class="w-8 h-8 rounded-full" src="talk1://picture" alt="Talk avatar"></img>"#,
+            r#"<span class="talk-recipient font-bold mx-2">Valera</span>"#,
+            r##"<div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4f" hx-target="#lm-680d0fa361f9e3c2a1b25c4f">"##,
+            r#"<div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4f">LGTM!</div>"#,
+            "</div>",
+            "</div>",
+            r##"<div class="talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" id="t-680d0fa361f9e3c2a1b25c4g" hx-get="/talks/680d0fa361f9e3c2a1b25c4g" hx-target="#talk-window" hx-swap="innerHTML">"##,
+            r##"<div sse-swap="onlineStatusChange:igor" hx-target="#os-igor" hx-swap="outerHTML">"##,
+            r#"<i class="fa-regular fa-circle text-green-600 mr-2 text-sm" id="os-igor"></i>"#,
+            "</div>",
+            r#"<img class="w-8 h-8 rounded-full" src="talk2://picture" alt="Talk avatar"></img>"#,
+            r#"<span class="talk-recipient font-bold mx-2">Igor</span>"#,
+            r##"<div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4g" hx-target="#lm-680d0fa361f9e3c2a1b25c4g">"##,
+            r#"<div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4g">What's up?</div>"#,
+            "</div>",
+            "</div>",
+            "</div>",
+            "</div>"
+        );
+
+        let auth_user = auth::User::new(user::Sub("jora".into()), "jora", "Jora", "jora://picture");
+        let talks = [
+            TalkDto::new(
+                talk::Id("680d0fa361f9e3c2a1b25c4f".into()),
+                "talk1://picture",
+                "Valera",
+                DetailsDto::Chat {
+                    sender: user::Sub("github|jora".into()),
+                    recipient: user::Sub("google|valera".into()),
+                },
+                Some(LastMessage::new(
+                    message::Id::random(),
+                    "LGTM!",
+                    user::Sub("github|jora".into()),
+                    chrono::Utc::now().timestamp(),
+                    true,
+                )),
+            ),
+            TalkDto::new(
+                talk::Id("680d0fa361f9e3c2a1b25c4g".into()),
+                "talk2://picture",
+                "Igor",
+                DetailsDto::Chat {
+                    sender: user::Sub("github|jora".into()),
+                    recipient: user::Sub("google|igor".into()),
+                },
+                Some(LastMessage::new(
+                    message::Id::random(),
+                    "What's up?",
+                    user::Sub("github|igor".into()),
+                    chrono::Utc::now().timestamp(),
+                    true,
+                )),
+            ),
+        ];
+
+        let actual = TalkWindow::chats(&auth_user, &talks).render().into_string();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn should_render_group_talk_window() {
+        let expected = concat!(
+            r#"<div class="flex flex-col h-full" id="talk-window">"#,
+            r#"<header class="text-center mb-4">"#,
+            r#"<h2 class="text-2xl">Groups</h2>"#,
+            "</header>",
+            r##"<div class="flex flex-col space-y-2 h-full overflow-y-auto" id="talk-list" sse-swap="newTalk" hx-swap="beforeend" hx-target="#talk-list">"##,
+            r##"<div class="talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" id="t-680d0fa361f9e3c2a1b25c4f" hx-get="/talks/680d0fa361f9e3c2a1b25c4f" hx-target="#talk-window" hx-swap="innerHTML">"##,
+            r#"<img class="w-8 h-8 rounded-full" src="talk1://picture" alt="Talk avatar"></img>"#,
+            r#"<span class="talk-recipient font-bold mx-2">Que pasa?</span>"#,
+            r##"<div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4f" hx-target="#lm-680d0fa361f9e3c2a1b25c4f">"##,
+            r#"<div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4f">LGTM!"#,
+            r#"<i class="fa-solid fa-envelope text-green-600 ml-2"></i>"#,
+            "</div>",
+            "</div>",
+            "</div>",
+            r##"<div class="talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" id="t-680d0fa361f9e3c2a1b25c4g" hx-get="/talks/680d0fa361f9e3c2a1b25c4g" hx-target="#talk-window" hx-swap="innerHTML">"##,
+            r#"<img class="w-8 h-8 rounded-full" src="talk2://picture" alt="Talk avatar"></img>"#,
+            r#"<span class="talk-recipient font-bold mx-2">Wigas</span>"#,
+            r##"<div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4g" hx-target="#lm-680d0fa361f9e3c2a1b25c4g">"##,
+            r#"<div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4g">What's up?"#,
+            r#"<i class="fa-solid fa-envelope text-green-600 ml-2"></i>"#,
+            "</div>",
+            "</div>",
+            "</div>",
+            "</div>",
+            "</div>",
+        );
+
+        let auth_user = auth::User::new(user::Sub("jora".into()), "jora", "Jora", "jora://picture");
+        let talks = [
+            TalkDto::new(
+                talk::Id("680d0fa361f9e3c2a1b25c4f".into()),
+                "talk1://picture",
+                "Que pasa?",
+                DetailsDto::Group,
+                Some(LastMessage::new(
+                    message::Id::random(),
+                    "LGTM!",
+                    user::Sub("github|jora".into()),
+                    chrono::Utc::now().timestamp(),
+                    true,
+                )),
+            ),
+            TalkDto::new(
+                talk::Id("680d0fa361f9e3c2a1b25c4g".into()),
+                "talk2://picture",
+                "Wigas",
+                DetailsDto::Group,
+                Some(LastMessage::new(
+                    message::Id::random(),
+                    "What's up?",
+                    user::Sub("github|igor".into()),
+                    chrono::Utc::now().timestamp(),
+                    true,
+                )),
+            ),
+        ];
+
+        let actual = TalkWindow::groups(&auth_user, &talks)
+            .render()
+            .into_string();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn should_render_header() {
+        let expected = concat!(
+            r#"<header class="flex justify-between items-center" id="recipient-header">"#,
+            r##"<a class="cursor-pointer border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4" hx-get="/tabs/chats" hx-target="#tabs" hx-swap="innerHTML">X</a>"##,
+            r#"<div class="flex text-2xl">"#,
+            r##"<div sse-swap="onlineStatusChange:valera" hx-target="#os-valera" hx-swap="outerHTML">"##,
+            r#"<i class="fa-regular fa-circle text-green-600 mr-2 text-sm" id="os-valera"></i>"#,
+            "</div>",
+            "Wiggas",
+            "</div>",
+            r#"<i class="fa-solid fa-bars text-2xl cursor-pointer" _="on click toggle .invisible on #talk-controls"></i>"#,
+            "</header>"
+        );
+
+        let t = TalkDto::new(
+            talk::Id("680d0fa361f9e3c2a1b25c4f".into()),
+            "talk://picture",
+            "Wiggas",
+            DetailsDto::Chat {
+                sender: user::Sub("github|jora".into()),
+                recipient: user::Sub("google|valera".into()),
+            },
+            Some(LastMessage::new(
+                message::Id::random(),
+                "LGTM!",
+                user::Sub("github|jora".into()),
+                chrono::Utc::now().timestamp(),
+                true,
+            )),
+        );
+
+        let actual = Header(&t).render().into_string();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn should_render_active_talk() {
+        let expected = concat!(
+            r#"<header class="flex justify-between items-center" id="recipient-header">"#,
+            r##"<a class="cursor-pointer border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4" hx-get="/tabs/chats" hx-target="#tabs" hx-swap="innerHTML">X</a>"##,
+            r#"<div class="flex text-2xl">"#,
+            r##"<div sse-swap="onlineStatusChange:valera" hx-target="#os-valera" hx-swap="outerHTML">"##,
+            r#"<i class="fa-regular fa-circle text-green-600 mr-2 text-sm" id="os-valera"></i>"#,
+            "</div>",
+            "Wiggas",
+            "</div>",
+            r#"<i class="fa-solid fa-bars text-2xl cursor-pointer" _="on click toggle .invisible on #talk-controls"></i>"#,
+            "</header>",
+            r#"<div class="flex-grow overflow-auto mt-4 mb-4" id="active-talk" hx-ext="ws" ws-connect="/ws/680d0fa361f9e3c2a1b25c4f">"#,
+            r##"<div class="sticky flex flex-col-reverse overflow-auto h-full" id="message-list" hx-get="/api/messages?limit=20&amp;talk_id=680d0fa361f9e3c2a1b25c4f" hx-trigger="load" hx-target="#message-list">"##,
+            "</div>",
+            "</div>",
+            r##"<form class="border-gray-200 flex mb-3" id="message-input" hx-post="/api/messages" hx-target="#message-list" hx-swap="afterbegin" "##,
+            r#"_="on htmx:afterRequest reset() me
+            on htmx:afterRequest go to the bottom of the #message-list">"#,
+            r#"<input type="hidden" name="talk_id" value="680d0fa361f9e3c2a1b25c4f"></input>"#,
+            r#"<input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none" type="text" name="text" placeholder="Type your message..." autocomplete="off" hx-disabled-elt="this" _="on keyup if the event's key is 'Escape' set value of me to ''"></input>"#,
+            r#"<input class="bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700" hx-disabled-elt="this" type="submit" value="Send"></input>"#,
+            "</form>",
+            r#"<div class="flex flex-row h-full w-full absolute top-0 left-0 invisible" id="talk-controls">"#,
+            r#"<div class="talk-controls-overlay w-2/3 bg-gray-300 bg-opacity-50" _="on click add .invisible to #talk-controls"></div>"#,
+            r#"<div class="flex flex-col bg-white h-full w-1/3 py-4 text-center">"#,
+            r#"<div class="text-2xl py-3">Settings</div>"#,
+            r#"<div class="text-lg py-3 cursor-pointer hover:bg-gray-300" hx-delete="/api/talks/680d0fa361f9e3c2a1b25c4f">Delete talk</div>"#,
+            "</div>",
+            "</div>",
+            r##"<div class="hidden" hx-trigger="msg:afterUpdate from:body" hx-target="#message-input" hx-swap="outerHTML" hx-get="/templates/messages/input/blank?talk_id=680d0fa361f9e3c2a1b25c4f"></div>"##
+        );
+
+        let t = TalkDto::new(
+            talk::Id("680d0fa361f9e3c2a1b25c4f".into()),
+            "talk://picture",
+            "Wiggas",
+            DetailsDto::Chat {
+                sender: user::Sub("github|jora".into()),
+                recipient: user::Sub("google|valera".into()),
+            },
+            Some(LastMessage::new(
+                message::Id::random(),
+                "LGTM!",
+                user::Sub("github|jora".into()),
+                chrono::Utc::now().timestamp(),
+                true,
+            )),
+        );
+
+        let actual = ActiveTalk(&t).render().into_string();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn should_render_talk_controls() {
+        let expected = concat!(
+            r#"<div class="flex flex-row h-full w-full absolute top-0 left-0 invisible" id="talk-controls">"#,
+            r#"<div class="talk-controls-overlay w-2/3 bg-gray-300 bg-opacity-50" _="on click add .invisible to #talk-controls"></div>"#,
+            r#"<div class="flex flex-col bg-white h-full w-1/3 py-4 text-center">"#,
+            r#"<div class="text-2xl py-3">Settings</div>"#,
+            r#"<div class="text-lg py-3 cursor-pointer hover:bg-gray-300" hx-delete="/api/talks/680d10a4042fe1d7f2d6138b">Delete talk</div>"#,
+            "</div>",
+            "</div>"
+        );
+
+        let actual = TalkControls(&talk::Id("680d10a4042fe1d7f2d6138b".into()))
+            .render()
+            .into_string();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn should_render_chat_talk_dto() {
+        let expected = concat!(
+            r##"<div class="talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" id="t-680d0fa361f9e3c2a1b25c4f" hx-get="/talks/680d0fa361f9e3c2a1b25c4f" hx-target="#talk-window" hx-swap="innerHTML">"##,
+            r##"<div sse-swap="onlineStatusChange:valera" hx-target="#os-valera" hx-swap="outerHTML">"##,
+            r#"<i class="fa-regular fa-circle text-green-600 mr-2 text-sm" id="os-valera"></i>"#,
+            "</div>",
+            r#"<img class="w-8 h-8 rounded-full" src="talk://picture" alt="Talk avatar"></img>"#,
+            r#"<span class="talk-recipient font-bold mx-2">Wiggas</span>"#,
+            r##"<div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4f" hx-target="#lm-680d0fa361f9e3c2a1b25c4f">"##,
+            r#"<div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4f">LGTM!</div>"#,
+            "</div>",
+            "</div>"
+        );
+
+        let actual = TalkDto::new(
+            talk::Id("680d0fa361f9e3c2a1b25c4f".into()),
+            "talk://picture",
+            "Wiggas",
+            DetailsDto::Chat {
+                sender: user::Sub("github|jora".into()),
+                recipient: user::Sub("google|valera".into()),
+            },
+            Some(LastMessage::new(
+                message::Id::random(),
+                "LGTM!",
+                user::Sub("github|jora".into()),
+                chrono::Utc::now().timestamp(),
+                true,
+            )),
+        )
+        .render()
+        .into_string();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn should_render_talk_controls_icon() {
+        let expected = r#"<i class="fa-solid fa-bars text-2xl cursor-pointer" _="on click toggle .invisible on #talk-controls"></i>"#;
+
+        let actual = Icon::TalkControls.render().into_string();
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn should_render_unseen_icon() {
+        let expected = r#"<i class="fa-solid fa-envelope text-green-600 ml-2"></i>"#;
+
+        let actual = Icon::Unseen.render().into_string();
+
+        assert_eq!(expected, actual);
     }
 }

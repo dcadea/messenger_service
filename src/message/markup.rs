@@ -16,10 +16,8 @@ pub struct InputBlank<'a>(pub &'a talk::Id);
 impl Render for InputBlank<'_> {
     fn render(&self) -> Markup {
         let send_message_handler = format!(
-            r"
-                on htmx:afterRequest reset() me
-                on htmx:afterRequest go to the bottom of the {MESSAGE_LIST_TARGET}
-            "
+            r"on htmx:afterRequest reset() me
+            on htmx:afterRequest go to the bottom of the {MESSAGE_LIST_TARGET}"
         );
 
         html! {
@@ -345,10 +343,8 @@ mod test {
 
         let expected = concat!(
             "<form class=\"border-gray-200 flex mb-3\" id=\"message-input\" hx-post=\"/api/messages\" hx-target=\"#message-list\" hx-swap=\"afterbegin\" ",
-            r#"_="
-                on htmx:afterRequest reset() me
-                on htmx:afterRequest go to the bottom of the #message-list
-            ">"#,
+            r#"_="on htmx:afterRequest reset() me
+            on htmx:afterRequest go to the bottom of the #message-list">"#,
             r#"<input type="hidden" name="talk_id" value="67dff625c469e51787ba173d"></input>"#,
             r#"<input class="border border-gray-300 rounded-l-md p-2 flex-1 focus:outline-none" type="text" name="text" placeholder="Type your message..." autocomplete="off" hx-disabled-elt="this" _="on keyup if the event's key is 'Escape' set value of me to ''"></input>"#,
             r#"<input class="bg-blue-600 text-white px-4 rounded-r-md cursor-pointer hover:bg-blue-700" hx-disabled-elt="this" type="submit" value="Send"></input>"#,
