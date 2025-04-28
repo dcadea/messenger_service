@@ -1,8 +1,7 @@
-use std::{fmt::Display, sync::Arc};
+use std::sync::Arc;
 
 use axum::{
     Router,
-    http::StatusCode,
     routing::{delete, post, put},
 };
 use repository::ContactRepository;
@@ -29,12 +28,6 @@ pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 impl Id {
     pub fn random() -> Self {
         Self(mongodb::bson::oid::ObjectId::new().to_hex())
-    }
-}
-
-impl Display for Id {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
     }
 }
 
@@ -80,17 +73,4 @@ pub enum Error {
 
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
-}
-
-impl From<Error> for StatusCode {
-    fn from(e: Error) -> Self {
-        match e {
-            Error::NotFound(_) => StatusCode::NOT_FOUND,
-            Error::AlreadyExists(..) => StatusCode::CONFLICT,
-            Error::SelfReference | Error::SameSubs(_) | Error::StatusTransitionFailed => {
-                StatusCode::BAD_REQUEST
-            }
-            Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        }
-    }
 }

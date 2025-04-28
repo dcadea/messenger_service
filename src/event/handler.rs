@@ -1,11 +1,25 @@
+use axum::http::StatusCode;
+
+use super::Error;
+
+impl From<Error> for StatusCode {
+    fn from(e: Error) -> Self {
+        match e {
+            Error::NotOwner | Error::NotRecipient => StatusCode::FORBIDDEN,
+            Error::_NatsSub(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
 pub mod sse {
-    use crate::event::{self, Subject};
+    use crate::event::{self, Notification, Subject};
     use crate::{auth, user};
     use async_stream;
     use axum::Extension;
     use axum::extract::State;
     use axum::response::sse;
     use futures::{Stream, StreamExt};
+    use maud::Render;
     use tokio::time;
 
     use std::convert::Infallible;
@@ -60,6 +74,20 @@ pub mod sse {
             tokio::spawn(async move {
                 user_service.notify_offline(&sub).await;
             });
+        }
+    }
+
+    impl From<Notification> for sse::Event {
+        fn from(noti: Notification) -> Self {
+            let evt = match &noti {
+                Notification::OnlineStatusChange(f) => &format!("onlineStatusChange:{}", f.id()),
+                Notification::NewTalk(_) => "newTalk",
+                Notification::NewMessage { talk_id, .. } => &format!("newMessage:{}", &talk_id),
+            };
+
+            sse::Event::default()
+                .event(evt)
+                .data(noti.render().into_string())
         }
     }
 }

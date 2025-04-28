@@ -1,6 +1,9 @@
 use std::env;
 
-use log::warn;
+use bytes::Bytes;
+use log::{error, warn};
+
+use crate::event;
 
 #[derive(Clone)]
 pub struct Config {
@@ -38,5 +41,34 @@ impl Config {
             Ok(con) => con,
             Err(e) => panic!("Failed to connect to NATS: {e}"),
         }
+    }
+}
+
+impl async_nats::subject::ToSubject for &event::Subject<'_> {
+    fn to_subject(&self) -> async_nats::Subject {
+        match self {
+            event::Subject::Notifications(sub) => format!("noti.{sub}").into(),
+            event::Subject::Messages(sub, talk_id) => format!("messages.{sub}.{talk_id}").into(),
+        }
+    }
+}
+
+impl From<event::Notification> for Bytes {
+    fn from(n: event::Notification) -> Self {
+        let mut bytes: Vec<u8> = Vec::new();
+        if let Err(e) = serde_json::to_writer(&mut bytes, &n) {
+            error!("could not serialize notification: {e:?}");
+        }
+        bytes.into()
+    }
+}
+
+impl From<event::Message> for Bytes {
+    fn from(m: event::Message) -> Self {
+        let mut bytes: Vec<u8> = Vec::new();
+        if let Err(e) = serde_json::to_writer(&mut bytes, &m) {
+            error!("could not serialize event message: {e:?}");
+        }
+        bytes.into()
     }
 }

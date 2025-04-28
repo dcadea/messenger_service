@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use async_trait::async_trait;
 use futures::future::join_all;
 use log::error;
 
@@ -9,7 +10,7 @@ use crate::integration::cache;
 use crate::message::model::LastMessage;
 use crate::{auth, contact, event, message, talk, user};
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait TalkService {
     async fn create_chat(
         &self,
@@ -88,7 +89,7 @@ impl TalkServiceImpl {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl TalkService for TalkServiceImpl {
     async fn create_chat(
         &self,

@@ -3,6 +3,7 @@ pub(super) mod api {
     use axum::{
         Extension, Form,
         extract::{Path, Query, State},
+        http::StatusCode,
     };
     use maud::{Markup, Render};
     use serde::Deserialize;
@@ -91,5 +92,18 @@ pub(super) mod api {
             .await?;
 
         Ok(())
+    }
+
+    impl From<contact::Error> for StatusCode {
+        fn from(e: contact::Error) -> Self {
+            match e {
+                contact::Error::NotFound(_) => StatusCode::NOT_FOUND,
+                contact::Error::AlreadyExists(..) => StatusCode::CONFLICT,
+                contact::Error::SelfReference
+                | contact::Error::SameSubs(_)
+                | contact::Error::StatusTransitionFailed => StatusCode::BAD_REQUEST,
+                contact::Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            }
+        }
     }
 }

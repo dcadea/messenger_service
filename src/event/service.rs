@@ -1,8 +1,12 @@
+use std::pin::Pin;
+
 use bytes::Bytes;
-use futures::StreamExt;
+use futures::{Stream, StreamExt};
 use log::error;
 
-use super::{Message, Notification, PayloadStream, Subject};
+use super::{Message, Notification, Subject};
+
+pub type PayloadStream<T> = Pin<Box<dyn Stream<Item = T> + Send>>;
 
 #[async_trait::async_trait]
 pub trait EventService {
