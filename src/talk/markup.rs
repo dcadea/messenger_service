@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::rc::Rc;
 
 use maud::{Markup, Render, html};
@@ -8,6 +9,12 @@ use crate::talk::model::DetailsDto;
 use crate::{auth, message, talk, user};
 
 use super::model::TalkDto;
+
+impl Display for super::Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 const TALK_WINDOW_ID: &str = "talk-window";
 pub const TALK_WINDOW_TARGET: &str = "#talk-window";

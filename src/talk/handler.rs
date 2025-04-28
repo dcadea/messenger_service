@@ -1,3 +1,21 @@
+use axum::http::StatusCode;
+
+impl From<super::Error> for StatusCode {
+    fn from(e: super::Error) -> Self {
+        match e {
+            super::Error::NotFound(_) => StatusCode::NOT_FOUND,
+            super::Error::NotMember => StatusCode::FORBIDDEN,
+            super::Error::AlreadyExists => StatusCode::CONFLICT,
+            super::Error::NotEnoughMembers(_) | super::Error::UnsupportedStatus => {
+                StatusCode::BAD_REQUEST
+            }
+            super::Error::NotCreated | super::Error::NotDeleted | super::Error::_MongoDB(_) => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+        }
+    }
+}
+
 pub(super) mod pages {
     use axum::{
         Extension,

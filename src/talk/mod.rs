@@ -1,8 +1,7 @@
-use std::{fmt::Display, sync::Arc};
+use std::sync::Arc;
 
 use axum::{
     Router,
-    http::StatusCode,
     routing::{delete, get, post},
 };
 use log::error;
@@ -48,12 +47,6 @@ impl Id {
     }
 }
 
-impl Display for Id {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
 #[derive(Clone)]
 pub enum Kind {
     Chat,
@@ -88,18 +81,4 @@ pub enum Error {
 
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
-}
-
-impl From<Error> for StatusCode {
-    fn from(e: Error) -> Self {
-        match e {
-            Error::NotFound(_) => StatusCode::NOT_FOUND,
-            Error::NotMember => StatusCode::FORBIDDEN,
-            Error::AlreadyExists => StatusCode::CONFLICT,
-            Error::NotEnoughMembers(_) | Error::UnsupportedStatus => StatusCode::BAD_REQUEST,
-            Error::NotCreated | Error::NotDeleted | Error::_MongoDB(_) => {
-                StatusCode::INTERNAL_SERVER_ERROR
-            }
-        }
-    }
 }
