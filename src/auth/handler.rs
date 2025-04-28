@@ -54,10 +54,13 @@ pub(super) mod api {
         let sid = uuid::Uuid::new_v4();
         auth_service.cache_token(&sid, token.secret(), &ttl).await;
 
-        let mut sid = Cookie::new(auth::SESSION_ID, sid.to_string());
-        sid.set_secure(true);
-        sid.set_http_only(true);
-        sid.set_same_site(cookie::SameSite::Lax);
+        let sid = {
+            let mut sid = Cookie::new(auth::SESSION_ID, sid.to_string());
+            sid.set_secure(true);
+            sid.set_http_only(true);
+            sid.set_same_site(cookie::SameSite::Lax);
+            sid
+        };
 
         Ok((jar.add(sid), Redirect::to("/")))
     }

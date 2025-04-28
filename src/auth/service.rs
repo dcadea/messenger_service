@@ -54,10 +54,13 @@ pub struct AuthServiceImpl {
 
 impl AuthServiceImpl {
     pub fn try_new(cfg: &idp::Config, redis: cache::Redis) -> Self {
-        let mut jwt_validator = Validation::new(jsonwebtoken::Algorithm::RS256);
-        jwt_validator.set_required_spec_claims(cfg.required_claims());
-        jwt_validator.set_issuer(&[cfg.issuer()]);
-        jwt_validator.set_audience(&[cfg.audience()]);
+        let jwt_validator = {
+            let mut v = Validation::new(jsonwebtoken::Algorithm::RS256);
+            v.set_required_spec_claims(cfg.required_claims());
+            v.set_issuer(&[cfg.issuer()]);
+            v.set_audience(&[cfg.audience()]);
+            v
+        };
 
         let jwk_decoding_keys = Arc::new(RwLock::new(HashMap::new()));
         let service = Self {
@@ -216,14 +219,18 @@ async fn fetch_jwk_decoding_keys(
     let jwk_response = http.get(jwks_url).send().await?;
     let jwk_set: JwkSet = jwk_response.json().await?;
 
-    let mut jwk_decoding_keys = HashMap::new();
+    let jwk_decoding_keys = {
+        let mut keys = HashMap::new();
 
-    for jwk in &jwk_set.keys {
-        if let Some(kid) = jwk.clone().common.key_id {
-            let key = DecodingKey::from_jwk(jwk)?;
-            jwk_decoding_keys.insert(kid, key);
+        for jwk in &jwk_set.keys {
+            if let Some(kid) = jwk.clone().common.key_id {
+                let key = DecodingKey::from_jwk(jwk)?;
+                keys.insert(kid, key);
+            }
         }
-    }
+
+        keys
+    };
 
     Ok(jwk_decoding_keys)
 }

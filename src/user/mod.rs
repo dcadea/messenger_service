@@ -44,9 +44,12 @@ impl Sub {
     }
 
     fn parts(&self) -> (&str, &str) {
-        let mut parts = self.0.splitn(2, '|');
-        let provider = parts.next().expect("provider must be present");
-        let id = parts.next().expect("id must be present");
+        let (provider, id) = {
+            let mut parts = self.0.splitn(2, '|');
+            let provider = parts.next().expect("provider must be present");
+            let id = parts.next().expect("id must be present");
+            (provider, id)
+        };
 
         (provider, id)
     }

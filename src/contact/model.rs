@@ -47,8 +47,6 @@ impl Contact {
     /// - Accepted -> (Block) -> Blocked
     /// - Blocked -> (Unblock) -> Accepted
     pub fn transition(&mut self, t: StatusTransition) -> bool {
-        let mut changed = true;
-
         match (&self.status, t) {
             (Status::Pending { initiator }, StatusTransition::Accept { responder }) => {
                 if !self.is_member(&responder) {
@@ -60,6 +58,7 @@ impl Contact {
                 }
 
                 self.status = Status::Accepted;
+                true
             }
             (Status::Pending { initiator }, StatusTransition::Reject { responder }) => {
                 if !self.is_member(&responder) {
@@ -71,13 +70,15 @@ impl Contact {
                 }
 
                 self.status = Status::Rejected;
+                true
             }
             (Status::Accepted, StatusTransition::Block { initiator }) => {
                 if !self.is_member(&initiator) {
                     return false;
                 }
 
-                self.status = Status::Blocked { initiator }
+                self.status = Status::Blocked { initiator };
+                true
             }
             (Status::Blocked { initiator }, StatusTransition::Unblock { target }) => {
                 if !self.is_member(&target) {
@@ -89,13 +90,10 @@ impl Contact {
                 }
 
                 self.status = Status::Accepted;
+                true
             }
-            (_, _) => {
-                changed = false; /* no change */
-            }
+            _ => false, /* no change */
         }
-
-        changed
     }
 
     fn is_member(&self, sub: &user::Sub) -> bool {

@@ -50,11 +50,14 @@ pub async fn contacts_tab(
 ) -> crate::Result<Markup> {
     let contacts = contact_service.find_by_sub(auth_user.sub()).await?;
 
-    let mut contact_infos: Vec<(ContactDto, UserInfo)> = Vec::with_capacity(contacts.len());
-    for c in contacts {
-        let ui = user_service.find_user_info(c.recipient()).await?;
-        contact_infos.push((c, ui));
-    }
+    let contact_infos: Vec<(ContactDto, UserInfo)> = {
+        let mut ci: Vec<(ContactDto, UserInfo)> = Vec::with_capacity(contacts.len());
+        for c in contacts {
+            let ui = user_service.find_user_info(c.recipient()).await?;
+            ci.push((c, ui));
+        }
+        ci
+    };
 
     Ok(Tab::new(
         TabControls::Contacts,

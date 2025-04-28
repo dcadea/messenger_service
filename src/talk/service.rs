@@ -207,8 +207,12 @@ impl TalkService for TalkServiceImpl {
         talk_id: &talk::Id,
         auth_sub: &user::Sub,
     ) -> super::Result<HashSet<user::Sub>> {
-        let mut recipients = find_members(&self.redis, self.repo.clone(), talk_id).await?;
-        recipients.remove(auth_sub);
+        let recipients = {
+            let mut r = find_members(&self.redis, self.repo.clone(), talk_id).await?;
+            r.remove(auth_sub);
+            r
+        };
+
         Ok(recipients)
     }
 

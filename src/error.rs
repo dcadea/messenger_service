@@ -27,18 +27,24 @@ pub enum Error {
 
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        let mut error_message = self.to_string();
-        error!("{error_message:?}");
+        let error_message = {
+            let mut error_message = self.to_string();
+            error!("{error_message:?}");
 
-        let status = StatusCode::from(self);
-        if status.is_server_error() {
-            "Internal server error".clone_into(&mut error_message);
-        }
+            let status = StatusCode::from(self);
+            if status.is_server_error() {
+                "Internal server error".clone_into(&mut error_message);
+            }
+            error_message
+        };
 
-        let mut response = ErrorResponse { error_message }.render().into_response();
-        response
-            .headers_mut()
-            .insert("HX-Retarget", HeaderValue::from_static("#errors"));
+        let response = {
+            let mut r = ErrorResponse { error_message }.render().into_response();
+            r.headers_mut()
+                .insert("HX-Retarget", HeaderValue::from_static("#errors"));
+
+            r
+        };
 
         response
     }
