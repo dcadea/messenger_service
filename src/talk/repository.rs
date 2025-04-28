@@ -7,7 +7,7 @@ use crate::{message::model::LastMessage, talk, user};
 
 const TALKS_COLLECTION: &str = "talks";
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait TalkRepository {
     async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk>;
 

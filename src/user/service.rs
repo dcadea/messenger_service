@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use log::error;
 
 use crate::integration::cache;
@@ -7,7 +8,7 @@ use crate::{auth, contact, event};
 use super::model::OnlineStatus;
 use super::{Repository, Sub};
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait UserService {
     async fn create(&self, user: &User) -> super::Result<()>;
 
@@ -48,7 +49,7 @@ impl UserServiceImpl {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl UserService for UserServiceImpl {
     async fn create(&self, user: &User) -> super::Result<()> {
         self.repo.insert(user).await

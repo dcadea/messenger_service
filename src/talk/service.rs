@@ -295,7 +295,7 @@ impl TalkServiceImpl {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait TalkValidator {
     async fn check_member(&self, talk_id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
 }
@@ -312,7 +312,7 @@ impl TalkValidatorImpl {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl TalkValidator for TalkValidatorImpl {
     async fn check_member(&self, talk_id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
         let members = find_members(&self.redis, self.repo.clone(), talk_id).await?;

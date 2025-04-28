@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use log::{debug, error};
 use text_splitter::{Characters, TextSplitter};
 
@@ -10,7 +11,7 @@ use super::model::Message;
 
 const MAX_MESSAGE_LENGTH: usize = 1000;
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait MessageService {
     async fn create(&self, msg: &Message) -> super::Result<Vec<Message>>;
 
@@ -70,7 +71,7 @@ impl MessageServiceImpl {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl MessageService for MessageServiceImpl {
     async fn create(&self, msg: &Message) -> super::Result<Vec<Message>> {
         if msg.text().is_empty() {

@@ -1,3 +1,5 @@
+use async_trait::async_trait;
+
 use crate::{integration::cache, user};
 
 use super::{
@@ -5,7 +7,7 @@ use super::{
     model::{Contact, ContactDto},
 };
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait ContactService {
     async fn find(
         &self,
@@ -42,7 +44,7 @@ impl ContactServiceImpl {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl ContactService for ContactServiceImpl {
     async fn find(
         &self,

@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use futures::TryStreamExt;
 use mongodb::Database;
 use mongodb::bson::doc;
@@ -8,7 +9,7 @@ use crate::user;
 
 const USERS_COLLECTION: &str = "users";
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait UserRepository {
     async fn insert(&self, user: &User) -> super::Result<()>;
 
@@ -33,7 +34,7 @@ impl MongoUserRepository {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl UserRepository for MongoUserRepository {
     async fn insert(&self, user: &User) -> super::Result<()> {
         self.col.insert_one(user).await?;

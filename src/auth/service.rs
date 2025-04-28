@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
 use log::{error, warn};
@@ -23,7 +24,7 @@ use crate::user::model::UserInfo;
 
 const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait AuthService {
     async fn authorize(&self) -> String;
 
@@ -85,7 +86,7 @@ impl AuthServiceImpl {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl AuthService for AuthServiceImpl {
     async fn authorize(&self) -> String {
         let (auth_url, csrf) = self

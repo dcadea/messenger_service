@@ -1,5 +1,6 @@
 use std::pin::Pin;
 
+use async_trait::async_trait;
 use bytes::Bytes;
 use futures::{Stream, StreamExt};
 use log::error;
@@ -8,7 +9,7 @@ use super::{Message, Notification, Subject};
 
 pub type PayloadStream<T> = Pin<Box<dyn Stream<Item = T> + Send>>;
 
-#[async_trait::async_trait]
+#[async_trait]
 pub trait EventService {
     async fn subscribe_event(&self, s: &Subject<'_>) -> super::Result<PayloadStream<Message>>;
 
@@ -30,7 +31,7 @@ impl EventServiceImpl {
     }
 }
 
-#[async_trait::async_trait]
+#[async_trait]
 impl EventService for EventServiceImpl {
     async fn subscribe_event(&self, s: &Subject<'_>) -> super::Result<PayloadStream<Message>> {
         let subscriber = self.pubsub.subscribe(s).await?;

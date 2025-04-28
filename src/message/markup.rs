@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use chrono::DateTime;
 use maud::{Markup, Render, html};
 
@@ -10,6 +12,12 @@ pub const MESSAGE_INPUT_TARGET: &str = "#message-input";
 
 pub const MESSAGE_LIST_ID: &str = "message-list";
 pub const MESSAGE_LIST_TARGET: &str = "#message-list";
+
+impl Display for super::Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 pub struct InputBlank<'a>(pub &'a talk::Id);
 
