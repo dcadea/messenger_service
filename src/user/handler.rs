@@ -1,3 +1,14 @@
+use axum::http::StatusCode;
+
+impl From<super::Error> for StatusCode {
+    fn from(e: super::Error) -> Self {
+        match e {
+            super::Error::NotFound(_) => StatusCode::NOT_FOUND,
+            super::Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
 pub(super) mod api {
     use axum::{Extension, Form, extract::State};
     use maud::{Markup, Render, html};

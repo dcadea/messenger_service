@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use maud::{Markup, Render, html};
 
 use crate::{
@@ -11,6 +13,12 @@ use super::{
     Sub,
     model::{OnlineStatus, UserInfo},
 };
+
+impl Display for Sub {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 pub struct Header<'a>(pub &'a auth::User);
 

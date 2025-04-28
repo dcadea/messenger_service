@@ -1,6 +1,6 @@
-use std::{fmt::Display, sync::Arc};
+use std::sync::Arc;
 
-use axum::{Router, http::StatusCode, routing::post};
+use axum::{Router, routing::post};
 use log::error;
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use repository::UserRepository;
@@ -56,12 +56,6 @@ impl Sub {
     }
 }
 
-impl Display for Sub {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
 impl Serialize for Sub {
     fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
     where
@@ -88,13 +82,4 @@ pub enum Error {
 
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
-}
-
-impl From<Error> for StatusCode {
-    fn from(e: Error) -> Self {
-        match e {
-            Error::NotFound(_) => StatusCode::NOT_FOUND,
-            Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        }
-    }
 }
