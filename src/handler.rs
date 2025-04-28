@@ -65,5 +65,5 @@ pub async fn contacts_tab(
 
 // GET /tabs/settings
 pub async fn settings_tab() -> Markup {
-    Tab::new(TabControls::Settings, settings::List).render()
+    Tab::new(TabControls::Settings, settings::markup::List).render()
 }
