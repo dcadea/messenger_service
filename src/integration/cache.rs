@@ -113,7 +113,7 @@ impl Redis {
     pub async fn smembers<V>(&self, key: Key) -> Option<V>
     where
         V: redis::FromRedisValue + IntoIterator,
-        V::Item: redis::FromRedisValue + PartialEq + Eq,
+        V::Item: redis::FromRedisValue + PartialEq,
     {
         let mut con = self.con.clone();
         match con.smembers::<&Key, Option<V>>(&key).await {

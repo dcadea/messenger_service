@@ -4,7 +4,7 @@ use crate::{message::model::LastMessage, user};
 
 use super::Id;
 
-#[derive(Clone, Serialize, Deserialize, Eq, PartialEq, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
 pub struct Talk {
     #[serde(rename = "_id")]
     id: Id,
@@ -36,7 +36,7 @@ impl Talk {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Eq, PartialEq, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
 #[serde(tag = "kind", content = "details", rename_all = "snake_case")]
 pub enum Details {
     Chat {

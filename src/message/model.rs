@@ -4,7 +4,7 @@ use crate::{talk, user};
 
 use super::Id;
 
-#[derive(Deserialize, Serialize, Clone, Eq, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Debug)]
 pub struct Message {
     #[serde(rename = "_id")]
     id: Id,
@@ -77,7 +77,7 @@ impl Message {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Eq, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Debug)]
 pub struct LastMessage {
     id: Id,
     text: String,

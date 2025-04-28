@@ -4,7 +4,7 @@ use crate::user;
 
 use super::{Id, Status, StatusTransition};
 
-#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct Contact {
     #[serde(rename = "_id")]
     id: Id,

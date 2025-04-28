@@ -39,7 +39,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
 impl Id {

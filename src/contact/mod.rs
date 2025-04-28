@@ -23,7 +23,7 @@ type Result<T> = std::result::Result<T, Error>;
 pub type Repository = Arc<dyn ContactRepository + Send + Sync>;
 pub type Service = Arc<dyn ContactService + Send + Sync>;
 
-#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
 impl Id {
@@ -49,7 +49,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-#[derive(Serialize, Deserialize, Clone, Eq, PartialEq, Hash, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Hash, Debug)]
 #[serde(tag = "indicator", rename_all = "snake_case")]
 pub enum Status {
     Pending { initiator: user::Sub },

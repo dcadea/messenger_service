@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{Id, Sub};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct User {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     id: Option<Id>,
