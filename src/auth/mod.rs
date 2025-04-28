@@ -4,7 +4,6 @@ use crate::state::AppState;
 use crate::user;
 use crate::user::model::UserInfo;
 use axum::Router;
-use axum::http::StatusCode;
 use axum::routing::get;
 use log::error;
 use serde::Deserialize;
@@ -116,19 +115,4 @@ pub enum Error {
 
     #[error("unexpected error happened: {0}")]
     Unexpected(String),
-}
-
-impl From<Error> for StatusCode {
-    fn from(e: Error) -> Self {
-        match e {
-            Error::Unauthorized => StatusCode::UNAUTHORIZED,
-            Error::Forbidden | Error::UnknownKid | Error::InvalidState => StatusCode::FORBIDDEN,
-            Error::TokenMalformed => StatusCode::BAD_REQUEST,
-            Error::_Configuration(_)
-            | Error::_JsonWebtoken(_)
-            | Error::_Uuid(_)
-            | Error::_Reqwest(_)
-            | Error::Unexpected(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        }
-    }
 }

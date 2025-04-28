@@ -1,3 +1,22 @@
+use axum::http::StatusCode;
+
+impl From<super::Error> for StatusCode {
+    fn from(e: super::Error) -> Self {
+        match e {
+            super::Error::Unauthorized => StatusCode::UNAUTHORIZED,
+            super::Error::Forbidden | super::Error::UnknownKid | super::Error::InvalidState => {
+                StatusCode::FORBIDDEN
+            }
+            super::Error::TokenMalformed => StatusCode::BAD_REQUEST,
+            super::Error::_Configuration(_)
+            | super::Error::_JsonWebtoken(_)
+            | super::Error::_Uuid(_)
+            | super::Error::_Reqwest(_)
+            | super::Error::Unexpected(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
 pub(super) mod pages {
     use crate::{auth::markup, markup::Wrappable};
 
