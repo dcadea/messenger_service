@@ -2,11 +2,10 @@ use crate::markup::wrap_in_base;
 use auth::middleware::{authorize, validate_sid};
 use axum::Router;
 use axum::http::StatusCode;
-use axum::middleware::{from_fn, from_fn_with_state, map_response};
+use axum::middleware::{from_fn_with_state, map_response};
 use axum::routing::get;
 use integration::Env;
 use log::error;
-use messenger_service::middleware::attach_request_id;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
@@ -102,7 +101,6 @@ fn app(s: &AppState, env: &Env) -> Router {
         .fallback(|| async { (StatusCode::NOT_FOUND, "Why are you here?") })
         .route_layer(
             ServiceBuilder::new()
-                .layer(from_fn(attach_request_id))
                 .layer(
                     CorsLayer::new()
                         .allow_origin(env.allow_origin())
