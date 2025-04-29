@@ -109,7 +109,7 @@ impl ContactService for ContactServiceImpl {
 
     async fn add(&self, c: &Contact) -> super::Result<()> {
         if c.sub1().eq(c.sub2()) {
-            return Err(super::Error::SelfReference);
+            return Err(super::Error::SameSubs(c.sub1().clone()));
         }
 
         let exists = self.repo.exists(c.sub1(), c.sub2()).await?;

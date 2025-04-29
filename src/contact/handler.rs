@@ -99,9 +99,9 @@ pub(super) mod api {
             match e {
                 contact::Error::NotFound(_) => StatusCode::NOT_FOUND,
                 contact::Error::AlreadyExists(..) => StatusCode::CONFLICT,
-                contact::Error::SelfReference
-                | contact::Error::SameSubs(_)
-                | contact::Error::StatusTransitionFailed => StatusCode::BAD_REQUEST,
+                contact::Error::SameSubs(_) | contact::Error::StatusTransitionFailed => {
+                    StatusCode::BAD_REQUEST
+                }
                 contact::Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
             }
         }

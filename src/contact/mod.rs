@@ -64,8 +64,6 @@ pub enum Error {
     NotFound(Id),
     #[error("contact ({0:?} : {1:?}) already exists")]
     AlreadyExists(user::Sub, user::Sub),
-    #[error("cannot create contact with oneself")]
-    SelfReference,
     #[error("contacts should be different, got both: {0:?}")]
     SameSubs(user::Sub),
     #[error("could not transition contact status")]
