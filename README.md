@@ -72,7 +72,7 @@ SSL_CERT_FILE=/etc/ssl/certs/messenger_service_cert.pem
 SSL_KEY_FILE=/etc/ssl/private/messenger_service.pem
 
 # required for ENV=stage and ENV=prod
-ALLOW_ORIGIN=https://messenger-add.domain
+ALLOW_ORIGIN=https://messenger-app.domain
 
 RUST_LOG=info
 SERVICE_NAME=messenger_service
