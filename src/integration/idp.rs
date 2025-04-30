@@ -1,7 +1,12 @@
 use std::{sync::Arc, time::Duration};
 
 use oauth2::{
-    AuthUrl, ClientId, ClientSecret, RedirectUrl, RevocationUrl, TokenUrl, basic::BasicClient,
+    AuthType, AuthUrl, ClientId, ClientSecret, EndpointNotSet, EndpointSet, RedirectUrl,
+    RevocationUrl, StandardRevocableToken, TokenUrl,
+    basic::{
+        BasicClient, BasicErrorResponse, BasicRevocationErrorResponse,
+        BasicTokenIntrospectionResponse, BasicTokenResponse,
+    },
 };
 
 #[derive(Clone)]
@@ -72,20 +77,37 @@ impl Config {
     }
 }
 
+pub type OAuth2Client<
+    HasAuthUrl = EndpointSet,
+    HasDeviceAuthUrl = EndpointNotSet,
+    HasIntrospectionUrl = EndpointNotSet,
+    HasRevocationUrl = EndpointSet,
+    HasTokenUrl = EndpointSet,
+> = oauth2::Client<
+    BasicErrorResponse,
+    BasicTokenResponse,
+    BasicTokenIntrospectionResponse,
+    StandardRevocableToken,
+    BasicRevocationErrorResponse,
+    HasAuthUrl,
+    HasDeviceAuthUrl,
+    HasIntrospectionUrl,
+    HasRevocationUrl,
+    HasTokenUrl,
+>;
+
 impl Config {
-    pub fn init_client(&self) -> oauth2::basic::BasicClient {
-        let client_id = ClientId::new(self.client_id.clone());
-        let client_secret = ClientSecret::new(self.client_secret.clone());
-        let auth_url = AuthUrl::new(self.auth_url.clone()).expect("Invalid authorization URL");
-        let token_url = TokenUrl::new(self.token_url.clone()).expect("Invalid token URL");
-        let redirect_url =
-            RedirectUrl::new(self.redirect_url.clone()).expect("Invalid redirect URL");
-
-        let revocation_url =
-            RevocationUrl::new(self.revocation_url.clone()).expect("Invalid revocation URL");
-
-        BasicClient::new(client_id, Some(client_secret), auth_url, Some(token_url))
-            .set_redirect_uri(redirect_url)
-            .set_revocation_uri(revocation_url)
+    pub fn init_client(&self) -> OAuth2Client {
+        BasicClient::new(ClientId::new(self.client_id.clone()))
+            .set_client_secret(ClientSecret::new(self.client_secret.clone()))
+            .set_auth_uri(AuthUrl::new(self.auth_url.clone()).expect("Invalid authorization URL"))
+            .set_auth_type(AuthType::RequestBody)
+            .set_token_uri(TokenUrl::new(self.token_url.clone()).expect("Invalid token URL"))
+            .set_redirect_uri(
+                RedirectUrl::new(self.redirect_url.clone()).expect("Invalid redirect URL"),
+            )
+            .set_revocation_url(
+                RevocationUrl::new(self.revocation_url.clone()).expect("Invalid revocation URL"),
+            )
     }
 }

@@ -6,8 +6,6 @@ use async_trait::async_trait;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
 use log::{error, warn};
-use oauth2::basic::BasicClient;
-use oauth2::reqwest::async_http_client;
 use oauth2::{
     AccessToken, AuthorizationCode, CsrfToken, Scope, StandardRevocableToken, TokenResponse,
 };
@@ -46,7 +44,7 @@ pub trait AuthService {
 pub struct AuthServiceImpl {
     cfg: Arc<idp::Config>,
     http: Arc<reqwest::Client>,
-    oauth2: Arc<BasicClient>,
+    oauth2: Arc<idp::OAuth2Client>,
     redis: cache::Redis,
     jwt_validator: Arc<Validation>,
     jwk_decoding_keys: Arc<RwLock<HashMap<String, DecodingKey>>>,
@@ -120,7 +118,7 @@ impl AuthService for AuthServiceImpl {
         let token_result = self
             .oauth2
             .exchange_code(auth_code)
-            .request_async(async_http_client)
+            .request_async(&*self.http)
             .await;
 
         match token_result {

@@ -190,6 +190,7 @@ impl Default for Config {
 
 pub fn init_http_client() -> reqwest::Client {
     match reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
         .connect_timeout(Duration::from_secs(2))
         .timeout(Duration::from_secs(5))
         .build()
