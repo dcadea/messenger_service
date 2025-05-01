@@ -82,7 +82,6 @@ mod test {
         // TODO: switch to reusable containers (https://github.com/testcontainers/testcontainers-rs/issues/742)
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoUserRepository::new(&db);
 
         let sub = user::Sub("test|123".into());
@@ -103,10 +102,21 @@ mod test {
     }
 
     #[tokio::test]
+    async fn should_not_find_by_sub() {
+        let node = Mongo::default().start().await.unwrap();
+        let db = db::Config::test(&node).await.connect();
+        let repo = MongoUserRepository::new(&db);
+
+        let sub = user::Sub("valera".into());
+
+        let actual = repo.find_by_sub(&sub).await.unwrap_err();
+        assert!(matches!(actual, user::Error::NotFound(s) if s.eq(&sub)));
+    }
+
+    #[tokio::test]
     async fn should_search_by_nickname_excluding() {
         let node = Mongo::default().start().await.unwrap();
         let db = db::Config::test(&node).await.connect();
-
         let repo = MongoUserRepository::new(&db);
 
         let valera = &User::new(
