@@ -10,7 +10,7 @@ use super::{Repository, Sub};
 
 #[async_trait]
 pub trait UserService {
-    async fn project(&self, user_info: &UserInfo) -> super::Result<()>;
+    async fn project(&self, user_info: &UserInfo) -> super::Result<bool>;
 
     async fn find_one(&self, sub: &Sub) -> super::Result<UserInfo>;
 
@@ -47,7 +47,7 @@ impl UserServiceImpl {
 
 #[async_trait]
 impl UserService for UserServiceImpl {
-    async fn project(&self, user_info: &UserInfo) -> super::Result<()> {
+    async fn project(&self, user_info: &UserInfo) -> super::Result<bool> {
         let user = user_info.to_owned().into();
         self.repo.insert(&user).await
     }

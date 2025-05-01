@@ -11,7 +11,7 @@ const USERS_COLLECTION: &str = "users";
 
 #[async_trait]
 pub trait UserRepository {
-    async fn insert(&self, user: &User) -> super::Result<()>;
+    async fn insert(&self, user: &User) -> super::Result<bool>;
 
     async fn find_by_sub(&self, sub: &Sub) -> super::Result<User>;
 
@@ -36,9 +36,9 @@ impl MongoUserRepository {
 
 #[async_trait]
 impl UserRepository for MongoUserRepository {
-    async fn insert(&self, user: &User) -> super::Result<()> {
+    async fn insert(&self, user: &User) -> super::Result<bool> {
         self.col.insert_one(user).await?;
-        Ok(())
+        Ok(true)
     }
 
     async fn find_by_sub(&self, sub: &Sub) -> super::Result<User> {
@@ -95,7 +95,8 @@ mod test {
             "valera@test.com".to_owned(),
         );
 
-        repo.insert(&user).await.unwrap();
+        let inserted = repo.insert(&user).await.unwrap();
+        assert!(inserted);
 
         let actual = repo.find_by_sub(&sub).await.unwrap();
         assert_eq!(actual, user);
