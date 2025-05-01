@@ -6,6 +6,7 @@ use crate::user;
 use crate::user::model::UserInfo;
 use axum::Router;
 use axum::routing::get;
+use axum_extra::extract::cookie::Cookie;
 use log::error;
 use messenger_service::{Raw, Redact};
 use serde::Deserialize;
@@ -17,8 +18,6 @@ pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
 pub type Service = Arc<dyn service::AuthService + Send + Sync>;
-
-const SESSION_ID: &str = "session_id";
 
 #[derive(Deserialize, Clone)]
 struct TokenClaims {
@@ -90,10 +89,17 @@ impl From<UserInfo> for User {
     }
 }
 
-#[derive(Deserialize, PartialEq)]
+#[derive(Deserialize)]
 pub struct Code(String);
 
+impl Code {
+    pub fn new(s: impl Into<String>) -> Self {
+        Self(s.into())
+    }
+}
+
 impl Redact for Code {}
+
 impl Raw for Code {
     fn raw(&self) -> &str {
         &self.0
@@ -103,18 +109,6 @@ impl Raw for Code {
 impl fmt::Debug for Code {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Code({})", self.redact())
-    }
-}
-
-impl From<oauth2::AuthorizationCode> for Code {
-    fn from(c: oauth2::AuthorizationCode) -> Self {
-        Self(c.into_secret())
-    }
-}
-
-impl From<Code> for oauth2::AuthorizationCode {
-    fn from(c: Code) -> Self {
-        oauth2::AuthorizationCode::new(c.0)
     }
 }
 
@@ -128,6 +122,7 @@ impl Csrf {
 }
 
 impl Redact for Csrf {}
+
 impl Raw for Csrf {
     fn raw(&self) -> &str {
         &self.0
@@ -140,9 +135,40 @@ impl fmt::Debug for Csrf {
     }
 }
 
-impl From<oauth2::CsrfToken> for Csrf {
-    fn from(csrf: oauth2::CsrfToken) -> Self {
-        Self(csrf.into_secret())
+#[derive(Deserialize, PartialEq)]
+pub struct Session(String);
+
+impl Session {
+    const ID: &str = "session_id";
+
+    pub fn new(sid: impl Into<String>) -> Self {
+        Self(sid.into())
+    }
+}
+
+impl Redact for Session {}
+
+impl Raw for Session {
+    fn raw(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Debug for Session {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Session({})", self.redact())
+    }
+}
+
+impl From<&Cookie<'_>> for Session {
+    fn from(c: &Cookie<'_>) -> Self {
+        Self::new(c.value())
+    }
+}
+
+impl From<Session> for Cookie<'_> {
+    fn from(s: Session) -> Self {
+        Self::new(Session::ID, s.raw().to_string())
     }
 }
 

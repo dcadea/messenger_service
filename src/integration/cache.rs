@@ -221,7 +221,7 @@ pub enum Key<'a> {
     UserInfo(&'a user::Sub),
     Contacts(&'a user::Sub),
     Talk(&'a talk::Id),
-    Session(&'a uuid::Uuid),
+    Session(&'a auth::Session),
     Csrf(&'a auth::Csrf),
 }
 
@@ -246,7 +246,7 @@ impl Display for Key<'_> {
             Key::UserInfo(sub) => write!(f, "userinfo:{sub}"),
             Key::Contacts(sub) => write!(f, "contacts:{sub}"),
             Key::Talk(id) => write!(f, "talk:{id}"),
-            Key::Session(id) => write!(f, "session:{id}"),
+            Key::Session(s) => write!(f, "session:{}", s.raw()),
             Key::Csrf(csrf) => write!(f, "csrf:{}", csrf.raw()),
         }
     }

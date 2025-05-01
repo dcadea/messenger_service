@@ -7,7 +7,7 @@ use axum_extra::extract::CookieJar;
 use log::debug;
 use oauth2::AccessToken;
 
-use crate::auth;
+use crate::auth::{self, Session};
 use crate::user;
 
 pub async fn validate_sid(
@@ -16,17 +16,17 @@ pub async fn validate_sid(
     mut req: Request,
     next: Next,
 ) -> crate::Result<Response> {
-    if let Some(sid) = jar.get(super::SESSION_ID) {
-        debug!("Active session found {sid:?}");
+    if let Some(sid) = jar.get(super::Session::ID) {
+        let sid = Session::from(sid);
+        debug!("Active {sid:?} found");
 
-        let sid = sid.value();
-        if let Some(token) = auth_service.find_token(sid).await {
+        if let Some(token) = auth_service.find_token(&sid).await {
             let sub = auth_service.validate(&token).await?;
             let ext = req.extensions_mut();
             ext.insert(sub);
             ext.insert(AccessToken::new(token));
         } else {
-            debug!("No associated token found for session {sid:?}");
+            debug!("No associated token found for {sid:?}");
             return Ok(Redirect::to("/logout").into_response());
         }
     }
@@ -41,7 +41,7 @@ pub async fn authorize(
     mut req: Request,
     next: Next,
 ) -> crate::Result<Response> {
-    if jar.get(super::SESSION_ID).is_none() {
+    if jar.get(super::Session::ID).is_none() {
         return Ok(Redirect::to("/login").into_response());
     }
 

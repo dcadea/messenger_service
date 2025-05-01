@@ -26,7 +26,7 @@ pub(super) mod pages {
 }
 
 pub(super) mod api {
-    use crate::auth::{self, Code, Csrf};
+    use crate::auth::{self, Code, Csrf, Session};
     use axum::{
         extract::State,
         response::{IntoResponse, Redirect},
@@ -44,10 +44,10 @@ pub(super) mod api {
         auth_service: State<auth::Service>,
         jar: CookieJar,
     ) -> crate::Result<impl IntoResponse> {
-        if let Some(sid) = jar.get(auth::SESSION_ID) {
-            let sid = sid.value();
+        if let Some(sid) = jar.get(auth::Session::ID) {
+            let sid = Session::from(sid);
             debug!("Terminating session {sid:?}");
-            auth_service.invalidate_token(sid).await?;
+            auth_service.invalidate_token(&sid).await?;
             return Ok((CookieJar::new(), Redirect::to("/login")));
         }
 
@@ -70,19 +70,18 @@ pub(super) mod api {
             .exchange_code(params.code, params.state)
             .await?;
 
-        let sid = uuid::Uuid::new_v4();
+        let sid = Session::new(uuid::Uuid::new_v4().to_string());
         debug!("Initializing session {sid:?}");
         auth_service.cache_token(&sid, token.secret(), &ttl).await;
 
         let sid = {
-            let mut sid = Cookie::new(auth::SESSION_ID, sid.to_string());
+            let mut sid = Cookie::from(sid);
             sid.set_secure(true);
             sid.set_http_only(true);
             sid.set_same_site(cookie::SameSite::Lax);
             sid
         };
 
-        debug!("Session successfully created {:?}", sid.value());
         Ok((jar.add(sid), Redirect::to("/")))
     }
 }

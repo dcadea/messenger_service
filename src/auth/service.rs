@@ -9,9 +9,8 @@ use log::{debug, error, warn};
 use messenger_service::Raw;
 use oauth2::{AccessToken, CsrfToken, Scope, StandardRevocableToken, TokenResponse};
 use tokio::sync::RwLock;
-use uuid::Uuid;
 
-use super::{Code, Csrf, TokenClaims};
+use super::{Code, Csrf, Session, TokenClaims};
 
 use crate::integration::cache;
 use crate::integration::idp;
@@ -33,11 +32,11 @@ pub trait AuthService {
 
     async fn get_user_info(&self, token: &str) -> super::Result<UserInfo>;
 
-    async fn cache_token(&self, sid: &Uuid, token: &str, ttl: &Duration);
+    async fn cache_token(&self, sid: &Session, token: &str, ttl: &Duration);
 
-    async fn invalidate_token(&self, sid: &str) -> super::Result<()>;
+    async fn invalidate_token(&self, sid: &Session) -> super::Result<()>;
 
-    async fn find_token(&self, sid: &str) -> Option<String>;
+    async fn find_token(&self, sid: &Session) -> Option<String>;
 }
 
 #[derive(Clone)]
@@ -177,17 +176,16 @@ impl AuthService for AuthServiceImpl {
         Ok(u)
     }
 
-    async fn cache_token(&self, sid: &Uuid, token: &str, ttl: &Duration) {
+    async fn cache_token(&self, sid: &Session, token: &str, ttl: &Duration) {
         self.redis
             .set_ex_explicit(cache::Key::Session(sid), token, ttl)
             .await;
     }
 
-    async fn invalidate_token(&self, sid: &str) -> super::Result<()> {
+    async fn invalidate_token(&self, sid: &Session) -> super::Result<()> {
         debug!("Invalidating token for {sid:?}");
 
-        let sid = Uuid::parse_str(sid)?;
-        let token = self.redis.get_del(cache::Key::Session(&sid)).await;
+        let token = self.redis.get_del(cache::Key::Session(sid)).await;
 
         if let Some(token) = token {
             self.oauth2
@@ -198,13 +196,8 @@ impl AuthService for AuthServiceImpl {
         Ok(())
     }
 
-    async fn find_token(&self, sid: &str) -> Option<String> {
-        if let Ok(sid) = Uuid::parse_str(sid) {
-            self.redis.get::<String>(cache::Key::Session(&sid)).await
-        } else {
-            error!("Could not find token for {sid:?}");
-            None
-        }
+    async fn find_token(&self, sid: &Session) -> Option<String> {
+        self.redis.get::<String>(cache::Key::Session(sid)).await
     }
 }
 

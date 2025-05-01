@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
+use messenger_service::Raw;
 use oauth2::{
     AuthType, AuthUrl, ClientId, ClientSecret, EndpointNotSet, EndpointSet, RedirectUrl,
     RevocationUrl, StandardRevocableToken, TokenUrl,
@@ -8,6 +9,8 @@ use oauth2::{
         BasicTokenIntrospectionResponse, BasicTokenResponse,
     },
 };
+
+use crate::auth;
 
 #[derive(Clone)]
 pub struct Config {
@@ -109,5 +112,23 @@ impl Config {
             .set_revocation_url(
                 RevocationUrl::new(self.revocation_url.clone()).expect("Invalid revocation URL"),
             )
+    }
+}
+
+impl From<oauth2::AuthorizationCode> for auth::Code {
+    fn from(c: oauth2::AuthorizationCode) -> Self {
+        Self::new(c.into_secret())
+    }
+}
+
+impl From<auth::Code> for oauth2::AuthorizationCode {
+    fn from(c: auth::Code) -> Self {
+        oauth2::AuthorizationCode::new(c.raw().to_string())
+    }
+}
+
+impl From<oauth2::CsrfToken> for auth::Csrf {
+    fn from(csrf: oauth2::CsrfToken) -> Self {
+        Self::new(csrf.into_secret())
     }
 }
