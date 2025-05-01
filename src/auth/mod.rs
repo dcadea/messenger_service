@@ -7,7 +7,7 @@ use crate::user::model::UserInfo;
 use axum::Router;
 use axum::routing::get;
 use log::error;
-use oauth2::AuthorizationCode;
+use messenger_service::{Raw, Redact};
 use serde::Deserialize;
 
 pub mod handler;
@@ -93,23 +93,28 @@ impl From<UserInfo> for User {
 #[derive(Deserialize, PartialEq)]
 pub struct Code(String);
 
-impl fmt::Debug for Code {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut secret = self.0.clone();
-        secret.replace_range(5.., "********");
-        write!(f, "{secret}")
+impl Redact for Code {}
+impl Raw for Code {
+    fn raw(&self) -> &str {
+        &self.0
     }
 }
 
-impl From<AuthorizationCode> for Code {
-    fn from(c: AuthorizationCode) -> Self {
+impl fmt::Debug for Code {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.redact())
+    }
+}
+
+impl From<oauth2::AuthorizationCode> for Code {
+    fn from(c: oauth2::AuthorizationCode) -> Self {
         Self(c.into_secret())
     }
 }
 
-impl From<Code> for AuthorizationCode {
+impl From<Code> for oauth2::AuthorizationCode {
     fn from(c: Code) -> Self {
-        AuthorizationCode::new(c.0)
+        oauth2::AuthorizationCode::new(c.0)
     }
 }
 
@@ -120,8 +125,11 @@ impl Csrf {
     pub fn new(s: impl Into<String>) -> Self {
         Self(s.into())
     }
+}
 
-    pub fn as_str(&self) -> &str {
+impl Redact for Csrf {}
+impl Raw for Csrf {
+    fn raw(&self) -> &str {
         &self.0
     }
 }

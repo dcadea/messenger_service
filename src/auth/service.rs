@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
 use log::{debug, error, warn};
+use messenger_service::Raw;
 use oauth2::{AccessToken, CsrfToken, Scope, StandardRevocableToken, TokenResponse};
 use tokio::sync::RwLock;
 use uuid::Uuid;
@@ -211,7 +212,7 @@ impl AuthServiceImpl {
         debug!("Caching csrf '{csrf:?}'");
 
         let csrf_key = cache::Key::Csrf(&csrf);
-        self.redis.set_ex(csrf_key, csrf.as_str()).await;
+        self.redis.set_ex(csrf_key, csrf.raw()).await;
     }
 
     async fn validate_state(&self, csrf: Csrf) -> super::Result<()> {

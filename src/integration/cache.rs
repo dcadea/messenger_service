@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter};
 use std::time::Duration;
 
 use log::{error, warn};
+use messenger_service::Raw;
 use redis::{AsyncCommands, JsonAsyncCommands};
 use serde::Serialize;
 
@@ -248,7 +249,7 @@ impl Display for Key<'_> {
             Key::Contacts(sub) => write!(f, "contacts:{sub}"),
             Key::Talk(id) => write!(f, "talk:{id}"),
             Key::Session(id) => write!(f, "session:{id}"),
-            Key::Csrf(csrf) => write!(f, "csrf:{}", csrf.as_str()),
+            Key::Csrf(csrf) => write!(f, "csrf:{}", csrf.raw()),
         }
     }
 }
