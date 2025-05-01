@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use log::error;
 
 use crate::integration::cache;
-use crate::user::model::{User, UserInfo};
+use crate::user::model::UserInfo;
 use crate::{auth, contact, event};
 
 use super::model::OnlineStatus;
@@ -10,15 +10,11 @@ use super::{Repository, Sub};
 
 #[async_trait]
 pub trait UserService {
-    async fn create(&self, user: &User) -> super::Result<()>;
+    async fn project(&self, user_info: &UserInfo) -> super::Result<()>;
 
-    async fn find_user_info(&self, sub: &Sub) -> super::Result<UserInfo>;
+    async fn find_one(&self, sub: &Sub) -> super::Result<UserInfo>;
 
-    async fn search_user_info(
-        &self,
-        nickname: &str,
-        auth_user: &auth::User,
-    ) -> super::Result<Vec<UserInfo>>;
+    async fn search(&self, nickname: &str, auth_user: &auth::User) -> super::Result<Vec<UserInfo>>;
 
     async fn notify_online(&self, sub: &Sub);
 
@@ -51,27 +47,24 @@ impl UserServiceImpl {
 
 #[async_trait]
 impl UserService for UserServiceImpl {
-    async fn create(&self, user: &User) -> super::Result<()> {
-        self.repo.insert(user).await
+    async fn project(&self, user_info: &UserInfo) -> super::Result<()> {
+        let user = user_info.to_owned().into();
+        self.repo.insert(&user).await
     }
 
-    async fn find_user_info(&self, sub: &Sub) -> super::Result<UserInfo> {
-        let cached = self.find_cached_user_info(sub).await;
+    async fn find_one(&self, sub: &Sub) -> super::Result<UserInfo> {
+        let cached = self.find_cached(sub).await;
 
         if let Some(user_info) = cached {
             Ok(user_info)
         } else {
             let user_info = self.repo.find_by_sub(sub).await?.into();
-            self.cache_user_info(&user_info).await;
+            self.cache(&user_info).await;
             Ok(user_info)
         }
     }
 
-    async fn search_user_info(
-        &self,
-        nickname: &str,
-        auth_user: &auth::User,
-    ) -> super::Result<Vec<UserInfo>> {
+    async fn search(&self, nickname: &str, auth_user: &auth::User) -> super::Result<Vec<UserInfo>> {
         let users = self
             .repo
             .search_by_nickname_excluding(nickname, auth_user.nickname())
@@ -118,12 +111,12 @@ impl UserServiceImpl {
 
 // cache operations
 impl UserServiceImpl {
-    async fn cache_user_info(&self, user_info: &UserInfo) {
+    async fn cache(&self, user_info: &UserInfo) {
         let user_info_key = cache::Key::UserInfo(user_info.sub());
         self.redis.json_set_ex(user_info_key, user_info).await;
     }
 
-    async fn find_cached_user_info(&self, sub: &Sub) -> Option<UserInfo> {
+    async fn find_cached(&self, sub: &Sub) -> Option<UserInfo> {
         let user_info_key = cache::Key::UserInfo(sub);
         self.redis.json_get::<UserInfo>(user_info_key).await
     }

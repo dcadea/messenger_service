@@ -102,7 +102,7 @@ impl Raw for Code {
 
 impl fmt::Debug for Code {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.redact())
+        write!(f, "Code({})", self.redact())
     }
 }
 
@@ -136,9 +136,7 @@ impl Raw for Csrf {
 
 impl fmt::Debug for Csrf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut secret = self.0.clone();
-        secret.replace_range(5.., "********");
-        write!(f, "{secret}")
+        write!(f, "Csrf({})", self.redact())
     }
 }
 

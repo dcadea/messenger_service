@@ -276,7 +276,7 @@ impl TalkServiceImpl {
 
                 let r = self
                     .user_service
-                    .find_user_info(&recipient)
+                    .find_one(&recipient)
                     .await
                     .expect("recipient info should be present");
 

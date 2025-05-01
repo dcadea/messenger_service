@@ -4,6 +4,7 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
 };
 use axum_extra::extract::CookieJar;
+use log::debug;
 use oauth2::AccessToken;
 
 use crate::auth;
@@ -16,14 +17,17 @@ pub async fn validate_sid(
     next: Next,
 ) -> crate::Result<Response> {
     if let Some(sid) = jar.get(super::SESSION_ID) {
-        match auth_service.find_token(sid.value()).await {
-            Some(token) => {
-                let sub = auth_service.validate(&token).await?;
-                let ext = req.extensions_mut();
-                ext.insert(sub);
-                ext.insert(AccessToken::new(token));
-            }
-            None => return Ok(Redirect::to("/logout").into_response()),
+        debug!("Active session found {sid:?}");
+
+        let sid = sid.value();
+        if let Some(token) = auth_service.find_token(sid).await {
+            let sub = auth_service.validate(&token).await?;
+            let ext = req.extensions_mut();
+            ext.insert(sub);
+            ext.insert(AccessToken::new(token));
+        } else {
+            debug!("No associated token found for session {sid:?}");
+            return Ok(Redirect::to("/logout").into_response());
         }
     }
 
@@ -45,12 +49,12 @@ pub async fn authorize(
     let sub: &user::Sub = ext.get().ok_or(super::Error::Unauthorized)?;
     let token: &AccessToken = ext.get().ok_or(super::Error::Unauthorized)?;
 
-    let user_info = match user_service.find_user_info(sub).await {
+    let user_info = match user_service.find_one(sub).await {
         Ok(user_info) => user_info,
         Err(user::Error::NotFound(_)) => {
+            debug!("{sub:?} not projected, fetching from IdP");
             let user_info = auth_service.get_user_info(token.secret()).await?;
-            let user = user_info.clone().into();
-            user_service.create(&user).await?;
+            user_service.project(&user_info).await?;
             user_info
         }
         Err(e) => return Err(e.into()),

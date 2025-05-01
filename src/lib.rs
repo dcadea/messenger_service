@@ -4,8 +4,12 @@ pub trait Raw {
 
 pub trait Redact: Raw {
     fn redact(&self) -> String {
-        let mut redacted = self.raw().to_string();
-        redacted.replace_range(5.., "********");
+        let redacted = {
+            let mut redacted = self.raw().to_string();
+            redacted.replace_range(5.., "********");
+            redacted
+        };
+
         redacted
     }
 }

@@ -2,7 +2,7 @@ use std::env;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
 
-use log::{error, warn};
+use log::{debug, error, warn};
 use messenger_service::Raw;
 use redis::{AsyncCommands, JsonAsyncCommands};
 use serde::Serialize;
@@ -20,9 +20,10 @@ impl Redis {
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
+        debug!("SET -> {key:?}");
         let mut con = self.con.clone();
         if let Err(e) = con.set::<_, _, ()>(&key, value).await {
-            error!("Failed to set for key {key}. Reason: {e:?}");
+            error!("Failed to SET on {key:?}. Reason: {e:?}");
         }
     }
 
@@ -31,9 +32,10 @@ impl Redis {
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
+        debug!("SET_EX -> {key:?}");
         let mut con = self.con.clone();
         if let Err(e) = con.set_ex::<_, _, ()>(&key, value, key.ttl()).await {
-            error!("Failed to set_ex for key {key}. Reason: {e:?}");
+            error!("Failed to SET_EX on {key:?}. Reason: {e:?}");
         }
     }
 
@@ -42,9 +44,10 @@ impl Redis {
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
+        debug!("SET_EX -> {key:?}");
         let mut con = self.con.clone();
         if let Err(e) = con.set_ex::<_, _, ()>(&key, value, ttl.as_secs()).await {
-            error!("Failed to set_ex for key {key}. Reason: {e:?}");
+            error!("Failed to SET_EX on {key:?}. Reason: {e:?}");
         }
     }
 
@@ -52,9 +55,10 @@ impl Redis {
     where
         V: Send + Sync + Serialize,
     {
+        debug!("JSON_SET_EX -> {key:?}");
         let mut con = self.con.clone();
         if let Err(e) = con.json_set::<_, _, _, ()>(&key, "$", &value).await {
-            error!("Failed to json_set for key {key}. Reason: {e:?}");
+            error!("Failed to JSON_SET_EX on {key:?}. Reason: {e:?}");
         }
 
         self.expire(key).await;
@@ -64,9 +68,10 @@ impl Redis {
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
+        debug!("SADD -> {key:?}");
         let mut con = self.con.clone();
         if let Err(e) = con.sadd::<_, _, ()>(&key, value).await {
-            error!("Failed to sadd for key {key}. Reason: {e:?}");
+            error!("Failed to SADD on {key:?}. Reason: {e:?}");
         }
     }
 
@@ -74,9 +79,10 @@ impl Redis {
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
+        debug!("SREM -> {key:?}");
         let mut con = self.con.clone();
         if let Err(e) = con.srem::<_, _, ()>(&key, value).await {
-            error!("Failed to srem for key {key}. Reason: {e:?}");
+            error!("Failed to SREM on {key:?}. Reason: {e:?}");
         }
     }
 
@@ -85,10 +91,14 @@ impl Redis {
         V: redis::FromRedisValue,
     {
         let mut con = self.con.clone();
-        match con.get::<_, _>(&key).await {
-            Ok(value) => Some(value),
+        match con.get::<_, Option<V>>(&key).await {
+            Ok(value) => {
+                let status = if value.is_some() { "Hit" } else { "Miss" };
+                debug!("GET ({status}) -> {key:?}");
+                value
+            }
             Err(e) => {
-                error!("Failed to get key {key}. Reason: {e:?}");
+                error!("Failed to GET on {key:?}. Reason: {e:?}");
                 None
             }
         }
@@ -100,9 +110,14 @@ impl Redis {
     {
         let mut con = self.con.clone();
         match con.json_get::<_, _, Vec<V>>(&key, ".").await {
-            Ok(result) => result.first().cloned(),
+            Ok(result) => {
+                let value = result.first().cloned();
+                let status = if value.is_some() { "Hit" } else { "Miss" };
+                debug!("JSON_GET ({status}) -> {key:?}");
+                value
+            }
             Err(e) => {
-                error!("Failed to json_get key {key}. Reason: {e:?}");
+                error!("Failed to JSON_GET on {key:?}. Reason: {e:?}");
                 None
             }
         }
@@ -113,11 +128,14 @@ impl Redis {
         V: redis::FromRedisValue,
     {
         let mut con = self.con.clone();
-
         match con.get_del::<_, Option<V>>(&key).await {
-            Ok(value) => value,
+            Ok(value) => {
+                let status = if value.is_some() { "Hit" } else { "Miss" };
+                debug!("GETDEL ({status}) -> {key:?}");
+                value
+            }
             Err(e) => {
-                error!("Failed to get_del key {key}. Reason: {e:?}");
+                error!("Failed to GETDEL on {key:?}. Reason: {e:?}");
                 None
             }
         }
@@ -128,44 +146,24 @@ impl Redis {
         V: redis::FromRedisValue + IntoIterator,
         V::Item: redis::FromRedisValue + PartialEq,
     {
+        debug!("SMEMBERS -> {key:?}");
         let mut con = self.con.clone();
         match con.smembers::<_, Option<V>>(&key).await {
             Ok(members) => members,
             Err(e) => {
-                error!("Failed to smembers for key {key}. Reason: {e:?}");
+                error!("Failed to SMEMBERS on {key:?}. Reason: {e:?}");
                 None
             }
         }
     }
 
-    #[allow(dead_code)]
-    pub async fn del(&self, key: Key<'_>) {
-        let mut con = self.con.clone();
-        if let Err(e) = con.del::<_, ()>(&key).await {
-            error!("Failed to del key {key}. Reason: {e:?}");
-        }
-    }
-
-    pub async fn expire_after(&self, key: Key<'_>, seconds: u64) {
-        let mut con = self.con.clone();
-
-        match i64::try_from(seconds) {
-            Ok(s) => {
-                if let Err(e) = con.expire::<_, ()>(&key, s).await {
-                    error!("Failed to expire key {key}. Reason: {e:?}");
-                }
-            }
-            Err(e) => error!("Failed to cast to i64: {e:?}"),
-        }
-    }
-
     pub async fn expire(&self, key: Key<'_>) {
+        debug!("EXPIRE -> {key:?}");
         let mut con = self.con.clone();
-
         match i64::try_from(key.ttl()) {
             Ok(ttl) => {
                 if let Err(e) = con.expire::<_, ()>(&key, ttl).await {
-                    error!("Failed to expire key {key}. Reason: {e:?}");
+                    error!("Failed to EXPIRE on {key:?}. Reason: {e:?}");
                 }
             }
             Err(e) => error!("Failed to cast to i64: {e:?}"),
@@ -218,7 +216,7 @@ impl Config {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Key<'a> {
     UserInfo(&'a user::Sub),
     Contacts(&'a user::Sub),

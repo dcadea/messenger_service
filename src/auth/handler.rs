@@ -46,7 +46,7 @@ pub(super) mod api {
     ) -> crate::Result<impl IntoResponse> {
         if let Some(sid) = jar.get(auth::SESSION_ID) {
             let sid = sid.value();
-            debug!("Logging out user with sid: {}", &sid);
+            debug!("Terminating session {sid:?}");
             auth_service.invalidate_token(sid).await?;
             return Ok((CookieJar::new(), Redirect::to("/login")));
         }
@@ -71,6 +71,7 @@ pub(super) mod api {
             .await?;
 
         let sid = uuid::Uuid::new_v4();
+        debug!("Initializing session {sid:?}");
         auth_service.cache_token(&sid, token.secret(), &ttl).await;
 
         let sid = {
@@ -81,6 +82,7 @@ pub(super) mod api {
             sid
         };
 
+        debug!("Session successfully created {:?}", sid.value());
         Ok((jar.add(sid), Redirect::to("/")))
     }
 }

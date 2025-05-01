@@ -120,7 +120,7 @@ impl AuthService for AuthServiceImpl {
     ) -> super::Result<(AccessToken, Duration)> {
         self.validate_state(csrf).await?;
 
-        debug!("Exchanging code '{code:?}' for token");
+        debug!("Exchanging {code:?} for token");
 
         let token_result = self
             .oauth2
@@ -153,7 +153,11 @@ impl AuthService for AuthServiceImpl {
 
         decode::<TokenClaims>(token, decoding_key, &self.jwt_validator)
             .map(|data| data.claims)
-            .map(|claims| claims.sub)
+            .map(|claims| {
+                let sub = claims.sub;
+                debug!("{sub:?} has valid token");
+                sub
+            })
             .map_err(|e| {
                 error!("Failed to decode token claims: {e:?}");
                 super::Error::Forbidden
@@ -169,20 +173,18 @@ impl AuthService for AuthServiceImpl {
             .await?;
 
         let u = response.json::<UserInfo>().await?;
-        debug!("User info retrieved: {u:?}");
+        debug!("{:?} info retrieved from IdP", u.sub());
         Ok(u)
     }
 
     async fn cache_token(&self, sid: &Uuid, token: &str, ttl: &Duration) {
-        debug!("Caching token for sid '{sid}'");
-
         self.redis
             .set_ex_explicit(cache::Key::Session(sid), token, ttl)
             .await;
     }
 
     async fn invalidate_token(&self, sid: &str) -> super::Result<()> {
-        debug!("Invalidating token for sid '{sid}'");
+        debug!("Invalidating token for {sid:?}");
 
         let sid = Uuid::parse_str(sid)?;
         let token = self.redis.get_del(cache::Key::Session(&sid)).await;
@@ -190,7 +192,7 @@ impl AuthService for AuthServiceImpl {
         if let Some(token) = token {
             self.oauth2
                 .revoke_token(StandardRevocableToken::AccessToken(AccessToken::new(token)))?;
-            debug!("Token for sid '{sid}' revoked");
+            debug!("Token for {sid:?} revoked");
         }
 
         Ok(())
@@ -200,7 +202,7 @@ impl AuthService for AuthServiceImpl {
         if let Ok(sid) = Uuid::parse_str(sid) {
             self.redis.get::<String>(cache::Key::Session(&sid)).await
         } else {
-            error!("Could not find token for sid '{sid}'");
+            error!("Could not find token for {sid:?}");
             None
         }
     }
@@ -209,14 +211,12 @@ impl AuthService for AuthServiceImpl {
 impl AuthServiceImpl {
     async fn cache_csrf(&self, csrf: impl Into<Csrf>) {
         let csrf = csrf.into();
-        debug!("Caching csrf '{csrf:?}'");
-
         let csrf_key = cache::Key::Csrf(&csrf);
         self.redis.set_ex(csrf_key, csrf.raw()).await;
     }
 
     async fn validate_state(&self, csrf: Csrf) -> super::Result<()> {
-        debug!("Validating state for csrf '{csrf:?}'");
+        debug!("Validating state for {csrf:?}");
         let csrf_key = cache::Key::Csrf(&csrf);
         let cached_csrf = self.redis.get_del::<Csrf>(csrf_key).await;
 
@@ -224,6 +224,7 @@ impl AuthServiceImpl {
             return Ok(());
         }
 
+        error!("Invalid state: {csrf:?}");
         Err(super::Error::InvalidState)
     }
 }
@@ -242,7 +243,7 @@ async fn fetch_jwk_decoding_keys(
             if let Some(kid) = jwk.clone().common.key_id {
                 let key = DecodingKey::from_jwk(jwk)?;
 
-                debug!("Fetched jwk with id '{kid}'");
+                debug!("Fetched jwk with id {kid:?}");
                 keys.insert(kid, key);
             }
         }

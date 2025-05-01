@@ -34,9 +34,7 @@ pub(super) mod api {
             return Ok(html! {(crate::markup::EMPTY)});
         }
 
-        let users = user_service
-            .search_user_info(&params.nickname, &auth_user)
-            .await?;
+        let users = user_service.search(&params.nickname, &auth_user).await?;
 
         let contacts = contact_service
             .find_by_sub(auth_user.sub())

@@ -53,7 +53,7 @@ pub async fn contacts_tab(
     let contact_infos: Vec<(ContactDto, UserInfo)> = {
         let mut ci: Vec<(ContactDto, UserInfo)> = Vec::with_capacity(contacts.len());
         for c in contacts {
-            let ui = user_service.find_user_info(c.recipient()).await?;
+            let ui = user_service.find_one(c.recipient()).await?;
             ci.push((c, ui));
         }
         ci
