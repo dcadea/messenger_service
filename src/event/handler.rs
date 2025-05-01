@@ -6,7 +6,7 @@ impl From<Error> for StatusCode {
     fn from(e: Error) -> Self {
         match e {
             Error::NotOwner | Error::NotRecipient => StatusCode::FORBIDDEN,
-            Error::_NatsSub(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::_Axum(_) | Error::_NatsSub(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -28,9 +28,9 @@ pub mod sse {
     const ONLINE_NOTI_INTERVAL: Duration = Duration::from_secs(15);
 
     pub async fn notifications(
-        Extension(auth_user): Extension<auth::User>,
-        State(user_service): State<user::Service>,
-        State(event_service): State<event::Service>,
+        auth_user: Extension<auth::User>,
+        user_service: State<user::Service>,
+        event_service: State<event::Service>,
     ) -> sse::Sse<impl Stream<Item = crate::Result<sse::Event>>> {
         let auth_sub = auth_user.sub().clone();
 
@@ -98,7 +98,7 @@ pub mod ws {
         event::{self, Message, Subject},
         message, talk, user,
     };
-    use axum::extract::ws::Message::{Close, Text};
+    use axum::extract::ws;
     use axum::{
         Extension,
         extract::{Path, State, WebSocketUpgrade, ws::WebSocket},
@@ -147,30 +147,23 @@ pub mod ws {
     async fn send(
         auth_sub: user::Sub,
         talk_id: talk::Id,
-        mut sender: SplitSink<WebSocket, axum::extract::ws::Message>,
+        mut sender: SplitSink<WebSocket, ws::Message>,
         event_service: event::Service,
         message_service: message::Service,
         talk_service: talk::Service,
         close: Arc<Notify>,
-    ) {
-        let mut msg_stream = match event_service
+    ) -> event::Result<()> {
+        let mut msg_stream = event_service
             .subscribe_event(&Subject::Messages(&auth_sub, &talk_id))
-            .await
-        {
-            Ok(stream) => stream,
-            Err(e) => {
-                error!("Failed to subscribe to subject: {e}");
-                return;
-            }
-        };
+            .await?;
 
         loop {
             tokio::select! {
                 () = close.notified() => break,
                 maybe_msg = msg_stream.next() => {
                     let Some(msg) = maybe_msg else { break };
-                    let markup = msg.render();
-                    if let Err(e) = sender.send(Text(markup.into_string().into())).await {
+                    let markup = msg.render().into_string();
+                    if let Err(e) = sender.send(ws::Message::Binary(markup.into())).await {
                         error!("Failed to send event message to client: {e}");
                         break;
                     }
@@ -194,11 +187,10 @@ pub mod ws {
             }
         }
 
-        if let Err(e) = sender.flush().await {
-            error!("Failed to flush ws sender: {e}");
-        }
+        sender.flush().await?;
+        debug!("WS send task stopped for talk {talk_id:?}");
 
-        debug!("WS write task stopped for talk: {talk_id}");
+        Ok(())
     }
 
     async fn receive(talk_id: talk::Id, mut recv: SplitStream<WebSocket>, close: Arc<Notify>) {
@@ -208,12 +200,9 @@ pub mod ws {
                     error!("Failed to read WS frame: {e}");
                     break;
                 }
-                Ok(Close(c)) => {
+                Ok(ws::Message::Close(c)) => {
                     if let Some(cf) = c {
-                        debug!(
-                            "Client sent close with code {} and reason `{}`",
-                            cf.code, cf.reason
-                        );
+                        debug!("Client sent {cf:?}");
                     } else {
                         debug!("Client sent close message without CloseFrame");
                     }
@@ -224,6 +213,6 @@ pub mod ws {
             }
         }
 
-        debug!("WS read task stopped for talk: {talk_id}");
+        debug!("WS receive task stopped for talk {talk_id:?}");
     }
 }

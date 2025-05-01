@@ -62,5 +62,7 @@ pub enum Error {
     NotRecipient,
 
     #[error(transparent)]
+    _Axum(#[from] axum::Error),
+    #[error(transparent)]
     _NatsSub(#[from] async_nats::SubscribeError),
 }
