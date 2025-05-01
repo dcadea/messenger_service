@@ -23,43 +23,36 @@ pub mod sse {
     use maud::Render;
     use tokio::time;
 
-    use std::convert::Infallible;
     use std::time::Duration;
+
+    const ONLINE_NOTI_INTERVAL: Duration = Duration::from_secs(15);
 
     pub async fn notifications(
         Extension(auth_user): Extension<auth::User>,
         State(user_service): State<user::Service>,
         State(event_service): State<event::Service>,
-    ) -> sse::Sse<impl Stream<Item = Result<sse::Event, Infallible>>> {
-        debug!("SSE connected for {:?}", auth_user.sub());
-
+    ) -> sse::Sse<impl Stream<Item = crate::Result<sse::Event>>> {
         let auth_sub = auth_user.sub().clone();
 
-        let stream = async_stream::stream! {
+        let stream = async_stream::try_stream! {
             let mut noti_stream = event_service
                 .subscribe_noti(&Subject::Notifications(&auth_sub))
-                .await
-                .expect("failed to subscribe to subject"); // FIXME
+                .await?;
 
             let _osd = OnlineStatusDropper(&auth_sub, &user_service);
-
-            let mut interval = time::interval(Duration::from_secs(15));
+            let mut interval = time::interval(ONLINE_NOTI_INTERVAL);
             loop {
                 tokio::select! {
                     noti = noti_stream.next() => {
-                        match noti {
-                            Some(noti) => yield Ok(sse::Event::from(noti)),
-                            None => {},
-                        }
+                        if let Some(noti) = noti { yield sse::Event::from(noti) }
                     },
-                    _ = interval.tick() => {
-                        user_service.notify_online(&auth_sub).await;
-                    }
+                    _ = interval.tick() => user_service.notify_online(&auth_sub).await
                 }
             }
             // _osd drops here
         };
 
+        debug!("SSE connected for {:?}", auth_user.sub());
         sse::Sse::new(stream).keep_alive(
             sse::KeepAlive::new()
                 .interval(Duration::from_secs(2))
