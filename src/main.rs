@@ -9,6 +9,7 @@ use log::error;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
+use tower_http::trace::TraceLayer;
 
 use crate::state::AppState;
 
@@ -101,6 +102,7 @@ fn app(s: &AppState, env: &Env) -> Router {
         .fallback(|| async { (StatusCode::NOT_FOUND, "Why are you here?") })
         .route_layer(
             ServiceBuilder::new()
+                .layer(TraceLayer::new_for_http())
                 .layer(
                     CorsLayer::new()
                         .allow_origin(env.allow_origin())
