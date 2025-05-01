@@ -19,6 +19,7 @@ pub mod sse {
     use axum::extract::State;
     use axum::response::sse;
     use futures::{Stream, StreamExt};
+    use log::debug;
     use maud::Render;
     use tokio::time;
 
@@ -30,6 +31,8 @@ pub mod sse {
         State(user_service): State<user::Service>,
         State(event_service): State<event::Service>,
     ) -> sse::Sse<impl Stream<Item = Result<sse::Event, Infallible>>> {
+        debug!("SSE connected for {:?}", auth_user.sub());
+
         let auth_sub = auth_user.sub().clone();
 
         let stream = async_stream::stream! {
@@ -70,6 +73,8 @@ pub mod sse {
         fn drop(&mut self) {
             let sub = self.0.clone();
             let user_service = self.1.clone();
+
+            debug!("SSE dropped for {sub:?}");
 
             tokio::spawn(async move {
                 user_service.notify_offline(&sub).await;
