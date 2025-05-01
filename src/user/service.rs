@@ -119,12 +119,12 @@ impl UserServiceImpl {
 // cache operations
 impl UserServiceImpl {
     async fn cache_user_info(&self, user_info: &UserInfo) {
-        let user_info_key = cache::Key::UserInfo(user_info.sub().clone());
+        let user_info_key = cache::Key::UserInfo(user_info.sub());
         self.redis.json_set_ex(user_info_key, user_info).await;
     }
 
     async fn find_cached_user_info(&self, sub: &Sub) -> Option<UserInfo> {
-        let user_info_key = cache::Key::UserInfo(sub.clone());
+        let user_info_key = cache::Key::UserInfo(sub);
         self.redis.json_get::<UserInfo>(user_info_key).await
     }
 }

@@ -150,14 +150,10 @@ impl ContactService for ContactServiceImpl {
         self.repo.delete(auth_sub, contact).await?;
 
         tokio::join!(
-            self.redis.srem(
-                cache::Key::Contacts(auth_sub.to_owned()),
-                contact.to_owned()
-            ),
-            self.redis.srem(
-                cache::Key::Contacts(contact.to_owned()),
-                auth_sub.to_owned()
-            )
+            self.redis
+                .srem(cache::Key::Contacts(auth_sub), contact.to_owned()),
+            self.redis
+                .srem(cache::Key::Contacts(contact), auth_sub.to_owned())
         );
 
         Ok(())

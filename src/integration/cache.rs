@@ -1,13 +1,13 @@
 use std::env;
 use std::fmt::{Display, Formatter};
-use std::sync::Arc;
+use std::time::Duration;
 
 use log::{error, warn};
 use redis::{AsyncCommands, JsonAsyncCommands};
 use serde::Serialize;
 
 use crate::user::model::UserInfo;
-use crate::{talk, user};
+use crate::{auth, talk, user};
 
 #[derive(Clone)]
 pub struct Redis {
@@ -15,64 +15,76 @@ pub struct Redis {
 }
 
 impl Redis {
-    pub async fn set<V>(&self, key: Key, value: V)
+    pub async fn set<V>(&self, key: Key<'_>, value: V)
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        if let Err(e) = con.set::<&Key, V, ()>(&key, value).await {
+        if let Err(e) = con.set::<_, _, ()>(&key, value).await {
             error!("Failed to set for key {key}. Reason: {e:?}");
         }
     }
 
-    pub async fn set_ex<V>(&self, key: Key, value: V)
+    /// Set a value with a key based expiration time.
+    pub async fn set_ex<V>(&self, key: Key<'_>, value: V)
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        if let Err(e) = con.set_ex::<&Key, V, ()>(&key, value, key.ttl()).await {
+        if let Err(e) = con.set_ex::<_, _, ()>(&key, value, key.ttl()).await {
             error!("Failed to set_ex for key {key}. Reason: {e:?}");
         }
     }
 
-    pub async fn json_set_ex<V>(&self, key: Key, value: V)
+    /// Set a value with an explicit expiration time.
+    pub async fn set_ex_explicit<V>(&self, key: Key<'_>, value: V, ttl: &Duration)
+    where
+        V: redis::ToRedisArgs + Send + Sync,
+    {
+        let mut con = self.con.clone();
+        if let Err(e) = con.set_ex::<_, _, ()>(&key, value, ttl.as_secs()).await {
+            error!("Failed to set_ex for key {key}. Reason: {e:?}");
+        }
+    }
+
+    pub async fn json_set_ex<V>(&self, key: Key<'_>, value: V)
     where
         V: Send + Sync + Serialize,
     {
         let mut con = self.con.clone();
-        if let Err(e) = con.json_set::<&Key, &str, V, ()>(&key, "$", &value).await {
+        if let Err(e) = con.json_set::<_, _, _, ()>(&key, "$", &value).await {
             error!("Failed to json_set for key {key}. Reason: {e:?}");
         }
 
         self.expire(key).await;
     }
 
-    pub async fn sadd<V>(&self, key: Key, value: V)
+    pub async fn sadd<V>(&self, key: Key<'_>, value: V)
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        if let Err(e) = con.sadd::<&Key, V, ()>(&key, value).await {
+        if let Err(e) = con.sadd::<_, _, ()>(&key, value).await {
             error!("Failed to sadd for key {key}. Reason: {e:?}");
         }
     }
 
-    pub async fn srem<V>(&self, key: Key, value: V)
+    pub async fn srem<V>(&self, key: Key<'_>, value: V)
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
         let mut con = self.con.clone();
-        if let Err(e) = con.srem::<&Key, V, ()>(&key, value).await {
+        if let Err(e) = con.srem::<_, _, ()>(&key, value).await {
             error!("Failed to srem for key {key}. Reason: {e:?}");
         }
     }
 
-    pub async fn get<V>(&self, key: Key) -> Option<V>
+    pub async fn get<V>(&self, key: Key<'_>) -> Option<V>
     where
         V: redis::FromRedisValue,
     {
         let mut con = self.con.clone();
-        match con.get::<&Key, V>(&key).await {
+        match con.get::<_, _>(&key).await {
             Ok(value) => Some(value),
             Err(e) => {
                 error!("Failed to get key {key}. Reason: {e:?}");
@@ -81,12 +93,12 @@ impl Redis {
         }
     }
 
-    pub async fn json_get<V>(&self, key: Key) -> Option<V>
+    pub async fn json_get<V>(&self, key: Key<'_>) -> Option<V>
     where
         V: redis::FromRedisValue + Clone,
     {
         let mut con = self.con.clone();
-        match con.json_get::<&Key, &str, Vec<V>>(&key, ".").await {
+        match con.json_get::<_, _, Vec<V>>(&key, ".").await {
             Ok(result) => result.first().cloned(),
             Err(e) => {
                 error!("Failed to json_get key {key}. Reason: {e:?}");
@@ -95,13 +107,13 @@ impl Redis {
         }
     }
 
-    pub async fn get_del<V>(&self, key: Key) -> Option<V>
+    pub async fn get_del<V>(&self, key: Key<'_>) -> Option<V>
     where
         V: redis::FromRedisValue,
     {
         let mut con = self.con.clone();
 
-        match con.get_del::<&Key, Option<V>>(&key).await {
+        match con.get_del::<_, Option<V>>(&key).await {
             Ok(value) => value,
             Err(e) => {
                 error!("Failed to get_del key {key}. Reason: {e:?}");
@@ -110,13 +122,13 @@ impl Redis {
         }
     }
 
-    pub async fn smembers<V>(&self, key: Key) -> Option<V>
+    pub async fn smembers<V>(&self, key: Key<'_>) -> Option<V>
     where
         V: redis::FromRedisValue + IntoIterator,
         V::Item: redis::FromRedisValue + PartialEq,
     {
         let mut con = self.con.clone();
-        match con.smembers::<&Key, Option<V>>(&key).await {
+        match con.smembers::<_, Option<V>>(&key).await {
             Ok(members) => members,
             Err(e) => {
                 error!("Failed to smembers for key {key}. Reason: {e:?}");
@@ -126,19 +138,19 @@ impl Redis {
     }
 
     #[allow(dead_code)]
-    pub async fn del(&self, key: Key) {
+    pub async fn del(&self, key: Key<'_>) {
         let mut con = self.con.clone();
-        if let Err(e) = con.del::<&Key, ()>(&key).await {
+        if let Err(e) = con.del::<_, ()>(&key).await {
             error!("Failed to del key {key}. Reason: {e:?}");
         }
     }
 
-    pub async fn expire_after(&self, key: Key, seconds: u64) {
+    pub async fn expire_after(&self, key: Key<'_>, seconds: u64) {
         let mut con = self.con.clone();
 
         match i64::try_from(seconds) {
             Ok(s) => {
-                if let Err(e) = con.expire::<&Key, ()>(&key, s).await {
+                if let Err(e) = con.expire::<_, ()>(&key, s).await {
                     error!("Failed to expire key {key}. Reason: {e:?}");
                 }
             }
@@ -146,12 +158,12 @@ impl Redis {
         }
     }
 
-    pub async fn expire(&self, key: Key) {
+    pub async fn expire(&self, key: Key<'_>) {
         let mut con = self.con.clone();
 
         match i64::try_from(key.ttl()) {
             Ok(ttl) => {
-                if let Err(e) = con.expire::<&Key, ()>(&key, ttl).await {
+                if let Err(e) = con.expire::<_, ()>(&key, ttl).await {
                     error!("Failed to expire key {key}. Reason: {e:?}");
                 }
             }
@@ -206,15 +218,15 @@ impl Config {
 }
 
 #[derive(Clone)]
-pub enum Key {
-    UserInfo(user::Sub),
-    Contacts(user::Sub),
-    Talk(talk::Id),
-    Session(uuid::Uuid),
-    Csrf(Arc<str>),
+pub enum Key<'a> {
+    UserInfo(&'a user::Sub),
+    Contacts(&'a user::Sub),
+    Talk(&'a talk::Id),
+    Session(&'a uuid::Uuid),
+    Csrf(&'a auth::Csrf),
 }
 
-impl Key {
+impl Key<'_> {
     /// Returns a time-to-live value in seconds for the key.
     pub fn ttl(&self) -> u64 {
         match self {
@@ -229,19 +241,19 @@ impl Key {
     }
 }
 
-impl Display for Key {
+impl Display for Key<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Key::UserInfo(sub) => write!(f, "userinfo:{sub}"),
             Key::Contacts(sub) => write!(f, "contacts:{sub}"),
             Key::Talk(id) => write!(f, "talk:{id}"),
             Key::Session(id) => write!(f, "session:{id}"),
-            Key::Csrf(csrf) => write!(f, "csrf:{csrf}"),
+            Key::Csrf(csrf) => write!(f, "csrf:{}", csrf.as_str()),
         }
     }
 }
 
-impl redis::ToRedisArgs for Key {
+impl redis::ToRedisArgs for Key<'_> {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + redis::RedisWrite,
@@ -279,5 +291,11 @@ impl redis::ToRedisArgs for UserInfo {
         W: ?Sized + redis::RedisWrite,
     {
         serde_json::json!(self).to_string().write_redis_args(out);
+    }
+}
+
+impl redis::FromRedisValue for auth::Csrf {
+    fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
+        Ok(auth::Csrf::new(String::from_redis_value(v)?))
     }
 }

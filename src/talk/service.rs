@@ -335,7 +335,7 @@ async fn find_members(
     repo: Repository,
     talk_id: &talk::Id,
 ) -> super::Result<HashSet<user::Sub>> {
-    let talk_key = cache::Key::Talk(talk_id.to_owned());
+    let talk_key = cache::Key::Talk(talk_id);
     let members = redis.smembers::<HashSet<user::Sub>>(talk_key.clone()).await;
 
     match members {

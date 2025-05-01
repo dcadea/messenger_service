@@ -6,13 +6,11 @@ use async_trait::async_trait;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
 use log::{debug, error, warn};
-use oauth2::{
-    AccessToken, AuthorizationCode, CsrfToken, Scope, StandardRevocableToken, TokenResponse,
-};
+use oauth2::{AccessToken, CsrfToken, Scope, StandardRevocableToken, TokenResponse};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use super::TokenClaims;
+use super::{Code, Csrf, TokenClaims};
 
 use crate::integration::cache;
 use crate::integration::idp;
@@ -27,7 +25,7 @@ const RETRY_DELAY: Duration = Duration::from_secs(15);
 pub trait AuthService {
     async fn authorize(&self) -> String;
 
-    async fn exchange_code(&self, code: &str, csrf: &str)
+    async fn exchange_code(&self, code: Code, csrf: Csrf)
     -> super::Result<(AccessToken, Duration)>;
 
     async fn validate(&self, token: &str) -> super::Result<user::Sub>;
@@ -76,10 +74,7 @@ impl AuthServiceImpl {
             let http = integration::init_http_client();
             loop {
                 match fetch_jwk_decoding_keys(&jwks_url, &http).await {
-                    Ok(keys) => {
-                        *jwk_decoding_keys.write().await = keys;
-                        debug!("Successfully fetched JWKs");
-                    }
+                    Ok(keys) => *jwk_decoding_keys.write().await = keys,
                     Err(e) => {
                         error!("Failed to fetch JWKs: {e:?}");
                         debug!(
@@ -112,23 +107,23 @@ impl AuthService for AuthServiceImpl {
             ])
             .url();
 
-        self.cache_csrf(csrf.secret()).await;
+        self.cache_csrf(csrf).await;
 
         auth_url.to_string()
     }
 
     async fn exchange_code(
         &self,
-        code: &str,
-        csrf: &str,
+        code: Code,
+        csrf: Csrf,
     ) -> super::Result<(AccessToken, Duration)> {
         self.validate_state(csrf).await?;
 
-        let auth_code = AuthorizationCode::new(code.to_string());
+        debug!("Exchanging code '{code:?}' for token");
 
         let token_result = self
             .oauth2
-            .exchange_code(auth_code)
+            .exchange_code(code.into())
             .request_async(&*self.http)
             .await;
 
@@ -145,7 +140,7 @@ impl AuthService for AuthServiceImpl {
 
     async fn validate(&self, token: &str) -> super::Result<user::Sub> {
         let jwt_header = decode_header(token).map_err(|e| {
-            warn!("{e:?}");
+            warn!("Failed to decode JWT header: {e:?}");
             super::Error::TokenMalformed
         })?;
 
@@ -159,7 +154,7 @@ impl AuthService for AuthServiceImpl {
             .map(|data| data.claims)
             .map(|claims| claims.sub)
             .map_err(|e| {
-                warn!("{e:?}");
+                error!("Failed to decode token claims: {e:?}");
                 super::Error::Forbidden
             })
     }
@@ -172,23 +167,29 @@ impl AuthService for AuthServiceImpl {
             .send()
             .await?;
 
-        Ok(response.json::<UserInfo>().await?)
+        let u = response.json::<UserInfo>().await?;
+        debug!("User info retrieved: {u:?}");
+        Ok(u)
     }
 
     async fn cache_token(&self, sid: &Uuid, token: &str, ttl: &Duration) {
-        self.redis.set(cache::Key::Session(*sid), token).await;
+        debug!("Caching token for sid '{sid}'");
+
         self.redis
-            .expire_after(cache::Key::Session(*sid), ttl.as_secs())
+            .set_ex_explicit(cache::Key::Session(sid), token, ttl)
             .await;
     }
 
     async fn invalidate_token(&self, sid: &str) -> super::Result<()> {
+        debug!("Invalidating token for sid '{sid}'");
+
         let sid = Uuid::parse_str(sid)?;
-        let token = self.redis.get_del(cache::Key::Session(sid)).await;
+        let token = self.redis.get_del(cache::Key::Session(&sid)).await;
 
         if let Some(token) = token {
             self.oauth2
                 .revoke_token(StandardRevocableToken::AccessToken(AccessToken::new(token)))?;
+            debug!("Token for sid '{sid}' revoked");
         }
 
         Ok(())
@@ -196,28 +197,33 @@ impl AuthService for AuthServiceImpl {
 
     async fn find_token(&self, sid: &str) -> Option<String> {
         if let Ok(sid) = Uuid::parse_str(sid) {
-            self.redis.get::<String>(cache::Key::Session(sid)).await
+            self.redis.get::<String>(cache::Key::Session(&sid)).await
         } else {
-            warn!("Could not find token for sid: {sid}");
+            error!("Could not find token for sid '{sid}'");
             None
         }
     }
 }
 
 impl AuthServiceImpl {
-    async fn cache_csrf(&self, csrf: &str) {
-        let csrf_key = cache::Key::Csrf(csrf.into());
-        self.redis.set_ex(csrf_key, csrf).await;
+    async fn cache_csrf(&self, csrf: impl Into<Csrf>) {
+        let csrf = csrf.into();
+        debug!("Caching csrf '{csrf:?}'");
+
+        let csrf_key = cache::Key::Csrf(&csrf);
+        self.redis.set_ex(csrf_key, csrf.as_str()).await;
     }
 
-    async fn validate_state(&self, csrf: &str) -> super::Result<()> {
-        let csrf_key = cache::Key::Csrf(csrf.into());
-        let cached_csrf = self.redis.get_del::<String>(csrf_key).await;
+    async fn validate_state(&self, csrf: Csrf) -> super::Result<()> {
+        debug!("Validating state for csrf '{csrf:?}'");
+        let csrf_key = cache::Key::Csrf(&csrf);
+        let cached_csrf = self.redis.get_del::<Csrf>(csrf_key).await;
 
-        cached_csrf
-            .filter(|cc| cc == csrf)
-            .map(|_| ())
-            .ok_or(super::Error::InvalidState)
+        if cached_csrf.is_some_and(|cc| cc.eq(&csrf)) {
+            return Ok(());
+        }
+
+        Err(super::Error::InvalidState)
     }
 }
 
@@ -234,6 +240,8 @@ async fn fetch_jwk_decoding_keys(
         for jwk in &jwk_set.keys {
             if let Some(kid) = jwk.clone().common.key_id {
                 let key = DecodingKey::from_jwk(jwk)?;
+
+                debug!("Fetched jwk with id '{kid}'");
                 keys.insert(kid, key);
             }
         }

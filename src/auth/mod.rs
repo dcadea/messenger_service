@@ -1,3 +1,4 @@
+use std::fmt;
 use std::sync::Arc;
 
 use crate::state::AppState;
@@ -6,6 +7,7 @@ use crate::user::model::UserInfo;
 use axum::Router;
 use axum::routing::get;
 use log::error;
+use oauth2::AuthorizationCode;
 use serde::Deserialize;
 
 pub mod handler;
@@ -88,6 +90,56 @@ impl From<UserInfo> for User {
     }
 }
 
+#[derive(Deserialize, PartialEq)]
+pub struct Code(String);
+
+impl fmt::Debug for Code {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut secret = self.0.clone();
+        secret.replace_range(5.., "********");
+        write!(f, "{secret}")
+    }
+}
+
+impl From<AuthorizationCode> for Code {
+    fn from(c: AuthorizationCode) -> Self {
+        Self(c.into_secret())
+    }
+}
+
+impl From<Code> for AuthorizationCode {
+    fn from(c: Code) -> Self {
+        AuthorizationCode::new(c.0)
+    }
+}
+
+#[derive(Deserialize, PartialEq)]
+pub struct Csrf(String);
+
+impl Csrf {
+    pub fn new(s: impl Into<String>) -> Self {
+        Self(s.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Debug for Csrf {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut secret = self.0.clone();
+        secret.replace_range(5.., "********");
+        write!(f, "{secret}")
+    }
+}
+
+impl From<oauth2::CsrfToken> for Csrf {
+    fn from(csrf: oauth2::CsrfToken) -> Self {
+        Self(csrf.into_secret())
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("unauthorized to access the resource")]
@@ -113,6 +165,8 @@ pub enum Error {
     #[error(transparent)]
     _Reqwest(#[from] reqwest::Error),
 
+    // TODO: remove, was introduced due to very complex
+    // generic structure of errors from oauth2 crate
     #[error("unexpected error happened: {0}")]
     Unexpected(String),
 }

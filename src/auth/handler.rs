@@ -26,7 +26,7 @@ pub(super) mod pages {
 }
 
 pub(super) mod api {
-    use crate::auth;
+    use crate::auth::{self, Code, Csrf};
     use axum::{
         extract::State,
         response::{IntoResponse, Redirect},
@@ -46,28 +46,28 @@ pub(super) mod api {
     ) -> crate::Result<impl IntoResponse> {
         if let Some(sid) = jar.get(auth::SESSION_ID) {
             let sid = sid.value();
-            debug!("Logging out user with session: {}", &sid);
+            debug!("Logging out user with sid: {}", &sid);
             auth_service.invalidate_token(sid).await?;
             return Ok((CookieJar::new(), Redirect::to("/login")));
         }
 
-        debug!("No session found, redirecting to login");
+        debug!("No sid found, redirecting to login");
         Ok((jar, Redirect::to("/login")))
     }
 
     #[derive(Deserialize)]
     pub struct Params {
-        code: String,
-        state: String,
+        code: Code,
+        state: Csrf,
     }
 
     pub async fn callback(
-        params: Query<Params>,
+        Query(params): Query<Params>,
         auth_service: State<auth::Service>,
         jar: CookieJar,
     ) -> crate::Result<impl IntoResponse> {
         let (token, ttl) = auth_service
-            .exchange_code(&params.code, &params.state)
+            .exchange_code(params.code, params.state)
             .await?;
 
         let sid = uuid::Uuid::new_v4();
