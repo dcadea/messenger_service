@@ -5,7 +5,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
-use log::{error, warn};
+use log::{debug, error, warn};
 use oauth2::{
     AccessToken, AuthorizationCode, CsrfToken, Scope, StandardRevocableToken, TokenResponse,
 };
@@ -21,6 +21,7 @@ use crate::user;
 use crate::user::model::UserInfo;
 
 const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
+const RETRY_DELAY: Duration = Duration::from_secs(15);
 
 #[async_trait]
 pub trait AuthService {
@@ -70,14 +71,24 @@ impl AuthServiceImpl {
             jwk_decoding_keys: jwk_decoding_keys.clone(),
         };
 
-        // FIXME: this occupies a resource for too long
         let jwks_url = cfg.jwks_url().to_string();
         tokio::spawn(async move {
             let http = integration::init_http_client();
             loop {
                 match fetch_jwk_decoding_keys(&jwks_url, &http).await {
-                    Ok(keys) => *jwk_decoding_keys.write().await = keys,
-                    Err(e) => error!("Failed to update JWK decoding keys: {e:?}"),
+                    Ok(keys) => {
+                        *jwk_decoding_keys.write().await = keys;
+                        debug!("Successfully fetched JWKs");
+                    }
+                    Err(e) => {
+                        error!("Failed to fetch JWKs: {e:?}");
+                        debug!(
+                            "Retrying to fetch JWKs in {} seconds",
+                            RETRY_DELAY.as_secs()
+                        );
+                        tokio::time::sleep(RETRY_DELAY).await;
+                        continue;
+                    }
                 }
                 tokio::time::sleep(ONE_DAY).await;
             }
