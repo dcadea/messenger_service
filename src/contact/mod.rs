@@ -48,6 +48,25 @@ pub enum Status {
     Blocked { initiator: user::Sub },
 }
 
+impl Status {
+    pub fn is_pending(&self) -> bool {
+        matches!(self, Status::Pending { .. })
+    }
+
+    pub fn is_rejected(&self) -> bool {
+        matches!(self, Status::Rejected)
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Transition {
+    Accept,
+    Reject,
+    Block,
+    Unblock,
+}
+
 pub enum StatusTransition<'a> {
     Accept { responder: &'a user::Sub },
     Reject { responder: &'a user::Sub },

@@ -27,7 +27,7 @@ pub trait ContactService {
 
     async fn add(&self, c: &Contact) -> super::Result<()>;
 
-    async fn transition_status(&self, id: &Id, t: StatusTransition<'_>) -> super::Result<()>;
+    async fn transition_status(&self, id: &Id, t: StatusTransition<'_>) -> super::Result<Status>;
 
     async fn delete(&self, auth_sub: &user::Sub, contact: &user::Sub) -> super::Result<()>;
 }
@@ -130,7 +130,7 @@ impl ContactService for ContactServiceImpl {
         Ok(())
     }
 
-    async fn transition_status(&self, id: &Id, st: StatusTransition<'_>) -> super::Result<()> {
+    async fn transition_status(&self, id: &Id, st: StatusTransition<'_>) -> super::Result<Status> {
         let contact = self.repo.find_by_id(id).await?;
         match contact {
             Some(mut c) => {
@@ -138,10 +138,10 @@ impl ContactService for ContactServiceImpl {
                     return Err(super::Error::StatusTransitionFailed);
                 }
                 self.repo.update_status(&c).await?;
+                Ok(c.status().clone())
             }
             None => return Err(super::Error::NotFound(id.clone())),
         }
-        Ok(())
     }
 
     async fn delete(&self, auth_sub: &user::Sub, contact: &user::Sub) -> super::Result<()> {

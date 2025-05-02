@@ -10,7 +10,7 @@ pub(super) mod api {
 
     use crate::{
         auth,
-        contact::{self, model::Contact},
+        contact::{self, Transition, model::Contact},
         user,
     };
 
@@ -38,20 +38,11 @@ pub(super) mod api {
         Ok(())
     }
 
-    #[derive(Deserialize)]
-    #[serde(rename_all = "snake_case")]
-    pub enum Transition {
-        Accept,
-        Reject,
-        Block,
-        Unblock,
-    }
-
     pub async fn transition(
         Extension(auth_user): Extension<auth::User>,
         Path((id, transition)): Path<(contact::Id, Transition)>,
         contact_service: State<contact::Service>,
-    ) -> crate::Result<()> {
+    ) -> crate::Result<Markup> {
         let st = match transition {
             Transition::Accept => contact::StatusTransition::Accept {
                 responder: auth_user.sub(),
@@ -71,9 +62,9 @@ pub(super) mod api {
             }
         };
 
-        contact_service.transition_status(&id, st).await?;
+        let new_status = contact_service.transition_status(&id, st).await?;
 
-        Ok(())
+        Ok(contact::markup::Icons::new(&id, &new_status, &auth_user).render())
     }
 
     impl From<contact::Error> for StatusCode {
