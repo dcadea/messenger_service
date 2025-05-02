@@ -45,7 +45,7 @@ impl Render for Screen<'_> {
     fn render(&self) -> Markup {
         html! {
             #screen
-                ."max-w-lg h-3/5 md:w-4/5 w-full"
+                ."max-w-lg h-4/5 md:w-4/5 w-full"
                 ."bg-white rounded-2xl"
                 ."overflow-hidden"
             {

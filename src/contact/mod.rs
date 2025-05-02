@@ -35,10 +35,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
     Router::new()
         .route("/contacts", post(handler::api::create))
         .route("/contacts/{id}", delete(handler::api::delete))
-        .route("/contacts/{id}/accept", put(handler::api::accept))
-        .route("/contacts/{id}/reject", put(handler::api::reject))
-        .route("/contacts/{id}/block", put(handler::api::block))
-        .route("/contacts/{id}/unblock", put(handler::api::unblock))
+        .route("/contacts/{id}/{transition}", put(handler::api::transition))
         .with_state(s)
 }
 
@@ -51,11 +48,11 @@ pub enum Status {
     Blocked { initiator: user::Sub },
 }
 
-pub enum StatusTransition {
-    Accept { responder: user::Sub },
-    Reject { responder: user::Sub },
-    Block { initiator: user::Sub },
-    Unblock { target: user::Sub },
+pub enum StatusTransition<'a> {
+    Accept { responder: &'a user::Sub },
+    Reject { responder: &'a user::Sub },
+    Block { initiator: &'a user::Sub },
+    Unblock { target: &'a user::Sub },
 }
 
 #[derive(thiserror::Error, Debug)]

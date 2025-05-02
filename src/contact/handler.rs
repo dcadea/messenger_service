@@ -38,58 +38,40 @@ pub(super) mod api {
         Ok(())
     }
 
-    pub async fn accept(
-        Extension(auth_user): Extension<auth::User>,
-        id: Path<contact::Id>,
-        contact_service: State<contact::Service>,
-    ) -> crate::Result<()> {
-        let responder = auth_user.sub().clone();
-
-        contact_service
-            .transition_status(&id, contact::StatusTransition::Accept { responder })
-            .await?;
-
-        Ok(())
+    #[derive(Deserialize)]
+    #[serde(rename_all = "snake_case")]
+    pub enum Transition {
+        Accept,
+        Reject,
+        Block,
+        Unblock,
     }
 
-    pub async fn reject(
+    pub async fn transition(
         Extension(auth_user): Extension<auth::User>,
-        id: Path<contact::Id>,
+        Path((id, transition)): Path<(contact::Id, Transition)>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        let responder = auth_user.sub().clone();
+        let st = match transition {
+            Transition::Accept => contact::StatusTransition::Accept {
+                responder: auth_user.sub(),
+            },
+            Transition::Reject => contact::StatusTransition::Reject {
+                responder: auth_user.sub(),
+            },
+            Transition::Block => contact::StatusTransition::Block {
+                initiator: auth_user.sub(),
+            },
+            Transition::Unblock => {
+                let c = contact_service.find_by_id(auth_user.sub(), &id).await?;
 
-        contact_service
-            .transition_status(&id, contact::StatusTransition::Reject { responder })
-            .await?;
+                contact::StatusTransition::Unblock {
+                    target: &c.recipient().clone(),
+                }
+            }
+        };
 
-        Ok(())
-    }
-
-    pub async fn block(
-        Extension(auth_user): Extension<auth::User>,
-        id: Path<contact::Id>,
-        contact_service: State<contact::Service>,
-    ) -> crate::Result<()> {
-        let initiator = auth_user.sub().clone();
-
-        contact_service
-            .transition_status(&id, contact::StatusTransition::Block { initiator })
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn unblock(
-        Extension(auth_user): Extension<auth::User>,
-        Path(id): Path<contact::Id>,
-        contact_service: State<contact::Service>,
-    ) -> crate::Result<()> {
-        let c = contact_service.find_by_id(auth_user.sub(), &id).await?;
-        let target = c.recipient().clone();
-        contact_service
-            .transition_status(&id, contact::StatusTransition::Unblock { target })
-            .await?;
+        contact_service.transition_status(&id, st).await?;
 
         Ok(())
     }
