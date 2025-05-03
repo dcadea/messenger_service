@@ -6,7 +6,9 @@ impl From<Error> for StatusCode {
     fn from(e: Error) -> Self {
         match e {
             Error::NotOwner | Error::NotRecipient => StatusCode::FORBIDDEN,
-            Error::_Axum(_) | Error::_NatsSub(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Error::_Axum(_) | Error::_NatsSub(_) | Error::_SerdeJson(_) => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
         }
     }
 }
@@ -19,7 +21,7 @@ pub mod sse {
     use axum::extract::State;
     use axum::response::sse;
     use futures::{Stream, StreamExt};
-    use log::debug;
+    use log::{debug, error};
     use maud::Render;
     use tokio::time;
 
@@ -43,8 +45,13 @@ pub mod sse {
             let mut interval = time::interval(ONLINE_NOTI_INTERVAL);
             loop {
                 tokio::select! {
-                    noti = noti_stream.next() => {
-                        if let Some(noti) = noti { yield sse::Event::from(noti) }
+                    next = noti_stream.next() => {
+                        if let Some(noti) = next {
+                            match noti {
+                                Ok(n) => yield sse::Event::from(n),
+                                Err(e) => error!("Error reading notification from stream: {e:?}"),
+                            }
+                        }
                     },
                     _ = interval.tick() => user_service.notify_online(&auth_sub).await
                 }
@@ -160,8 +167,17 @@ pub mod ws {
         loop {
             tokio::select! {
                 () = close.notified() => break,
-                maybe_msg = msg_stream.next() => {
-                    let Some(msg) = maybe_msg else { break };
+                next = msg_stream.next() => {
+                    let Some(msg) = next else { break };
+
+                    let msg = match msg {
+                        Ok(m) => m,
+                        Err(e) => {
+                            error!("Error reading message event from stream: {e:?}");
+                            continue;
+                        },
+                    };
+
                     let markup = msg.render().into_string();
                     if let Err(e) = sender.send(ws::Message::Binary(markup.into())).await {
                         error!("Failed to send event message to client: {e}");

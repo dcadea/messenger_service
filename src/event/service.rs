@@ -7,7 +7,7 @@ use log::error;
 
 use super::{Message, Notification, Subject};
 
-pub type PayloadStream<T> = Pin<Box<dyn Stream<Item = T> + Send>>;
+pub type PayloadStream<T> = Pin<Box<dyn Stream<Item = super::Result<T>> + Send>>;
 
 #[async_trait]
 pub trait EventService {
@@ -37,9 +37,7 @@ impl EventService for EventServiceImpl {
         let subscriber = self.pubsub.subscribe(s).await?;
 
         let stream = subscriber.then(async |msg| {
-            // FIXME: expect!
-            serde_json::from_slice::<Message>(&msg.payload)
-                .expect("failed event message deserialization")
+            serde_json::from_slice::<Message>(&msg.payload).map_err(super::Error::from)
         });
 
         Ok(stream.boxed())
@@ -49,9 +47,7 @@ impl EventService for EventServiceImpl {
         let subscriber = self.pubsub.subscribe(s).await?;
 
         let stream = subscriber.then(async |msg| {
-            // FIXME: expect!
-            serde_json::from_slice::<Notification>(&msg.payload)
-                .expect("failed notification deserialization")
+            serde_json::from_slice::<Notification>(&msg.payload).map_err(super::Error::from)
         });
 
         Ok(stream.boxed())

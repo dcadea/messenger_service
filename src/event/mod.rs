@@ -65,4 +65,6 @@ pub enum Error {
     _Axum(#[from] axum::Error),
     #[error(transparent)]
     _NatsSub(#[from] async_nats::SubscribeError),
+    #[error(transparent)]
+    _SerdeJson(#[from] serde_json::Error),
 }
