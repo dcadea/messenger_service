@@ -179,7 +179,7 @@ pub mod ws {
                     };
 
                     let markup = msg.render().into_string();
-                    if let Err(e) = sender.send(ws::Message::Binary(markup.into())).await {
+                    if let Err(e) = sender.send(ws::Message::Text(markup.into())).await {
                         error!("Failed to send event message to client: {e}");
                         break;
                     }
