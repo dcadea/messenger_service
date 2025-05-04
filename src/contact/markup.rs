@@ -80,7 +80,6 @@ impl Render for Icons<'_> {
         html! {
             div #{"ci-status-" (c_id)}
                 ."grow text-right"
-
             {
                 @match self.status {
                     Status::Pending { initiator } => {
@@ -176,48 +175,89 @@ mod test {
 
     #[test]
     fn should_render_contact_infos() {
-        let expected = concat!(
-            r#"<header class="text-center mb-4">"#,
-            r#"<h2 class="text-2xl">Contacts</h2>"#,
-            "</header>",
-            r#"<ul class="flex flex-col space-y-2">"#,
-            r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
-            r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="jora://picture" alt="User avatar"></img>Jora"#,
-            r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071d8">"#,
-            r##"<i class="fa-solid fa-ban ml-3 text-2xl cursor-pointer" hx-target="#ci-status-680d045617d7edcb069071d8" hx-put="/api/contacts/680d045617d7edcb069071d8/block"></i>"##,
-            "</div>",
-            "</li>",
-            r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
-            r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="igor://picture" alt="User avatar"></img>Igor"#,
-            r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071d9">"#,
-            r#"<span class="text-red-500"><i class="fa-solid fa-xmark mr-2"></i>Request rejected</span>"#,
-            "</div>",
-            "</li>",
-            r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
-            r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="radu://picture" alt="User avatar"></img>Radu"#,
-            r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071da">"#,
-            r#"<span class="text-blue-500"><i class="fa-solid fa-hourglass-half mr-2"></i>Pending action</span>"#,
-            "</div>",
-            "</li>",
-            r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
-            r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="gicu://picture" alt="User avatar"></img>Gicu"#,
-            r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071db">"#,
-            r##"<i class="fa-solid fa-check text-2xl text-green-600 cursor-pointer" hx-target="#ci-status-680d045617d7edcb069071db" hx-put="/api/contacts/680d045617d7edcb069071db/accept"></i>"##,
-            r##"<i class="fa-solid fa-xmark ml-3 text-2xl text-red-500 cursor-pointer" hx-target="#ci-status-680d045617d7edcb069071db" hx-put="/api/contacts/680d045617d7edcb069071db/reject"></i>"##,
-            "</div>",
-            "</li>",
-            r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
-            r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="toha://picture" alt="User avatar"></img>Toha"#,
-            r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071dc">Blocked"#,
-            r##"<i class="fa-solid fa-lock-open ml-3 text-green-600 text-xl cursor-pointer" hx-target="#ci-status-680d045617d7edcb069071dc" hx-put="/api/contacts/680d045617d7edcb069071dc/unblock"></i>"##,
-            "</div>",
-            "</li>",
-            r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
-            r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="alex://picture" alt="User avatar"></img>Alex"#,
-            r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071dd">Blocked you</div>"#,
-            "</li>",
-            "</ul>"
-        );
+        let expected = html! {
+            header class="text-center mb-4"{
+                h2 class="text-2xl" { "Contacts" }
+            }
+            ul class="flex flex-col space-y-2" {
+                li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" {
+                    img class="w-9 h-9 rounded-full float-left mr-2"
+                        src="jora://picture"
+                        alt="User avatar" {}
+                    "Jora"
+
+                    div class="grow text-right" id="ci-status-680d045617d7edcb069071d8" {
+                        i class="fa-solid fa-ban ml-3 text-2xl cursor-pointer"
+                            hx-target="#ci-status-680d045617d7edcb069071d8"
+                            hx-put="/api/contacts/680d045617d7edcb069071d8/block" {}
+                    }
+                }
+                li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" {
+                    img class="w-9 h-9 rounded-full float-left mr-2"
+                        src="igor://picture"
+                        alt="User avatar" {}
+                    "Igor"
+
+                    div class="grow text-right" id="ci-status-680d045617d7edcb069071d9" {
+                        span class="text-red-500" {
+                            i class="fa-solid fa-xmark mr-2" {}
+                            "Request rejected"
+                        }
+                    }
+                }
+                li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" {
+                    img class="w-9 h-9 rounded-full float-left mr-2"
+                        src="radu://picture"
+                        alt="User avatar" {}
+                    "Radu"
+
+                    div class="grow text-right" id="ci-status-680d045617d7edcb069071da" {
+                        span class="text-blue-500" {
+                            i class="fa-solid fa-hourglass-half mr-2" {}
+                            "Pending action"
+                        }
+                    }
+                }
+                li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" {
+                    img class="w-9 h-9 rounded-full float-left mr-2"
+                        src="gicu://picture"
+                        alt="User avatar" {}
+                    "Gicu"
+
+                    div class="grow text-right" id="ci-status-680d045617d7edcb069071db" {
+                        i class="fa-solid fa-check text-2xl text-green-600 cursor-pointer"
+                            hx-target="#ci-status-680d045617d7edcb069071db"
+                            hx-put="/api/contacts/680d045617d7edcb069071db/accept" {}
+                        i class="fa-solid fa-xmark ml-3 text-2xl text-red-500 cursor-pointer"
+                            hx-target="#ci-status-680d045617d7edcb069071db"
+                            hx-put="/api/contacts/680d045617d7edcb069071db/reject" {}
+                    }
+                }
+                li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" {
+                    img class="w-9 h-9 rounded-full float-left mr-2"
+                        src="toha://picture"
+                        alt="User avatar" {}
+                    "Toha"
+
+                    div class="grow text-right" id="ci-status-680d045617d7edcb069071dc" {
+                        "Blocked"
+                        i class="fa-solid fa-lock-open ml-3 text-green-600 text-xl cursor-pointer"
+                            hx-target="#ci-status-680d045617d7edcb069071dc"
+                            hx-put="/api/contacts/680d045617d7edcb069071dc/unblock" {}
+                    }
+                }
+                li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" {
+                    img class="w-9 h-9 rounded-full float-left mr-2"
+                        src="alex://picture"
+                        alt="User avatar" {}
+                    "Alex"
+
+                    div class="grow text-right" id="ci-status-680d045617d7edcb069071dd" {
+                        "Blocked you"
+                    }
+                }
+            }
+        }.into_string();
 
         let auth_user = auth::User::new(
             user::Sub("valera".into()),
