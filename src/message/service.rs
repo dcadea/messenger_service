@@ -206,22 +206,22 @@ impl MessageService for MessageServiceImpl {
 
         self.repo.mark_as_seen(&unseen_ids).await?;
 
-        let msg_evts: Vec<bytes::Bytes> = unseen_msgs
+        let msg_evts = unseen_msgs
             .iter()
             .map(|m| event::Message::Seen((*m).clone()))
             .map(bytes::Bytes::from)
-            .collect();
+            .collect::<Vec<_>>();
 
-        for msg in unseen_msgs {
-            self.event_service
-                .publish_many(
-                    &event::Subject::Messages(msg.owner(), msg.talk_id()),
-                    msg_evts.clone(),
-                )
-                .await;
-        }
+        let subjects = unseen_msgs
+            .iter()
+            .map(|msg| event::Subject::Messages(msg.owner(), msg.talk_id()))
+            .collect::<Vec<_>>();
 
         let seen_qty = msg_evts.len();
+        self.event_service
+            .broadcast_many(&subjects, &msg_evts)
+            .await;
+
         Ok(seen_qty)
     }
 
@@ -247,17 +247,20 @@ impl MessageServiceImpl {
     async fn notify_new(&self, talk_id: &talk::Id, owner: &user::Sub, msgs: &[Message]) {
         match self.talk_service.find_recipients(talk_id, owner).await {
             Ok(recipients) => {
-                let msg_evts: Vec<bytes::Bytes> = msgs
+                let msg_evts = msgs
                     .iter()
                     .map(|m| event::Message::New(m.clone()))
                     .map(bytes::Bytes::from)
-                    .collect();
+                    .collect::<Vec<_>>();
 
-                for r in recipients {
-                    self.event_service
-                        .publish_many(&event::Subject::Messages(&r, talk_id), msg_evts.clone())
-                        .await;
-                }
+                let subjects = recipients
+                    .iter()
+                    .map(|r| event::Subject::Messages(r, talk_id))
+                    .collect::<Vec<_>>();
+
+                self.event_service
+                    .broadcast_many(&subjects, &msg_evts)
+                    .await;
             }
             Err(e) => error!("could not find talk recipients: {e:?}"),
         }
@@ -269,18 +272,21 @@ impl MessageServiceImpl {
 
         match self.talk_service.find_recipients(talk_id, sub).await {
             Ok(recipients) => {
-                for r in recipients {
-                    self.event_service
-                        .publish(
-                            &event::Subject::Messages(&r, talk_id),
-                            event::Message::Updated {
-                                msg: msg.clone(),
-                                auth_sub: sub.clone(),
-                            }
-                            .into(),
-                        )
-                        .await;
-                }
+                let subjects = recipients
+                    .iter()
+                    .map(|r| event::Subject::Messages(r, talk_id))
+                    .collect::<Vec<_>>();
+
+                self.event_service
+                    .broadcast(
+                        &subjects,
+                        event::Message::Updated {
+                            msg: msg.clone(),
+                            auth_sub: sub.clone(),
+                        }
+                        .into(),
+                    )
+                    .await;
             }
             Err(e) => error!("could not find talk recipients: {e:?}"),
         }
@@ -292,14 +298,14 @@ impl MessageServiceImpl {
 
         match self.talk_service.find_recipients(talk_id, sub).await {
             Ok(recipients) => {
-                for r in recipients {
-                    self.event_service
-                        .publish(
-                            &event::Subject::Messages(&r, talk_id),
-                            event::Message::Deleted(msg.id().clone()).into(),
-                        )
-                        .await;
-                }
+                let subjects = recipients
+                    .iter()
+                    .map(|r| event::Subject::Messages(r, talk_id))
+                    .collect::<Vec<_>>();
+
+                self.event_service
+                    .broadcast(&subjects, event::Message::Deleted(msg.id().clone()).into())
+                    .await;
             }
             Err(e) => error!("could not find talk recipients: {e:?}"),
         }

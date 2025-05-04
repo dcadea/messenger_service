@@ -17,7 +17,9 @@ pub trait EventService {
 
     async fn publish(&self, s: &Subject<'_>, payload: Bytes);
 
-    async fn publish_many(&self, s: &Subject<'_>, payloads: Vec<Bytes>);
+    async fn broadcast(&self, subjects: &[Subject<'_>], payload: Bytes);
+
+    async fn broadcast_many(&self, subjects: &[Subject<'_>], payloads: &[Bytes]);
 }
 
 #[derive(Clone)]
@@ -56,17 +58,24 @@ impl EventService for EventServiceImpl {
     }
 
     async fn publish(&self, s: &Subject<'_>, payload: Bytes) {
-        debug!("publish -> {s}");
-        trace!("payload: {payload:#?}");
+        trace!("publish -> {s}, payload: {payload:#?}");
         if let Err(e) = self.pubsub.publish(s, payload).await {
             error!("failed to publish -> {s}, reason: {e:?}");
         }
     }
 
-    async fn publish_many(&self, s: &Subject<'_>, payloads: Vec<Bytes>) {
-        payloads
-            .into_iter()
-            .map(|p| self.publish(s, p))
+    async fn broadcast(&self, subjects: &[Subject<'_>], payload: Bytes) {
+        subjects
+            .iter()
+            .map(|s| self.publish(s, payload.clone()))
+            .collect::<JoinAll<_>>()
+            .await;
+    }
+
+    async fn broadcast_many(&self, subjects: &[Subject<'_>], payloads: &[Bytes]) {
+        subjects
+            .iter()
+            .flat_map(|s| payloads.iter().cloned().map(|p| self.publish(s, p)))
             .collect::<JoinAll<_>>()
             .await;
     }

@@ -91,16 +91,18 @@ impl UserServiceImpl {
             .await
         {
             Ok(contacts) => {
-                let status = OnlineStatus::new(sub.to_owned(), online);
+                let subjects = contacts
+                    .iter()
+                    .map(|c| event::Subject::Notifications(c.recipient()))
+                    .collect::<Vec<_>>();
 
-                for c in contacts {
-                    self.event_service
-                        .publish(
-                            &event::Subject::Notifications(c.recipient()),
-                            event::Notification::OnlineStatusChange(status.clone()).into(),
-                        )
-                        .await;
-                }
+                let status = OnlineStatus::new(sub.to_owned(), online);
+                self.event_service
+                    .broadcast(
+                        &subjects,
+                        event::Notification::OnlineStatusChange(status.clone()).into(),
+                    )
+                    .await;
             }
             Err(e) => {
                 error!("failed to find contacts for sub: {e:?}");

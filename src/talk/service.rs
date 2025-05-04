@@ -238,19 +238,21 @@ impl TalkService for TalkServiceImpl {
 
         if let Some(last_msg) = msg {
             let recipients = self.find_recipients(id, last_msg.owner()).await?;
+            let subjects = recipients
+                .iter()
+                .map(event::Subject::Notifications)
+                .collect::<Vec<_>>();
 
-            for r in recipients {
-                self.event_service
-                    .publish(
-                        &event::Subject::Notifications(&r),
-                        event::Notification::NewMessage {
-                            talk_id: id.clone(),
-                            last_message: last_msg.clone(),
-                        }
-                        .into(),
-                    )
-                    .await;
-            }
+            self.event_service
+                .broadcast(
+                    &subjects,
+                    event::Notification::NewMessage {
+                        talk_id: id.clone(),
+                        last_message: last_msg.clone(),
+                    }
+                    .into(),
+                )
+                .await;
         }
         Ok(())
     }
