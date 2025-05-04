@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, fmt};
 
 use bytes::Bytes;
 use log::{error, warn};
@@ -49,6 +49,15 @@ impl async_nats::subject::ToSubject for &event::Subject<'_> {
         match self {
             event::Subject::Notifications(sub) => format!("noti.{sub}").into(),
             event::Subject::Messages(sub, talk_id) => format!("messages.{sub}.{talk_id}").into(),
+        }
+    }
+}
+
+impl fmt::Display for &event::Subject<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            event::Subject::Notifications(sub) => write!(f, "noti.{sub}"),
+            event::Subject::Messages(sub, talk_id) => write!(f, "messages.{sub}.{talk_id}"),
         }
     }
 }

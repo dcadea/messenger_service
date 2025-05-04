@@ -214,7 +214,7 @@ impl MessageService for MessageServiceImpl {
 
         for msg in unseen_msgs {
             self.event_service
-                .publish_all(
+                .publish_many(
                     &event::Subject::Messages(msg.owner(), msg.talk_id()),
                     msg_evts.clone(),
                 )
@@ -255,7 +255,7 @@ impl MessageServiceImpl {
 
                 for r in recipients {
                     self.event_service
-                        .publish_all(&event::Subject::Messages(&r, talk_id), msg_evts.clone())
+                        .publish_many(&event::Subject::Messages(&r, talk_id), msg_evts.clone())
                         .await;
                 }
             }

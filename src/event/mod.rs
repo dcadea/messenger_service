@@ -43,7 +43,7 @@ pub enum Notification {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum Message {
     New(message::model::Message),
     Updated {
