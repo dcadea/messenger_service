@@ -80,8 +80,7 @@ impl Render for Icons<'_> {
         html! {
             div #{"ci-status-" (c_id)}
                 ."grow text-right"
-                .text-blue-500[self.status.is_pending()]
-                .text-red-500[self.status.is_rejected()]
+
             {
                 @match self.status {
                     Status::Pending { initiator } => {
@@ -130,11 +129,13 @@ impl Render for Icon<'_> {
         html! {
             @match self {
                 Self::Pending => {
-                    i ."fa-solid fa-hourglass-half mr-2" {}
-                    "Pending action"
+                    span.text-blue-500 {
+                        i ."fa-solid fa-hourglass-half mr-2" {}
+                        "Pending action"
+                    }
                 },
                 Self::Accept(id) => {
-                    (hx_icon(id, Transition::Accept, "fa-check text-2xl text-green-500"))
+                    (hx_icon(id, Transition::Accept, "fa-check text-2xl text-green-600"))
                 },
                 Self::Reject(id) => {
                     (hx_icon(id, Transition::Reject, "fa-xmark ml-3 text-2xl text-red-500"))
@@ -143,11 +144,13 @@ impl Render for Icon<'_> {
                     (hx_icon(id, Transition::Block, "fa-ban ml-3 text-2xl"))
                 },
                 Self::Unblock(id) => {
-                    (hx_icon(id, Transition::Unblock, "fa-lock-open ml-3 text-green-500 text-xl"))
+                    (hx_icon(id, Transition::Unblock, "fa-lock-open ml-3 text-green-600 text-xl"))
                 },
                 Self::Rejected => {
-                    i ."fa-solid fa-xmark mr-2" {}
-                    "Request rejected"
+                    span.text-red-500 {
+                        i ."fa-solid fa-xmark mr-2" {}
+                        "Request rejected"
+                    }
                 },
             }
         }
@@ -186,27 +189,27 @@ mod test {
             "</li>",
             r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
             r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="igor://picture" alt="User avatar"></img>Igor"#,
-            r#"<div class="grow text-right text-red-500" id="ci-status-680d045617d7edcb069071d9">"#,
-            r#"<i class="fa-solid fa-xmark mr-2"></i>Request rejected"#,
+            r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071d9">"#,
+            r#"<span class="text-red-500"><i class="fa-solid fa-xmark mr-2"></i>Request rejected</span>"#,
             "</div>",
             "</li>",
             r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
             r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="radu://picture" alt="User avatar"></img>Radu"#,
-            r#"<div class="grow text-right text-blue-500" id="ci-status-680d045617d7edcb069071da">"#,
-            r#"<i class="fa-solid fa-hourglass-half mr-2"></i>Pending action"#,
+            r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071da">"#,
+            r#"<span class="text-blue-500"><i class="fa-solid fa-hourglass-half mr-2"></i>Pending action</span>"#,
             "</div>",
             "</li>",
             r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
             r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="gicu://picture" alt="User avatar"></img>Gicu"#,
-            r#"<div class="grow text-right text-blue-500" id="ci-status-680d045617d7edcb069071db">"#,
-            r##"<i class="fa-solid fa-check text-2xl text-green-500 cursor-pointer" hx-target="#ci-status-680d045617d7edcb069071db" hx-put="/api/contacts/680d045617d7edcb069071db/accept"></i>"##,
+            r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071db">"#,
+            r##"<i class="fa-solid fa-check text-2xl text-green-600 cursor-pointer" hx-target="#ci-status-680d045617d7edcb069071db" hx-put="/api/contacts/680d045617d7edcb069071db/accept"></i>"##,
             r##"<i class="fa-solid fa-xmark ml-3 text-2xl text-red-500 cursor-pointer" hx-target="#ci-status-680d045617d7edcb069071db" hx-put="/api/contacts/680d045617d7edcb069071db/reject"></i>"##,
             "</div>",
             "</li>",
             r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
             r#"<img class="w-9 h-9 rounded-full float-left mr-2" src="toha://picture" alt="User avatar"></img>Toha"#,
             r#"<div class="grow text-right" id="ci-status-680d045617d7edcb069071dc">Blocked"#,
-            r##"<i class="fa-solid fa-lock-open ml-3 text-green-500 text-xl cursor-pointer" hx-target="#ci-status-680d045617d7edcb069071dc" hx-put="/api/contacts/680d045617d7edcb069071dc/unblock"></i>"##,
+            r##"<i class="fa-solid fa-lock-open ml-3 text-green-600 text-xl cursor-pointer" hx-target="#ci-status-680d045617d7edcb069071dc" hx-put="/api/contacts/680d045617d7edcb069071dc/unblock"></i>"##,
             "</div>",
             "</li>",
             r#"<li class="px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center">"#,
@@ -327,7 +330,7 @@ mod test {
 
     #[test]
     fn should_render_pending_icon() {
-        let expected = r#"<i class="fa-solid fa-hourglass-half mr-2"></i>Pending action"#;
+        let expected = r#"<span class="text-blue-500"><i class="fa-solid fa-hourglass-half mr-2"></i>Pending action</span>"#;
 
         let actual = Icon::Pending.render().into_string();
 
@@ -338,7 +341,7 @@ mod test {
     fn should_render_accept_icon() {
         let id = contact::Id::random();
         let expected = format!(
-            r##"<i class="fa-solid fa-check text-2xl text-green-500 cursor-pointer" hx-target="#ci-status-{}" hx-put="/api/contacts/{}/accept"></i>"##,
+            r##"<i class="fa-solid fa-check text-2xl text-green-600 cursor-pointer" hx-target="#ci-status-{}" hx-put="/api/contacts/{}/accept"></i>"##,
             &id, &id
         );
 
@@ -377,7 +380,7 @@ mod test {
     fn should_render_unblock_icon() {
         let id = contact::Id::random();
         let expected = format!(
-            r##"<i class="fa-solid fa-lock-open ml-3 text-green-500 text-xl cursor-pointer" hx-target="#ci-status-{}" hx-put="/api/contacts/{}/unblock"></i>"##,
+            r##"<i class="fa-solid fa-lock-open ml-3 text-green-600 text-xl cursor-pointer" hx-target="#ci-status-{}" hx-put="/api/contacts/{}/unblock"></i>"##,
             &id, &id
         );
 
@@ -388,7 +391,7 @@ mod test {
 
     #[test]
     fn should_render_rejected_icon() {
-        let expected = r#"<i class="fa-solid fa-xmark mr-2"></i>Request rejected"#;
+        let expected = r#"<span class="text-red-500"><i class="fa-solid fa-xmark mr-2"></i>Request rejected</span>"#;
 
         let actual = Icon::Rejected.render().into_string();
 

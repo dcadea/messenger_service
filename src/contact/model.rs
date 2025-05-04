@@ -141,14 +141,6 @@ impl ContactDto {
     pub fn is_accepted(&self) -> bool {
         matches!(self.status, Status::Accepted)
     }
-
-    pub fn is_pending(&self) -> bool {
-        matches!(self.status, Status::Pending { .. })
-    }
-
-    pub fn is_rejected(&self) -> bool {
-        matches!(self.status, Status::Rejected)
-    }
 }
 
 #[cfg(test)]
