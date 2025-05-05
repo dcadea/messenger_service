@@ -38,6 +38,12 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
+pub fn templates<S>(s: AppState) -> Router<S> {
+    Router::new()
+        .route("/talks/group/create", get(handler::templates::create_group))
+        .with_state(s)
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 

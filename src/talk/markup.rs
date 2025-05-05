@@ -61,8 +61,8 @@ impl Render for TalkWindow<'_> {
                         header ."text-center mb-4"{
                             h2.text-2xl { "Groups" }
                         }
-                        // if self.kind == Group
-                        //     allow creation of group
+                        a hx-get="/templates/talks/group/create"
+                            hx-target=(TALK_WINDOW_TARGET) { "Create group" }
                     },
                 }
 
@@ -216,6 +216,31 @@ impl Render for TalkDto {
                         message::markup::last_message(self.last_message(), self.id(), sender)
                     })
                 }
+            }
+        }
+    }
+}
+
+pub struct CreateGroupForm<'a> {
+    auth_user: &'a auth::User,
+}
+
+impl<'a> CreateGroupForm<'a> {
+    pub fn new(auth_user: &'a auth::User) -> Self {
+        Self { auth_user }
+    }
+}
+
+impl Render for CreateGroupForm<'_> {
+    fn render(&self) -> Markup {
+        html! {
+            form hx-post="/api/talks" {
+                input type="text" name="name" placeholder="Group name" {}
+                input type="hidden" name="owner" value=(self.auth_user.sub()) {}
+                input type="checkbox" name="members" value="id_1" { "Valera" }
+                input type="checkbox" name="members" value="id_2" { "Jora" }
+                input type="checkbox" name="members" value="id_3" { "Igor" }
+                input hx-disabled-elt="this" type="submit" value="Create" {}
             }
         }
     }

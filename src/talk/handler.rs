@@ -105,3 +105,14 @@ pub(super) mod api {
         Ok([("HX-Redirect", "/")])
     }
 }
+
+pub(super) mod templates {
+    use axum::Extension;
+    use maud::{Markup, Render};
+
+    use crate::{auth, talk};
+
+    pub async fn create_group(auth_user: Extension<auth::User>) -> Markup {
+        talk::markup::CreateGroupForm::new(&auth_user).render()
+    }
+}

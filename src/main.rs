@@ -81,7 +81,9 @@ fn app(s: &AppState, env: &Env) -> Router {
         )
         .nest(
             "/templates",
-            Router::new().merge(message::templates(s.clone())),
+            Router::new()
+                .merge(message::templates(s.clone()))
+                .merge(talk::templates(s.clone())),
         )
         .route_layer(
             ServiceBuilder::new()
