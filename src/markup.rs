@@ -25,6 +25,7 @@ impl Render for Head<'_> {
                 script src="https://unpkg.com/htmx.org@2.0.4" {}
                 script src="https://unpkg.com/htmx-ext-ws@2.0.3/ws.js" {}
                 script src="https://unpkg.com/htmx-ext-sse@2.2.3/sse.js" {}
+                script src="https://unpkg.com/htmx-ext-json-enc@2.0.1/json-enc.js" {}
                 script src="https://unpkg.com/hyperscript.org@0.9.13" {}
 
                 script src="https://unpkg.com/@tailwindcss/browser@4" {}

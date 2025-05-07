@@ -6,12 +6,14 @@ impl From<super::Error> for StatusCode {
             super::Error::NotFound(_) => StatusCode::NOT_FOUND,
             super::Error::NotMember => StatusCode::FORBIDDEN,
             super::Error::AlreadyExists => StatusCode::CONFLICT,
-            super::Error::NotEnoughMembers(_) | super::Error::UnsupportedStatus => {
-                StatusCode::BAD_REQUEST
-            }
-            super::Error::NotCreated | super::Error::NotDeleted | super::Error::_MongoDB(_) => {
-                StatusCode::INTERNAL_SERVER_ERROR
-            }
+            super::Error::NotEnoughMembers(_)
+            | super::Error::MissingName
+            | super::Error::NonExistingUser(_)
+            | super::Error::UnsupportedStatus => StatusCode::BAD_REQUEST,
+            super::Error::NotCreated
+            | super::Error::NotDeleted
+            | super::Error::_User(_)
+            | super::Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -43,7 +45,7 @@ pub(super) mod pages {
 
 pub(super) mod api {
     use axum::{
-        Extension, Form,
+        Extension, Json,
         extract::{Path, State},
         response::IntoResponse,
     };
@@ -68,26 +70,42 @@ pub(super) mod api {
     }
 
     #[derive(Deserialize)]
-    #[serde(untagged, rename_all = "snake_case")]
+    #[serde(tag = "kind", rename_all = "snake_case")]
     pub enum CreateParams {
-        Chat {
-            sub: user::Sub,
-        },
-        Group {
+        Chat { sub: user::Sub },
+        Group(CreateGroupParams),
+    }
+
+    // This enum is needed to match the case when no users were selected
+    // which results in a single value and deserialization into Vec is not possible
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    pub enum CreateGroupParams {
+        Valid {
             name: String,
             members: Vec<user::Sub>,
         },
+        Invalid {
+            name: String,
+            members: user::Sub,
+        },
     }
 
+    #[axum::debug_handler]
     pub async fn create(
         Extension(auth_user): Extension<auth::User>,
         talk_service: State<talk::Service>,
-        Form(params): Form<CreateParams>,
+        Json(params): Json<CreateParams>,
     ) -> crate::Result<Markup> {
         let auth_sub = auth_user.sub();
         let talk = match params {
             CreateParams::Chat { sub } => talk_service.create_chat(auth_sub, &sub).await,
-            CreateParams::Group { name, members } => {
+            CreateParams::Group(params) => {
+                let (name, members) = match params {
+                    CreateGroupParams::Valid { name, members } => (name, members),
+                    CreateGroupParams::Invalid { name, members } => (name, vec![members]),
+                };
+
                 talk_service.create_group(auth_sub, &name, &members).await
             }
         }?;

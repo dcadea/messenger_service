@@ -73,8 +73,10 @@ impl Render for StartTalk<'_> {
             form .float-right
                 hx-post="/api/talks" // TODO: hx-get when chat exists
                 hx-target=(TALK_WINDOW_TARGET)
+                hx-ext="json-enc"
             {
                 input type="hidden" name="type" value="chat" {}
+
                 input type="hidden" name="sub" value=(self.0) {}
                 input ."px-2 py-1 text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-xs focus:outline-none"
                     type="submit"

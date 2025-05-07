@@ -139,8 +139,20 @@ impl TalkService for TalkServiceImpl {
     ) -> super::Result<TalkDto> {
         assert!(members.contains(auth_sub));
 
+        if name.is_empty() {
+            return Err(talk::Error::MissingName);
+        }
+
         if members.len() < 3 {
             return Err(talk::Error::NotEnoughMembers(members.len()));
+        }
+
+        for m in members {
+            let exists = self.user_service.exists(m).await?;
+
+            if !exists {
+                return Err(talk::Error::NonExistingUser(m.clone()));
+            }
         }
 
         let talk = Talk::new(Details::Group {

@@ -61,7 +61,9 @@ impl Render for TalkWindow<'_> {
                         header ."text-center mb-4"{
                             h2.text-2xl { "Groups" }
                         }
-                        a hx-get="/templates/talks/group/create"
+
+                        a ."cursor-pointer"
+                            hx-get="/templates/talks/group/create"
                             hx-target=(TALK_WINDOW_TARGET) { "Create group" }
                     },
                 }
@@ -104,10 +106,15 @@ struct Header<'a>(&'a TalkDto);
 
 impl Render for Header<'_> {
     fn render(&self) -> Markup {
+        let back_url = match self.0.details() {
+            DetailsDto::Chat { .. } => "/tabs/chats",
+            DetailsDto::Group => "/tabs/groups",
+        };
+
         html! {
             header #recipient-header ."flex justify-between items-center" {
                 a ."cursor-pointer border-2 border-red-500 text-red-500 px-4 py-2 rounded-2xl mr-4"
-                    hx-get="/tabs/chats"
+                    hx-get=(back_url)
                     hx-target="#tabs"
                     hx-swap="innerHTML" { "X" }
                 ."flex text-2xl" {
@@ -234,12 +241,32 @@ impl<'a> CreateGroupForm<'a> {
 impl Render for CreateGroupForm<'_> {
     fn render(&self) -> Markup {
         html! {
-            form hx-post="/api/talks" {
-                input type="text" name="name" placeholder="Group name" {}
-                input type="hidden" name="owner" value=(self.auth_user.sub()) {}
-                input type="checkbox" name="members" value="id_1" { "Valera" }
-                input type="checkbox" name="members" value="id_2" { "Jora" }
-                input type="checkbox" name="members" value="id_3" { "Igor" }
+            header ."text-center mb-4"{
+                h2.text-2xl { "Create group" }
+            }
+
+            form hx-post="/api/talks"
+                hx-ext="json-enc" {
+                input type="hidden" name="kind" value="group" {}
+                input ."mb-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none"
+                    type="text" name="name" placeholder="Group name" {}
+
+                fieldset {
+                    legend { "Select at least two members" }
+                    input type="hidden" name="members" value=(self.auth_user.sub()) {}
+                    label {
+                        input type="checkbox" name="members" value="id_1" {}
+                        "Valera"
+                    }
+                    label {
+                        input type="checkbox" name="members" value="id_2" {}
+                        "Jora"
+                    }
+                    label {
+                        input type="checkbox" name="members" value="id_3" {}
+                        "Igor"
+                    }
+                }
                 input hx-disabled-elt="this" type="submit" value="Create" {}
             }
         }

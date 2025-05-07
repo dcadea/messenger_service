@@ -14,6 +14,8 @@ pub trait UserService {
 
     async fn find_one(&self, sub: &Sub) -> super::Result<UserInfo>;
 
+    async fn exists(&self, sub: &Sub) -> super::Result<bool>;
+
     async fn search(&self, nickname: &str, auth_user: &auth::User) -> super::Result<Vec<UserInfo>>;
 
     async fn notify_online(&self, sub: &Sub);
@@ -61,6 +63,14 @@ impl UserService for UserServiceImpl {
             let user_info = self.repo.find_by_sub(sub).await?.into();
             self.cache(&user_info).await;
             Ok(user_info)
+        }
+    }
+
+    async fn exists(&self, sub: &Sub) -> super::Result<bool> {
+        match self.find_one(sub).await {
+            Ok(_) => Ok(true),
+            Err(super::Error::NotFound(_)) => Ok(false),
+            Err(e) => Err(e),
         }
     }
 
