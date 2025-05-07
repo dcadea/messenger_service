@@ -2,7 +2,7 @@ use std::env;
 use std::fmt::{Display, Formatter};
 use std::time::Duration;
 
-use log::{debug, error, warn};
+use log::{error, trace, warn};
 use messenger_service::Raw;
 use redis::{AsyncCommands, JsonAsyncCommands};
 use serde::Serialize;
@@ -20,7 +20,7 @@ impl Redis {
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
-        debug!("SET -> {key:?}");
+        trace!("SET -> {key:?}");
         let mut con = self.con.clone();
         if let Err(e) = con.set::<_, _, ()>(&key, value).await {
             error!("Failed to SET on {key:?}. Reason: {e:?}");
@@ -32,7 +32,7 @@ impl Redis {
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
-        debug!("SET_EX -> {key:?}");
+        trace!("SET_EX -> {key:?}");
         let mut con = self.con.clone();
         if let Err(e) = con.set_ex::<_, _, ()>(&key, value, key.ttl()).await {
             error!("Failed to SET_EX on {key:?}. Reason: {e:?}");
@@ -44,7 +44,7 @@ impl Redis {
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
-        debug!("SET_EX -> {key:?}");
+        trace!("SET_EX -> {key:?}");
         let mut con = self.con.clone();
         if let Err(e) = con.set_ex::<_, _, ()>(&key, value, ttl.as_secs()).await {
             error!("Failed to SET_EX on {key:?}. Reason: {e:?}");
@@ -55,7 +55,7 @@ impl Redis {
     where
         V: Send + Sync + Serialize,
     {
-        debug!("JSON_SET_EX -> {key:?}");
+        trace!("JSON_SET_EX -> {key:?}");
         let mut con = self.con.clone();
         if let Err(e) = con.json_set::<_, _, _, ()>(&key, "$", &value).await {
             error!("Failed to JSON_SET_EX on {key:?}. Reason: {e:?}");
@@ -68,7 +68,7 @@ impl Redis {
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
-        debug!("SADD -> {key:?}");
+        trace!("SADD -> {key:?}");
         let mut con = self.con.clone();
         if let Err(e) = con.sadd::<_, _, ()>(&key, value).await {
             error!("Failed to SADD on {key:?}. Reason: {e:?}");
@@ -79,7 +79,7 @@ impl Redis {
     where
         V: redis::ToRedisArgs + Send + Sync,
     {
-        debug!("SREM -> {key:?}");
+        trace!("SREM -> {key:?}");
         let mut con = self.con.clone();
         if let Err(e) = con.srem::<_, _, ()>(&key, value).await {
             error!("Failed to SREM on {key:?}. Reason: {e:?}");
@@ -94,7 +94,7 @@ impl Redis {
         match con.get::<_, Option<V>>(&key).await {
             Ok(value) => {
                 let status = if value.is_some() { "Hit" } else { "Miss" };
-                debug!("GET ({status}) -> {key:?}");
+                trace!("GET ({status}) -> {key:?}");
                 value
             }
             Err(e) => {
@@ -113,7 +113,7 @@ impl Redis {
             Ok(result) => {
                 let value = result.first().cloned();
                 let status = if value.is_some() { "Hit" } else { "Miss" };
-                debug!("JSON_GET ({status}) -> {key:?}");
+                trace!("JSON_GET ({status}) -> {key:?}");
                 value
             }
             Err(e) => {
@@ -131,7 +131,7 @@ impl Redis {
         match con.get_del::<_, Option<V>>(&key).await {
             Ok(value) => {
                 let status = if value.is_some() { "Hit" } else { "Miss" };
-                debug!("GETDEL ({status}) -> {key:?}");
+                trace!("GETDEL ({status}) -> {key:?}");
                 value
             }
             Err(e) => {
@@ -146,7 +146,7 @@ impl Redis {
         V: redis::FromRedisValue + IntoIterator,
         V::Item: redis::FromRedisValue + PartialEq,
     {
-        debug!("SMEMBERS -> {key:?}");
+        trace!("SMEMBERS -> {key:?}");
         let mut con = self.con.clone();
         match con.smembers::<_, Option<V>>(&key).await {
             Ok(members) => members,
@@ -158,7 +158,7 @@ impl Redis {
     }
 
     pub async fn expire(&self, key: Key<'_>) {
-        debug!("EXPIRE -> {key:?}");
+        trace!("EXPIRE -> {key:?}");
         let mut con = self.con.clone();
         match i64::try_from(key.ttl()) {
             Ok(ttl) => {
