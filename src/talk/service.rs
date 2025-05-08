@@ -300,7 +300,13 @@ impl TalkServiceImpl {
                     DetailsDto::Chat { sender, recipient },
                 )
             }
-            Details::Group { name, picture, .. } => (name, picture, DetailsDto::Group),
+            Details::Group { name, picture, .. } => (
+                name,
+                picture,
+                DetailsDto::Group {
+                    sender: auth_sub.clone(),
+                },
+            ),
         };
 
         TalkDto::new(

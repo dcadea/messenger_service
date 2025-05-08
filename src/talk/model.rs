@@ -105,5 +105,7 @@ pub enum DetailsDto {
         sender: user::Sub,
         recipient: user::Sub,
     },
-    Group,
+    Group {
+        sender: user::Sub,
+    },
 }

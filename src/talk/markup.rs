@@ -108,7 +108,7 @@ impl Render for Header<'_> {
     fn render(&self) -> Markup {
         let back_url = match self.0.details() {
             DetailsDto::Chat { .. } => "/tabs/chats",
-            DetailsDto::Group => "/tabs/groups",
+            DetailsDto::Group { .. } => "/tabs/groups",
         };
 
         html! {
@@ -216,11 +216,11 @@ impl Render for TalkDto {
                 {
                     ({
                         let sender = match &self.details() {
-                            DetailsDto::Chat{sender, ..} => Some(sender),
-                            DetailsDto::Group => None,
+                            DetailsDto::Chat { sender, .. }
+                            | DetailsDto::Group { sender } => sender,
                         };
 
-                        message::markup::last_message(self.last_message(), self.id(), sender)
+                        message::markup::last_message(self.last_message(), self.id(), Some(sender))
                     })
                 }
             }
@@ -397,7 +397,6 @@ mod test {
                         div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4f" hx-target="#lm-680d0fa361f9e3c2a1b25c4f" {
                             div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4f" {
                                 "LGTM!"
-                                i class="fa-solid fa-envelope text-green-600 ml-2" {}
                             }
                         }
                     }
@@ -407,6 +406,24 @@ mod test {
                         div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4g" hx-target="#lm-680d0fa361f9e3c2a1b25c4g" {
                             div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4g" {
                                 "What's up?"
+                            }
+                        }
+                    }
+                    div class="talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" id="t-680d0fa361f9e3c2a1b25c4h" hx-get="/talks/680d0fa361f9e3c2a1b25c4h" hx-target="#talk-window" hx-swap="innerHTML" {
+                        img class="w-8 h-8 rounded-full" src="talk3://picture" alt="Talk avatar" {}
+                        span class="talk-recipient font-bold mx-2" { "Red bull" }
+                        div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4h" hx-target="#lm-680d0fa361f9e3c2a1b25c4h" {
+                            div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4h" {
+                                "High energy!"
+                            }
+                        }
+                    }
+                    div class="talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" id="t-680d0fa361f9e3c2a1b25c4k" hx-get="/talks/680d0fa361f9e3c2a1b25c4k" hx-target="#talk-window" hx-swap="innerHTML" {
+                        img class="w-8 h-8 rounded-full" src="talk4://picture" alt="Talk avatar" {}
+                        span class="talk-recipient font-bold mx-2" { "Tuners IO" }
+                        div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4k" hx-target="#lm-680d0fa361f9e3c2a1b25c4k" {
+                            div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4k" {
+                                "1000 HP"
                                 i class="fa-solid fa-envelope text-green-600 ml-2" {}
                             }
                         }
@@ -421,11 +438,13 @@ mod test {
                 talk::Id("680d0fa361f9e3c2a1b25c4f".into()),
                 "talk1://picture",
                 "Que pasa?",
-                DetailsDto::Group,
+                DetailsDto::Group {
+                    sender: auth_user.sub().clone(),
+                },
                 Some(LastMessage::new(
                     message::Id::random(),
                     "LGTM!",
-                    user::Sub("github|jora".into()),
+                    auth_user.sub().clone(),
                     chrono::Utc::now().timestamp(),
                     true,
                 )),
@@ -434,13 +453,45 @@ mod test {
                 talk::Id("680d0fa361f9e3c2a1b25c4g".into()),
                 "talk2://picture",
                 "Wigas",
-                DetailsDto::Group,
+                DetailsDto::Group {
+                    sender: auth_user.sub().clone(),
+                },
                 Some(LastMessage::new(
                     message::Id::random(),
                     "What's up?",
                     user::Sub("github|igor".into()),
                     chrono::Utc::now().timestamp(),
                     true,
+                )),
+            ),
+            TalkDto::new(
+                talk::Id("680d0fa361f9e3c2a1b25c4h".into()),
+                "talk3://picture",
+                "Red bull",
+                DetailsDto::Group {
+                    sender: auth_user.sub().clone(),
+                },
+                Some(LastMessage::new(
+                    message::Id::random(),
+                    "High energy!",
+                    auth_user.sub().clone(),
+                    chrono::Utc::now().timestamp(),
+                    false,
+                )),
+            ),
+            TalkDto::new(
+                talk::Id("680d0fa361f9e3c2a1b25c4k".into()),
+                "talk4://picture",
+                "Tuners IO",
+                DetailsDto::Group {
+                    sender: auth_user.sub().clone(),
+                },
+                Some(LastMessage::new(
+                    message::Id::random(),
+                    "1000 HP",
+                    user::Sub("github|radu".into()),
+                    chrono::Utc::now().timestamp(),
+                    false,
                 )),
             ),
         ];
