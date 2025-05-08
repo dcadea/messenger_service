@@ -228,21 +228,25 @@ mod test {
 
     #[test]
     fn should_render_head() {
-        let expected = concat!(
-            "<head>",
-            r#"<meta charset="utf-8"></meta>"#,
-            "<title>AWG Messenger</title>",
-            r#"<script src="https://unpkg.com/htmx.org@2.0.4"></script>"#,
-            r#"<script src="https://unpkg.com/htmx-ext-ws@2.0.3/ws.js"></script>"#,
-            r#"<script src="https://unpkg.com/htmx-ext-sse@2.2.3/sse.js"></script>"#,
-            r#"<script src="https://unpkg.com/hyperscript.org@0.9.13"></script>"#,
-            r#"<script src="https://unpkg.com/@tailwindcss/browser@4"></script>"#,
-            r#"<script src="/static/scripts.js"></script>"#,
-            r#"<link rel="stylesheet" href="/static/styles.css"></link>"#,
-            r#"<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"></link>"#,
-            r#"<meta name="htmx-config" content="{&quot;responseHandling&quot;: [{&quot;code&quot;:&quot;.*&quot;, &quot;swap&quot;: true}]}"></meta>"#,
-            "</head>"
-        );
+        let expected = html! {
+            head {
+                meta charset="utf-8" {}
+                title { "AWG Messenger" }
+                script src="https://unpkg.com/htmx.org@2.0.4" {}
+                script src="https://unpkg.com/htmx-ext-ws@2.0.3/ws.js" {}
+                script src="https://unpkg.com/htmx-ext-sse@2.2.3/sse.js" {}
+                script src="https://unpkg.com/htmx-ext-json-enc@2.0.1/json-enc.js" {}
+                script src="https://unpkg.com/hyperscript.org@0.9.13" {}
+
+                script src="https://unpkg.com/@tailwindcss/browser@4" {}
+                script src="/static/scripts.js" {}
+
+                link rel="stylesheet" href="/static/styles.css" {}
+                link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" {}
+
+                meta name="htmx-config" content=r#"{"responseHandling": [{"code":".*", "swap": true}]}"# {}
+            }
+        }.into_string();
 
         let actual = Head("AWG Messenger").render().into_string();
 
@@ -288,37 +292,46 @@ mod test {
 
     #[test]
     fn should_render_base() {
-        let expected = concat!(
-            "<!DOCTYPE html>",
-            "<html>",
-            "<head>",
-            r#"<meta charset="utf-8"></meta>"#,
-            "<title>AWG Messenger</title>",
-            r#"<script src="https://unpkg.com/htmx.org@2.0.4"></script>"#,
-            r#"<script src="https://unpkg.com/htmx-ext-ws@2.0.3/ws.js"></script>"#,
-            r#"<script src="https://unpkg.com/htmx-ext-sse@2.2.3/sse.js"></script>"#,
-            r#"<script src="https://unpkg.com/hyperscript.org@0.9.13"></script>"#,
-            r#"<script src="https://unpkg.com/@tailwindcss/browser@4"></script>"#,
-            r#"<script src="/static/scripts.js"></script>"#,
-            r#"<link rel="stylesheet" href="/static/styles.css"></link>"#,
-            r#"<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"></link>"#,
-            r#"<meta name="htmx-config" content="{&quot;responseHandling&quot;: [{&quot;code&quot;:&quot;.*&quot;, &quot;swap&quot;: true}]}"></meta>"#,
-            "</head>",
-            r#"<body class="h-screen bg-black flex items-center justify-center">"#,
-            r#"<div class="max-w-lg h-4/5 md:w-4/5 w-full bg-white rounded-2xl overflow-hidden" id="screen">"#,
-            r#"<div class="flex flex-col h-screen">"#,
-            r#"<header class="bg-gray-800 text-white p-4">"#,
-            r#"<h1 class="text-2xl font-bold">AWG Messenger</h1>"#,
-            "</header>",
-            r#"<main class="flex-1 overflow-y-auto">"#,
-            r#"<div class="p-4"><p>Welcome to AWG Messenger!</p></div>"#,
-            "</main>",
-            r#"<footer class="bg-gray-800 text-white p-4"><p>2023 AWG Messenger</p></footer>"#,
-            "</div>",
-            "</div>",
-            "</body>",
-            "</html>"
-        );
+        let expected = html! {
+            (DOCTYPE)
+            html {
+                head {
+                    meta charset="utf-8" {}
+                    title { "AWG Messenger" }
+                    script src="https://unpkg.com/htmx.org@2.0.4" {}
+                    script src="https://unpkg.com/htmx-ext-ws@2.0.3/ws.js" {}
+                    script src="https://unpkg.com/htmx-ext-sse@2.2.3/sse.js" {}
+                    script src="https://unpkg.com/htmx-ext-json-enc@2.0.1/json-enc.js" {}
+                    script src="https://unpkg.com/hyperscript.org@0.9.13" {}
+
+                    script src="https://unpkg.com/@tailwindcss/browser@4" {}
+                    script src="/static/scripts.js" {}
+
+                    link rel="stylesheet" href="/static/styles.css" {}
+                    link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" {}
+
+                    meta name="htmx-config" content=r#"{"responseHandling": [{"code":".*", "swap": true}]}"# {}
+                }
+
+                body class="h-screen bg-black flex items-center justify-center" {
+                    div class="max-w-lg h-4/5 md:w-4/5 w-full bg-white rounded-2xl overflow-hidden" id="screen" {
+                        div class="flex flex-col h-screen" {
+                            header class="bg-gray-800 text-white p-4" {
+                                h1 class="text-2xl font-bold" { "AWG Messenger" }
+                            }
+                            main class="flex-1 overflow-y-auto" {
+                                div class="p-4" {
+                                    p { "Welcome to AWG Messenger!" }
+                                }
+                            }
+                            footer class="bg-gray-800 text-white p-4" {
+                                p { "2023 AWG Messenger" }
+                            }
+                        }
+                    }
+                }
+            }
+        }.into_string();
 
         let actual = base(&Wrappable::new(html! {
             ."flex flex-col h-screen" {

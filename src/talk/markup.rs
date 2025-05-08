@@ -382,33 +382,38 @@ mod test {
 
     #[test]
     fn should_render_group_talk_window() {
-        let expected = concat!(
-            r#"<div class="flex flex-col h-full" id="talk-window">"#,
-            r#"<header class="text-center mb-4">"#,
-            r#"<h2 class="text-2xl">Groups</h2>"#,
-            "</header>",
-            r##"<div class="flex flex-col space-y-2 h-full overflow-y-auto" id="talk-list" sse-swap="newTalk" hx-swap="beforeend" hx-target="#talk-list">"##,
-            r##"<div class="talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" id="t-680d0fa361f9e3c2a1b25c4f" hx-get="/talks/680d0fa361f9e3c2a1b25c4f" hx-target="#talk-window" hx-swap="innerHTML">"##,
-            r#"<img class="w-8 h-8 rounded-full" src="talk1://picture" alt="Talk avatar"></img>"#,
-            r#"<span class="talk-recipient font-bold mx-2">Que pasa?</span>"#,
-            r##"<div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4f" hx-target="#lm-680d0fa361f9e3c2a1b25c4f">"##,
-            r#"<div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4f">LGTM!"#,
-            r#"<i class="fa-solid fa-envelope text-green-600 ml-2"></i>"#,
-            "</div>",
-            "</div>",
-            "</div>",
-            r##"<div class="talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" id="t-680d0fa361f9e3c2a1b25c4g" hx-get="/talks/680d0fa361f9e3c2a1b25c4g" hx-target="#talk-window" hx-swap="innerHTML">"##,
-            r#"<img class="w-8 h-8 rounded-full" src="talk2://picture" alt="Talk avatar"></img>"#,
-            r#"<span class="talk-recipient font-bold mx-2">Wigas</span>"#,
-            r##"<div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4g" hx-target="#lm-680d0fa361f9e3c2a1b25c4g">"##,
-            r#"<div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4g">What's up?"#,
-            r#"<i class="fa-solid fa-envelope text-green-600 ml-2"></i>"#,
-            "</div>",
-            "</div>",
-            "</div>",
-            "</div>",
-            "</div>",
-        );
+        let expected = html! {
+            div class="flex flex-col h-full" id="talk-window" {
+                header class="text-center mb-4" {
+                    h2 class="text-2xl" { "Groups" }
+                }
+                a class="cursor-pointer" hx-get="/templates/talks/group/create" hx-target="#talk-window" {
+                        "Create group"
+                }
+                div class="flex flex-col space-y-2 h-full overflow-y-auto" id="talk-list" sse-swap="newTalk" hx-swap="beforeend" hx-target="#talk-list" {
+                    div class="talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" id="t-680d0fa361f9e3c2a1b25c4f" hx-get="/talks/680d0fa361f9e3c2a1b25c4f" hx-target="#talk-window" hx-swap="innerHTML" {
+                        img class="w-8 h-8 rounded-full" src="talk1://picture" alt="Talk avatar" {}
+                        span class="talk-recipient font-bold mx-2" { "Que pasa?" }
+                        div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4f" hx-target="#lm-680d0fa361f9e3c2a1b25c4f" {
+                            div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4f" {
+                                "LGTM!"
+                                i class="fa-solid fa-envelope text-green-600 ml-2" {}
+                            }
+                        }
+                    }
+                    div class="talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" id="t-680d0fa361f9e3c2a1b25c4g" hx-get="/talks/680d0fa361f9e3c2a1b25c4g" hx-target="#talk-window" hx-swap="innerHTML" {
+                        img class="w-8 h-8 rounded-full" src="talk2://picture" alt="Talk avatar" {}
+                        span class="talk-recipient font-bold mx-2" { "Wigas" }
+                        div class="flex-grow text-right truncate" sse-swap="newMessage:680d0fa361f9e3c2a1b25c4g" hx-target="#lm-680d0fa361f9e3c2a1b25c4g" {
+                            div class="last-message text-sm text-gray-500" id="lm-680d0fa361f9e3c2a1b25c4g" {
+                                "What's up?"
+                                i class="fa-solid fa-envelope text-green-600 ml-2" {}
+                            }
+                        }
+                    }
+                }
+            }
+        }.into_string();
 
         let auth_user = auth::User::new(user::Sub("jora".into()), "jora", "Jora", "jora://picture");
         let talks = [

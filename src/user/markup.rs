@@ -254,13 +254,19 @@ mod test {
 
     #[test]
     fn should_render_start_talk() {
-        let expected = concat!(
-            r##"<form class="float-right" hx-post="/api/talks" hx-target="#talk-window">"##,
-            r#"<input type="hidden" name="type" value="chat"></input>"#,
-            r#"<input type="hidden" name="sub" value="valera"></input>"#,
-            r#"<input class="px-2 py-1 text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-xs focus:outline-none" type="submit" value="Start talk"></input>"#,
-            "</form>"
-        );
+        let expected = html! {
+            form class="float-right"
+                hx-post="/api/talks"
+                hx-target="#talk-window"
+                hx-ext="json-enc"
+            {
+                input type="hidden" name="type" value="chat" {}
+                input type="hidden" name="sub" value="valera" {}
+                input class="px-2 py-1 text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-xs focus:outline-none"
+                    type="submit"
+                    value="Start talk" {}
+            }
+        }.into_string();
 
         let actual = StartTalk(&user::Sub("valera".into()))
             .render()
@@ -285,11 +291,12 @@ mod test {
 
     #[test]
     fn should_render_empty_search_result() {
-        let expected = concat!(
-            r#"<ul class="absolute w-full bg-white border border-gray-300 rounded-md shadow-lg">"#,
-            r#"<li class="px-3 py-2">No users found</li>"#,
-            "</ul>"
-        );
+        let expected = html! {
+            ul class="absolute w-full bg-white border border-gray-300 rounded-md shadow-lg" {
+                li class="px-3 py-2" { "No users found" }
+            }
+        }
+        .into_string();
 
         let actual = SearchResult::new(&[], &[]).render().into_string();
 
@@ -298,32 +305,38 @@ mod test {
 
     #[test]
     fn should_render_search_result() {
-        let expected = concat!(
-            r#"<ul class="absolute w-full bg-white border border-gray-300 rounded-md shadow-lg">"#,
-            r#"<li class="px-3 py-2">"#,
-            r#"<img class="w-6 h-6 rounded-full float-left" src="jora" alt="User avatar"></img>"#,
-            r#"<strong class="px-3">Jora</strong>jora"#,
-            r##"<form class="float-right" hx-post="/api/talks" hx-target="#talk-window">"##,
-            r#"<input type="hidden" name="type" value="chat"></input>"#,
-            r#"<input type="hidden" name="sub" value="jora"></input>"#,
-            r#"<input class="px-2 py-1 text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-xs focus:outline-none" type="submit" value="Start talk"></input>"#,
-            "</form>",
-            "</li>",
-            r#"<li class="px-3 py-2">"#,
-            r#"<img class="w-6 h-6 rounded-full float-left" src="radu" alt="User avatar"></img>"#,
-            r#"<strong class="px-3">Radu</strong>radu"#,
-            r#"<form class="float-right" hx-post="/api/contacts" hx-target="this" hx-swap="outerHTML">"#,
-            r#"<input type="hidden" name="sub" value="radu"></input>"#,
-            r#"<input class="px-2 py-1 text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-xs focus:outline-none" type="submit" value="Add contact"></input>"#,
-            "</form>",
-            "</li>",
-            r#"<li class="px-3 py-2">"#,
-            r#"<img class="w-6 h-6 rounded-full float-left" src="igor" alt="User avatar"></img>"#,
-            r#"<strong class="px-3">Igor</strong>igor"#,
-            r#"<span class="float-right px-2 py-1 text-white font-medium rounded-lg text-xs focus:outline-none bg-red-500">Rejected</span>"#,
-            "</li>",
-            "</ul>"
-        );
+        let expected = html! {
+            ul class="absolute w-full bg-white border border-gray-300 rounded-md shadow-lg" {
+                li class="px-3 py-2" {
+                    img class="w-6 h-6 rounded-full float-left" src="jora" alt="User avatar" {}
+                    strong class="px-3" {"Jora"} "jora"
+                    form class="float-right" hx-post="/api/talks" hx-target="#talk-window" hx-ext="json-enc" {
+                        input type="hidden" name="type" value="chat" {}
+                        input type="hidden" name="sub" value="jora" {}
+                        input class="px-2 py-1 text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-xs focus:outline-none"
+                            type="submit"
+                            value="Start talk" {}
+                    }
+                }
+                li class="px-3 py-2" {
+                    img class="w-6 h-6 rounded-full float-left" src="radu" alt="User avatar" {}
+                    strong class="px-3" {"Radu"} "radu"
+                    form class="float-right" hx-post="/api/contacts" hx-target="this" hx-swap="outerHTML" {
+                        input type="hidden" name="sub" value="radu" {}
+                        input class="px-2 py-1 text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-xs focus:outline-none"
+                            type="submit"
+                            value="Add contact" {}
+                    }
+                }
+                li class="px-3 py-2" {
+                    img class="w-6 h-6 rounded-full float-left" src="igor" alt="User avatar" {}
+                    strong class="px-3" {"Igor"} "igor"
+                    span class="float-right px-2 py-1 text-white font-medium rounded-lg text-xs focus:outline-none bg-red-500" {
+                        "Rejected"
+                    }
+                }
+            }
+        }.into_string();
 
         let contacts = [
             ContactDto::new(
