@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use maud::{Markup, Render, html};
 
+use crate::contact::model::ContactDto;
 use crate::markup::IdExt;
 use crate::message::markup::{MESSAGE_INPUT_TARGET, MESSAGE_LIST_ID, MESSAGE_LIST_TARGET};
 use crate::talk::model::DetailsDto;
@@ -231,11 +232,15 @@ impl Render for TalkDto {
 
 pub struct CreateGroupForm<'a> {
     auth_user: &'a auth::User,
+    contacts: &'a [ContactDto],
 }
 
 impl<'a> CreateGroupForm<'a> {
-    pub fn new(auth_user: &'a auth::User) -> Self {
-        Self { auth_user }
+    pub fn new(auth_user: &'a auth::User, contacts: &'a [ContactDto]) -> Self {
+        Self {
+            auth_user,
+            contacts,
+        }
     }
 }
 
@@ -256,25 +261,15 @@ impl Render for CreateGroupForm<'_> {
                 fieldset ."sticky flex flex-col overflow-auto"
                     ."space-y-2 border border-gray-300 rounded-md px-3 pb-3 h-3/4 mb-4"
                 {
-                    legend .fieldset-legend { "Select at least two members" }
+                    legend { "Select at least two members" }
                     input type="hidden" name="members" value=(self.auth_user.sub()) {}
-                    label ."flex items-center justify-between px-3 py-2"
-                        ."rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer"
-                    {
-                        "Valera"
-                        input type="checkbox" name="members" value="id_1" {}
-                    }
-                    label ."flex items-center justify-between px-3 py-2"
-                        ."rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer"
-                    {
-                        "Jora"
-                        input type="checkbox" name="members" value="id_2" {}
-                    }
-                    label ."flex items-center justify-between px-3 py-2"
-                        ."rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer"
-                    {
-                        "Igor"
-                        input type="checkbox" name="members" value="id_3" {}
+                    @for c in self.contacts {
+                        label ."flex items-center justify-between px-3 py-2"
+                            ."rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer"
+                        {
+                            (c.recipient()) // TODO: display avatar and username
+                            input type="checkbox" name="members" value=(c.recipient()) {}
+                        }
                     }
                 }
                 input type="submit" value="Create"

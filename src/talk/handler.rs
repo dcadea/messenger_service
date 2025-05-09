@@ -125,12 +125,19 @@ pub(super) mod api {
 }
 
 pub(super) mod templates {
-    use axum::Extension;
+    use axum::{Extension, extract::State};
     use maud::{Markup, Render};
 
-    use crate::{auth, talk};
+    use crate::{auth, contact, talk};
 
-    pub async fn create_group(auth_user: Extension<auth::User>) -> Markup {
-        talk::markup::CreateGroupForm::new(&auth_user).render()
+    pub async fn create_group(
+        auth_user: Extension<auth::User>,
+        contact_service: State<contact::Service>,
+    ) -> crate::Result<Markup> {
+        let contacts = contact_service
+            .find_by_sub_and_status(auth_user.sub(), &contact::Status::Accepted)
+            .await?;
+
+        Ok(talk::markup::CreateGroupForm::new(&auth_user, &contacts).render())
     }
 }
