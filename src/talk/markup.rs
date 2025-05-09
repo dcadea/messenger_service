@@ -62,7 +62,8 @@ impl Render for TalkWindow<'_> {
                             h2.text-2xl { "Groups" }
                         }
 
-                        a ."cursor-pointer"
+                        a ."text-center text-white font-bold cursor-pointer"
+                            ."bg-blue-500 hover:bg-blue-400 py-2 px-4 rounded"
                             hx-get="/templates/talks/group/create"
                             hx-target=(TALK_WINDOW_TARGET) { "Create group" }
                     },
@@ -245,29 +246,41 @@ impl Render for CreateGroupForm<'_> {
                 h2.text-2xl { "Create group" }
             }
 
-            form hx-post="/api/talks"
+            form ."flex flex-col h-full"
+                hx-post="/api/talks"
                 hx-ext="json-enc" {
                 input type="hidden" name="kind" value="group" {}
                 input ."mb-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none"
                     type="text" name="name" placeholder="Group name" {}
 
-                fieldset {
-                    legend { "Select at least two members" }
+                fieldset ."sticky flex flex-col overflow-auto"
+                    ."space-y-2 border border-gray-300 rounded-md px-3 pb-3 h-3/4 mb-4"
+                {
+                    legend .fieldset-legend { "Select at least two members" }
                     input type="hidden" name="members" value=(self.auth_user.sub()) {}
-                    label {
-                        input type="checkbox" name="members" value="id_1" {}
+                    label ."flex items-center justify-between px-3 py-2"
+                        ."rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer"
+                    {
                         "Valera"
+                        input type="checkbox" name="members" value="id_1" {}
                     }
-                    label {
-                        input type="checkbox" name="members" value="id_2" {}
+                    label ."flex items-center justify-between px-3 py-2"
+                        ."rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer"
+                    {
                         "Jora"
+                        input type="checkbox" name="members" value="id_2" {}
                     }
-                    label {
-                        input type="checkbox" name="members" value="id_3" {}
+                    label ."flex items-center justify-between px-3 py-2"
+                        ."rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer"
+                    {
                         "Igor"
+                        input type="checkbox" name="members" value="id_3" {}
                     }
                 }
-                input hx-disabled-elt="this" type="submit" value="Create" {}
+                input type="submit" value="Create"
+                    ."text-white px-4 py-2 rounded-md w-full"
+                    ."cursor-pointer bg-blue-600 hover:bg-blue-700"
+                    hx-disabled-elt="this" {}
             }
         }
     }
@@ -387,8 +400,10 @@ mod test {
                 header class="text-center mb-4" {
                     h2 class="text-2xl" { "Groups" }
                 }
-                a class="cursor-pointer" hx-get="/templates/talks/group/create" hx-target="#talk-window" {
-                        "Create group"
+                a class="text-center text-white font-bold cursor-pointer bg-blue-500 hover:bg-blue-400 py-2 px-4 rounded"
+                    hx-get="/templates/talks/group/create" hx-target="#talk-window"
+                {
+                    "Create group"
                 }
                 div class="flex flex-col space-y-2 h-full overflow-y-auto" id="talk-list" sse-swap="newTalk" hx-swap="beforeend" hx-target="#talk-list" {
                     div class="talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center" id="t-680d0fa361f9e3c2a1b25c4f" hx-get="/talks/680d0fa361f9e3c2a1b25c4f" hx-target="#talk-window" hx-swap="innerHTML" {

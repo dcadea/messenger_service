@@ -46,7 +46,7 @@ impl Render for Screen<'_> {
     fn render(&self) -> Markup {
         html! {
             #screen
-                ."max-w-lg h-4/5 md:w-4/5 w-full"
+                ."max-w-lg h-4/5 md:w-4/5 w-full min-h-[710px]"
                 ."bg-white rounded-2xl"
                 ."overflow-hidden"
             {
@@ -256,7 +256,7 @@ mod test {
     #[test]
     fn should_render_screen() {
         let expected = concat!(
-            r#"<div class="max-w-lg h-4/5 md:w-4/5 w-full bg-white rounded-2xl overflow-hidden" id="screen">"#,
+            r#"<div class="max-w-lg h-4/5 md:w-4/5 w-full min-h-[710px] bg-white rounded-2xl overflow-hidden" id="screen">"#,
             r#"<div class="flex flex-col h-screen">"#,
             r#"<header class="bg-gray-800 text-white p-4">"#,
             r#"<h1 class="text-2xl font-bold">AWG Messenger</h1>"#,
@@ -314,7 +314,7 @@ mod test {
                 }
 
                 body class="h-screen bg-black flex items-center justify-center" {
-                    div class="max-w-lg h-4/5 md:w-4/5 w-full bg-white rounded-2xl overflow-hidden" id="screen" {
+                    div class="max-w-lg h-4/5 md:w-4/5 w-full min-h-[710px] bg-white rounded-2xl overflow-hidden" id="screen" {
                         div class="flex flex-col h-screen" {
                             header class="bg-gray-800 text-white p-4" {
                                 h1 class="text-2xl font-bold" { "AWG Messenger" }
