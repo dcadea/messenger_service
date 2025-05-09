@@ -39,7 +39,7 @@ pub(super) mod pages {
             .find_by_id_and_sub(&id, auth_user.sub())
             .await?;
 
-        Ok(html! {(markup::ActiveTalk(&talk))})
+        Ok(html! {(markup::ActiveTalk(&auth_user, &talk))})
     }
 }
 
@@ -110,7 +110,7 @@ pub(super) mod api {
             }
         }?;
 
-        Ok(html! {(markup::ActiveTalk(&talk))})
+        Ok(html! {(markup::ActiveTalk(&auth_user, &talk))})
     }
 
     pub async fn delete(

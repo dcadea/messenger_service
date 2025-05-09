@@ -64,7 +64,8 @@ impl Render for TalkWindow<'_> {
                         }
 
                         a ."text-center text-white font-bold cursor-pointer"
-                            ."bg-blue-500 hover:bg-blue-400 py-2 px-4 rounded"
+                            ."bg-blue-500 hover:bg-blue-400 rounded"
+                            ."py-2 px-4 mb-4"
                             hx-get="/templates/talks/group/create"
                             hx-target=(TALK_WINDOW_TARGET) { "Create group" }
                     },
@@ -132,31 +133,31 @@ impl Render for Header<'_> {
     }
 }
 
-pub struct ActiveTalk<'a>(pub &'a TalkDto);
+pub struct ActiveTalk<'a>(pub &'a auth::User, pub &'a TalkDto);
 
 impl Render for ActiveTalk<'_> {
     fn render(&self) -> Markup {
         html! {
-            (Header(self.0))
+            (Header(self.1))
 
             #active-talk ."flex-grow overflow-auto mt-4 mb-4"
                 hx-ext="ws"
-                ws-connect={ "/ws/" (self.0.id()) }
+                ws-connect={ "/ws/" (self.1.id()) }
             {
                 div #(MESSAGE_LIST_ID) ."sticky flex flex-col-reverse overflow-auto h-full"
-                    hx-get={ "/api/messages?limit=20&talk_id=" (self.0.id()) }
+                    hx-get={ "/api/messages?limit=20&talk_id=" (self.1.id()) }
                     hx-trigger="load"
                     hx-target=(MESSAGE_LIST_TARGET) {}
             }
 
-            (message::markup::InputBlank(&self.0.id()))
-            (TalkControls(&self.0.id()))
+            (message::markup::InputBlank(self.1.id()))
+            (TalkControls(&self.0, self.1))
 
             div .hidden
                 hx-trigger="msg:afterUpdate from:body"
                 hx-target=(MESSAGE_INPUT_TARGET)
                 hx-swap="outerHTML"
-                hx-get={"/templates/messages/input/blank?talk_id=" (self.0.id())} {}
+                hx-get={"/templates/messages/input/blank?talk_id=" (self.1.id())} {}
         }
     }
 }
@@ -164,11 +165,16 @@ impl Render for ActiveTalk<'_> {
 const TALK_CONTROLS_ID: &str = "talk-controls";
 pub const TALK_CONTROLS_TARGET: &str = "#talk-controls";
 
-struct TalkControls<'a>(&'a talk::Id);
+struct TalkControls<'a>(&'a auth::User, &'a TalkDto);
 
 impl Render for TalkControls<'_> {
     fn render(&self) -> Markup {
         let controls_item_class = "text-lg py-3 cursor-pointer hover:bg-gray-300";
+
+        let can_delete = match self.1.details() {
+            DetailsDto::Chat { .. } => true,
+            DetailsDto::Group { owner, .. } => owner.eq(self.0.sub()),
+        };
 
         html! {
             div #(TALK_CONTROLS_ID) ."flex flex-row h-full w-full absolute top-0 left-0 invisible" {
@@ -177,8 +183,10 @@ impl Render for TalkControls<'_> {
 
                 div ."flex flex-col bg-white h-full w-1/3 py-4 text-center" {
                     div ."text-2xl py-3" { "Settings" }
-                    div .(controls_item_class)
-                        hx-delete={"/api/talks/" (self.0)} { "Delete talk" }
+                    @if can_delete {
+                        div .(controls_item_class)
+                            hx-delete={"/api/talks/" (self.1.id())} { "Delete talk" }
+                    }
                 }
             }
         }
@@ -219,7 +227,7 @@ impl Render for TalkDto {
                     ({
                         let sender = match &self.details() {
                             DetailsDto::Chat { sender, .. }
-                            | DetailsDto::Group { sender } => sender,
+                            | DetailsDto::Group { sender, .. } => sender,
                         };
 
                         message::markup::last_message(self.last_message(), self.id(), Some(sender))
@@ -250,6 +258,7 @@ impl Render for CreateGroupForm<'_> {
 
             form ."flex flex-col h-full"
                 hx-post="/api/talks"
+                hx-target=(TALK_WINDOW_TARGET)
                 hx-ext="json-enc" {
                 input type="hidden" name="kind" value="group" {}
                 input ."mb-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none"
@@ -451,6 +460,7 @@ mod test {
                 "talk1://picture",
                 "Que pasa?",
                 DetailsDto::Group {
+                    owner: auth_user.sub().clone(),
                     sender: auth_user.sub().clone(),
                 },
                 Some(LastMessage::new(
@@ -466,6 +476,7 @@ mod test {
                 "talk2://picture",
                 "Wigas",
                 DetailsDto::Group {
+                    owner: auth_user.sub().clone(),
                     sender: auth_user.sub().clone(),
                 },
                 Some(LastMessage::new(
@@ -481,6 +492,7 @@ mod test {
                 "talk3://picture",
                 "Red bull",
                 DetailsDto::Group {
+                    owner: auth_user.sub().clone(),
                     sender: auth_user.sub().clone(),
                 },
                 Some(LastMessage::new(
@@ -496,6 +508,7 @@ mod test {
                 "talk4://picture",
                 "Tuners IO",
                 DetailsDto::Group {
+                    owner: auth_user.sub().clone(),
                     sender: auth_user.sub().clone(),
                 },
                 Some(LastMessage::new(
@@ -603,7 +616,8 @@ mod test {
             )),
         );
 
-        let actual = ActiveTalk(&t).render().into_string();
+        let auth_user = auth::User::new(user::Sub("jora".into()), "jora", "Jora", "jora://picture");
+        let actual = ActiveTalk(&auth_user, &t).render().into_string();
 
         assert_eq!(expected, actual);
     }
@@ -620,9 +634,25 @@ mod test {
             "</div>"
         );
 
-        let actual = TalkControls(&talk::Id("680d10a4042fe1d7f2d6138b".into()))
-            .render()
-            .into_string();
+        let auth_user = auth::User::new(user::Sub("jora".into()), "jora", "Jora", "jora://picture");
+        let t = TalkDto::new(
+            talk::Id("680d10a4042fe1d7f2d6138b".into()),
+            "talk://picture",
+            "Wiggas",
+            DetailsDto::Chat {
+                sender: user::Sub("github|jora".into()),
+                recipient: user::Sub("google|valera".into()),
+            },
+            Some(LastMessage::new(
+                message::Id::random(),
+                "LGTM!",
+                user::Sub("github|jora".into()),
+                chrono::Utc::now().timestamp(),
+                true,
+            )),
+        );
+
+        let actual = TalkControls(&auth_user, &t).render().into_string();
 
         assert_eq!(expected, actual);
     }

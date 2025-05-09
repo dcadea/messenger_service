@@ -106,6 +106,7 @@ pub enum DetailsDto {
         recipient: user::Sub,
     },
     Group {
+        owner: user::Sub,
         sender: user::Sub,
     },
 }

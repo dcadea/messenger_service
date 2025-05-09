@@ -231,6 +231,7 @@ impl TalkService for TalkServiceImpl {
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
         self.validator.check_member(id, auth_user).await?;
 
+        // TODO: check if the user is the owner of the group
         self.repo.delete(id).await?;
         if let Err(e) = self.message_repo.delete_by_talk_id(id).await {
             error!("failed to delete talk: {e:?}");
@@ -300,10 +301,16 @@ impl TalkServiceImpl {
                     DetailsDto::Chat { sender, recipient },
                 )
             }
-            Details::Group { name, picture, .. } => (
+            Details::Group {
+                name,
+                picture,
+                owner,
+                ..
+            } => (
                 name,
                 picture,
                 DetailsDto::Group {
+                    owner,
                     sender: auth_sub.clone(),
                 },
             ),
