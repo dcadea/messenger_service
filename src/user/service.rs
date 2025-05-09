@@ -14,6 +14,10 @@ pub trait UserService {
 
     async fn find_one(&self, sub: &Sub) -> super::Result<UserInfo>;
 
+    async fn find_name(&self, sub: &Sub) -> super::Result<String>;
+
+    async fn find_picture(&self, sub: &Sub) -> super::Result<String>;
+
     async fn exists(&self, sub: &Sub) -> super::Result<bool>;
 
     async fn search(&self, nickname: &str, auth_user: &auth::User) -> super::Result<Vec<UserInfo>>;
@@ -63,6 +67,28 @@ impl UserService for UserServiceImpl {
             let user_info = self.repo.find_by_sub(sub).await?.into();
             self.cache(&user_info).await;
             Ok(user_info)
+        }
+    }
+
+    async fn find_name(&self, sub: &Sub) -> super::Result<String> {
+        let cached = self.find_cached_name(sub).await;
+
+        if let Some(name) = cached {
+            Ok(name)
+        } else {
+            let user_info = self.find_one(sub).await?;
+            Ok(user_info.name().to_owned())
+        }
+    }
+
+    async fn find_picture(&self, sub: &Sub) -> super::Result<String> {
+        let cached = self.find_cached_picture(sub).await;
+
+        if let Some(picture) = cached {
+            Ok(picture)
+        } else {
+            let user_info = self.find_one(sub).await?;
+            Ok(user_info.picture().to_owned())
         }
     }
 
@@ -130,6 +156,28 @@ impl UserServiceImpl {
 
     async fn find_cached(&self, sub: &Sub) -> Option<UserInfo> {
         let user_info_key = cache::Key::UserInfo(sub);
-        self.redis.json_get::<UserInfo>(user_info_key).await
+        self.redis.json_get::<UserInfo>(user_info_key, None).await
+    }
+
+    async fn find_cached_name(&self, sub: &Sub) -> Option<String> {
+        let user_info_key = cache::Key::UserInfo(sub);
+        let result = self
+            .redis
+            .json_get::<String>(user_info_key, Some(".name"))
+            .await;
+
+        // normalize json string
+        result.map(|r| r.replace('\"', ""))
+    }
+
+    async fn find_cached_picture(&self, sub: &Sub) -> Option<String> {
+        let user_info_key = cache::Key::UserInfo(sub);
+        let result = self
+            .redis
+            .json_get::<String>(user_info_key, Some(".picture"))
+            .await;
+
+        // normalize json string
+        result.map(|r| r.replace('\"', ""))
     }
 }

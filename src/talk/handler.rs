@@ -128,16 +128,52 @@ pub(super) mod templates {
     use axum::{Extension, extract::State};
     use maud::{Markup, Render};
 
-    use crate::{auth, contact, talk};
+    use crate::{auth, contact, talk, user};
+
+    pub struct GroupMemberDto {
+        sub: user::Sub,
+        name: String,
+        picture: String,
+    }
+
+    impl GroupMemberDto {
+        pub fn new(sub: user::Sub, name: impl Into<String>, picture: impl Into<String>) -> Self {
+            Self {
+                sub,
+                name: name.into(),
+                picture: picture.into(),
+            }
+        }
+
+        pub fn sub(&self) -> &user::Sub {
+            &self.sub
+        }
+
+        pub fn name(&self) -> &str {
+            &self.name
+        }
+
+        pub fn picture(&self) -> &str {
+            &self.picture
+        }
+    }
 
     pub async fn create_group(
         auth_user: Extension<auth::User>,
         contact_service: State<contact::Service>,
+        user_service: State<user::Service>,
     ) -> crate::Result<Markup> {
         let contacts = contact_service
             .find_by_sub_and_status(auth_user.sub(), &contact::Status::Accepted)
             .await?;
 
-        Ok(talk::markup::CreateGroupForm::new(&auth_user, &contacts).render())
+        let mut members: Vec<GroupMemberDto> = Vec::with_capacity(contacts.len());
+        for c in contacts {
+            let name = user_service.find_name(c.recipient()).await?;
+            let picture = user_service.find_picture(c.recipient()).await?;
+            members.push(GroupMemberDto::new(c.recipient().clone(), name, picture));
+        }
+
+        Ok(talk::markup::CreateGroupForm::new(&auth_user, &members).render())
     }
 }

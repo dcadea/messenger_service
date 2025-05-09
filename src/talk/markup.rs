@@ -3,12 +3,12 @@ use std::rc::Rc;
 
 use maud::{Markup, Render, html};
 
-use crate::contact::model::ContactDto;
 use crate::markup::IdExt;
 use crate::message::markup::{MESSAGE_INPUT_TARGET, MESSAGE_LIST_ID, MESSAGE_LIST_TARGET};
 use crate::talk::model::DetailsDto;
 use crate::{auth, message, talk, user};
 
+use super::handler::templates::GroupMemberDto;
 use super::model::TalkDto;
 
 impl Display for super::Id {
@@ -232,15 +232,12 @@ impl Render for TalkDto {
 
 pub struct CreateGroupForm<'a> {
     auth_user: &'a auth::User,
-    contacts: &'a [ContactDto],
+    members: &'a [GroupMemberDto],
 }
 
 impl<'a> CreateGroupForm<'a> {
-    pub fn new(auth_user: &'a auth::User, contacts: &'a [ContactDto]) -> Self {
-        Self {
-            auth_user,
-            contacts,
-        }
+    pub fn new(auth_user: &'a auth::User, members: &'a [GroupMemberDto]) -> Self {
+        Self { auth_user, members }
     }
 }
 
@@ -263,12 +260,17 @@ impl Render for CreateGroupForm<'_> {
                 {
                     legend { "Select at least two members" }
                     input type="hidden" name="members" value=(self.auth_user.sub()) {}
-                    @for c in self.contacts {
+                    @for m in self.members {
                         label ."flex items-center justify-between px-3 py-2"
                             ."rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer"
                         {
-                            (c.recipient()) // TODO: display avatar and username
-                            input type="checkbox" name="members" value=(c.recipient()) {}
+                            div ."member-details flex items-center" {
+                                img class="w-9 h-9 rounded-full float-left mr-2"
+                                    src=(m.picture())
+                                    alt="User avatar" {}
+                                span ."font-bold mx-2" { (m.name()) }
+                            }
+                            input type="checkbox" name="members" value=(m.sub()) {}
                         }
                     }
                 }

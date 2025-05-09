@@ -104,12 +104,15 @@ impl Redis {
         }
     }
 
-    pub async fn json_get<V>(&self, key: Key<'_>) -> Option<V>
+    pub async fn json_get<V>(&self, key: Key<'_>, path: Option<&str>) -> Option<V>
     where
         V: redis::FromRedisValue + Clone,
     {
         let mut con = self.con.clone();
-        match con.json_get::<_, _, Vec<V>>(&key, ".").await {
+        match con
+            .json_get::<_, _, Vec<V>>(&key, path.unwrap_or("."))
+            .await
+        {
             Ok(result) => {
                 let value = result.first().cloned();
                 let status = if value.is_some() { "Hit" } else { "Miss" };
