@@ -4,7 +4,7 @@ use crate::user;
 
 use super::{Id, Status, StatusTransition};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub struct Contact {
     #[serde(rename = "_id")]
     id: Id,
@@ -25,19 +25,19 @@ impl Contact {
         }
     }
 
-    pub fn id(&self) -> &Id {
+    pub const fn id(&self) -> &Id {
         &self.id
     }
 
-    pub fn sub1(&self) -> &user::Sub {
+    pub const fn sub1(&self) -> &user::Sub {
         &self.sub1
     }
 
-    pub fn sub2(&self) -> &user::Sub {
+    pub const fn sub2(&self) -> &user::Sub {
         &self.sub2
     }
 
-    pub fn status(&self) -> &Status {
+    pub const fn status(&self) -> &Status {
         &self.status
     }
 
@@ -118,7 +118,7 @@ pub struct ContactDto {
 }
 
 impl ContactDto {
-    pub fn new(id: Id, recipient: user::Sub, status: Status) -> Self {
+    pub const fn new(id: Id, recipient: user::Sub, status: Status) -> Self {
         Self {
             id,
             recipient,
@@ -126,19 +126,19 @@ impl ContactDto {
         }
     }
 
-    pub fn id(&self) -> &Id {
+    pub const fn id(&self) -> &Id {
         &self.id
     }
 
-    pub fn recipient(&self) -> &user::Sub {
+    pub const fn recipient(&self) -> &user::Sub {
         &self.recipient
     }
 
-    pub fn status(&self) -> &Status {
+    pub const fn status(&self) -> &Status {
         &self.status
     }
 
-    pub fn is_accepted(&self) -> bool {
+    pub const fn is_accepted(&self) -> bool {
         matches!(self.status, Status::Accepted)
     }
 }

@@ -110,7 +110,7 @@ pub fn wrap_in_base(mut resp: Response) -> impl IntoResponse {
     resp
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 pub enum TabControls {
     Chats,
     Groups,

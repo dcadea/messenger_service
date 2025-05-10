@@ -19,7 +19,7 @@ type Result<T> = std::result::Result<T, Error>;
 pub type Repository = Arc<dyn UserRepository + Send + Sync>;
 pub type Service = Arc<dyn UserService + Send + Sync>;
 
-#[derive(Clone, Deserialize, Serialize, PartialEq, Debug)]
+#[derive(Clone, Deserialize, Serialize, PartialEq, Eq, Debug)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
 #[cfg(test)]
@@ -35,7 +35,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Sub(pub Arc<str>);
 
 impl Sub {
@@ -69,12 +69,12 @@ impl Serialize for Sub {
 }
 
 impl<'de> Deserialize<'de> for Sub {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Sub, D::Error>
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        Ok(Sub(s.into()))
+        Ok(Self(s.into()))
     }
 }
 

@@ -4,7 +4,7 @@ use crate::{message::model::LastMessage, user};
 
 use super::Id;
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Talk {
     #[serde(rename = "_id")]
     id: Id,
@@ -23,20 +23,20 @@ impl Talk {
         }
     }
 
-    pub fn id(&self) -> &Id {
+    pub const fn id(&self) -> &Id {
         &self.id
     }
 
-    pub fn details(&self) -> &Details {
+    pub const fn details(&self) -> &Details {
         &self.details
     }
 
-    pub fn last_message(&self) -> Option<&LastMessage> {
+    pub const fn last_message(&self) -> Option<&LastMessage> {
         self.last_message.as_ref()
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Debug)]
 #[serde(tag = "kind", content = "details", rename_all = "snake_case")]
 pub enum Details {
     Chat {
@@ -77,7 +77,7 @@ impl TalkDto {
         }
     }
 
-    pub fn id(&self) -> &Id {
+    pub const fn id(&self) -> &Id {
         &self.id
     }
 
@@ -89,11 +89,11 @@ impl TalkDto {
         &self.name
     }
 
-    pub fn details(&self) -> &DetailsDto {
+    pub const fn details(&self) -> &DetailsDto {
         &self.details
     }
 
-    pub fn last_message(&self) -> Option<&LastMessage> {
+    pub const fn last_message(&self) -> Option<&LastMessage> {
         self.last_message.as_ref()
     }
 }

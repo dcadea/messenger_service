@@ -49,7 +49,7 @@ pub struct InputEdit<'a> {
 }
 
 impl<'a> InputEdit<'a> {
-    pub fn new(id: &'a message::Id, old_text: &'a str) -> Self {
+    pub const fn new(id: &'a message::Id, old_text: &'a str) -> Self {
         Self { id, old_text }
     }
 }
@@ -108,7 +108,7 @@ pub struct MessageItem<'a> {
 }
 
 impl<'a> MessageItem<'a> {
-    pub fn new(msg: &'a Message, auth_sub: Option<&'a user::Sub>) -> Self {
+    pub const fn new(msg: &'a Message, auth_sub: Option<&'a user::Sub>) -> Self {
         Self {
             msg,
             auth_sub,
@@ -116,20 +116,16 @@ impl<'a> MessageItem<'a> {
         }
     }
 
-    fn as_last(&'a mut self) -> &'a Self {
+    const fn as_last(&'a mut self) -> &'a Self {
         self.is_last = true;
         self
     }
 
     fn belongs_to_user(&self) -> bool {
-        if let Some(sub) = self.auth_sub {
-            self.msg.owner().eq(sub)
-        } else {
-            false
-        }
+        self.auth_sub.is_some_and(|sub| self.msg.owner().eq(sub))
     }
 
-    fn hx_trigger(&self) -> Option<&'a str> {
+    const fn hx_trigger(&self) -> Option<&'a str> {
         if self.is_last {
             Some("intersect once")
         } else {
@@ -137,7 +133,7 @@ impl<'a> MessageItem<'a> {
         }
     }
 
-    fn hx_swap(&self) -> Option<&'a str> {
+    const fn hx_swap(&self) -> Option<&'a str> {
         if self.is_last { Some("afterend") } else { None }
     }
 
@@ -223,7 +219,7 @@ pub struct MessageList<'a> {
 }
 
 impl<'a> MessageList<'a> {
-    pub fn prepend(messages: &'a [Message], sub: &'a user::Sub) -> Self {
+    pub const fn prepend(messages: &'a [Message], sub: &'a user::Sub) -> Self {
         Self {
             messages,
             sub,
@@ -231,7 +227,7 @@ impl<'a> MessageList<'a> {
         }
     }
 
-    pub fn append(messages: &'a [Message], sub: &'a user::Sub) -> Self {
+    pub const fn append(messages: &'a [Message], sub: &'a user::Sub) -> Self {
         Self {
             messages,
             sub,

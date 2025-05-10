@@ -75,7 +75,7 @@ impl Config {
         &self.required_claims
     }
 
-    pub fn token_ttl(&self) -> Duration {
+    pub const fn token_ttl(&self) -> Duration {
         self.token_ttl
     }
 }
@@ -123,7 +123,7 @@ impl From<oauth2::AuthorizationCode> for auth::Code {
 
 impl From<auth::Code> for oauth2::AuthorizationCode {
     fn from(c: auth::Code) -> Self {
-        oauth2::AuthorizationCode::new(c.raw().to_string())
+        Self::new(c.raw().to_string())
     }
 }
 

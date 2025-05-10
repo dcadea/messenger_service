@@ -27,7 +27,7 @@ impl Config {
     pub fn env() -> Option<Self> {
         let host = env::var("MONGO_HOST").ok();
         let port = env::var("MONGO_PORT")
-            .unwrap_or("27017".to_string())
+            .unwrap_or_else(|_| "27017".to_string())
             .parse()
             .ok();
         let db = env::var("MONGO_DB").unwrap_or_else(|_e| String::from("messenger"));

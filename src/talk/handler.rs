@@ -3,17 +3,17 @@ use axum::http::StatusCode;
 impl From<super::Error> for StatusCode {
     fn from(e: super::Error) -> Self {
         match e {
-            super::Error::NotFound(_) => StatusCode::NOT_FOUND,
-            super::Error::NotMember => StatusCode::FORBIDDEN,
-            super::Error::AlreadyExists => StatusCode::CONFLICT,
+            super::Error::NotFound(_) => Self::NOT_FOUND,
+            super::Error::NotMember => Self::FORBIDDEN,
+            super::Error::AlreadyExists => Self::CONFLICT,
             super::Error::NotEnoughMembers(_)
             | super::Error::MissingName
             | super::Error::NonExistingUser(_)
-            | super::Error::UnsupportedStatus => StatusCode::BAD_REQUEST,
+            | super::Error::UnsupportedStatus => Self::BAD_REQUEST,
             super::Error::NotCreated
             | super::Error::NotDeleted
             | super::Error::_User(_)
-            | super::Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            | super::Error::_MongoDB(_) => Self::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -145,7 +145,7 @@ pub(super) mod templates {
             }
         }
 
-        pub fn sub(&self) -> &user::Sub {
+        pub const fn sub(&self) -> &user::Sub {
             &self.sub
         }
 

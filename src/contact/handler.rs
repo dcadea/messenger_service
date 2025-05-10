@@ -70,12 +70,12 @@ pub(super) mod api {
     impl From<contact::Error> for StatusCode {
         fn from(e: contact::Error) -> Self {
             match e {
-                contact::Error::NotFound(_) => StatusCode::NOT_FOUND,
-                contact::Error::AlreadyExists(..) => StatusCode::CONFLICT,
+                contact::Error::NotFound(_) => Self::NOT_FOUND,
+                contact::Error::AlreadyExists(..) => Self::CONFLICT,
                 contact::Error::SameSubs(_) | contact::Error::StatusTransitionFailed => {
-                    StatusCode::BAD_REQUEST
+                    Self::BAD_REQUEST
                 }
-                contact::Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
+                contact::Error::_MongoDB(_) => Self::INTERNAL_SERVER_ERROR,
             }
         }
     }

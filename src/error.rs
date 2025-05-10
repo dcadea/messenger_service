@@ -53,7 +53,7 @@ impl IntoResponse for Error {
 impl From<Error> for StatusCode {
     fn from(e: Error) -> Self {
         match e {
-            Error::QueryParamRequired(_) => StatusCode::BAD_REQUEST,
+            Error::QueryParamRequired(_) => Self::BAD_REQUEST,
             Error::_Auth(a) => a.into(),
             Error::_Contact(c) => c.into(),
             Error::_Talk(t) => t.into(),

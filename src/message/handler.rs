@@ -3,12 +3,12 @@ use axum::http::StatusCode;
 impl From<super::Error> for StatusCode {
     fn from(e: super::Error) -> Self {
         match e {
-            super::Error::NotFound(_) => StatusCode::NOT_FOUND,
-            super::Error::NotOwner => StatusCode::FORBIDDEN,
-            super::Error::EmptyText => StatusCode::BAD_REQUEST,
+            super::Error::NotFound(_) => Self::NOT_FOUND,
+            super::Error::NotOwner => Self::FORBIDDEN,
+            super::Error::EmptyText => Self::BAD_REQUEST,
             super::Error::IdNotPresent
             | super::Error::Unexpected(_)
-            | super::Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            | super::Error::_MongoDB(_) => Self::INTERNAL_SERVER_ERROR,
         }
     }
 }

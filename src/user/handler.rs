@@ -3,8 +3,8 @@ use axum::http::StatusCode;
 impl From<super::Error> for StatusCode {
     fn from(e: super::Error) -> Self {
         match e {
-            super::Error::NotFound(_) => StatusCode::NOT_FOUND,
-            super::Error::_MongoDB(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            super::Error::NotFound(_) => Self::NOT_FOUND,
+            super::Error::_MongoDB(_) => Self::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -39,7 +39,7 @@ pub(super) mod api {
         let contacts = contact_service
             .find_by_sub(auth_user.sub())
             .await
-            .unwrap_or(Vec::with_capacity(0));
+            .unwrap_or_else(|_| Vec::with_capacity(0));
 
         Ok(markup::SearchResult::new(&contacts, &users).render())
     }

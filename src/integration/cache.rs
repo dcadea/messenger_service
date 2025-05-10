@@ -193,7 +193,7 @@ impl Config {
     pub fn env() -> Option<Self> {
         let host = env::var("REDIS_HOST").ok();
         let port = env::var("REDIS_PORT")
-            .unwrap_or("6379".to_string())
+            .unwrap_or_else(|_| "6379".to_string())
             .parse()
             .ok();
 
@@ -230,7 +230,7 @@ pub enum Key<'a> {
 
 impl Key<'_> {
     /// Returns a time-to-live value in seconds for the key.
-    pub fn ttl(&self) -> u64 {
+    pub const fn ttl(&self) -> u64 {
         match self {
             // Just in case if token response does not provide an expiration claim
             // fallback with 3600 for Key::Session
@@ -246,11 +246,11 @@ impl Key<'_> {
 impl Display for Key<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Key::UserInfo(sub) => write!(f, "userinfo:{sub}"),
-            Key::Contacts(sub) => write!(f, "contacts:{sub}"),
-            Key::Talk(id) => write!(f, "talk:{id}"),
-            Key::Session(s) => write!(f, "session:{}", s.raw()),
-            Key::Csrf(csrf) => write!(f, "csrf:{}", csrf.raw()),
+            Self::UserInfo(sub) => write!(f, "userinfo:{sub}"),
+            Self::Contacts(sub) => write!(f, "contacts:{sub}"),
+            Self::Talk(id) => write!(f, "talk:{id}"),
+            Self::Session(s) => write!(f, "session:{}", s.raw()),
+            Self::Csrf(csrf) => write!(f, "csrf:{}", csrf.raw()),
         }
     }
 }
@@ -265,9 +265,9 @@ impl redis::ToRedisArgs for Key<'_> {
 }
 
 impl redis::FromRedisValue for user::Sub {
-    fn from_redis_value(v: &redis::Value) -> redis::RedisResult<user::Sub> {
+    fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
         let s = String::from_redis_value(v)?;
-        Ok(user::Sub(s.into()))
+        Ok(Self(s.into()))
     }
 }
 
@@ -282,7 +282,7 @@ impl redis::ToRedisArgs for user::Sub {
 
 impl redis::FromRedisValue for UserInfo {
     fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
-        let user_info: UserInfo = serde_json::from_str(&String::from_redis_value(value)?)?;
+        let user_info: Self = serde_json::from_str(&String::from_redis_value(value)?)?;
         Ok(user_info)
     }
 }
@@ -298,6 +298,6 @@ impl redis::ToRedisArgs for UserInfo {
 
 impl redis::FromRedisValue for auth::Csrf {
     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
-        Ok(auth::Csrf::new(String::from_redis_value(v)?))
+        Ok(Self::new(String::from_redis_value(v)?))
     }
 }

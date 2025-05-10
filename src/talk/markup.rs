@@ -244,7 +244,7 @@ pub struct CreateGroupForm<'a> {
 }
 
 impl<'a> CreateGroupForm<'a> {
-    pub fn new(auth_user: &'a auth::User, members: &'a [GroupMemberDto]) -> Self {
+    pub const fn new(auth_user: &'a auth::User, members: &'a [GroupMemberDto]) -> Self {
         Self { auth_user, members }
     }
 }

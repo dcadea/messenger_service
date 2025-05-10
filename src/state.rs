@@ -39,8 +39,7 @@ impl AppState {
         let event_service = Arc::new(EventServiceImpl::new(pubsub));
 
         let contact_repo = Arc::new(MongoContactRepository::new(&db));
-        let contact_service =
-            Arc::new(ContactServiceImpl::new(contact_repo.clone(), redis.clone()));
+        let contact_service = Arc::new(ContactServiceImpl::new(contact_repo, redis.clone()));
 
         let user_repo = Arc::new(MongoUserRepository::new(&db));
         let user_service = Arc::new(UserServiceImpl::new(
@@ -55,17 +54,17 @@ impl AppState {
 
         let talk_validator = Arc::new(TalkValidatorImpl::new(talk_repo.clone(), redis.clone()));
         let talk_service = Arc::new(TalkServiceImpl::new(
-            talk_repo.clone(),
+            talk_repo,
             talk_validator.clone(),
             user_service.clone(),
             contact_service.clone(),
             event_service.clone(),
             message_repo.clone(),
-            redis.clone(),
+            redis,
         ));
 
         let message_service = Arc::new(MessageServiceImpl::new(
-            message_repo.clone(),
+            message_repo,
             talk_service.clone(),
             talk_validator.clone(),
             event_service.clone(),

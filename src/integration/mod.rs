@@ -26,16 +26,16 @@ pub enum Env {
 impl Env {
     pub fn addr(&self) -> SocketAddr {
         match self {
-            Env::Local => SocketAddr::from(([127, 0, 0, 1], 8000)),
-            Env::Dev | Env::Stage => SocketAddr::from(([0, 0, 0, 0], 8000)),
-            Env::Production => SocketAddr::from(([0, 0, 0, 0], 8443)),
+            Self::Local => SocketAddr::from(([127, 0, 0, 1], 8000)),
+            Self::Dev | Self::Stage => SocketAddr::from(([0, 0, 0, 0], 8000)),
+            Self::Production => SocketAddr::from(([0, 0, 0, 0], 8443)),
         }
     }
 
     pub fn ssl_config(&self) -> Option<OpenSSLConfig> {
         match self {
-            Env::Local | Env::Dev | Env::Stage => None,
-            Env::Production => {
+            Self::Local | Self::Dev | Self::Stage => None,
+            Self::Production => {
                 let ssl_config = OpenSSLConfig::from_pem_file(
                     env::var("SSL_CERT_FILE").expect("SSL_CERT_FILE must be set"),
                     env::var("SSL_KEY_FILE").expect("SSL_KEY_FILE must be set"),
@@ -48,8 +48,8 @@ impl Env {
 
     pub fn allow_origin(&self) -> AllowOrigin {
         match self {
-            Env::Local | Env::Dev => AllowOrigin::any(),
-            Env::Stage | Env::Production => {
+            Self::Local | Self::Dev => AllowOrigin::any(),
+            Self::Stage | Self::Production => {
                 let origins = env::var("ALLOW_ORIGIN")
                     .expect("ALLOW_ORIGIN must be set")
                     .split(',')
@@ -63,13 +63,13 @@ impl Env {
 
     pub fn allow_methods(&self) -> AllowMethods {
         match self {
-            Env::Local | Env::Dev | Env::Stage | Env::Production => AllowMethods::any(),
+            Self::Local | Self::Dev | Self::Stage | Self::Production => AllowMethods::any(),
         }
     }
 
     pub fn allow_headers(&self) -> AllowHeaders {
         match self {
-            Env::Local | Env::Dev | Env::Stage | Env::Production => AllowHeaders::any(),
+            Self::Local | Self::Dev | Self::Stage | Self::Production => AllowHeaders::any(),
         }
     }
 }
@@ -86,7 +86,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(
+    pub const fn new(
         env: Env,
         redis: cache::Config,
         mongo: db::Config,
@@ -102,23 +102,23 @@ impl Config {
         }
     }
 
-    pub fn env(&self) -> &Env {
+    pub const fn env(&self) -> &Env {
         &self.env
     }
 
-    pub fn redis(&self) -> &cache::Config {
+    pub const fn redis(&self) -> &cache::Config {
         &self.redis
     }
 
-    pub fn mongo(&self) -> &db::Config {
+    pub const fn mongo(&self) -> &db::Config {
         &self.mongo
     }
 
-    pub fn pubsub(&self) -> &pubsub::Config {
+    pub const fn pubsub(&self) -> &pubsub::Config {
         &self.pubsub
     }
 
-    pub fn idp(&self) -> &idp::Config {
+    pub const fn idp(&self) -> &idp::Config {
         &self.idp
     }
 }
@@ -127,11 +127,10 @@ impl Default for Config {
     fn default() -> Self {
         dotenv().ok();
 
-        let rust_log = env::var("RUST_LOG").unwrap_or("info".into());
+        let rust_log = env::var("RUST_LOG").unwrap_or_else(|_| "info".into());
         let level = LevelFilter::from_str(&rust_log).unwrap_or(LevelFilter::Info);
         let log_file = env::var("SERVICE_NAME")
-            .map(|pkg| format!("{pkg}.log"))
-            .unwrap_or("service.log".into());
+            .map_or_else(|_| "service.log".into(), |pkg| format!("{pkg}.log"));
 
         CombinedLogger::init(vec![
             TermLogger::new(
@@ -172,7 +171,7 @@ impl Default for Config {
                 .as_slice(),
             Duration::from_secs(
                 env::var("TOKEN_TTL")
-                    .unwrap_or("3600".into())
+                    .unwrap_or_else(|_| "3600".into())
                     .parse()
                     .expect("Failed to parse TOKEN_TTL"),
             ),

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{Id, Sub};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub struct User {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     id: Option<Id>,
@@ -42,7 +42,7 @@ pub struct OnlineStatus {
 }
 
 impl OnlineStatus {
-    pub fn new(sub: Sub, online: bool) -> Self {
+    pub const fn new(sub: Sub, online: bool) -> Self {
         Self { sub, online }
     }
 
@@ -50,7 +50,7 @@ impl OnlineStatus {
         self.sub.id()
     }
 
-    pub fn online(&self) -> bool {
+    pub const fn online(&self) -> bool {
         self.online
     }
 }
@@ -65,7 +65,7 @@ pub struct UserInfo {
 }
 
 impl UserInfo {
-    pub fn sub(&self) -> &Sub {
+    pub const fn sub(&self) -> &Sub {
         &self.sub
     }
 
@@ -88,7 +88,7 @@ impl UserInfo {
 
 impl From<User> for UserInfo {
     fn from(user: User) -> Self {
-        UserInfo {
+        Self {
             sub: user.sub,
             nickname: user.nickname,
             name: user.name,

@@ -130,7 +130,7 @@ impl AuthService for AuthServiceImpl {
         match token_result {
             Ok(r) => {
                 let access_token = r.access_token().to_owned();
-                let expires_in = r.expires_in().unwrap_or(self.cfg.token_ttl());
+                let expires_in = r.expires_in().unwrap_or_else(|| self.cfg.token_ttl());
 
                 Ok((access_token, expires_in))
             }

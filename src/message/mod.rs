@@ -22,7 +22,7 @@ type Result<T> = std::result::Result<T, Error>;
 pub type Repository = Arc<dyn MessageRepository + Send + Sync>;
 pub type Service = Arc<dyn MessageService + Send + Sync>;
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
 impl Id {

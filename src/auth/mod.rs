@@ -53,7 +53,7 @@ impl User {
         name: impl Into<String>,
         picture: impl Into<String>,
     ) -> Self {
-        User {
+        Self {
             sub,
             nickname: nickname.into(),
             name: name.into(),
@@ -61,7 +61,7 @@ impl User {
         }
     }
 
-    pub fn sub(&self) -> &user::Sub {
+    pub const fn sub(&self) -> &user::Sub {
         &self.sub
     }
 
@@ -80,7 +80,7 @@ impl User {
 
 impl From<UserInfo> for User {
     fn from(user_info: UserInfo) -> Self {
-        User::new(
+        Self::new(
             user_info.sub().clone(),
             user_info.nickname(),
             user_info.name(),
@@ -112,7 +112,7 @@ impl fmt::Debug for Code {
     }
 }
 
-#[derive(Deserialize, PartialEq)]
+#[derive(Deserialize, PartialEq, Eq)]
 pub struct Csrf(String);
 
 impl Csrf {
@@ -135,7 +135,7 @@ impl fmt::Debug for Csrf {
     }
 }
 
-#[derive(Deserialize, PartialEq)]
+#[derive(Deserialize, PartialEq, Eq)]
 pub struct Session(String);
 
 impl Session {

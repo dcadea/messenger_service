@@ -23,7 +23,10 @@ pub struct ContactInfos<'a> {
 }
 
 impl<'a> ContactInfos<'a> {
-    pub fn new(auth_user: &'a auth::User, contact_infos: &'a [(ContactDto, UserInfo)]) -> Self {
+    pub const fn new(
+        auth_user: &'a auth::User,
+        contact_infos: &'a [(ContactDto, UserInfo)],
+    ) -> Self {
         Self {
             auth_user,
             contact_infos,
@@ -63,7 +66,11 @@ pub struct Icons<'a> {
 }
 
 impl<'a> Icons<'a> {
-    pub fn new(contact_id: &'a contact::Id, status: &'a Status, auth_user: &'a auth::User) -> Self {
+    pub const fn new(
+        contact_id: &'a contact::Id,
+        status: &'a Status,
+        auth_user: &'a auth::User,
+    ) -> Self {
         Self {
             contact_id,
             status,
@@ -159,10 +166,10 @@ impl Render for Icon<'_> {
 impl fmt::Display for Transition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Transition::Accept => write!(f, "accept"),
-            Transition::Reject => write!(f, "reject"),
-            Transition::Block => write!(f, "block"),
-            Transition::Unblock => write!(f, "unblock"),
+            Self::Accept => write!(f, "accept"),
+            Self::Reject => write!(f, "reject"),
+            Self::Block => write!(f, "block"),
+            Self::Unblock => write!(f, "unblock"),
         }
     }
 }

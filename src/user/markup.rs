@@ -109,7 +109,7 @@ pub struct SearchResult<'a> {
 }
 
 impl<'a> SearchResult<'a> {
-    pub fn new(contacts: &'a [ContactDto], users: &'a [UserInfo]) -> Self {
+    pub const fn new(contacts: &'a [ContactDto], users: &'a [UserInfo]) -> Self {
         Self { contacts, users }
     }
 }
@@ -153,10 +153,10 @@ impl Render for contact::Status {
 
         html! {
             @match self {
-                contact::Status::Pending{ .. } => span .(status_class) .bg-gray-400 { "Pending" },
-                contact::Status::Accepted => span .(status_class) .bg-green-700 { "Accepted" },
-                contact::Status::Rejected => span .(status_class) .bg-red-500 { "Rejected" },
-                contact::Status::Blocked { .. } => span .(status_class) .bg-red-700 { "Blocked" },
+                Self::Pending{ .. } => span .(status_class) .bg-gray-400 { "Pending" },
+                Self::Accepted => span .(status_class) .bg-green-700 { "Accepted" },
+                Self::Rejected => span .(status_class) .bg-red-500 { "Rejected" },
+                Self::Blocked { .. } => span .(status_class) .bg-red-700 { "Blocked" },
             }
         }
     }

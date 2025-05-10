@@ -28,7 +28,7 @@ pub struct EventServiceImpl {
 }
 
 impl EventServiceImpl {
-    pub fn new(pubsub: async_nats::Client) -> Self {
+    pub const fn new(pubsub: async_nats::Client) -> Self {
         Self { pubsub }
     }
 }

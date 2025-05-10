@@ -4,7 +4,7 @@ use crate::{talk, user};
 
 use super::Id;
 
-#[derive(Deserialize, Serialize, Clone, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Eq, Debug)]
 pub struct Message {
     #[serde(rename = "_id")]
     id: Id,
@@ -27,15 +27,15 @@ impl Message {
         }
     }
 
-    pub fn id(&self) -> &Id {
+    pub const fn id(&self) -> &Id {
         &self.id
     }
 
-    pub fn talk_id(&self) -> &talk::Id {
+    pub const fn talk_id(&self) -> &talk::Id {
         &self.talk_id
     }
 
-    pub fn owner(&self) -> &user::Sub {
+    pub const fn owner(&self) -> &user::Sub {
         &self.owner
     }
 
@@ -43,11 +43,11 @@ impl Message {
         &self.text
     }
 
-    pub fn timestamp(&self) -> i64 {
+    pub const fn timestamp(&self) -> i64 {
         self.timestamp
     }
 
-    pub fn seen(&self) -> bool {
+    pub const fn seen(&self) -> bool {
         self.seen
     }
 
@@ -68,16 +68,16 @@ impl Message {
 
 #[cfg(test)]
 impl Message {
-    pub fn set_timestamp(&mut self, timestamp: i64) {
+    pub const fn set_timestamp(&mut self, timestamp: i64) {
         self.timestamp = timestamp;
     }
 
-    pub fn set_seen(&mut self, seen: bool) {
+    pub const fn set_seen(&mut self, seen: bool) {
         self.seen = seen;
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, PartialEq, Debug)]
+#[derive(Deserialize, Serialize, Clone, PartialEq, Eq, Debug)]
 pub struct LastMessage {
     id: Id,
     text: String,
@@ -103,7 +103,7 @@ impl LastMessage {
         }
     }
 
-    pub fn id(&self) -> &Id {
+    pub const fn id(&self) -> &Id {
         &self.id
     }
 
@@ -111,15 +111,15 @@ impl LastMessage {
         &self.text
     }
 
-    pub fn owner(&self) -> &user::Sub {
+    pub const fn owner(&self) -> &user::Sub {
         &self.owner
     }
 
-    pub fn timestamp(&self) -> i64 {
+    pub const fn timestamp(&self) -> i64 {
         self.timestamp
     }
 
-    pub fn seen(&self) -> bool {
+    pub const fn seen(&self) -> bool {
         self.seen
     }
 }

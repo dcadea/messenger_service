@@ -24,7 +24,7 @@ impl Config {
     pub fn env() -> Option<Self> {
         let host = env::var("NATS_HOST").ok();
         let port = env::var("NATS_PORT")
-            .unwrap_or("4222".to_string())
+            .unwrap_or_else(|_| "4222".to_string())
             .parse()
             .ok();
 

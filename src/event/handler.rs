@@ -5,9 +5,9 @@ use super::Error;
 impl From<Error> for StatusCode {
     fn from(e: Error) -> Self {
         match e {
-            Error::NotOwner | Error::NotRecipient => StatusCode::FORBIDDEN,
+            Error::NotOwner | Error::NotRecipient => Self::FORBIDDEN,
             Error::_Axum(_) | Error::_NatsSub(_) | Error::_SerdeJson(_) => {
-                StatusCode::INTERNAL_SERVER_ERROR
+                Self::INTERNAL_SERVER_ERROR
             }
         }
     }
@@ -90,9 +90,7 @@ pub mod sse {
                 Notification::NewMessage { talk_id, .. } => &format!("newMessage:{}", &talk_id),
             };
 
-            sse::Event::default()
-                .event(evt)
-                .data(noti.render().into_string())
+            Self::default().event(evt).data(noti.render().into_string())
         }
     }
 }
@@ -147,7 +145,7 @@ pub mod ws {
                 close.clone(),
             ));
 
-            tokio::spawn(receive(talk_id, recv, close.clone()));
+            tokio::spawn(receive(talk_id, recv, close));
         }))
     }
 

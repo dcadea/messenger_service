@@ -44,7 +44,7 @@ pub fn templates<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
 
 impl Id {
@@ -60,10 +60,10 @@ pub enum Kind {
 }
 
 impl Kind {
-    fn as_str(&self) -> &str {
+    const fn as_str(&self) -> &str {
         match self {
-            Kind::Chat => "chat",
-            Kind::Group => "group",
+            Self::Chat => "chat",
+            Self::Group => "group",
         }
     }
 }
