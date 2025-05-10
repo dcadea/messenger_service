@@ -6,7 +6,7 @@ use crate::user::model::UserInfo;
 use crate::{auth, contact, event};
 
 use super::model::OnlineStatus;
-use super::{Repository, Sub};
+use super::{Nickname, Repository, Sub};
 
 #[async_trait]
 pub trait UserService {
@@ -20,7 +20,11 @@ pub trait UserService {
 
     async fn exists(&self, sub: &Sub) -> super::Result<bool>;
 
-    async fn search(&self, nickname: &str, auth_user: &auth::User) -> super::Result<Vec<UserInfo>>;
+    async fn search(
+        &self,
+        nickname: &Nickname,
+        auth_user: &auth::User,
+    ) -> super::Result<Vec<UserInfo>>;
 
     async fn notify_online(&self, sub: &Sub);
 
@@ -100,7 +104,11 @@ impl UserService for UserServiceImpl {
         }
     }
 
-    async fn search(&self, nickname: &str, auth_user: &auth::User) -> super::Result<Vec<UserInfo>> {
+    async fn search(
+        &self,
+        nickname: &Nickname,
+        auth_user: &auth::User,
+    ) -> super::Result<Vec<UserInfo>> {
         let users = self
             .repo
             .search_by_nickname_excluding(nickname, auth_user.nickname())

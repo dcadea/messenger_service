@@ -16,12 +16,12 @@ pub(super) mod api {
 
     use crate::{
         auth, contact,
-        user::{self, markup},
+        user::{self, Nickname, markup},
     };
 
     #[derive(Deserialize)]
     pub struct FindParams {
-        nickname: String,
+        nickname: Nickname,
     }
 
     pub async fn search(

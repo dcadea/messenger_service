@@ -314,7 +314,7 @@ impl Render for Icon {
 
 #[cfg(test)]
 mod test {
-    use crate::message::model::LastMessage;
+    use crate::{message::model::LastMessage, user::Nickname};
 
     use super::*;
 
@@ -358,7 +358,12 @@ mod test {
             "</div>"
         );
 
-        let auth_user = auth::User::new(user::Sub("jora".into()), "jora", "Jora", "jora://picture");
+        let auth_user = auth::User::new(
+            user::Sub("jora".into()),
+            Nickname::from("jora"),
+            "Jora",
+            "jora://picture",
+        );
         let talks = [
             TalkDto::new(
                 talk::Id("680d0fa361f9e3c2a1b25c4f".into()),
@@ -453,7 +458,12 @@ mod test {
             }
         }.into_string();
 
-        let auth_user = auth::User::new(user::Sub("jora".into()), "jora", "Jora", "jora://picture");
+        let auth_user = auth::User::new(
+            user::Sub("jora".into()),
+            Nickname::from("jora"),
+            "Jora",
+            "jora://picture",
+        );
         let talks = [
             TalkDto::new(
                 talk::Id("680d0fa361f9e3c2a1b25c4f".into()),
@@ -616,7 +626,12 @@ mod test {
             )),
         );
 
-        let auth_user = auth::User::new(user::Sub("jora".into()), "jora", "Jora", "jora://picture");
+        let auth_user = auth::User::new(
+            user::Sub("jora".into()),
+            Nickname::from("jora"),
+            "Jora",
+            "jora://picture",
+        );
         let actual = ActiveTalk(&auth_user, &t).render().into_string();
 
         assert_eq!(expected, actual);
@@ -634,7 +649,12 @@ mod test {
             "</div>"
         );
 
-        let auth_user = auth::User::new(user::Sub("jora".into()), "jora", "Jora", "jora://picture");
+        let auth_user = auth::User::new(
+            user::Sub("jora".into()),
+            Nickname::from("jora"),
+            "Jora",
+            "jora://picture",
+        );
         let t = TalkDto::new(
             talk::Id("680d10a4042fe1d7f2d6138b".into()),
             "talk://picture",

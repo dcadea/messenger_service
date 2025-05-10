@@ -4,6 +4,7 @@ use mongodb::Database;
 use mongodb::bson::doc;
 use user::Sub;
 
+use super::Nickname;
 use super::model::User;
 use crate::user;
 
@@ -17,8 +18,8 @@ pub trait UserRepository {
 
     async fn search_by_nickname_excluding(
         &self,
-        nickname: &str,
-        exclude: &str,
+        nickname: &Nickname,
+        exclude: &Nickname,
     ) -> super::Result<Vec<User>>;
 }
 
@@ -50,8 +51,8 @@ impl UserRepository for MongoUserRepository {
     // search users by nickname excluding the authenticated user
     async fn search_by_nickname_excluding(
         &self,
-        nickname: &str,
-        exclude: &str,
+        nickname: &Nickname,
+        exclude: &Nickname,
     ) -> super::Result<Vec<User>> {
         let filter = doc! {
             "$and": [
@@ -74,7 +75,7 @@ mod test {
 
     use crate::{
         integration::db,
-        user::{self, model::User},
+        user::{self, Nickname, model::User},
     };
 
     #[tokio::test]
@@ -88,7 +89,7 @@ mod test {
         let user = User::new(
             user::Id::random(),
             sub.clone(),
-            "valera_kardan".to_owned(),
+            Nickname::from("valera_kardan"),
             "valera".to_owned(),
             "picture".to_owned(),
             "valera@test.com".to_owned(),
@@ -122,7 +123,7 @@ mod test {
         let valera = &User::new(
             user::Id::random(),
             user::Sub("test|123".into()),
-            "valera_kardan",
+            Nickname::from("valera_kardan"),
             "valera",
             "picture",
             "valera@test.com",
@@ -131,7 +132,7 @@ mod test {
         let jora = &User::new(
             user::Id::random(),
             user::Sub("test|456".into()),
-            "jora_partizan",
+            Nickname::from("jora_partizan"),
             "jora",
             "picture",
             "jora@test.com",
@@ -140,7 +141,7 @@ mod test {
         let radu = &User::new(
             user::Id::random(),
             user::Sub("test|135".into()),
-            "radu_carlig",
+            Nickname::from("radu_carlig"),
             "radu",
             "picture",
             "radu@test.com",
@@ -149,7 +150,7 @@ mod test {
         let igor = &User::new(
             user::Id::random(),
             user::Sub("test|246".into()),
-            "igor_frina",
+            Nickname::from("igor_frina"),
             "igor",
             "picture",
             "igor@test.com",
@@ -166,7 +167,7 @@ mod test {
         let mut expected = vec![valera, jora].into_iter();
 
         let actual = repo
-            .search_by_nickname_excluding("ra", "radu_carlig")
+            .search_by_nickname_excluding(&Nickname::from("ra"), &Nickname::from("radu_carlig"))
             .await
             .unwrap();
 

@@ -176,7 +176,7 @@ impl fmt::Display for Transition {
 
 #[cfg(test)]
 mod test {
-    use crate::user;
+    use crate::user::{self, Nickname};
 
     use super::*;
 
@@ -268,7 +268,7 @@ mod test {
 
         let auth_user = auth::User::new(
             user::Sub("valera".into()),
-            "valera",
+            Nickname::from("valera"),
             "Valera",
             "valera://picture",
         );
@@ -282,7 +282,7 @@ mod test {
                 ),
                 UserInfo::new(
                     user::Sub("jora".into()),
-                    "jora",
+                    Nickname::from("jora"),
                     "Jora",
                     "jora://picture",
                     "jora@test.com",
@@ -296,7 +296,7 @@ mod test {
                 ),
                 UserInfo::new(
                     user::Sub("igor".into()),
-                    "igor",
+                    Nickname::from("igor"),
                     "Igor",
                     "igor://picture",
                     "igor@test.com",
@@ -312,7 +312,7 @@ mod test {
                 ),
                 UserInfo::new(
                     user::Sub("radu".into()),
-                    "radu",
+                    Nickname::from("radu"),
                     "Radu",
                     "radu://picture",
                     "radu@test.com",
@@ -328,7 +328,7 @@ mod test {
                 ),
                 UserInfo::new(
                     user::Sub("gicu".into()),
-                    "gicu",
+                    Nickname::from("gicu"),
                     "Gicu",
                     "gicu://picture",
                     "gicu@test.com",
@@ -344,7 +344,7 @@ mod test {
                 ),
                 UserInfo::new(
                     user::Sub("toha".into()),
-                    "toha",
+                    Nickname::from("toha"),
                     "Toha",
                     "toha://picture",
                     "toha@test.com",
@@ -360,7 +360,7 @@ mod test {
                 ),
                 UserInfo::new(
                     user::Sub("alex".into()),
-                    "alex",
+                    Nickname::from("alex"),
                     "Alex",
                     "alex://picture",
                     "alex@test.com",

@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Id, Sub};
+use super::{Id, Nickname, Sub};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub struct User {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     id: Option<Id>,
     sub: Sub,
-    nickname: String,
+    nickname: Nickname,
     name: String,
     picture: String,
     email: String,
@@ -18,7 +18,7 @@ impl User {
     pub fn new(
         id: Id,
         sub: Sub,
-        nickname: impl Into<String>,
+        nickname: Nickname,
         name: impl Into<String>,
         picture: impl Into<String>,
         email: impl Into<String>,
@@ -26,7 +26,7 @@ impl User {
         Self {
             id: Some(id),
             sub,
-            nickname: nickname.into(),
+            nickname,
             name: name.into(),
             picture: picture.into(),
             email: email.into(),
@@ -58,7 +58,7 @@ impl OnlineStatus {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UserInfo {
     sub: Sub,
-    nickname: String,
+    nickname: Nickname,
     name: String,
     picture: String,
     email: String,
@@ -69,7 +69,7 @@ impl UserInfo {
         &self.sub
     }
 
-    pub fn nickname(&self) -> &str {
+    pub const fn nickname(&self) -> &Nickname {
         &self.nickname
     }
 
@@ -115,14 +115,14 @@ impl From<UserInfo> for User {
 impl UserInfo {
     pub fn new(
         sub: Sub,
-        nickname: impl Into<String>,
+        nickname: Nickname,
         name: impl Into<String>,
         picture: impl Into<String>,
         email: impl Into<String>,
     ) -> Self {
         Self {
             sub,
-            nickname: nickname.into(),
+            nickname,
             name: name.into(),
             picture: picture.into(),
             email: email.into(),

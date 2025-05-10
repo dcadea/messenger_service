@@ -129,7 +129,7 @@ impl Render for SearchResult<'_> {
                             img ."w-6 h-6 rounded-full float-left"
                                 src=(user.picture())
                                 alt="User avatar" {}
-                            strong .px-3 {(user.name())} (user.nickname())
+                            strong .px-3 {(user.name())} (user.nickname().0)
 
                             @match self.contacts.iter().find(|c| user.sub().eq(c.recipient())) {
                                 Some(c) => @match c.status() {
@@ -209,7 +209,7 @@ impl Render for Icon<'_> {
 
 #[cfg(test)]
 mod test {
-    use crate::user::{self};
+    use crate::user::{self, Nickname};
 
     use super::*;
 
@@ -224,7 +224,7 @@ mod test {
 
         let actual = Header(&auth::User::new(
             user::Sub("jora".into()),
-            "jora_kardan",
+            Nickname::from("jora_kardan"),
             "jora",
             "jora://url",
         ))
@@ -351,9 +351,27 @@ mod test {
         ];
 
         let user_infos = [
-            UserInfo::new(user::Sub("jora".into()), "jora", "Jora", "jora", "jora"),
-            UserInfo::new(user::Sub("radu".into()), "radu", "Radu", "radu", "radu"),
-            UserInfo::new(user::Sub("igor".into()), "igor", "Igor", "igor", "igor"),
+            UserInfo::new(
+                user::Sub("jora".into()),
+                Nickname::from("jora"),
+                "Jora",
+                "jora",
+                "jora",
+            ),
+            UserInfo::new(
+                user::Sub("radu".into()),
+                Nickname::from("radu"),
+                "Radu",
+                "radu",
+                "radu",
+            ),
+            UserInfo::new(
+                user::Sub("igor".into()),
+                Nickname::from("igor"),
+                "Igor",
+                "igor",
+                "igor",
+            ),
         ];
         let actual = SearchResult::new(&contacts, &user_infos)
             .render()

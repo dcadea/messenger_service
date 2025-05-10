@@ -1,9 +1,9 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::state::AppState;
 use crate::user;
 use crate::user::model::UserInfo;
+use crate::{state::AppState, user::Nickname};
 use axum::Router;
 use axum::routing::get;
 use axum_extra::extract::cookie::Cookie;
@@ -41,7 +41,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
 #[derive(Clone)]
 pub struct User {
     sub: user::Sub,
-    nickname: String,
+    nickname: Nickname,
     name: String,
     picture: String,
 }
@@ -49,13 +49,13 @@ pub struct User {
 impl User {
     pub fn new(
         sub: user::Sub,
-        nickname: impl Into<String>,
+        nickname: Nickname,
         name: impl Into<String>,
         picture: impl Into<String>,
     ) -> Self {
         Self {
             sub,
-            nickname: nickname.into(),
+            nickname,
             name: name.into(),
             picture: picture.into(),
         }
@@ -65,7 +65,7 @@ impl User {
         &self.sub
     }
 
-    pub fn nickname(&self) -> &str {
+    pub const fn nickname(&self) -> &Nickname {
         &self.nickname
     }
 
@@ -82,7 +82,7 @@ impl From<UserInfo> for User {
     fn from(user_info: UserInfo) -> Self {
         Self::new(
             user_info.sub().clone(),
-            user_info.nickname(),
+            user_info.nickname().clone(),
             user_info.name(),
             user_info.picture(),
         )

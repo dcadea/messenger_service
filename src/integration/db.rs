@@ -134,6 +134,12 @@ impl From<user::Sub> for mongodb::bson::Bson {
     }
 }
 
+impl From<user::Nickname> for mongodb::bson::Bson {
+    fn from(val: user::Nickname) -> Self {
+        Self::String(val.0.to_string())
+    }
+}
+
 impl From<message::model::LastMessage> for mongodb::bson::Bson {
     fn from(lm: message::model::LastMessage) -> Self {
         Self::Document(doc! {

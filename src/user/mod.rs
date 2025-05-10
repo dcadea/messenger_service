@@ -78,6 +78,27 @@ impl<'de> Deserialize<'de> for Sub {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
+pub struct Nickname(pub String);
+
+impl Nickname {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl From<String> for Nickname {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
+
+impl From<&str> for Nickname {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("user not found: {0:?}")]
