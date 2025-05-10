@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{talk, user};
+use crate::{talk, user::Sub};
 
 use super::Id;
 
@@ -9,14 +9,14 @@ pub struct Message {
     #[serde(rename = "_id")]
     id: Id,
     talk_id: talk::Id,
-    owner: user::Sub,
+    owner: Sub,
     text: String,
     timestamp: i64,
     seen: bool,
 }
 
 impl Message {
-    pub fn new(talk_id: talk::Id, owner: user::Sub, text: impl Into<String>) -> Self {
+    pub fn new(talk_id: talk::Id, owner: Sub, text: impl Into<String>) -> Self {
         Self {
             id: Id::random(),
             talk_id,
@@ -35,7 +35,7 @@ impl Message {
         &self.talk_id
     }
 
-    pub const fn owner(&self) -> &user::Sub {
+    pub const fn owner(&self) -> &Sub {
         &self.owner
     }
 
@@ -81,19 +81,13 @@ impl Message {
 pub struct LastMessage {
     id: Id,
     text: String,
-    owner: user::Sub,
+    owner: Sub,
     timestamp: i64,
     seen: bool,
 }
 
 impl LastMessage {
-    pub fn new(
-        id: Id,
-        text: impl Into<String>,
-        owner: user::Sub,
-        timestamp: i64,
-        seen: bool,
-    ) -> Self {
+    pub fn new(id: Id, text: impl Into<String>, owner: Sub, timestamp: i64, seen: bool) -> Self {
         Self {
             id,
             text: text.into(),
@@ -111,7 +105,7 @@ impl LastMessage {
         &self.text
     }
 
-    pub const fn owner(&self) -> &user::Sub {
+    pub const fn owner(&self) -> &Sub {
         &self.owner
     }
 

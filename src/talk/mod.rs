@@ -11,7 +11,10 @@ use serde::{Deserialize, Serialize};
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use service::{TalkService, TalkValidator};
 
-use crate::{state::AppState, user};
+use crate::{
+    state::AppState,
+    user::{self, Sub},
+};
 
 mod handler;
 pub mod markup;
@@ -85,7 +88,7 @@ pub enum Error {
     #[error("Missing group name")]
     MissingName,
     #[error("Selected user does not exist: {0}")]
-    NonExistingUser(user::Sub),
+    NonExistingUser(Sub),
     #[error("contact is missing or in non-accepted status")]
     UnsupportedStatus,
 

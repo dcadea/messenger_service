@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use service::ContactService;
 
-use crate::{state::AppState, user};
+use crate::{state::AppState, user::Sub};
 
 mod handler;
 pub mod markup;
@@ -42,10 +42,10 @@ pub fn api<S>(s: AppState) -> Router<S> {
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Debug)]
 #[serde(tag = "indicator", rename_all = "snake_case")]
 pub enum Status {
-    Pending { initiator: user::Sub },
+    Pending { initiator: Sub },
     Accepted,
     Rejected,
-    Blocked { initiator: user::Sub },
+    Blocked { initiator: Sub },
 }
 
 impl Status {
@@ -68,10 +68,10 @@ pub enum Transition {
 }
 
 pub enum StatusTransition<'a> {
-    Accept { responder: &'a user::Sub },
-    Reject { responder: &'a user::Sub },
-    Block { initiator: &'a user::Sub },
-    Unblock { target: &'a user::Sub },
+    Accept { responder: &'a Sub },
+    Reject { responder: &'a Sub },
+    Block { initiator: &'a Sub },
+    Unblock { target: &'a Sub },
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -79,9 +79,9 @@ pub enum Error {
     #[error("contact not found: {0:?}")]
     NotFound(Id),
     #[error("contact ({0:?} : {1:?}) already exists")]
-    AlreadyExists(user::Sub, user::Sub),
+    AlreadyExists(Sub, Sub),
     #[error("contacts should be different, got both: {0:?}")]
-    SameSubs(user::Sub),
+    SameSubs(Sub),
     #[error("could not transition contact status")]
     StatusTransitionFailed,
 

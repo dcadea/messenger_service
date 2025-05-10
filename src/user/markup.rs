@@ -209,7 +209,7 @@ impl Render for Icon<'_> {
 
 #[cfg(test)]
 mod test {
-    use crate::user::{self, Nickname};
+    use crate::user::Nickname;
 
     use super::*;
 
@@ -223,7 +223,7 @@ mod test {
         );
 
         let actual = Header(&auth::User::new(
-            user::Sub("jora".into()),
+            Sub::from("jora"),
             Nickname::from("jora_kardan"),
             "jora",
             "jora://url",
@@ -267,9 +267,7 @@ mod test {
             }
         }.into_string();
 
-        let actual = StartTalk(&user::Sub("valera".into()))
-            .render()
-            .into_string();
+        let actual = StartTalk(&Sub::from("valera")).render().into_string();
 
         assert_eq!(actual, expected);
     }
@@ -283,7 +281,7 @@ mod test {
             "</form>"
         );
 
-        let actual = AddContact(&user::Sub("radu".into())).render().into_string();
+        let actual = AddContact(&Sub::from("radu")).render().into_string();
 
         assert_eq!(actual, expected);
     }
@@ -340,33 +338,33 @@ mod test {
         let contacts = [
             ContactDto::new(
                 contact::Id::random(),
-                user::Sub("jora".into()),
+                Sub::from("jora"),
                 contact::Status::Accepted,
             ),
             ContactDto::new(
                 contact::Id::random(),
-                user::Sub("igor".into()),
+                Sub::from("igor"),
                 contact::Status::Rejected,
             ),
         ];
 
         let user_infos = [
             UserInfo::new(
-                user::Sub("jora".into()),
+                Sub::from("jora"),
                 Nickname::from("jora"),
                 "Jora",
                 "jora",
                 "jora",
             ),
             UserInfo::new(
-                user::Sub("radu".into()),
+                Sub::from("radu"),
                 Nickname::from("radu"),
                 "Radu",
                 "radu",
                 "radu",
             ),
             UserInfo::new(
-                user::Sub("igor".into()),
+                Sub::from("igor"),
                 Nickname::from("igor"),
                 "Igor",
                 "igor",
@@ -385,7 +383,7 @@ mod test {
         let expected = r#"<span class="float-right px-2 py-1 text-white font-medium rounded-lg text-xs focus:outline-none bg-gray-400">Pending</span>"#;
 
         let actuat = contact::Status::Pending {
-            initiator: user::Sub("valera".into()),
+            initiator: Sub::from("valera"),
         }
         .render()
         .into_string();
@@ -416,7 +414,7 @@ mod test {
         let expected = r#"<span class="float-right px-2 py-1 text-white font-medium rounded-lg text-xs focus:outline-none bg-red-700">Blocked</span>"#;
 
         let actuat = contact::Status::Blocked {
-            initiator: user::Sub("valera".into()),
+            initiator: Sub::from("valera"),
         }
         .render()
         .into_string();
@@ -432,7 +430,7 @@ mod test {
             "</div>"
         );
 
-        let actual = OnlineStatus::new(user::Sub("google|igor".into()), true)
+        let actual = OnlineStatus::new(Sub::from("google|igor"), true)
             .render()
             .into_string();
 
@@ -444,10 +442,9 @@ mod test {
         let expected =
             r#"<i class="fa-solid fa-circle text-green-600 mr-2 text-sm" id="os-igor"></i>"#;
 
-        let actual =
-            Icon::OnlineIndicator(&OnlineStatus::new(user::Sub("google|igor".into()), true))
-                .render()
-                .into_string();
+        let actual = Icon::OnlineIndicator(&OnlineStatus::new(Sub::from("google|igor"), true))
+            .render()
+            .into_string();
 
         assert_eq!(actual, expected);
     }
@@ -457,10 +454,9 @@ mod test {
         let expected =
             r#"<i class="fa-regular fa-circle text-green-600 mr-2 text-sm" id="os-jora"></i>"#;
 
-        let actual =
-            Icon::OnlineIndicator(&OnlineStatus::new(user::Sub("auth0|jora".into()), false))
-                .render()
-                .into_string();
+        let actual = Icon::OnlineIndicator(&OnlineStatus::new(Sub::from("auth0|jora"), false))
+            .render()
+            .into_string();
 
         assert_eq!(actual, expected);
     }

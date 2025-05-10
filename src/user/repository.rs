@@ -2,11 +2,10 @@ use async_trait::async_trait;
 use futures::TryStreamExt;
 use mongodb::Database;
 use mongodb::bson::doc;
-use user::Sub;
 
 use super::Nickname;
+use super::Sub;
 use super::model::User;
-use crate::user;
 
 const USERS_COLLECTION: &str = "users";
 
@@ -75,7 +74,7 @@ mod test {
 
     use crate::{
         integration::db,
-        user::{self, Nickname, model::User},
+        user::{self, Nickname, Sub, model::User},
     };
 
     #[tokio::test]
@@ -85,7 +84,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoUserRepository::new(&db);
 
-        let sub = user::Sub("test|123".into());
+        let sub = Sub::from("test|123");
         let user = User::new(
             user::Id::random(),
             sub.clone(),
@@ -108,7 +107,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoUserRepository::new(&db);
 
-        let sub = user::Sub("valera".into());
+        let sub = Sub::from("valera");
 
         let actual = repo.find_by_sub(&sub).await.unwrap_err();
         assert!(matches!(actual, user::Error::NotFound(s) if s.eq(&sub)));
@@ -122,7 +121,7 @@ mod test {
 
         let valera = &User::new(
             user::Id::random(),
-            user::Sub("test|123".into()),
+            Sub::from("test|123"),
             Nickname::from("valera_kardan"),
             "valera",
             "picture",
@@ -131,7 +130,7 @@ mod test {
 
         let jora = &User::new(
             user::Id::random(),
-            user::Sub("test|456".into()),
+            Sub::from("test|456"),
             Nickname::from("jora_partizan"),
             "jora",
             "picture",
@@ -140,7 +139,7 @@ mod test {
 
         let radu = &User::new(
             user::Id::random(),
-            user::Sub("test|135".into()),
+            Sub::from("test|135"),
             Nickname::from("radu_carlig"),
             "radu",
             "picture",
@@ -149,7 +148,7 @@ mod test {
 
         let igor = &User::new(
             user::Id::random(),
-            user::Sub("test|246".into()),
+            Sub::from("test|246"),
             Nickname::from("igor_frina"),
             "igor",
             "picture",

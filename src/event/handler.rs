@@ -15,6 +15,7 @@ impl From<Error> for StatusCode {
 
 pub mod sse {
     use crate::event::{self, Notification, Subject};
+    use crate::user::Sub;
     use crate::{auth, user};
     use async_stream;
     use axum::Extension;
@@ -67,7 +68,7 @@ pub mod sse {
         )
     }
 
-    struct OnlineStatusDropper<'a>(&'a user::Sub, &'a user::Service);
+    struct OnlineStatusDropper<'a>(&'a Sub, &'a user::Service);
 
     impl Drop for OnlineStatusDropper<'_> {
         fn drop(&mut self) {
@@ -101,7 +102,8 @@ pub mod ws {
     use crate::{
         auth,
         event::{self, Message, Subject},
-        message, talk, user,
+        message, talk,
+        user::Sub,
     };
     use axum::extract::ws;
     use axum::{
@@ -150,7 +152,7 @@ pub mod ws {
     }
 
     async fn send(
-        auth_sub: user::Sub,
+        auth_sub: Sub,
         talk_id: talk::Id,
         mut sender: SplitSink<WebSocket, ws::Message>,
         event_service: event::Service,

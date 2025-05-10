@@ -35,8 +35,8 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct Sub(pub Arc<str>);
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
+pub struct Sub(pub String);
 
 impl Sub {
     pub fn as_str(&self) -> &str {
@@ -59,22 +59,15 @@ impl Sub {
     }
 }
 
-impl Serialize for Sub {
-    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        self.0.serialize(serializer)
+impl From<String> for Sub {
+    fn from(s: String) -> Self {
+        Self(s)
     }
 }
 
-impl<'de> Deserialize<'de> for Sub {
-    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Ok(Self(s.into()))
+impl From<&str> for Sub {
+    fn from(s: &str) -> Self {
+        Self(s.to_string())
     }
 }
 

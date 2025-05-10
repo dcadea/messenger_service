@@ -12,10 +12,10 @@ use tokio::sync::RwLock;
 
 use super::{Code, Csrf, Session, TokenClaims};
 
+use crate::integration;
 use crate::integration::cache;
 use crate::integration::idp;
-use crate::integration::{self};
-use crate::user;
+use crate::user::Sub;
 use crate::user::model::UserInfo;
 
 const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
@@ -28,7 +28,7 @@ pub trait AuthService {
     async fn exchange_code(&self, code: Code, csrf: Csrf)
     -> super::Result<(AccessToken, Duration)>;
 
-    async fn validate(&self, token: &str) -> super::Result<user::Sub>;
+    async fn validate(&self, token: &str) -> super::Result<Sub>;
 
     async fn get_user_info(&self, token: &str) -> super::Result<UserInfo>;
 
@@ -138,7 +138,7 @@ impl AuthService for AuthServiceImpl {
         }
     }
 
-    async fn validate(&self, token: &str) -> super::Result<user::Sub> {
+    async fn validate(&self, token: &str) -> super::Result<Sub> {
         let jwt_header = decode_header(token).map_err(|e| {
             warn!("Failed to decode JWT header: {e:?}");
             super::Error::TokenMalformed

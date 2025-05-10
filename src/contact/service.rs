@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::{integration::cache, user};
+use crate::{integration::cache, user::Sub};
 
 use super::{
     Id, Repository, Status, StatusTransition,
@@ -9,27 +9,20 @@ use super::{
 
 #[async_trait]
 pub trait ContactService {
-    async fn find(
-        &self,
-        auth_sub: &user::Sub,
-        recipient: &user::Sub,
-    ) -> super::Result<Option<ContactDto>>;
+    async fn find(&self, auth_sub: &Sub, recipient: &Sub) -> super::Result<Option<ContactDto>>;
 
-    async fn find_by_id(&self, auth_sub: &user::Sub, id: &Id) -> super::Result<ContactDto>;
+    async fn find_by_id(&self, auth_sub: &Sub, id: &Id) -> super::Result<ContactDto>;
 
-    async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<ContactDto>>;
+    async fn find_by_sub(&self, sub: &Sub) -> super::Result<Vec<ContactDto>>;
 
-    async fn find_by_sub_and_status(
-        &self,
-        sub: &user::Sub,
-        s: &Status,
-    ) -> super::Result<Vec<ContactDto>>;
+    async fn find_by_sub_and_status(&self, sub: &Sub, s: &Status)
+    -> super::Result<Vec<ContactDto>>;
 
     async fn add(&self, c: &Contact) -> super::Result<()>;
 
     async fn transition_status(&self, id: &Id, t: StatusTransition<'_>) -> super::Result<Status>;
 
-    async fn delete(&self, auth_sub: &user::Sub, contact: &user::Sub) -> super::Result<()>;
+    async fn delete(&self, auth_sub: &Sub, contact: &Sub) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -46,11 +39,7 @@ impl ContactServiceImpl {
 
 #[async_trait]
 impl ContactService for ContactServiceImpl {
-    async fn find(
-        &self,
-        auth_sub: &user::Sub,
-        recipient: &user::Sub,
-    ) -> super::Result<Option<ContactDto>> {
+    async fn find(&self, auth_sub: &Sub, recipient: &Sub) -> super::Result<Option<ContactDto>> {
         if auth_sub.eq(recipient) {
             return Err(super::Error::SameSubs(auth_sub.clone()));
         }
@@ -62,7 +51,7 @@ impl ContactService for ContactServiceImpl {
             .map(|c| c.map(|c| map_to_dto(auth_sub, &c)))
     }
 
-    async fn find_by_id(&self, auth_sub: &user::Sub, id: &Id) -> super::Result<ContactDto> {
+    async fn find_by_id(&self, auth_sub: &Sub, id: &Id) -> super::Result<ContactDto> {
         // TODO: cache
         let c = self.repo.find_by_id(id).await?;
 
@@ -70,11 +59,11 @@ impl ContactService for ContactServiceImpl {
             .ok_or(super::Error::NotFound(id.clone()))
     }
 
-    async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<ContactDto>> {
+    async fn find_by_sub(&self, sub: &Sub) -> super::Result<Vec<ContactDto>> {
         // TODO: cache contacts
         // let contacts = self
         //     .redis
-        //     .smembers::<HashSet<user::Sub>>(cache::Key::Contacts(sub.to_owned()))
+        //     .smembers::<HashSet<Sub>>(cache::Key::Contacts(sub.to_owned()))
         //     .await;
 
         // match contacts {
@@ -93,7 +82,7 @@ impl ContactService for ContactServiceImpl {
 
     async fn find_by_sub_and_status(
         &self,
-        sub: &user::Sub,
+        sub: &Sub,
         s: &Status,
     ) -> super::Result<Vec<ContactDto>> {
         // TODO: cache contacts
@@ -144,7 +133,7 @@ impl ContactService for ContactServiceImpl {
         }
     }
 
-    async fn delete(&self, auth_sub: &user::Sub, contact: &user::Sub) -> super::Result<()> {
+    async fn delete(&self, auth_sub: &Sub, contact: &Sub) -> super::Result<()> {
         assert_ne!(auth_sub, contact);
 
         self.repo.delete(auth_sub, contact).await?;
@@ -162,7 +151,7 @@ impl ContactService for ContactServiceImpl {
 
 impl ContactServiceImpl {
     // TODO: cache contacts
-    // async fn cache_contacts(&self, sub: &user::Sub) -> super::Result<HashSet<user::Sub>> {
+    // async fn cache_contacts(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
     //     let contacts = self.repo.find_by_sub(sub).await?;
 
     //     if contacts.is_empty() {
@@ -183,7 +172,7 @@ impl ContactServiceImpl {
     // }
 }
 
-fn map_to_dto(auth_sub: &user::Sub, c: &Contact) -> ContactDto {
+fn map_to_dto(auth_sub: &Sub, c: &Contact) -> ContactDto {
     let recipient = if auth_sub.eq(c.sub1()) {
         c.sub2()
     } else {

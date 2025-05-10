@@ -176,7 +176,7 @@ impl fmt::Display for Transition {
 
 #[cfg(test)]
 mod test {
-    use crate::user::{self, Nickname};
+    use crate::user::{Nickname, Sub};
 
     use super::*;
 
@@ -267,7 +267,7 @@ mod test {
         }.into_string();
 
         let auth_user = auth::User::new(
-            user::Sub("valera".into()),
+            Sub::from("valera"),
             Nickname::from("valera"),
             "Valera",
             "valera://picture",
@@ -277,11 +277,11 @@ mod test {
             (
                 ContactDto::new(
                     contact::Id("680d045617d7edcb069071d8".into()),
-                    user::Sub("jora".into()),
+                    Sub::from("jora"),
                     contact::Status::Accepted,
                 ),
                 UserInfo::new(
-                    user::Sub("jora".into()),
+                    Sub::from("jora"),
                     Nickname::from("jora"),
                     "Jora",
                     "jora://picture",
@@ -291,11 +291,11 @@ mod test {
             (
                 ContactDto::new(
                     contact::Id("680d045617d7edcb069071d9".into()),
-                    user::Sub("igor".into()),
+                    Sub::from("igor"),
                     contact::Status::Rejected,
                 ),
                 UserInfo::new(
-                    user::Sub("igor".into()),
+                    Sub::from("igor"),
                     Nickname::from("igor"),
                     "Igor",
                     "igor://picture",
@@ -305,13 +305,13 @@ mod test {
             (
                 ContactDto::new(
                     contact::Id("680d045617d7edcb069071da".into()),
-                    user::Sub("radu".into()),
+                    Sub::from("radu"),
                     contact::Status::Pending {
-                        initiator: user::Sub("valera".into()),
+                        initiator: Sub::from("valera"),
                     },
                 ),
                 UserInfo::new(
-                    user::Sub("radu".into()),
+                    Sub::from("radu"),
                     Nickname::from("radu"),
                     "Radu",
                     "radu://picture",
@@ -321,13 +321,13 @@ mod test {
             (
                 ContactDto::new(
                     contact::Id("680d045617d7edcb069071db".into()),
-                    user::Sub("gicu".into()),
+                    Sub::from("gicu"),
                     contact::Status::Pending {
-                        initiator: user::Sub("gicu".into()),
+                        initiator: Sub::from("gicu"),
                     },
                 ),
                 UserInfo::new(
-                    user::Sub("gicu".into()),
+                    Sub::from("gicu"),
                     Nickname::from("gicu"),
                     "Gicu",
                     "gicu://picture",
@@ -337,13 +337,13 @@ mod test {
             (
                 ContactDto::new(
                     contact::Id("680d045617d7edcb069071dc".into()),
-                    user::Sub("toha".into()),
+                    Sub::from("toha"),
                     contact::Status::Blocked {
-                        initiator: user::Sub("valera".into()),
+                        initiator: Sub::from("valera"),
                     },
                 ),
                 UserInfo::new(
-                    user::Sub("toha".into()),
+                    Sub::from("toha"),
                     Nickname::from("toha"),
                     "Toha",
                     "toha://picture",
@@ -353,13 +353,13 @@ mod test {
             (
                 ContactDto::new(
                     contact::Id("680d045617d7edcb069071dd".into()),
-                    user::Sub("alex".into()),
+                    Sub::from("alex"),
                     contact::Status::Blocked {
-                        initiator: user::Sub("alex".into()),
+                        initiator: Sub::from("alex"),
                     },
                 ),
                 UserInfo::new(
-                    user::Sub("alex".into()),
+                    Sub::from("alex"),
                     Nickname::from("alex"),
                     "Alex",
                     "alex://picture",

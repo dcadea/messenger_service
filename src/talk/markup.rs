@@ -314,7 +314,10 @@ impl Render for Icon {
 
 #[cfg(test)]
 mod test {
-    use crate::{message::model::LastMessage, user::Nickname};
+    use crate::{
+        message::model::LastMessage,
+        user::{Nickname, Sub},
+    };
 
     use super::*;
 
@@ -359,7 +362,7 @@ mod test {
         );
 
         let auth_user = auth::User::new(
-            user::Sub("jora".into()),
+            Sub::from("jora"),
             Nickname::from("jora"),
             "Jora",
             "jora://picture",
@@ -370,13 +373,13 @@ mod test {
                 "talk1://picture",
                 "Valera",
                 DetailsDto::Chat {
-                    sender: user::Sub("github|jora".into()),
-                    recipient: user::Sub("google|valera".into()),
+                    sender: Sub::from("github|jora"),
+                    recipient: Sub::from("google|valera"),
                 },
                 Some(LastMessage::new(
                     message::Id::random(),
                     "LGTM!",
-                    user::Sub("github|jora".into()),
+                    Sub::from("github|jora"),
                     chrono::Utc::now().timestamp(),
                     true,
                 )),
@@ -386,13 +389,13 @@ mod test {
                 "talk2://picture",
                 "Igor",
                 DetailsDto::Chat {
-                    sender: user::Sub("github|jora".into()),
-                    recipient: user::Sub("google|igor".into()),
+                    sender: Sub::from("github|jora"),
+                    recipient: Sub::from("google|igor"),
                 },
                 Some(LastMessage::new(
                     message::Id::random(),
                     "What's up?",
-                    user::Sub("github|igor".into()),
+                    Sub::from("github|igor"),
                     chrono::Utc::now().timestamp(),
                     true,
                 )),
@@ -459,7 +462,7 @@ mod test {
         }.into_string();
 
         let auth_user = auth::User::new(
-            user::Sub("jora".into()),
+            Sub::from("jora"),
             Nickname::from("jora"),
             "Jora",
             "jora://picture",
@@ -492,7 +495,7 @@ mod test {
                 Some(LastMessage::new(
                     message::Id::random(),
                     "What's up?",
-                    user::Sub("github|igor".into()),
+                    Sub::from("github|igor"),
                     chrono::Utc::now().timestamp(),
                     true,
                 )),
@@ -524,7 +527,7 @@ mod test {
                 Some(LastMessage::new(
                     message::Id::random(),
                     "1000 HP",
-                    user::Sub("github|radu".into()),
+                    Sub::from("github|radu"),
                     chrono::Utc::now().timestamp(),
                     false,
                 )),
@@ -558,13 +561,13 @@ mod test {
             "talk://picture",
             "Wiggas",
             DetailsDto::Chat {
-                sender: user::Sub("github|jora".into()),
-                recipient: user::Sub("google|valera".into()),
+                sender: Sub::from("github|jora"),
+                recipient: Sub::from("google|valera"),
             },
             Some(LastMessage::new(
                 message::Id::random(),
                 "LGTM!",
-                user::Sub("github|jora".into()),
+                Sub::from("github|jora"),
                 chrono::Utc::now().timestamp(),
                 true,
             )),
@@ -614,20 +617,20 @@ mod test {
             "talk://picture",
             "Wiggas",
             DetailsDto::Chat {
-                sender: user::Sub("github|jora".into()),
-                recipient: user::Sub("google|valera".into()),
+                sender: Sub::from("github|jora"),
+                recipient: Sub::from("google|valera"),
             },
             Some(LastMessage::new(
                 message::Id::random(),
                 "LGTM!",
-                user::Sub("github|jora".into()),
+                Sub::from("github|jora"),
                 chrono::Utc::now().timestamp(),
                 true,
             )),
         );
 
         let auth_user = auth::User::new(
-            user::Sub("jora".into()),
+            Sub::from("jora"),
             Nickname::from("jora"),
             "Jora",
             "jora://picture",
@@ -650,7 +653,7 @@ mod test {
         );
 
         let auth_user = auth::User::new(
-            user::Sub("jora".into()),
+            Sub::from("jora"),
             Nickname::from("jora"),
             "Jora",
             "jora://picture",
@@ -660,13 +663,13 @@ mod test {
             "talk://picture",
             "Wiggas",
             DetailsDto::Chat {
-                sender: user::Sub("github|jora".into()),
-                recipient: user::Sub("google|valera".into()),
+                sender: Sub::from("github|jora"),
+                recipient: Sub::from("google|valera"),
             },
             Some(LastMessage::new(
                 message::Id::random(),
                 "LGTM!",
-                user::Sub("github|jora".into()),
+                Sub::from("github|jora"),
                 chrono::Utc::now().timestamp(),
                 true,
             )),
@@ -697,13 +700,13 @@ mod test {
             "talk://picture",
             "Wiggas",
             DetailsDto::Chat {
-                sender: user::Sub("github|jora".into()),
-                recipient: user::Sub("google|valera".into()),
+                sender: Sub::from("github|jora"),
+                recipient: Sub::from("google|valera"),
             },
             Some(LastMessage::new(
                 message::Id::random(),
                 "LGTM!",
-                user::Sub("github|jora".into()),
+                Sub::from("github|jora"),
                 chrono::Utc::now().timestamp(),
                 true,
             )),

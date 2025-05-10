@@ -7,8 +7,9 @@ use messenger_service::Raw;
 use redis::{AsyncCommands, JsonAsyncCommands};
 use serde::Serialize;
 
+use crate::user::Sub;
 use crate::user::model::UserInfo;
-use crate::{auth, talk, user};
+use crate::{auth, talk};
 
 #[derive(Clone)]
 pub struct Redis {
@@ -221,8 +222,8 @@ impl Config {
 
 #[derive(Clone, Debug)]
 pub enum Key<'a> {
-    UserInfo(&'a user::Sub),
-    Contacts(&'a user::Sub),
+    UserInfo(&'a Sub),
+    Contacts(&'a Sub),
     Talk(&'a talk::Id),
     Session(&'a auth::Session),
     Csrf(&'a auth::Csrf),
@@ -264,14 +265,14 @@ impl redis::ToRedisArgs for Key<'_> {
     }
 }
 
-impl redis::FromRedisValue for user::Sub {
+impl redis::FromRedisValue for Sub {
     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
         let s = String::from_redis_value(v)?;
-        Ok(Self(s.into()))
+        Ok(Self(s))
     }
 }
 
-impl redis::ToRedisArgs for user::Sub {
+impl redis::ToRedisArgs for Sub {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + redis::RedisWrite,

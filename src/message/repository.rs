@@ -204,7 +204,7 @@ impl MessageRepository for MongoMessageRepository {
 mod test {
     use testcontainers_modules::{mongo::Mongo, testcontainers::runners::AsyncRunner};
 
-    use crate::{integration::db, user};
+    use crate::{integration::db, user::Sub};
 
     use super::*;
 
@@ -214,11 +214,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
-        let expected = Message::new(
-            talk::Id::random(),
-            user::Sub("jora".into()),
-            "Hello, world!",
-        );
+        let expected = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
 
         repo.insert(&expected).await.unwrap();
         let actual = repo.find_by_id(expected.id()).await.unwrap();
@@ -232,16 +228,8 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
-        let m1 = Message::new(
-            talk::Id::random(),
-            user::Sub("jora".into()),
-            "Hello, world!",
-        );
-        let m2 = Message::new(
-            talk::Id::random(),
-            user::Sub("val".into()),
-            "Goodbye, world!",
-        );
+        let m1 = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
+        let m2 = Message::new(talk::Id::random(), Sub::from("val"), "Goodbye, world!");
 
         repo.insert_many(&[m1.clone(), m2.clone()]).await.unwrap();
         let actual1 = repo.find_by_id(m1.id()).await.unwrap();
@@ -256,16 +244,8 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
-        let m1 = Message::new(
-            talk::Id::random(),
-            user::Sub("jora".into()),
-            "Hello, world!",
-        );
-        let m2 = Message::new(
-            talk::Id::random(),
-            user::Sub("val".into()),
-            "Goodbye, world!",
-        );
+        let m1 = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
+        let m2 = Message::new(talk::Id::random(), Sub::from("val"), "Goodbye, world!");
         let m3 = m2.clone();
 
         let res = repo
@@ -282,9 +262,9 @@ mod test {
         let repo = MongoMessageRepository::new(&db);
 
         let talk_id = talk::Id::random();
-        let m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
-        let m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
-        let m3 = Message::new(talk::Id::random(), user::Sub("radu".into()), "What's up?");
+        let m1 = Message::new(talk_id.clone(), Sub::from("jora"), "Hello, world!");
+        let m2 = Message::new(talk_id.clone(), Sub::from("val"), "Goodbye, world!");
+        let m3 = Message::new(talk::Id::random(), Sub::from("radu"), "What's up?");
 
         let expected = vec![m1.clone(), m2.clone()];
 
@@ -301,10 +281,10 @@ mod test {
         let repo = MongoMessageRepository::new(&db);
 
         let talk_id = talk::Id::random();
-        let m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
-        let m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
-        let m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
-        let m4 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
+        let m1 = Message::new(talk_id.clone(), Sub::from("jora"), "Hello, world!");
+        let m2 = Message::new(talk_id.clone(), Sub::from("val"), "Goodbye, world!");
+        let m3 = Message::new(talk_id.clone(), Sub::from("radu"), "What's up?");
+        let m4 = Message::new(talk_id.clone(), Sub::from("igor"), "Not mutch");
 
         let expected = vec![m1.clone(), m2.clone()];
 
@@ -322,13 +302,13 @@ mod test {
 
         let talk_id = talk::Id::random();
         let now = chrono::Utc::now().timestamp();
-        let mut m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
+        let mut m1 = Message::new(talk_id.clone(), Sub::from("jora"), "Hello, world!");
         m1.set_timestamp(now - 3000);
-        let mut m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
+        let mut m2 = Message::new(talk_id.clone(), Sub::from("val"), "Goodbye, world!");
         m2.set_timestamp(now - 2000);
-        let mut m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
+        let mut m3 = Message::new(talk_id.clone(), Sub::from("radu"), "What's up?");
         m3.set_timestamp(now - 1000);
-        let m4 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
+        let m4 = Message::new(talk_id.clone(), Sub::from("igor"), "Not mutch");
 
         let expected = vec![m2.clone(), m1.clone()];
         let before = m3.timestamp();
@@ -347,15 +327,15 @@ mod test {
 
         let talk_id = talk::Id::random();
         let now = chrono::Utc::now().timestamp();
-        let mut m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
+        let mut m1 = Message::new(talk_id.clone(), Sub::from("jora"), "Hello, world!");
         m1.set_timestamp(now - 4000);
-        let mut m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
+        let mut m2 = Message::new(talk_id.clone(), Sub::from("val"), "Goodbye, world!");
         m2.set_timestamp(now - 3000);
-        let mut m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
+        let mut m3 = Message::new(talk_id.clone(), Sub::from("radu"), "What's up?");
         m3.set_timestamp(now - 2000);
-        let mut m4 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
+        let mut m4 = Message::new(talk_id.clone(), Sub::from("igor"), "Not mutch");
         m4.set_timestamp(now - 1000);
-        let m5 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
+        let m5 = Message::new(talk_id.clone(), Sub::from("igor"), "Not mutch");
 
         let expected = vec![m3.clone(), m2.clone()];
         let before = m4.timestamp();
@@ -377,13 +357,13 @@ mod test {
 
         let talk_id = talk::Id::random();
         let now = chrono::Utc::now().timestamp();
-        let mut m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
+        let mut m1 = Message::new(talk_id.clone(), Sub::from("jora"), "Hello, world!");
         m1.set_timestamp(now - 3000);
-        let mut m2 = Message::new(talk_id.clone(), user::Sub("val".into()), "Goodbye, world!");
+        let mut m2 = Message::new(talk_id.clone(), Sub::from("val"), "Goodbye, world!");
         m2.set_timestamp(now - 2000);
-        let mut m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
+        let mut m3 = Message::new(talk_id.clone(), Sub::from("radu"), "What's up?");
         m3.set_timestamp(now - 1000);
-        let m4 = Message::new(talk::Id::random(), user::Sub("igor".into()), "Not mutch");
+        let m4 = Message::new(talk::Id::random(), Sub::from("igor"), "Not mutch");
 
         let expected = m3.clone();
 
@@ -399,11 +379,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
-        let m = Message::new(
-            talk::Id::random(),
-            user::Sub("jora".into()),
-            "Hello, world!",
-        );
+        let m = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
 
         repo.insert(&m).await.unwrap();
         let actual = repo.find_most_recent(&talk::Id::random()).await.unwrap();
@@ -417,11 +393,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
-        let m = Message::new(
-            talk::Id::random(),
-            user::Sub("jora".into()),
-            "Hello, world!",
-        );
+        let m = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
 
         repo.insert(&m).await.unwrap();
 
@@ -439,11 +411,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
-        let m = Message::new(
-            talk::Id::random(),
-            user::Sub("jora".into()),
-            "Hello, world!",
-        );
+        let m = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
 
         repo.insert(&m).await.unwrap();
 
@@ -464,11 +432,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
-        let m = Message::new(
-            talk::Id::random(),
-            user::Sub("jora".into()),
-            "Hello, world!",
-        );
+        let m = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
 
         repo.insert(&m).await.unwrap();
         assert!(repo.find_by_id(m.id()).await.is_ok());
@@ -487,11 +451,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
-        let m = Message::new(
-            talk::Id::random(),
-            user::Sub("jora".into()),
-            "Hello, world!",
-        );
+        let m = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
 
         repo.insert(&m).await.unwrap();
         assert!(repo.find_by_id(m.id()).await.is_ok());
@@ -509,10 +469,10 @@ mod test {
         let repo = MongoMessageRepository::new(&db);
 
         let talk_id = talk::Id::random();
-        let m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
-        let m2 = Message::new(talk::Id::random(), user::Sub("val".into()), "Goodbye!");
-        let m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
-        let m4 = Message::new(talk::Id::random(), user::Sub("igor".into()), "Not mutch");
+        let m1 = Message::new(talk_id.clone(), Sub::from("jora"), "Hello, world!");
+        let m2 = Message::new(talk::Id::random(), Sub::from("val"), "Goodbye!");
+        let m3 = Message::new(talk_id.clone(), Sub::from("radu"), "What's up?");
+        let m4 = Message::new(talk::Id::random(), Sub::from("igor"), "Not mutch");
 
         repo.insert_many(&[m1, m2, m3, m4]).await.unwrap();
         let delete_count = repo.delete_by_talk_id(&talk_id).await.unwrap();
@@ -527,10 +487,10 @@ mod test {
         let repo = MongoMessageRepository::new(&db);
 
         let talk_id = talk::Id::random();
-        let m1 = Message::new(talk_id.clone(), user::Sub("jora".into()), "Hello, world!");
-        let m2 = Message::new(talk::Id::random(), user::Sub("val".into()), "Goodbye!");
-        let m3 = Message::new(talk_id.clone(), user::Sub("radu".into()), "What's up?");
-        let mut m4 = Message::new(talk_id.clone(), user::Sub("igor".into()), "Not mutch");
+        let m1 = Message::new(talk_id.clone(), Sub::from("jora"), "Hello, world!");
+        let m2 = Message::new(talk::Id::random(), Sub::from("val"), "Goodbye!");
+        let m3 = Message::new(talk_id.clone(), Sub::from("radu"), "What's up?");
+        let mut m4 = Message::new(talk_id.clone(), Sub::from("igor"), "Not mutch");
         m4.set_seen(true);
 
         let ids = [

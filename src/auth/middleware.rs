@@ -7,8 +7,11 @@ use axum_extra::extract::CookieJar;
 use log::debug;
 use oauth2::AccessToken;
 
-use crate::auth::{self, Session};
 use crate::user;
+use crate::{
+    auth::{self, Session},
+    user::Sub,
+};
 
 pub async fn validate_sid(
     auth_service: State<auth::Service>,
@@ -46,7 +49,7 @@ pub async fn authorize(
     }
 
     let ext = req.extensions();
-    let sub: &user::Sub = ext.get().ok_or(super::Error::Unauthorized)?;
+    let sub: &Sub = ext.get().ok_or(super::Error::Unauthorized)?;
     let token: &AccessToken = ext.get().ok_or(super::Error::Unauthorized)?;
 
     let user_info = match user_service.find_one(sub).await {

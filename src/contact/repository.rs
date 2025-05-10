@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use futures::TryStreamExt;
 use mongodb::{Database, bson::doc};
 
-use crate::user;
+use crate::user::Sub;
 
 use super::{Id, Status, model::Contact};
 
@@ -10,25 +10,21 @@ const CONTACTS_COLLECTION: &str = "contacts";
 
 #[async_trait]
 pub trait ContactRepository {
-    async fn find(&self, sub1: &user::Sub, sub2: &user::Sub) -> super::Result<Option<Contact>>;
+    async fn find(&self, sub1: &Sub, sub2: &Sub) -> super::Result<Option<Contact>>;
 
     async fn find_by_id(&self, id: &Id) -> super::Result<Option<Contact>>;
 
-    async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Contact>>;
+    async fn find_by_sub(&self, sub: &Sub) -> super::Result<Vec<Contact>>;
 
-    async fn find_by_sub_and_status(
-        &self,
-        sub: &user::Sub,
-        s: &Status,
-    ) -> super::Result<Vec<Contact>>;
+    async fn find_by_sub_and_status(&self, sub: &Sub, s: &Status) -> super::Result<Vec<Contact>>;
 
     async fn add(&self, contact: &Contact) -> super::Result<()>;
 
     async fn update_status(&self, c: &Contact) -> super::Result<bool>;
 
-    async fn delete(&self, me: &user::Sub, you: &user::Sub) -> super::Result<bool>;
+    async fn delete(&self, me: &Sub, you: &Sub) -> super::Result<bool>;
 
-    async fn exists(&self, sub1: &user::Sub, sub2: &user::Sub) -> super::Result<bool>;
+    async fn exists(&self, sub1: &Sub, sub2: &Sub) -> super::Result<bool>;
 }
 
 pub struct MongoContactRepository {
@@ -45,7 +41,7 @@ impl MongoContactRepository {
 
 #[async_trait]
 impl ContactRepository for MongoContactRepository {
-    async fn find(&self, sub1: &user::Sub, sub2: &user::Sub) -> super::Result<Option<Contact>> {
+    async fn find(&self, sub1: &Sub, sub2: &Sub) -> super::Result<Option<Contact>> {
         let filter = doc! { "$or": [ {"sub1": sub1, "sub2": sub2}, {"sub2": sub1, "sub1": sub2} ] };
 
         self.col.find_one(filter).await.map_err(super::Error::from)
@@ -58,7 +54,7 @@ impl ContactRepository for MongoContactRepository {
             .map_err(super::Error::from)
     }
 
-    async fn find_by_sub(&self, sub: &user::Sub) -> super::Result<Vec<Contact>> {
+    async fn find_by_sub(&self, sub: &Sub) -> super::Result<Vec<Contact>> {
         let filter = doc! { "$or": [ {"sub1": sub}, {"sub2": sub} ] };
 
         let cursor = self.col.find(filter).await?;
@@ -66,11 +62,7 @@ impl ContactRepository for MongoContactRepository {
         cursor.try_collect().await.map_err(super::Error::from)
     }
 
-    async fn find_by_sub_and_status(
-        &self,
-        sub: &user::Sub,
-        s: &Status,
-    ) -> super::Result<Vec<Contact>> {
+    async fn find_by_sub_and_status(&self, sub: &Sub, s: &Status) -> super::Result<Vec<Contact>> {
         let filter = doc! {
             "$or": [
                 { "sub1": sub, "status": s },
@@ -103,7 +95,7 @@ impl ContactRepository for MongoContactRepository {
         Ok(res.modified_count > 0)
     }
 
-    async fn delete(&self, me: &user::Sub, you: &user::Sub) -> super::Result<bool> {
+    async fn delete(&self, me: &Sub, you: &Sub) -> super::Result<bool> {
         let filter = doc! { "$or": [ {"sub1": me, "sub2": you}, {"sub2": me, "sub1": you} ] };
 
         let res = self.col.delete_one(filter).await?;
@@ -111,7 +103,7 @@ impl ContactRepository for MongoContactRepository {
         Ok(res.deleted_count > 0)
     }
 
-    async fn exists(&self, sub1: &user::Sub, sub2: &user::Sub) -> super::Result<bool> {
+    async fn exists(&self, sub1: &Sub, sub2: &Sub) -> super::Result<bool> {
         let filter = doc! {
             "$or": [
                 {"sub1": sub1, "sub2": sub2},
@@ -131,7 +123,7 @@ mod test {
     use crate::{
         contact::{self, model::Contact},
         integration::db,
-        user,
+        user::Sub,
     };
 
     use super::*;
@@ -142,8 +134,8 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let jora = user::Sub("jora".into());
-        let valera = user::Sub("valera".into());
+        let jora = Sub::from("jora");
+        let valera = Sub::from("valera");
         let expected = Contact::new(&jora, &valera);
         repo.add(&expected).await.unwrap();
 
@@ -160,12 +152,12 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let jora = user::Sub("jora".into());
-        let valera = user::Sub("valera".into());
+        let jora = Sub::from("jora");
+        let valera = Sub::from("valera");
         let expected = Contact::new(&jora, &valera);
         repo.add(&expected).await.unwrap();
 
-        let actual = repo.find(&jora, &user::Sub("radu".into())).await.unwrap();
+        let actual = repo.find(&jora, &Sub::from("radu")).await.unwrap();
         assert!(actual.is_none());
     }
 
@@ -175,7 +167,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let expected = Contact::new(&user::Sub("jora".into()), &user::Sub("valera".into()));
+        let expected = Contact::new(&Sub::from("jora"), &Sub::from("valera"));
         repo.add(&expected).await.unwrap();
 
         let actual = repo.find_by_id(expected.id()).await.unwrap().unwrap();
@@ -200,11 +192,11 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let jora = user::Sub("jora".into());
-        let igor = user::Sub("igor".into());
-        let c1 = &Contact::new(&jora, &user::Sub("valera".into()));
+        let jora = Sub::from("jora");
+        let igor = Sub::from("igor");
+        let c1 = &Contact::new(&jora, &Sub::from("valera"));
         let c2 = &Contact::new(&igor, &jora);
-        let c3 = &Contact::new(&igor, &user::Sub("radu".into()));
+        let c3 = &Contact::new(&igor, &Sub::from("radu"));
 
         tokio::try_join!(repo.add(c1), repo.add(c2), repo.add(c3)).unwrap();
 
@@ -222,7 +214,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let actual = repo.find_by_sub(&user::Sub("jora".into())).await.unwrap();
+        let actual = repo.find_by_sub(&Sub::from("jora")).await.unwrap();
 
         assert!(actual.is_empty());
     }
@@ -233,19 +225,19 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let jora = user::Sub("jora".into());
-        let valera = user::Sub("valera".into());
-        let igor = user::Sub("igor".into());
+        let jora = Sub::from("jora");
+        let valera = Sub::from("valera");
+        let igor = Sub::from("igor");
 
         let mut c1 = Contact::new(&jora, &valera);
         c1.set_status(Status::Rejected);
-        let mut c2 = Contact::new(&user::Sub("radu".into()), &jora);
+        let mut c2 = Contact::new(&Sub::from("radu"), &jora);
         c2.set_status(Status::Accepted);
         let mut c3 = Contact::new(&jora, &igor);
         c3.set_status(Status::Accepted);
         let mut c4 = Contact::new(&igor, &valera);
         c4.set_status(Status::Accepted);
-        let mut c5 = Contact::new(&user::Sub("ion".into()), &jora);
+        let mut c5 = Contact::new(&Sub::from("ion"), &jora);
         c5.set_status(Status::Blocked {
             initiator: jora.clone(),
         });
@@ -277,7 +269,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let jora = user::Sub("jora".into());
+        let jora = Sub::from("jora");
         let c = Contact::new(&jora, &jora);
 
         repo.add(&c).await.unwrap();
@@ -289,8 +281,8 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let initiator = user::Sub("jora".into());
-        let mut original = Contact::new(&initiator, &user::Sub("valera".into()));
+        let initiator = Sub::from("jora");
+        let mut original = Contact::new(&initiator, &Sub::from("valera"));
         original.set_status(Status::Pending { initiator });
         repo.add(&original).await.unwrap();
 
@@ -309,8 +301,8 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let initiator = user::Sub("jora".into());
-        let mut not_persisted = Contact::new(&initiator, &user::Sub("valera".into()));
+        let initiator = Sub::from("jora");
+        let mut not_persisted = Contact::new(&initiator, &Sub::from("valera"));
         not_persisted.set_status(Status::Rejected);
 
         let updated = repo.update_status(&not_persisted).await.unwrap();
@@ -323,8 +315,8 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let jora = user::Sub("jora".into());
-        let valera = user::Sub("valera".into());
+        let jora = Sub::from("jora");
+        let valera = Sub::from("valera");
         let c = Contact::new(&jora, &valera);
         repo.add(&c).await.unwrap();
         assert!(repo.find_by_id(&c.id()).await.unwrap().is_some());
@@ -341,8 +333,8 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let jora = user::Sub("jora".into());
-        let valera = user::Sub("valera".into());
+        let jora = Sub::from("jora");
+        let valera = Sub::from("valera");
         let c = Contact::new(&jora, &valera);
         repo.add(&c).await.unwrap();
         assert!(repo.find_by_id(&c.id()).await.unwrap().is_some());
@@ -359,13 +351,13 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let jora = user::Sub("jora".into());
-        let valera = user::Sub("valera".into());
+        let jora = Sub::from("jora");
+        let valera = Sub::from("valera");
         let c = Contact::new(&jora, &valera);
         repo.add(&c).await.unwrap();
         assert!(repo.find_by_id(&c.id()).await.unwrap().is_some());
 
-        let deleted = repo.delete(&jora, &user::Sub("radu".into())).await.unwrap();
+        let deleted = repo.delete(&jora, &Sub::from("radu")).await.unwrap();
 
         assert!(!deleted);
         assert!(repo.find_by_id(&c.id()).await.unwrap().is_some());
@@ -377,8 +369,8 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let jora = user::Sub("jora".into());
-        let valera = user::Sub("valera".into());
+        let jora = Sub::from("jora");
+        let valera = Sub::from("valera");
         let c = Contact::new(&jora, &valera);
         repo.add(&c).await.unwrap();
 
@@ -393,8 +385,8 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let jora = user::Sub("jora".into());
-        let valera = user::Sub("valera".into());
+        let jora = Sub::from("jora");
+        let valera = Sub::from("valera");
         let c = Contact::new(&jora, &valera);
         repo.add(&c).await.unwrap();
 
@@ -409,14 +401,11 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
-        let valera = user::Sub("valera".into());
-        let c = Contact::new(&user::Sub("jora".into()), &valera);
+        let valera = Sub::from("valera");
+        let c = Contact::new(&Sub::from("jora"), &valera);
         repo.add(&c).await.unwrap();
 
-        let exists = repo
-            .exists(&valera, &user::Sub("radu".into()))
-            .await
-            .unwrap();
+        let exists = repo.exists(&valera, &Sub::from("radu")).await.unwrap();
 
         assert!(!exists);
     }

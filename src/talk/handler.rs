@@ -55,7 +55,7 @@ pub(super) mod api {
     use crate::{
         auth,
         talk::{self, markup},
-        user,
+        user::Sub,
     };
 
     pub async fn find_one(
@@ -72,7 +72,7 @@ pub(super) mod api {
     #[derive(Deserialize)]
     #[serde(tag = "kind", rename_all = "snake_case")]
     pub enum CreateParams {
-        Chat { sub: user::Sub },
+        Chat { sub: Sub },
         Group(CreateGroupParams),
     }
 
@@ -81,14 +81,8 @@ pub(super) mod api {
     #[derive(Deserialize)]
     #[serde(untagged)]
     pub enum CreateGroupParams {
-        Valid {
-            name: String,
-            members: Vec<user::Sub>,
-        },
-        Invalid {
-            name: String,
-            members: user::Sub,
-        },
+        Valid { name: String, members: Vec<Sub> },
+        Invalid { name: String, members: Sub },
     }
 
     #[axum::debug_handler]
@@ -128,16 +122,19 @@ pub(super) mod templates {
     use axum::{Extension, extract::State};
     use maud::{Markup, Render};
 
-    use crate::{auth, contact, talk, user};
+    use crate::{
+        auth, contact, talk,
+        user::{self, Sub},
+    };
 
     pub struct GroupMemberDto {
-        sub: user::Sub,
+        sub: Sub,
         name: String,
         picture: String,
     }
 
     impl GroupMemberDto {
-        pub fn new(sub: user::Sub, name: impl Into<String>, picture: impl Into<String>) -> Self {
+        pub fn new(sub: Sub, name: impl Into<String>, picture: impl Into<String>) -> Self {
             Self {
                 sub,
                 name: name.into(),
@@ -145,7 +142,7 @@ pub(super) mod templates {
             }
         }
 
-        pub const fn sub(&self) -> &user::Sub {
+        pub const fn sub(&self) -> &Sub {
             &self.sub
         }
 

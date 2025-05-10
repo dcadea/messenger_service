@@ -3,7 +3,7 @@ use futures::TryStreamExt;
 use mongodb::bson::doc;
 
 use super::model::Talk;
-use crate::{message::model::LastMessage, talk, user};
+use crate::{message::model::LastMessage, talk, user::Sub};
 
 const TALKS_COLLECTION: &str = "talks";
 
@@ -11,19 +11,15 @@ const TALKS_COLLECTION: &str = "talks";
 pub trait TalkRepository {
     async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk>;
 
-    async fn find_by_sub_and_kind(
-        &self,
-        sub: &user::Sub,
-        kind: &talk::Kind,
-    ) -> super::Result<Vec<Talk>>;
+    async fn find_by_sub_and_kind(&self, sub: &Sub, kind: &talk::Kind) -> super::Result<Vec<Talk>>;
 
-    async fn find_by_id_and_sub(&self, id: &talk::Id, sub: &user::Sub) -> super::Result<Talk>;
+    async fn find_by_id_and_sub(&self, id: &talk::Id, sub: &Sub) -> super::Result<Talk>;
 
     async fn create(&self, talk: &Talk) -> super::Result<()>;
 
     async fn delete(&self, id: &talk::Id) -> super::Result<bool>;
 
-    async fn exists(&self, members: &[user::Sub; 2]) -> super::Result<bool>;
+    async fn exists(&self, members: &[Sub; 2]) -> super::Result<bool>;
 
     async fn update_last_message(
         &self,
@@ -55,11 +51,7 @@ impl TalkRepository for MongoTalkRepository {
         talk.ok_or(talk::Error::NotFound(Some(id.to_owned())))
     }
 
-    async fn find_by_sub_and_kind(
-        &self,
-        sub: &user::Sub,
-        kind: &talk::Kind,
-    ) -> super::Result<Vec<Talk>> {
+    async fn find_by_sub_and_kind(&self, sub: &Sub, kind: &talk::Kind) -> super::Result<Vec<Talk>> {
         let cursor = self
             .col
             .find(doc! {
@@ -74,7 +66,7 @@ impl TalkRepository for MongoTalkRepository {
         Ok(talks)
     }
 
-    async fn find_by_id_and_sub(&self, id: &talk::Id, sub: &user::Sub) -> super::Result<Talk> {
+    async fn find_by_id_and_sub(&self, id: &talk::Id, sub: &Sub) -> super::Result<Talk> {
         let talk = self
             .col
             .find_one(doc! {
@@ -98,7 +90,7 @@ impl TalkRepository for MongoTalkRepository {
         Ok(res.deleted_count > 0)
     }
 
-    async fn exists(&self, members: &[user::Sub; 2]) -> super::Result<bool> {
+    async fn exists(&self, members: &[Sub; 2]) -> super::Result<bool> {
         let count = self
             .col
             .count_documents(doc! { "details.members": { "$all": members.to_vec() } })
@@ -152,7 +144,7 @@ mod test {
             self,
             model::{Details, Talk},
         },
-        user,
+        user::Sub,
     };
 
     use super::{MongoTalkRepository, TalkRepository};
@@ -164,7 +156,7 @@ mod test {
         let repo = MongoTalkRepository::new(&db);
 
         let expected = Talk::new(Details::Chat {
-            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+            members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&expected).await.unwrap();
 
@@ -192,23 +184,19 @@ mod test {
         let repo = MongoTalkRepository::new(&db);
 
         let t1 = &Talk::new(Details::Chat {
-            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+            members: [Sub::from("jora"), Sub::from("valera")],
         });
         let t2 = &Talk::new(Details::Chat {
-            members: [user::Sub("jora".into()), user::Sub("igor".into())],
+            members: [Sub::from("jora"), Sub::from("igor")],
         });
         let t3 = &Talk::new(Details::Chat {
-            members: [user::Sub("radu".into()), user::Sub("igor".into())],
+            members: [Sub::from("radu"), Sub::from("igor")],
         });
         let t4 = &Talk::new(Details::Group {
             name: "g1".into(),
             picture: "picture".into(),
-            owner: user::Sub("radu".into()),
-            members: vec![
-                user::Sub("jora".into()),
-                user::Sub("radu".into()),
-                user::Sub("igor".into()),
-            ],
+            owner: Sub::from("radu"),
+            members: vec![Sub::from("jora"), Sub::from("radu"), Sub::from("igor")],
         });
 
         tokio::try_join!(
@@ -222,7 +210,7 @@ mod test {
         let mut expected = vec![t1, t2].into_iter();
 
         let actual = repo
-            .find_by_sub_and_kind(&user::Sub("jora".into()), &talk::Kind::Chat)
+            .find_by_sub_and_kind(&Sub::from("jora"), &talk::Kind::Chat)
             .await
             .unwrap();
 
@@ -237,23 +225,19 @@ mod test {
         let repo = MongoTalkRepository::new(&db);
 
         let t1 = &Talk::new(Details::Chat {
-            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+            members: [Sub::from("jora"), Sub::from("valera")],
         });
         let t2 = &Talk::new(Details::Group {
             name: "g1".into(),
             picture: "picture".into(),
-            owner: user::Sub("radu".into()),
-            members: vec![
-                user::Sub("jora".into()),
-                user::Sub("radu".into()),
-                user::Sub("igor".into()),
-            ],
+            owner: Sub::from("radu"),
+            members: vec![Sub::from("jora"), Sub::from("radu"), Sub::from("igor")],
         });
 
         tokio::try_join!(repo.create(t1), repo.create(t2),).unwrap();
 
         let actual = repo
-            .find_by_sub_and_kind(&user::Sub("radu".into()), &talk::Kind::Chat)
+            .find_by_sub_and_kind(&Sub::from("radu"), &talk::Kind::Chat)
             .await
             .unwrap();
 
@@ -267,12 +251,12 @@ mod test {
         let repo = MongoTalkRepository::new(&db);
 
         let expected = Talk::new(Details::Chat {
-            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+            members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&expected).await.unwrap();
 
         let actual = repo
-            .find_by_id_and_sub(expected.id(), &user::Sub("jora".into()))
+            .find_by_id_and_sub(expected.id(), &Sub::from("jora"))
             .await
             .unwrap();
 
@@ -286,12 +270,12 @@ mod test {
         let repo = MongoTalkRepository::new(&db);
 
         let expected = Talk::new(Details::Chat {
-            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+            members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&expected).await.unwrap();
 
         let actual = repo
-            .find_by_id_and_sub(expected.id(), &user::Sub("valera".into()))
+            .find_by_id_and_sub(expected.id(), &Sub::from("valera"))
             .await
             .unwrap();
 
@@ -307,17 +291,13 @@ mod test {
         let expected = Talk::new(Details::Group {
             name: "g1".into(),
             picture: "picture".into(),
-            owner: user::Sub("radu".into()),
-            members: vec![
-                user::Sub("jora".into()),
-                user::Sub("radu".into()),
-                user::Sub("igor".into()),
-            ],
+            owner: Sub::from("radu"),
+            members: vec![Sub::from("jora"), Sub::from("radu"), Sub::from("igor")],
         });
         repo.create(&expected).await.unwrap();
 
         let actual = repo
-            .find_by_id_and_sub(expected.id(), &user::Sub("jora".into()))
+            .find_by_id_and_sub(expected.id(), &Sub::from("jora"))
             .await
             .unwrap();
 
@@ -332,7 +312,7 @@ mod test {
 
         let talk_id = talk::Id::random();
         let actual = repo
-            .find_by_id_and_sub(&talk_id, &user::Sub("valera".into()))
+            .find_by_id_and_sub(&talk_id, &Sub::from("valera"))
             .await
             .unwrap_err();
 
@@ -346,7 +326,7 @@ mod test {
         let repo = MongoTalkRepository::new(&db);
 
         let t = Talk::new(Details::Chat {
-            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+            members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&t).await.unwrap();
 
@@ -374,12 +354,12 @@ mod test {
         let repo = MongoTalkRepository::new(&db);
 
         let t = Talk::new(Details::Chat {
-            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+            members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&t).await.unwrap();
 
         let exists = repo
-            .exists(&[user::Sub("valera".into()), user::Sub("jora".into())])
+            .exists(&[Sub::from("valera"), Sub::from("jora")])
             .await
             .unwrap();
 
@@ -393,7 +373,7 @@ mod test {
         let repo = MongoTalkRepository::new(&db);
 
         let exists = repo
-            .exists(&[user::Sub("valera".into()), user::Sub("jora".into())])
+            .exists(&[Sub::from("valera"), Sub::from("jora")])
             .await
             .unwrap();
 
@@ -407,14 +387,14 @@ mod test {
         let repo = MongoTalkRepository::new(&db);
 
         let t = Talk::new(Details::Chat {
-            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+            members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&t).await.unwrap();
 
         let pm = LastMessage::new(
             message::Id::random(),
             "hi!",
-            user::Sub("jora".into()),
+            Sub::from("jora"),
             chrono::Utc::now().timestamp(),
             true,
         );
@@ -422,7 +402,7 @@ mod test {
         let lm = LastMessage::new(
             message::Id::random(),
             "bye!",
-            user::Sub("valera".into()),
+            Sub::from("valera"),
             chrono::Utc::now().timestamp(),
             false,
         );
@@ -442,14 +422,14 @@ mod test {
         let repo = MongoTalkRepository::new(&db);
 
         let t = Talk::new(Details::Chat {
-            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+            members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&t).await.unwrap();
 
         let lm = LastMessage::new(
             message::Id::random(),
             "bye!",
-            user::Sub("valera".into()),
+            Sub::from("valera"),
             chrono::Utc::now().timestamp(),
             false,
         );
@@ -469,14 +449,14 @@ mod test {
         let repo = MongoTalkRepository::new(&db);
 
         let t = Talk::new(Details::Chat {
-            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+            members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&t).await.unwrap();
 
         let lm = LastMessage::new(
             message::Id::random(),
             "bye!",
-            user::Sub("valera".into()),
+            Sub::from("valera"),
             chrono::Utc::now().timestamp(),
             false,
         );
@@ -496,7 +476,7 @@ mod test {
         let repo = MongoTalkRepository::new(&db);
 
         let t = Talk::new(Details::Chat {
-            members: [user::Sub("jora".into()), user::Sub("valera".into())],
+            members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&t).await.unwrap();
 

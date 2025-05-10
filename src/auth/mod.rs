@@ -1,7 +1,7 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::user;
+use crate::user::Sub;
 use crate::user::model::UserInfo;
 use crate::{state::AppState, user::Nickname};
 use axum::Router;
@@ -21,7 +21,7 @@ pub type Service = Arc<dyn service::AuthService + Send + Sync>;
 
 #[derive(Deserialize, Clone)]
 struct TokenClaims {
-    sub: user::Sub,
+    sub: Sub,
 }
 
 pub fn pages<S>(s: AppState) -> Router<S> {
@@ -40,7 +40,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
 
 #[derive(Clone)]
 pub struct User {
-    sub: user::Sub,
+    sub: Sub,
     nickname: Nickname,
     name: String,
     picture: String,
@@ -48,7 +48,7 @@ pub struct User {
 
 impl User {
     pub fn new(
-        sub: user::Sub,
+        sub: Sub,
         nickname: Nickname,
         name: impl Into<String>,
         picture: impl Into<String>,
@@ -61,7 +61,7 @@ impl User {
         }
     }
 
-    pub const fn sub(&self) -> &user::Sub {
+    pub const fn sub(&self) -> &Sub {
         &self.sub
     }
 

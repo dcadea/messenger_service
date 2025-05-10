@@ -8,8 +8,8 @@ use log::error;
 use serde::{Deserialize, Serialize};
 use service::EventService;
 
-use crate::state::AppState;
 use crate::{message, talk, user};
+use crate::{state::AppState, user::Sub};
 
 mod handler;
 mod markup;
@@ -27,8 +27,8 @@ pub fn api<S>(s: AppState) -> Router<S> {
 
 #[derive(Clone, Debug)]
 pub enum Subject<'a> {
-    Notifications(&'a user::Sub),
-    Messages(&'a user::Sub, &'a talk::Id),
+    Notifications(&'a Sub),
+    Messages(&'a Sub, &'a talk::Id),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -48,7 +48,7 @@ pub enum Message {
     New(message::model::Message),
     Updated {
         msg: message::model::Message,
-        auth_sub: user::Sub,
+        auth_sub: Sub,
     },
     Deleted(message::Id),
     Seen(message::model::Message),

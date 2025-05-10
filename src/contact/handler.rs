@@ -11,12 +11,12 @@ pub(super) mod api {
     use crate::{
         auth,
         contact::{self, Transition, model::Contact},
-        user,
+        user::Sub,
     };
 
     #[derive(Deserialize)]
     pub struct CreateParams {
-        sub: user::Sub,
+        sub: Sub,
     }
 
     pub async fn create(
@@ -31,7 +31,7 @@ pub(super) mod api {
 
     pub async fn delete(
         auth_user: Extension<auth::User>,
-        sub: Query<user::Sub>,
+        sub: Query<Sub>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
         contact_service.delete(auth_user.sub(), &sub).await?;

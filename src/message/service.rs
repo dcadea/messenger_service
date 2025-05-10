@@ -4,7 +4,8 @@ use async_trait::async_trait;
 use log::{debug, error};
 use text_splitter::{Characters, TextSplitter};
 
-use crate::{auth, event, message, talk, user};
+use crate::user::Sub;
+use crate::{auth, event, message, talk};
 
 use super::Repository;
 use super::model::Message;
@@ -34,13 +35,13 @@ pub trait MessageService {
 
     async fn find_by_talk_id_and_params(
         &self,
-        auth_sub: &user::Sub,
+        auth_sub: &Sub,
         talk_id: &talk::Id,
         limit: Option<i64>,
         end_time: Option<i64>,
     ) -> super::Result<(Vec<Message>, usize)>;
 
-    async fn mark_as_seen(&self, auth_sub: &user::Sub, msgs: &[Message]) -> super::Result<usize>;
+    async fn mark_as_seen(&self, auth_sub: &Sub, msgs: &[Message]) -> super::Result<usize>;
 
     async fn is_last_message(&self, msg: &Message) -> super::Result<bool>;
 }
@@ -152,7 +153,7 @@ impl MessageService for MessageServiceImpl {
     // Due to this side effect consider using other methods for read-only messages retrieval.
     async fn find_by_talk_id_and_params(
         &self,
-        auth_sub: &user::Sub,
+        auth_sub: &Sub,
         talk_id: &talk::Id,
         limit: Option<i64>,
         end_time: Option<i64>,
@@ -173,7 +174,7 @@ impl MessageService for MessageServiceImpl {
         Ok((msgs, seen_qty))
     }
 
-    async fn mark_as_seen(&self, auth_sub: &user::Sub, msgs: &[Message]) -> super::Result<usize> {
+    async fn mark_as_seen(&self, auth_sub: &Sub, msgs: &[Message]) -> super::Result<usize> {
         if msgs.is_empty() {
             debug!("attempting to mark as seen but messages list is empty");
             return Ok(0);
@@ -244,7 +245,7 @@ impl MessageService for MessageServiceImpl {
 }
 
 impl MessageServiceImpl {
-    async fn notify_new(&self, talk_id: &talk::Id, owner: &user::Sub, msgs: &[Message]) {
+    async fn notify_new(&self, talk_id: &talk::Id, owner: &Sub, msgs: &[Message]) {
         match self.talk_service.find_recipients(talk_id, owner).await {
             Ok(recipients) => {
                 let msg_evts = msgs

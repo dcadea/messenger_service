@@ -8,30 +8,23 @@ use super::model::{Details, DetailsDto, Talk, TalkDto};
 use super::{Kind, Repository, Validator};
 use crate::integration::cache;
 use crate::message::model::LastMessage;
+use crate::user::Sub;
 use crate::{auth, contact, event, message, talk, user};
 
 #[async_trait]
 pub trait TalkService {
-    async fn create_chat(
-        &self,
-        auth_sub: &user::Sub,
-        recipient: &user::Sub,
-    ) -> super::Result<TalkDto>;
+    async fn create_chat(&self, auth_sub: &Sub, recipient: &Sub) -> super::Result<TalkDto>;
 
     async fn create_group(
         &self,
-        auth_sub: &user::Sub,
+        auth_sub: &Sub,
         name: &str,
-        members: &[user::Sub],
+        members: &[Sub],
     ) -> super::Result<TalkDto>;
 
     async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk>;
 
-    async fn find_by_id_and_sub(
-        &self,
-        id: &talk::Id,
-        auth_sub: &user::Sub,
-    ) -> super::Result<TalkDto>;
+    async fn find_by_id_and_sub(&self, id: &talk::Id, auth_sub: &Sub) -> super::Result<TalkDto>;
 
     async fn find_all_by_kind(
         &self,
@@ -42,8 +35,8 @@ pub trait TalkService {
     async fn find_recipients(
         &self,
         talk_id: &talk::Id,
-        auth_sub: &user::Sub,
-    ) -> super::Result<HashSet<user::Sub>>;
+        auth_sub: &Sub,
+    ) -> super::Result<HashSet<Sub>>;
 
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
 
@@ -91,11 +84,7 @@ impl TalkServiceImpl {
 
 #[async_trait]
 impl TalkService for TalkServiceImpl {
-    async fn create_chat(
-        &self,
-        auth_sub: &user::Sub,
-        recipient: &user::Sub,
-    ) -> super::Result<TalkDto> {
+    async fn create_chat(&self, auth_sub: &Sub, recipient: &Sub) -> super::Result<TalkDto> {
         assert_ne!(auth_sub, recipient);
 
         let members = [auth_sub.clone(), recipient.clone()];
@@ -133,9 +122,9 @@ impl TalkService for TalkServiceImpl {
 
     async fn create_group(
         &self,
-        auth_sub: &user::Sub,
+        auth_sub: &Sub,
         name: &str,
-        members: &[user::Sub],
+        members: &[Sub],
     ) -> super::Result<TalkDto> {
         assert!(members.contains(auth_sub));
 
@@ -186,11 +175,7 @@ impl TalkService for TalkServiceImpl {
         Ok(talk)
     }
 
-    async fn find_by_id_and_sub(
-        &self,
-        id: &talk::Id,
-        auth_sub: &user::Sub,
-    ) -> super::Result<TalkDto> {
+    async fn find_by_id_and_sub(&self, id: &talk::Id, auth_sub: &Sub) -> super::Result<TalkDto> {
         let talk = self.repo.find_by_id_and_sub(id, auth_sub).await?;
         let dto = self.talk_to_dto(talk, auth_sub).await;
         Ok(dto)
@@ -217,8 +202,8 @@ impl TalkService for TalkServiceImpl {
     async fn find_recipients(
         &self,
         talk_id: &talk::Id,
-        auth_sub: &user::Sub,
-    ) -> super::Result<HashSet<user::Sub>> {
+        auth_sub: &Sub,
+    ) -> super::Result<HashSet<Sub>> {
         let recipients = {
             let mut r = find_members(&self.redis, self.repo.clone(), talk_id).await?;
             r.remove(auth_sub);
@@ -276,7 +261,7 @@ impl TalkService for TalkServiceImpl {
 }
 
 impl TalkServiceImpl {
-    async fn talk_to_dto(&self, t: Talk, auth_sub: &user::Sub) -> TalkDto {
+    async fn talk_to_dto(&self, t: Talk, auth_sub: &Sub) -> TalkDto {
         let (name, picture, details) = match t.details().clone() {
             Details::Chat { members } => {
                 assert!(members.contains(auth_sub));
@@ -361,9 +346,9 @@ async fn find_members(
     redis: &cache::Redis,
     repo: Repository,
     talk_id: &talk::Id,
-) -> super::Result<HashSet<user::Sub>> {
+) -> super::Result<HashSet<Sub>> {
     let talk_key = cache::Key::Talk(talk_id);
-    let members = redis.smembers::<HashSet<user::Sub>>(talk_key.clone()).await;
+    let members = redis.smembers::<HashSet<Sub>>(talk_key.clone()).await;
 
     match members {
         Some(m) if !m.is_empty() => Ok(m),
