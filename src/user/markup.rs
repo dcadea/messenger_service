@@ -209,7 +209,7 @@ impl Render for Icon<'_> {
 
 #[cfg(test)]
 mod test {
-    use crate::user::Nickname;
+    use crate::user::{Email, Nickname};
 
     use super::*;
 
@@ -354,21 +354,21 @@ mod test {
                 Nickname::from("jora"),
                 "Jora",
                 "jora",
-                "jora",
+                Email::parse("jora").unwrap(),
             ),
             UserInfo::new(
                 Sub::from("radu"),
                 Nickname::from("radu"),
                 "Radu",
                 "radu",
-                "radu",
+                Email::parse("radu").unwrap(),
             ),
             UserInfo::new(
                 Sub::from("igor"),
                 Nickname::from("igor"),
                 "Igor",
                 "igor",
-                "igor",
+                Email::parse("igor").unwrap(),
             ),
         ];
         let actual = SearchResult::new(&contacts, &user_infos)

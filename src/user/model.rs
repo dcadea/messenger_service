@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Id, Nickname, Sub};
+use super::{Email, Id, Nickname, Sub};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub struct User {
@@ -10,7 +10,7 @@ pub struct User {
     nickname: Nickname,
     name: String,
     picture: String,
-    email: String,
+    email: Email,
 }
 
 #[cfg(test)]
@@ -21,7 +21,7 @@ impl User {
         nickname: Nickname,
         name: impl Into<String>,
         picture: impl Into<String>,
-        email: impl Into<String>,
+        email: Email,
     ) -> Self {
         Self {
             id: Some(id),
@@ -29,7 +29,7 @@ impl User {
             nickname,
             name: name.into(),
             picture: picture.into(),
-            email: email.into(),
+            email,
         }
     }
 }
@@ -61,7 +61,7 @@ pub struct UserInfo {
     nickname: Nickname,
     name: String,
     picture: String,
-    email: String,
+    email: Email,
 }
 
 impl UserInfo {
@@ -77,7 +77,7 @@ impl UserInfo {
         &self.name
     }
 
-    pub fn email(&self) -> &str {
+    pub const fn email(&self) -> &Email {
         &self.email
     }
 
@@ -118,14 +118,14 @@ impl UserInfo {
         nickname: Nickname,
         name: impl Into<String>,
         picture: impl Into<String>,
-        email: impl Into<String>,
+        email: Email,
     ) -> Self {
         Self {
             sub,
             nickname,
             name: name.into(),
             picture: picture.into(),
-            email: email.into(),
+            email,
         }
     }
 }

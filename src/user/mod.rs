@@ -92,6 +92,16 @@ impl From<&str> for Nickname {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
+pub struct Email(String);
+
+impl Email {
+    pub fn parse(e: &str) -> self::Result<Self> {
+        // TODO: parse email here
+        Ok(Self(e.to_string()))
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("user not found: {0:?}")]

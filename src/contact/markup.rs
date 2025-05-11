@@ -176,7 +176,7 @@ impl fmt::Display for Transition {
 
 #[cfg(test)]
 mod test {
-    use crate::user::{Nickname, Sub};
+    use crate::user::{Email, Nickname, Sub};
 
     use super::*;
 
@@ -285,7 +285,7 @@ mod test {
                     Nickname::from("jora"),
                     "Jora",
                     "jora://picture",
-                    "jora@test.com",
+                    Email::parse("jora@test.com").unwrap(),
                 ),
             ),
             (
@@ -299,7 +299,7 @@ mod test {
                     Nickname::from("igor"),
                     "Igor",
                     "igor://picture",
-                    "igor@test.com",
+                    Email::parse("igor@test.com").unwrap(),
                 ),
             ),
             (
@@ -315,7 +315,7 @@ mod test {
                     Nickname::from("radu"),
                     "Radu",
                     "radu://picture",
-                    "radu@test.com",
+                    Email::parse("radu@test.com").unwrap(),
                 ),
             ),
             (
@@ -331,7 +331,7 @@ mod test {
                     Nickname::from("gicu"),
                     "Gicu",
                     "gicu://picture",
-                    "gicu@test.com",
+                    Email::parse("gicu@test.com").unwrap(),
                 ),
             ),
             (
@@ -347,7 +347,7 @@ mod test {
                     Nickname::from("toha"),
                     "Toha",
                     "toha://picture",
-                    "toha@test.com",
+                    Email::parse("toha@test.com").unwrap(),
                 ),
             ),
             (
@@ -363,7 +363,7 @@ mod test {
                     Nickname::from("alex"),
                     "Alex",
                     "alex://picture",
-                    "alex@test.com",
+                    Email::parse("alex@test.com").unwrap(),
                 ),
             ),
         ];

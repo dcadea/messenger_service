@@ -74,7 +74,7 @@ mod test {
 
     use crate::{
         integration::db,
-        user::{self, Nickname, Sub, model::User},
+        user::{self, Email, Nickname, Sub, model::User},
     };
 
     #[tokio::test]
@@ -91,7 +91,7 @@ mod test {
             Nickname::from("valera_kardan"),
             "valera".to_owned(),
             "picture".to_owned(),
-            "valera@test.com".to_owned(),
+            Email::parse("valera@test.com").unwrap(),
         );
 
         let inserted = repo.insert(&user).await.unwrap();
@@ -125,7 +125,7 @@ mod test {
             Nickname::from("valera_kardan"),
             "valera",
             "picture",
-            "valera@test.com",
+            Email::parse("valera@test.com").unwrap(),
         );
 
         let jora = &User::new(
@@ -134,7 +134,7 @@ mod test {
             Nickname::from("jora_partizan"),
             "jora",
             "picture",
-            "jora@test.com",
+            Email::parse("jora@test.com").unwrap(),
         );
 
         let radu = &User::new(
@@ -143,7 +143,7 @@ mod test {
             Nickname::from("radu_carlig"),
             "radu",
             "picture",
-            "radu@test.com",
+            Email::parse("radu@test.com").unwrap(),
         );
 
         let igor = &User::new(
@@ -152,7 +152,7 @@ mod test {
             Nickname::from("igor_frina"),
             "igor",
             "picture",
-            "igor@test.com",
+            Email::parse("igor@test.com").unwrap(),
         );
 
         tokio::try_join!(
