@@ -176,7 +176,7 @@ impl fmt::Display for Transition {
 
 #[cfg(test)]
 mod test {
-    use crate::user::{Email, Nickname, Sub};
+    use crate::user::{Email, Nickname, Picture, Sub};
 
     use super::*;
 
@@ -270,7 +270,7 @@ mod test {
             Sub::from("valera"),
             Nickname::from("valera"),
             "Valera",
-            "valera://picture",
+            Picture::parse("valera://picture").unwrap(),
         );
 
         let contact_infos = [
@@ -284,7 +284,7 @@ mod test {
                     Sub::from("jora"),
                     Nickname::from("jora"),
                     "Jora",
-                    "jora://picture",
+                    Picture::parse("jora://picture").unwrap(),
                     Email::parse("jora@test.com").unwrap(),
                 ),
             ),
@@ -298,7 +298,7 @@ mod test {
                     Sub::from("igor"),
                     Nickname::from("igor"),
                     "Igor",
-                    "igor://picture",
+                    Picture::parse("igor://picture").unwrap(),
                     Email::parse("igor@test.com").unwrap(),
                 ),
             ),
@@ -314,7 +314,7 @@ mod test {
                     Sub::from("radu"),
                     Nickname::from("radu"),
                     "Radu",
-                    "radu://picture",
+                    Picture::parse("radu://picture").unwrap(),
                     Email::parse("radu@test.com").unwrap(),
                 ),
             ),
@@ -330,7 +330,7 @@ mod test {
                     Sub::from("gicu"),
                     Nickname::from("gicu"),
                     "Gicu",
-                    "gicu://picture",
+                    Picture::parse("gicu://picture").unwrap(),
                     Email::parse("gicu@test.com").unwrap(),
                 ),
             ),
@@ -346,7 +346,7 @@ mod test {
                     Sub::from("toha"),
                     Nickname::from("toha"),
                     "Toha",
-                    "toha://picture",
+                    Picture::parse("toha://picture").unwrap(),
                     Email::parse("toha@test.com").unwrap(),
                 ),
             ),
@@ -362,7 +362,7 @@ mod test {
                     Sub::from("alex"),
                     Nickname::from("alex"),
                     "Alex",
-                    "alex://picture",
+                    Picture::parse("alex://picture").unwrap(),
                     Email::parse("alex@test.com").unwrap(),
                 ),
             ),

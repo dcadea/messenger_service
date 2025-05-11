@@ -168,7 +168,11 @@ pub(super) mod templates {
         for c in contacts {
             let name = user_service.find_name(c.recipient()).await?;
             let picture = user_service.find_picture(c.recipient()).await?;
-            members.push(GroupMemberDto::new(c.recipient().clone(), name, picture));
+            members.push(GroupMemberDto::new(
+                c.recipient().clone(),
+                name,
+                picture.to_string(),
+            ));
         }
 
         Ok(talk::markup::CreateGroupForm::new(&auth_user, &members).render())

@@ -209,7 +209,7 @@ impl Render for Icon<'_> {
 
 #[cfg(test)]
 mod test {
-    use crate::user::{Email, Nickname};
+    use crate::user::{Email, Nickname, Picture};
 
     use super::*;
 
@@ -226,7 +226,7 @@ mod test {
             Sub::from("jora"),
             Nickname::from("jora_kardan"),
             "jora",
-            "jora://url",
+            Picture::parse("jora://url").unwrap(),
         ))
         .render()
         .into_string();
@@ -353,21 +353,21 @@ mod test {
                 Sub::from("jora"),
                 Nickname::from("jora"),
                 "Jora",
-                "jora",
+                Picture::parse("jora").unwrap(),
                 Email::parse("jora").unwrap(),
             ),
             UserInfo::new(
                 Sub::from("radu"),
                 Nickname::from("radu"),
                 "Radu",
-                "radu",
+                Picture::parse("radu").unwrap(),
                 Email::parse("radu").unwrap(),
             ),
             UserInfo::new(
                 Sub::from("igor"),
                 Nickname::from("igor"),
                 "Igor",
-                "igor",
+                Picture::parse("igor").unwrap(),
                 Email::parse("igor").unwrap(),
             ),
         ];

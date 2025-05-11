@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{fmt::Display, sync::Arc};
 
 use axum::{Router, routing::post};
 use log::error;
@@ -103,6 +103,22 @@ impl From<String> for Nickname {
 impl From<&str> for Nickname {
     fn from(s: &str) -> Self {
         Self(s.to_string())
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
+pub struct Picture(String);
+
+impl Picture {
+    pub fn parse(e: &str) -> self::Result<Self> {
+        // TODO: parse picture url here
+        Ok(Self(e.to_string()))
+    }
+}
+
+impl Display for Picture {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
     }
 }
 

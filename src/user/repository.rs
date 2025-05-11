@@ -74,7 +74,7 @@ mod test {
 
     use crate::{
         integration::db,
-        user::{self, Email, Nickname, Sub, model::User},
+        user::{self, Email, Nickname, Picture, Sub, model::User},
     };
 
     #[tokio::test]
@@ -90,7 +90,7 @@ mod test {
             sub.clone(),
             Nickname::from("valera_kardan"),
             "valera".to_owned(),
-            "picture".to_owned(),
+            Picture::parse("picture").unwrap(),
             Email::parse("valera@test.com").unwrap(),
         );
 
@@ -124,7 +124,7 @@ mod test {
             Sub::from("test|123"),
             Nickname::from("valera_kardan"),
             "valera",
-            "picture",
+            Picture::parse("picture").unwrap(),
             Email::parse("valera@test.com").unwrap(),
         );
 
@@ -133,7 +133,7 @@ mod test {
             Sub::from("test|456"),
             Nickname::from("jora_partizan"),
             "jora",
-            "picture",
+            Picture::parse("picture").unwrap(),
             Email::parse("jora@test.com").unwrap(),
         );
 
@@ -142,7 +142,7 @@ mod test {
             Sub::from("test|135"),
             Nickname::from("radu_carlig"),
             "radu",
-            "picture",
+            Picture::parse("picture").unwrap(),
             Email::parse("radu@test.com").unwrap(),
         );
 
@@ -151,7 +151,7 @@ mod test {
             Sub::from("test|246"),
             Nickname::from("igor_frina"),
             "igor",
-            "picture",
+            Picture::parse("picture").unwrap(),
             Email::parse("igor@test.com").unwrap(),
         );
 

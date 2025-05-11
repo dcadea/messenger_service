@@ -316,7 +316,7 @@ impl Render for Icon {
 mod test {
     use crate::{
         message::model::LastMessage,
-        user::{Nickname, Sub},
+        user::{Nickname, Picture, Sub},
     };
 
     use super::*;
@@ -365,7 +365,7 @@ mod test {
             Sub::from("jora"),
             Nickname::from("jora"),
             "Jora",
-            "jora://picture",
+            Picture::parse("jora://picture").unwrap(),
         );
         let talks = [
             TalkDto::new(
@@ -465,7 +465,7 @@ mod test {
             Sub::from("jora"),
             Nickname::from("jora"),
             "Jora",
-            "jora://picture",
+            Picture::parse("jora://picture").unwrap(),
         );
         let talks = [
             TalkDto::new(
@@ -633,7 +633,7 @@ mod test {
             Sub::from("jora"),
             Nickname::from("jora"),
             "Jora",
-            "jora://picture",
+            Picture::parse("jora://picture").unwrap(),
         );
         let actual = ActiveTalk(&auth_user, &t).render().into_string();
 
@@ -656,7 +656,7 @@ mod test {
             Sub::from("jora"),
             Nickname::from("jora"),
             "Jora",
-            "jora://picture",
+            Picture::parse("jora://picture").unwrap(),
         );
         let t = TalkDto::new(
             talk::Id("680d10a4042fe1d7f2d6138b".into()),

@@ -6,7 +6,7 @@ use crate::user::model::UserInfo;
 use crate::{auth, contact, event};
 
 use super::model::OnlineStatus;
-use super::{Nickname, Repository, Sub};
+use super::{Nickname, Picture, Repository, Sub};
 
 #[async_trait]
 pub trait UserService {
@@ -16,7 +16,7 @@ pub trait UserService {
 
     async fn find_name(&self, sub: &Sub) -> super::Result<String>;
 
-    async fn find_picture(&self, sub: &Sub) -> super::Result<String>;
+    async fn find_picture(&self, sub: &Sub) -> super::Result<Picture>;
 
     async fn exists(&self, sub: &Sub) -> super::Result<bool>;
 
@@ -85,14 +85,14 @@ impl UserService for UserServiceImpl {
         }
     }
 
-    async fn find_picture(&self, sub: &Sub) -> super::Result<String> {
+    async fn find_picture(&self, sub: &Sub) -> super::Result<Picture> {
         let cached = self.find_cached_picture(sub).await;
 
-        if let Some(picture) = cached {
-            Ok(picture)
+        if let Some(p) = cached {
+            Picture::parse(&p)
         } else {
             let user_info = self.find_one(sub).await?;
-            Ok(user_info.picture().to_owned())
+            Ok(user_info.picture().clone())
         }
     }
 

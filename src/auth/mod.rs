@@ -1,8 +1,8 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::user::Sub;
 use crate::user::model::UserInfo;
+use crate::user::{Picture, Sub};
 use crate::{state::AppState, user::Nickname};
 use axum::Router;
 use axum::routing::get;
@@ -43,21 +43,16 @@ pub struct User {
     sub: Sub,
     nickname: Nickname,
     name: String,
-    picture: String,
+    picture: Picture,
 }
 
 impl User {
-    pub fn new(
-        sub: Sub,
-        nickname: Nickname,
-        name: impl Into<String>,
-        picture: impl Into<String>,
-    ) -> Self {
+    pub fn new(sub: Sub, nickname: Nickname, name: impl Into<String>, picture: Picture) -> Self {
         Self {
             sub,
             nickname,
             name: name.into(),
-            picture: picture.into(),
+            picture,
         }
     }
 
@@ -73,7 +68,7 @@ impl User {
         &self.name
     }
 
-    pub fn picture(&self) -> &str {
+    pub const fn picture(&self) -> &Picture {
         &self.picture
     }
 }
@@ -84,7 +79,7 @@ impl From<UserInfo> for User {
             user_info.sub().clone(),
             user_info.nickname().clone(),
             user_info.name(),
-            user_info.picture(),
+            user_info.picture().clone(),
         )
     }
 }
