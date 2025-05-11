@@ -268,7 +268,7 @@ impl redis::ToRedisArgs for Key<'_> {
 impl redis::FromRedisValue for Sub {
     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
         let s = String::from_redis_value(v)?;
-        Ok(Self(s))
+        Ok(Self::new(&s))
     }
 }
 

@@ -19,8 +19,20 @@ type Result<T> = std::result::Result<T, Error>;
 pub type Repository = Arc<dyn UserRepository + Send + Sync>;
 pub type Service = Arc<dyn UserService + Send + Sync>;
 
+pub fn api<S>(s: AppState) -> Router<S> {
+    Router::new()
+        .route("/users/search", post(handler::api::search))
+        .with_state(s)
+}
+
 #[derive(Clone, Deserialize, Serialize, PartialEq, Eq, Debug)]
-pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
+pub struct Id(#[serde(with = "hex_string_as_object_id")] String);
+
+impl Id {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
 
 #[cfg(test)]
 impl Id {
@@ -29,16 +41,14 @@ impl Id {
     }
 }
 
-pub fn api<S>(s: AppState) -> Router<S> {
-    Router::new()
-        .route("/users/search", post(handler::api::search))
-        .with_state(s)
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
-pub struct Sub(pub String);
+pub struct Sub(String);
 
 impl Sub {
+    pub fn new(s: &str) -> Self {
+        Self(s.to_string())
+    }
+
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -72,9 +82,13 @@ impl From<&str> for Sub {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
-pub struct Nickname(pub String);
+pub struct Nickname(String);
 
 impl Nickname {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

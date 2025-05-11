@@ -111,32 +111,32 @@ impl From<talk::Id> for mongodb::bson::Bson {
 }
 
 impl From<message::Id> for mongodb::bson::Bson {
-    fn from(val: message::Id) -> Self {
-        match oid::ObjectId::from_str(&val.0) {
+    fn from(id: message::Id) -> Self {
+        match oid::ObjectId::from_str(&id.0) {
             Ok(oid) => Self::ObjectId(oid),
-            Err(_) => Self::String(val.0.clone()),
+            Err(_) => Self::String(id.0.clone()), // FIXME: implement TryFrom
         }
     }
 }
 
 impl From<user::Id> for mongodb::bson::Bson {
-    fn from(val: user::Id) -> Self {
-        match oid::ObjectId::from_str(&val.0) {
+    fn from(id: user::Id) -> Self {
+        match oid::ObjectId::from_str(id.as_str()) {
             Ok(oid) => Self::ObjectId(oid),
-            Err(_) => Self::String(val.0.clone()),
+            Err(_) => Self::String(id.as_str().to_string()), // FIXME: implement TryFrom
         }
     }
 }
 
 impl From<user::Sub> for mongodb::bson::Bson {
     fn from(val: user::Sub) -> Self {
-        Self::String(val.0.to_string())
+        Self::String(val.to_string())
     }
 }
 
 impl From<user::Nickname> for mongodb::bson::Bson {
     fn from(val: user::Nickname) -> Self {
-        Self::String(val.0.to_string())
+        Self::String(val.as_str().to_string())
     }
 }
 
