@@ -414,7 +414,7 @@ mod test {
                 header class="text-center mb-4" {
                     h2 class="text-2xl" { "Groups" }
                 }
-                a class="text-center text-white font-bold cursor-pointer bg-blue-500 hover:bg-blue-400 py-2 px-4 rounded"
+                a class="text-center text-white font-bold cursor-pointer bg-blue-500 hover:bg-blue-400 rounded py-2 px-4 mb-4"
                     hx-get="/templates/talks/group/create" hx-target="#talk-window"
                 {
                     "Create group"

@@ -259,7 +259,7 @@ mod test {
                 hx-target="#talk-window"
                 hx-ext="json-enc"
             {
-                input type="hidden" name="type" value="chat" {}
+                input type="hidden" name="kind" value="chat" {}
                 input type="hidden" name="sub" value="valera" {}
                 input class="px-2 py-1 text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-xs focus:outline-none"
                     type="submit"
@@ -308,7 +308,7 @@ mod test {
                     img class="w-6 h-6 rounded-full float-left" src="jora" alt="User avatar" {}
                     strong class="px-3" {"Jora"} "jora"
                     form class="float-right" hx-post="/api/talks" hx-target="#talk-window" hx-ext="json-enc" {
-                        input type="hidden" name="type" value="chat" {}
+                        input type="hidden" name="kind" value="chat" {}
                         input type="hidden" name="sub" value="jora" {}
                         input class="px-2 py-1 text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-xs focus:outline-none"
                             type="submit"
