@@ -14,7 +14,7 @@ thiserror = "2.0.12"
 
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
-text-splitter = "0.25.1"
+text-splitter = "0.26.0"
 
 tokio = { version = "1.45.0", features = ["macros", "sync", "rt-multi-thread"] }
 async-stream = "0.3.6"
@@ -29,7 +29,7 @@ axum-extra = { version = "0.10.1", features = [
     "typed-header",
 ] }
 tower = "0.5.2"
-tower-http = { version = "0.6.2", features = ["cors", "fs", "trace"] }
+tower-http = { version = "0.6.4", features = ["cors", "fs", "trace"] }
 reqwest = { version = "0.12.15", features = ["json"] }
 url = "2.5.4"
 jsonwebtoken = "9.3.1"
@@ -38,7 +38,7 @@ maud = { version = "0.27.0", features = ["axum"] }
 
 mongodb = "3.2.3"
 diesel = { version = "2.2.10", features = ["postgres"] }
-redis = { version = "0.30.0", features = [
+redis = { version = "0.31.0", features = [
     "connection-manager",
     "tokio-comp",
     "json",
@@ -46,4 +46,4 @@ redis = { version = "0.30.0", features = [
 async-nats = "0.40.0"
 
 [dev-dependencies]
-testcontainers-modules = { version = "0.11.6", features = ["mongo"] }
+testcontainers-modules = { version = "0.12.0", features = ["mongo"] }
