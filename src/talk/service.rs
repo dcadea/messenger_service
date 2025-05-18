@@ -6,7 +6,7 @@ use log::error;
 
 use super::model::{Details, DetailsDto, Talk, TalkDto};
 use super::{Kind, Repository, Validator};
-use crate::integration::cache;
+use crate::integration::{cache, storage};
 use crate::message::model::LastMessage;
 use crate::user::Sub;
 use crate::{auth, contact, event, message, talk, user};
@@ -58,6 +58,7 @@ pub struct TalkServiceImpl {
     event_service: event::Service,
     message_repo: message::Repository,
     redis: cache::Redis,
+    s3: storage::S3,
 }
 
 impl TalkServiceImpl {
@@ -69,6 +70,7 @@ impl TalkServiceImpl {
         event_service: event::Service,
         message_repo: message::Repository,
         redis: cache::Redis,
+        s3: storage::S3,
     ) -> Self {
         Self {
             repo,
@@ -78,6 +80,7 @@ impl TalkServiceImpl {
             event_service,
             message_repo,
             redis,
+            s3,
         }
     }
 }

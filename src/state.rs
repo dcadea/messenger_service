@@ -34,6 +34,7 @@ impl AppState {
         let db = cfg.mongo().connect();
         let redis = cfg.redis().connect().await;
         let pubsub = cfg.pubsub().connect().await;
+        let s3 = cfg.s3().connect().await;
 
         let auth_service = Arc::new(AuthServiceImpl::try_new(cfg.idp(), redis.clone()));
         let event_service = Arc::new(EventServiceImpl::new(pubsub));
@@ -61,6 +62,7 @@ impl AppState {
             event_service.clone(),
             message_repo.clone(),
             redis,
+            s3,
         ));
 
         let message_service = Arc::new(MessageServiceImpl::new(

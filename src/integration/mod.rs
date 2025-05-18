@@ -14,6 +14,7 @@ pub mod cache;
 pub mod db;
 pub mod idp;
 pub mod pubsub;
+pub mod storage;
 
 #[derive(Clone)]
 pub enum Env {
@@ -81,6 +82,7 @@ pub struct Config {
     redis: cache::Config,
     mongo: db::Config,
     pubsub: pubsub::Config,
+    s3: storage::Config,
 
     idp: idp::Config,
 }
@@ -91,6 +93,7 @@ impl Config {
         redis: cache::Config,
         mongo: db::Config,
         pubsub: pubsub::Config,
+        s3: storage::Config,
         idp: idp::Config,
     ) -> Self {
         Self {
@@ -98,6 +101,7 @@ impl Config {
             redis,
             mongo,
             pubsub,
+            s3,
             idp,
         }
     }
@@ -116,6 +120,10 @@ impl Config {
 
     pub const fn pubsub(&self) -> &pubsub::Config {
         &self.pubsub
+    }
+
+    pub const fn s3(&self) -> &storage::Config {
+        &self.s3
     }
 
     pub const fn idp(&self) -> &idp::Config {
@@ -182,6 +190,7 @@ impl Default for Config {
             redis: cache::Config::env().unwrap_or_default(),
             mongo: db::Config::env().unwrap_or_default(),
             pubsub: pubsub::Config::env().unwrap_or_default(),
+            s3: storage::Config::env().unwrap_or_default(),
             idp: idp_cfg,
         }
     }
