@@ -80,7 +80,7 @@ impl Config {
     pub async fn connect(&self) -> S3 {
         let base_url = match format!("http://{}:{}/", self.host, self.port).parse::<BaseUrl>() {
             Ok(url) => url,
-            Err(e) => panic!("Failed to connect to MINIO: {e}"),
+            Err(e) => panic!("Failed to connect to MINIO: {e:?}"),
         };
 
         let provider = StaticProvider::from(self.credentials.clone());
@@ -90,21 +90,22 @@ impl Config {
             .build()
         {
             Ok(c) => c,
-            Err(e) => panic!("Failed to connect to MINIO: {e}"),
+            Err(e) => panic!("Failed to connect to MINIO: {e:?}"),
         };
 
-        // TODO: handle errors
         let bucket = "messenger";
         let exists = client
             .bucket_exists(&BucketExistsArgs::new(bucket).unwrap())
             .await
-            .unwrap();
+            .unwrap_or(false);
 
         if !exists {
-            client
+            if let Err(e) = client
                 .make_bucket(&MakeBucketArgs::new(bucket).unwrap())
                 .await
-                .unwrap();
+            {
+                panic!("Failed to create MINIO bucket: {bucket}, {e:?}")
+            }
         }
 
         S3 { client }
