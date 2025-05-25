@@ -8,9 +8,24 @@ use minio::s3::{
     http::BaseUrl,
 };
 
+const BUCKET: &str = "messenger";
+
 #[derive(Clone)]
 pub struct S3 {
     client: minio::s3::client::Client,
+}
+
+impl S3 {
+    pub async fn save_icon(&self, name: &str, icon: identicon_rs::Identicon) -> String {
+        unimplemented!()
+        // TODO
+        // let image = icon.generate_image().unwrap();
+        // let mut bytes = image.as_bytes();
+        // let size = Some(bytes.len());
+        // let mut p = PutObjectArgs::new(BUCKET, name, &mut bytes, size, None).unwrap();
+        // let res = self.client.put_object(&mut p).await.unwrap();
+        // res.location
+    }
 }
 
 #[derive(Clone)]
@@ -93,18 +108,17 @@ impl Config {
             Err(e) => panic!("Failed to connect to MINIO: {e:?}"),
         };
 
-        let bucket = "messenger";
         let exists = client
-            .bucket_exists(&BucketExistsArgs::new(bucket).unwrap())
+            .bucket_exists(&BucketExistsArgs::new(BUCKET).unwrap())
             .await
             .unwrap_or(false);
 
         if !exists {
             if let Err(e) = client
-                .make_bucket(&MakeBucketArgs::new(bucket).unwrap())
+                .make_bucket(&MakeBucketArgs::new(BUCKET).unwrap())
                 .await
             {
-                panic!("Failed to create MINIO bucket: {bucket}, {e:?}")
+                panic!("Failed to create MINIO bucket: {BUCKET}, {e:?}")
             }
         }
 

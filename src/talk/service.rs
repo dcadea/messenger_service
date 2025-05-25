@@ -147,9 +147,14 @@ impl TalkService for TalkServiceImpl {
             }
         }
 
+        let picture = self
+            .s3
+            .save_icon(name, identicon_rs::Identicon::new("name"))
+            .await;
+
         let talk = Talk::new(Details::Group {
             name: name.into(),
-            picture: String::new(), // TODO: https://crates.io/crates/identicon-rs
+            picture,
             owner: auth_sub.clone(),
             members: members.into(),
         });
