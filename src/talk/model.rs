@@ -15,9 +15,9 @@ pub struct Talk {
 }
 
 impl Talk {
-    pub fn new(details: Details) -> Self {
+    pub fn new(id: Id, details: Details) -> Self {
         Self {
-            id: Id::random(),
+            id,
             details,
             last_message: None,
         }
@@ -33,6 +33,16 @@ impl Talk {
 
     pub const fn last_message(&self) -> Option<&LastMessage> {
         self.last_message.as_ref()
+    }
+}
+
+impl From<Details> for Talk {
+    fn from(details: Details) -> Self {
+        Self {
+            id: Id::random(),
+            details,
+            last_message: None,
+        }
     }
 }
 

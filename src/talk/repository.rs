@@ -155,7 +155,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoTalkRepository::new(&db);
 
-        let expected = Talk::new(Details::Chat {
+        let expected = Talk::from(Details::Chat {
             members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&expected).await.unwrap();
@@ -183,16 +183,16 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoTalkRepository::new(&db);
 
-        let t1 = &Talk::new(Details::Chat {
+        let t1 = &Talk::from(Details::Chat {
             members: [Sub::from("jora"), Sub::from("valera")],
         });
-        let t2 = &Talk::new(Details::Chat {
+        let t2 = &Talk::from(Details::Chat {
             members: [Sub::from("jora"), Sub::from("igor")],
         });
-        let t3 = &Talk::new(Details::Chat {
+        let t3 = &Talk::from(Details::Chat {
             members: [Sub::from("radu"), Sub::from("igor")],
         });
-        let t4 = &Talk::new(Details::Group {
+        let t4 = &Talk::from(Details::Group {
             name: "g1".into(),
             picture: "picture".into(),
             owner: Sub::from("radu"),
@@ -224,10 +224,10 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoTalkRepository::new(&db);
 
-        let t1 = &Talk::new(Details::Chat {
+        let t1 = &Talk::from(Details::Chat {
             members: [Sub::from("jora"), Sub::from("valera")],
         });
-        let t2 = &Talk::new(Details::Group {
+        let t2 = &Talk::from(Details::Group {
             name: "g1".into(),
             picture: "picture".into(),
             owner: Sub::from("radu"),
@@ -250,7 +250,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoTalkRepository::new(&db);
 
-        let expected = Talk::new(Details::Chat {
+        let expected = Talk::from(Details::Chat {
             members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&expected).await.unwrap();
@@ -269,7 +269,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoTalkRepository::new(&db);
 
-        let expected = Talk::new(Details::Chat {
+        let expected = Talk::from(Details::Chat {
             members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&expected).await.unwrap();
@@ -288,7 +288,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoTalkRepository::new(&db);
 
-        let expected = Talk::new(Details::Group {
+        let expected = Talk::from(Details::Group {
             name: "g1".into(),
             picture: "picture".into(),
             owner: Sub::from("radu"),
@@ -325,7 +325,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoTalkRepository::new(&db);
 
-        let t = Talk::new(Details::Chat {
+        let t = Talk::from(Details::Chat {
             members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&t).await.unwrap();
@@ -353,7 +353,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoTalkRepository::new(&db);
 
-        let t = Talk::new(Details::Chat {
+        let t = Talk::from(Details::Chat {
             members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&t).await.unwrap();
@@ -386,7 +386,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoTalkRepository::new(&db);
 
-        let t = Talk::new(Details::Chat {
+        let t = Talk::from(Details::Chat {
             members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&t).await.unwrap();
@@ -421,7 +421,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoTalkRepository::new(&db);
 
-        let t = Talk::new(Details::Chat {
+        let t = Talk::from(Details::Chat {
             members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&t).await.unwrap();
@@ -448,7 +448,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoTalkRepository::new(&db);
 
-        let t = Talk::new(Details::Chat {
+        let t = Talk::from(Details::Chat {
             members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&t).await.unwrap();
@@ -475,7 +475,7 @@ mod test {
         let db = db::Config::test(&node).await.connect();
         let repo = MongoTalkRepository::new(&db);
 
-        let t = Talk::new(Details::Chat {
+        let t = Talk::from(Details::Chat {
             members: [Sub::from("jora"), Sub::from("valera")],
         });
         repo.create(&t).await.unwrap();

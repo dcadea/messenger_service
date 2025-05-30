@@ -108,7 +108,7 @@ impl TalkService for TalkServiceImpl {
             return Err(talk::Error::UnsupportedStatus);
         }
 
-        let talk = Talk::new(Details::Chat { members });
+        let talk = Talk::from(Details::Chat { members });
         self.repo.create(&talk).await?;
 
         let talk_dto = self.talk_to_dto(talk, auth_sub).await;
@@ -147,17 +147,18 @@ impl TalkService for TalkServiceImpl {
             }
         }
 
-        let picture = self
-            .s3
-            .save_icon(name, identicon_rs::Identicon::new("name"))
-            .await;
+        let id = talk::Id::random();
+        let picture = self.s3.generate_image(id.as_str()).await?;
 
-        let talk = Talk::new(Details::Group {
-            name: name.into(),
-            picture,
-            owner: auth_sub.clone(),
-            members: members.into(),
-        });
+        let talk = Talk::new(
+            id,
+            Details::Group {
+                name: name.into(),
+                picture,
+                owner: auth_sub.clone(),
+                members: members.into(),
+            },
+        );
         self.repo.create(&talk).await?;
 
         let talk_dto = self.talk_to_dto(talk, auth_sub).await;

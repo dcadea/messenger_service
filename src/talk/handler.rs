@@ -13,6 +13,7 @@ impl From<super::Error> for StatusCode {
             super::Error::NotCreated
             | super::Error::NotDeleted
             | super::Error::_User(_)
+            | super::Error::_Integration(_)
             | super::Error::_MongoDB(_) => Self::INTERNAL_SERVER_ERROR,
         }
     }
@@ -54,6 +55,7 @@ pub(super) mod api {
 
     use crate::{
         auth,
+        integration::storage,
         talk::{self, markup},
         user::Sub,
     };
@@ -115,6 +117,10 @@ pub(super) mod api {
         talk_service.delete(&id, &auth_user).await?;
 
         Ok([("HX-Redirect", "/")])
+    }
+
+    pub async fn _get_avatar(_id: Path<talk::Id>, _s3: State<storage::S3>) {
+        todo!()
     }
 }
 

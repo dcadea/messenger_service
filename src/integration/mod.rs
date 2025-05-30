@@ -16,6 +16,8 @@ pub mod idp;
 pub mod pubsub;
 pub mod storage;
 
+type Result<T> = std::result::Result<T, Error>;
+
 #[derive(Clone)]
 pub enum Env {
     Local,
@@ -208,4 +210,14 @@ pub fn init_http_client() -> reqwest::Client {
             panic!("Failed to initialize HTTP client: {e}")
         }
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error(transparent)]
+    Identicon(#[from] identicon_rs::error::IdenticonError),
+    #[error(transparent)]
+    Minio(#[from] minio::s3::error::Error),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }

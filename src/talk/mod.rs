@@ -12,6 +12,7 @@ use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use service::{TalkService, TalkValidator};
 
 use crate::{
+    integration,
     state::AppState,
     user::{self, Sub},
 };
@@ -54,6 +55,10 @@ impl Id {
     pub fn random() -> Self {
         Self(mongodb::bson::oid::ObjectId::new().to_hex())
     }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
 #[derive(Clone)]
@@ -94,6 +99,8 @@ pub enum Error {
 
     #[error(transparent)]
     _User(#[from] user::Error),
+    #[error(transparent)]
+    _Integration(#[from] integration::Error),
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
 }
