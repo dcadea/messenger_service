@@ -6,6 +6,7 @@ use log::error;
 
 use super::model::{Details, DetailsDto, Talk, TalkDto};
 use super::{Kind, Repository, Validator};
+use crate::integration::storage::Blob;
 use crate::integration::{cache, storage};
 use crate::message::model::LastMessage;
 use crate::user::Sub;
@@ -148,13 +149,13 @@ impl TalkService for TalkServiceImpl {
         }
 
         let id = talk::Id::random();
-        let picture = self.s3.generate_image(id.as_str()).await?;
+        self.s3.generate(Blob::Png(id.as_str())).await?;
 
         let talk = Talk::new(
-            id,
+            id.clone(),
             Details::Group {
                 name: name.into(),
-                picture,
+                picture: format!("/api/talks/{id}/avatar.png"),
                 owner: auth_sub.clone(),
                 members: members.into(),
             },

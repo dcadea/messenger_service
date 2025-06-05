@@ -14,17 +14,24 @@ pub struct S3 {
 }
 
 impl S3 {
-    pub async fn generate_image(&self, id: &str) -> super::Result<String> {
-        let image = identicon_rs::Identicon::new(id).export_png_data()?;
-        let content = ObjectContent::from(image);
+    pub async fn generate<'a>(&self, blob: Blob<'a>) -> super::Result<()> {
+        match blob {
+            Blob::Png(name) => {
+                let png = identicon_rs::Identicon::new(name).export_png_data()?;
+                let png = ObjectContent::from(png);
 
-        self.client
-            .put_object_content(BUCKET, format!("{id}.png"), content)
-            .send()
-            .await?;
-
-        Ok(format!("/api/talks/{id}/avatar.png"))
+                self.client
+                    .put_object_content(BUCKET, format!("{name}.png"), png)
+                    .send()
+                    .await?;
+            }
+        }
+        Ok(())
     }
+}
+
+pub enum Blob<'a> {
+    Png(&'a str),
 }
 
 #[derive(Clone)]
