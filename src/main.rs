@@ -38,12 +38,12 @@ async fn main() {
             return;
         }
     };
-    let router = app(&app_state, config.env());
+    let env = config.env();
 
-    let addr = config.env().addr();
-    let ssl_config = config.env().ssl_config();
-
-    match ssl_config {
+    let addr = env.addr();
+    let ssl_config = env.ssl_config();
+    let router = app(&app_state, env);
+    if let Err(e) = match ssl_config {
         Some(ssl_config) => {
             axum_server::bind_openssl(addr, ssl_config)
                 .serve(router.into_make_service())
@@ -54,8 +54,9 @@ async fn main() {
                 .serve(router.into_make_service())
                 .await
         }
+    } {
+        panic!("Failed to start server: {e:?}")
     }
-    .expect("Failed to start server");
 }
 
 fn app(s: &AppState, env: &Env) -> Router {
