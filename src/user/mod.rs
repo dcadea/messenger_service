@@ -107,7 +107,7 @@ impl From<&str> for Nickname {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
-pub struct Picture(String);
+pub struct Picture(pub String);
 
 impl Picture {
     pub fn parse(e: &str) -> self::Result<Self> {

@@ -54,7 +54,6 @@ pub enum Details {
     },
     Group {
         name: String,
-        picture: String,
         owner: Sub,
         members: Vec<Sub>,
     },

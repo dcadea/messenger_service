@@ -194,7 +194,6 @@ mod test {
         });
         let t4 = &Talk::from(Details::Group {
             name: "g1".into(),
-            picture: "picture".into(),
             owner: Sub::from("radu"),
             members: vec![Sub::from("jora"), Sub::from("radu"), Sub::from("igor")],
         });
@@ -229,7 +228,6 @@ mod test {
         });
         let t2 = &Talk::from(Details::Group {
             name: "g1".into(),
-            picture: "picture".into(),
             owner: Sub::from("radu"),
             members: vec![Sub::from("jora"), Sub::from("radu"), Sub::from("igor")],
         });
@@ -290,7 +288,6 @@ mod test {
 
         let expected = Talk::from(Details::Group {
             name: "g1".into(),
-            picture: "picture".into(),
             owner: Sub::from("radu"),
             members: vec![Sub::from("jora"), Sub::from("radu"), Sub::from("igor")],
         });

@@ -76,6 +76,26 @@ impl Kind {
     }
 }
 
+pub struct Picture(String);
+
+impl From<Id> for Picture {
+    fn from(id: Id) -> Self {
+        Self(format!("/api/talks/{id}/avatar.png"))
+    }
+}
+
+impl From<Picture> for String {
+    fn from(p: Picture) -> Self {
+        p.0
+    }
+}
+
+impl From<user::Picture> for Picture {
+    fn from(p: user::Picture) -> Self {
+        Self(p.0)
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("talks not found: {0:?}")]

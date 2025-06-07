@@ -9,6 +9,7 @@ use super::{Kind, Repository, Validator};
 use crate::integration::storage::Blob;
 use crate::integration::{cache, storage};
 use crate::message::model::LastMessage;
+use crate::talk::Picture;
 use crate::user::Sub;
 use crate::{auth, contact, event, message, talk, user};
 
@@ -155,7 +156,6 @@ impl TalkService for TalkServiceImpl {
             id.clone(),
             Details::Group {
                 name: name.into(),
-                picture: format!("/api/talks/{id}/avatar.png"),
                 owner: auth_sub.clone(),
                 members: members.into(),
             },
@@ -292,18 +292,13 @@ impl TalkServiceImpl {
 
                 (
                     r.name().to_string(),
-                    r.picture().to_string(),
+                    Picture::from(r.picture().clone()),
                     DetailsDto::Chat { sender, recipient },
                 )
             }
-            Details::Group {
+            Details::Group { name, owner, .. } => (
                 name,
-                picture,
-                owner,
-                ..
-            } => (
-                name,
-                picture,
+                Picture::from(t.id().clone()),
                 DetailsDto::Group {
                     owner,
                     sender: auth_sub.clone(),
