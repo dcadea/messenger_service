@@ -15,14 +15,6 @@ pub struct Talk {
 }
 
 impl Talk {
-    pub fn new(id: Id, details: Details) -> Self {
-        Self {
-            id,
-            details,
-            last_message: None,
-        }
-    }
-
     pub const fn id(&self) -> &Id {
         &self.id
     }

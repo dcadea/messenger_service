@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use async_trait::async_trait;
+use futures::TryFutureExt;
 use futures::future::join_all;
 use log::error;
 
@@ -149,18 +150,17 @@ impl TalkService for TalkServiceImpl {
             }
         }
 
-        let id = talk::Id::random();
-        self.s3.generate(Blob::Png(id.as_str())).await?;
-
-        let talk = Talk::new(
-            id.clone(),
-            Details::Group {
-                name: name.into(),
-                owner: auth_sub.clone(),
-                members: members.into(),
-            },
-        );
-        self.repo.create(&talk).await?;
+        let talk = Talk::from(Details::Group {
+            name: name.into(),
+            owner: auth_sub.clone(),
+            members: members.into(),
+        });
+        tokio::try_join!(
+            self.repo.create(&talk),
+            self.s3
+                .generate(Blob::Png(talk.id().as_str()))
+                .map_err(talk::Error::from)
+        )?;
 
         let talk_dto = self.talk_to_dto(talk, auth_sub).await;
 
