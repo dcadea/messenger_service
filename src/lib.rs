@@ -1,3 +1,5 @@
+pub mod schema;
+
 pub trait Raw {
     fn raw(&self) -> &str;
 }

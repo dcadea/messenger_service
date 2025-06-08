@@ -11,6 +11,7 @@ purposes.
 
 - :crab: [Rust](https://www.rust-lang.org/tools/install) installed on your machine.
 - :whale: [Docker](https://www.docker.com/get-started) to run dependant services.
+- :fuel_pump: [Diesel](https://diesel.rs) to run and manage DB migrations.
 - :gear: [Make](https://www.gnu.org/software/make/) to run the project with `make` commands.
 - :closed_lock_with_key: Have a `Application` configured in the `Authorization Server` of your choice (ex. Auth0, Okta, Google, etc).<br>
 Check [configuration](#configuration) for further steps.
@@ -90,6 +91,16 @@ NATS_HOST=127.0.0.1
 NATS_PORT=4222
 ```
 
+### Add new migrations
+```bash
+# This will generate up.sql and down.sql in ./migrations folder
+# which have to be populated with respective sql scripts.
+diesel migration generate create_posts
+
+# Once done run the following command to populate schema.rs with actual mapping
+diesel migration run
+```
+
 ## Built With
 
 - [Rust](https://www.rust-lang.org/) - The programming language used
@@ -98,7 +109,7 @@ NATS_PORT=4222
 - [Tokio](https://tokio.rs/) - Asynchronous runtime
 - [htmx](https://htmx.org/) - Hypermedia driven web framework
 - [maud](https://maud.lambda.xyz/) - HTML template engine
-- [MongoDB](https://www.mongodb.com/) - Database
+- [PostgreSQL](https://www.postgresql.org) - Database
 - [Redis](https://redis.io/) - In-memory data structure store
 - [NATS](https://nats.io) - Pub/Sub messaging system and not only :)
 

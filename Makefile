@@ -15,6 +15,9 @@ stg: image
 compose:
 	docker-compose -f docker-compose.dev.yaml up -d
 
+migrate:
+	diesel migration run
+
 clippy:
 	cargo fmt && cargo clippy -- \
 	-W clippy::pedantic \
