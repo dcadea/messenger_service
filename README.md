@@ -11,9 +11,9 @@ purposes.
 
 - :crab: [Rust](https://www.rust-lang.org/tools/install) installed on your machine.
 - :whale: [Docker](https://www.docker.com/get-started) to run dependant services.
-- :fuel_pump: [Diesel](https://diesel.rs) to run and manage DB migrations.
+- :fuelpump: [Diesel](https://diesel.rs) to run and manage DB migrations.
 - :gear: [Make](https://www.gnu.org/software/make/) to run the project with `make` commands.
-- :closed_lock_with_key: Have a `Application` configured in the `Authorization Server` of your choice (ex. Auth0, Okta, Google, etc).<br>
+- :closed_lock_with_key: Have an `Application` configured in the `Authorization Server` of your choice (ex. Auth0, Okta, Google, etc).<br>
 Check [configuration](#configuration) for further steps.
 
 ### Installing
