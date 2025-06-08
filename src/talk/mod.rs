@@ -37,6 +37,7 @@ pub fn pages<S>(s: AppState) -> Router<S> {
 pub fn api<S>(s: AppState) -> Router<S> {
     Router::new()
         .route("/talks/{id}", get(handler::api::find_one))
+        .route("/talks/{id}/avatar.png", get(handler::api::find_avatar))
         .route("/talks", post(handler::api::create))
         .route("/talks/{id}", delete(handler::api::delete))
         .with_state(s)

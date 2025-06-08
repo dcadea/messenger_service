@@ -21,17 +21,30 @@ impl S3 {
                 let png = ObjectContent::from(png);
 
                 self.client
-                    .put_object_content(BUCKET, format!("{name}.png"), png)
+                    .put_object_content(BUCKET, blob, png)
                     .send()
                     .await?;
             }
         }
         Ok(())
     }
+
+    pub async fn find_one<'a>(&self, blob: Blob<'a>) -> super::Result<ObjectContent> {
+        let res = self.client.get_object(BUCKET, blob).send().await?;
+        Ok(res.content)
+    }
 }
 
 pub enum Blob<'a> {
     Png(&'a str),
+}
+
+impl<'a> From<Blob<'a>> for String {
+    fn from(b: Blob<'a>) -> Self {
+        match b {
+            Blob::Png(name) => format!("{name}.png"),
+        }
+    }
 }
 
 #[derive(Clone)]

@@ -6,6 +6,7 @@ use crate::auth::service::AuthServiceImpl;
 use crate::contact::repository::MongoContactRepository;
 use crate::contact::service::ContactServiceImpl;
 use crate::event::service::EventServiceImpl;
+use crate::integration::storage;
 use crate::message::repository::MongoMessageRepository;
 use crate::message::service::MessageServiceImpl;
 use crate::talk::repository::MongoTalkRepository;
@@ -27,6 +28,8 @@ pub struct AppState {
     talk_validator: talk::Validator,
     message_service: message::Service,
     event_service: event::Service,
+
+    s3: storage::S3,
 }
 
 impl AppState {
@@ -62,7 +65,7 @@ impl AppState {
             event_service.clone(),
             message_repo.clone(),
             redis,
-            s3,
+            s3.clone(),
         ));
 
         let message_service = Arc::new(MessageServiceImpl::new(
@@ -81,6 +84,7 @@ impl AppState {
             talk_validator,
             message_service,
             event_service,
+            s3,
         })
     }
 }
@@ -130,5 +134,11 @@ impl FromRef<AppState> for message::Service {
 impl FromRef<AppState> for event::Service {
     fn from_ref(s: &AppState) -> Self {
         s.event_service.clone()
+    }
+}
+
+impl FromRef<AppState> for storage::S3 {
+    fn from_ref(s: &AppState) -> Self {
+        s.s3.clone()
     }
 }
