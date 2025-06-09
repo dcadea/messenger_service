@@ -18,6 +18,8 @@ pub trait UserRepository {
 
     fn find_by_sub(&self, sub: &Sub) -> super::Result<User>;
 
+    fn exists(&self, sub: &Sub) -> super::Result<bool>;
+
     fn search_by_nickname_excluding(
         &self,
         nickname: &Nickname,
@@ -36,27 +38,38 @@ impl PgUserRepository {
 }
 
 impl UserRepository for PgUserRepository {
-    fn insert(&self, u: &NewUser) -> super::Result<()> {
+    fn insert(&self, user: &NewUser) -> super::Result<()> {
         let mut conn = self.pool.get()?;
 
         let _ = diesel::insert_into(users::table)
-            .values(u)
+            .values(user)
             .returning(users::sub)
             .get_result::<String>(&mut conn)?;
 
         Ok(())
     }
 
-    fn find_by_sub(&self, s: &Sub) -> super::Result<User> {
+    fn find_by_sub(&self, sub: &Sub) -> super::Result<User> {
         let mut conn = self.pool.get()?;
 
         let u = users::table
-            .filter(users::sub.eq(s.as_str()))
+            .filter(users::sub.eq(sub.as_str()))
             .limit(1)
             .select(User::as_select())
             .first(&mut conn)?;
 
         Ok(u)
+    }
+
+    fn exists(&self, sub: &Sub) -> super::Result<bool> {
+        let mut conn = self.pool.get()?;
+
+        let count = users::table
+            .filter(users::sub.eq(sub.as_str()))
+            .count()
+            .get_result::<i64>(&mut conn)?;
+
+        Ok(count > 0)
     }
 
     fn search_by_nickname_excluding(

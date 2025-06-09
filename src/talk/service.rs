@@ -143,7 +143,7 @@ impl TalkService for TalkServiceImpl {
         }
 
         for m in members {
-            let exists = self.user_service.exists(m).await?;
+            let exists = self.user_service.exists(m)?;
 
             if !exists {
                 return Err(talk::Error::NonExistingUser(m.clone()));

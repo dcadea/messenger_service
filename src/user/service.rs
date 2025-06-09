@@ -18,7 +18,7 @@ pub trait UserService {
 
     async fn find_picture(&self, sub: &Sub) -> super::Result<Picture>;
 
-    async fn exists(&self, sub: &Sub) -> super::Result<bool>;
+    fn exists(&self, sub: &Sub) -> super::Result<bool>;
 
     async fn search(
         &self,
@@ -79,7 +79,6 @@ impl UserService for UserServiceImpl {
         if let Some(name) = cached {
             Ok(name)
         } else {
-            // TODO: SELECT name FROM users
             let user_info = self.find_one(sub).await?;
             Ok(user_info.name().to_owned())
         }
@@ -91,18 +90,13 @@ impl UserService for UserServiceImpl {
         if let Some(p) = cached {
             Picture::try_from(p.as_str())
         } else {
-            // TODO: SELECT picture FROM users
             let user_info = self.find_one(sub).await?;
             Ok(user_info.picture().clone())
         }
     }
 
-    async fn exists(&self, sub: &Sub) -> super::Result<bool> {
-        match self.find_one(sub).await {
-            Ok(_) => Ok(true),
-            Err(super::Error::NotFound(_)) => Ok(false),
-            Err(e) => Err(e),
-        }
+    fn exists(&self, sub: &Sub) -> super::Result<bool> {
+        self.repo.exists(sub)
     }
 
     async fn search(
@@ -114,7 +108,7 @@ impl UserService for UserServiceImpl {
             .repo
             .search_by_nickname_excluding(nickname, auth_user.nickname())?;
 
-        Ok(users.into_iter().map(Into::into).collect())
+        Ok(users.into_iter().map(UserInfo::from).collect())
     }
 
     async fn notify_online(&self, sub: &Sub) {
