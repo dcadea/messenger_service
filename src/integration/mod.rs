@@ -83,6 +83,7 @@ pub struct Config {
 
     redis: cache::Config,
     mongo: db::mongo::Config,
+    pg: db::pg::Config,
     pubsub: pubsub::Config,
     s3: storage::Config,
 
@@ -94,6 +95,7 @@ impl Config {
         env: Env,
         redis: cache::Config,
         mongo: db::mongo::Config,
+        pg: db::pg::Config,
         pubsub: pubsub::Config,
         s3: storage::Config,
         idp: idp::Config,
@@ -102,6 +104,7 @@ impl Config {
             env,
             redis,
             mongo,
+            pg,
             pubsub,
             s3,
             idp,
@@ -118,6 +121,10 @@ impl Config {
 
     pub const fn mongo(&self) -> &db::mongo::Config {
         &self.mongo
+    }
+
+    pub const fn pg(&self) -> &db::pg::Config {
+        &self.pg
     }
 
     pub const fn pubsub(&self) -> &pubsub::Config {
@@ -191,6 +198,7 @@ impl Default for Config {
             env,
             redis: cache::Config::env().unwrap_or_default(),
             mongo: db::mongo::Config::env().unwrap_or_default(),
+            pg: db::pg::Config::env().unwrap_or_default(),
             pubsub: pubsub::Config::env().unwrap_or_default(),
             s3: storage::Config::env().unwrap_or_default(),
             idp: idp_cfg,
