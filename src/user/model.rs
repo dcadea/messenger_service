@@ -2,18 +2,18 @@ use diesel::prelude::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{Email, Id, Nickname, Picture, Sub};
+use super::{Email, Nickname, Picture, Sub};
 
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
-pub struct PgUser {
+pub struct User {
     id: Uuid,
-    sub: Sub,
-    nickname: Nickname,
+    sub: String,
+    nickname: String,
     name: String,
-    picture: Picture,
-    email: Email,
+    picture: String,
+    email: String,
 }
 
 #[derive(Insertable)]
@@ -26,34 +26,14 @@ pub struct NewUser<'a> {
     email: &'a str,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
-pub struct User {
-    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
-    id: Option<Id>,
-    sub: Sub,
-    nickname: Nickname,
-    name: String,
-    picture: Picture,
-    email: Email,
-}
-
-#[cfg(test)]
-impl User {
-    pub fn new(
-        id: Id,
-        sub: Sub,
-        nickname: Nickname,
-        name: impl Into<String>,
-        picture: Picture,
-        email: Email,
-    ) -> Self {
+impl<'a> From<&'a UserInfo> for NewUser<'a> {
+    fn from(ui: &'a UserInfo) -> Self {
         Self {
-            id: Some(id),
-            sub,
-            nickname,
-            name: name.into(),
-            picture,
-            email,
+            sub: ui.sub.as_str(),
+            nickname: ui.nickname.as_str(),
+            name: &ui.name,
+            picture: ui.picture.as_str(),
+            email: ui.email.as_str(),
         }
     }
 }
@@ -113,24 +93,11 @@ impl UserInfo {
 impl From<User> for UserInfo {
     fn from(user: User) -> Self {
         Self {
-            sub: user.sub,
-            nickname: user.nickname,
+            sub: Sub(user.sub),
+            nickname: Nickname(user.nickname),
             name: user.name,
-            picture: user.picture,
-            email: user.email,
-        }
-    }
-}
-
-impl From<UserInfo> for User {
-    fn from(info: UserInfo) -> Self {
-        Self {
-            id: None,
-            sub: info.sub,
-            nickname: info.nickname,
-            name: info.name,
-            picture: info.picture,
-            email: info.email,
+            picture: Picture(user.picture),
+            email: Email(user.email),
         }
     }
 }

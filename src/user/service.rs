@@ -5,12 +5,12 @@ use crate::integration::cache;
 use crate::user::model::UserInfo;
 use crate::{auth, contact, event};
 
-use super::model::OnlineStatus;
-use super::{Nickname, Picture, Repository, Sub};
+use super::model::{NewUser, OnlineStatus};
+use super::{Nickname, PgRepository, Picture, Sub};
 
 #[async_trait]
 pub trait UserService {
-    async fn project(&self, user_info: &UserInfo) -> super::Result<bool>;
+    fn project(&self, user_info: &UserInfo) -> super::Result<bool>;
 
     async fn find_one(&self, sub: &Sub) -> super::Result<UserInfo>;
 
@@ -33,7 +33,7 @@ pub trait UserService {
 
 #[derive(Clone)]
 pub struct UserServiceImpl {
-    repo: Repository,
+    repo: PgRepository,
     contact_service: contact::Service,
     event_service: event::Service,
     redis: cache::Redis,
@@ -41,7 +41,7 @@ pub struct UserServiceImpl {
 
 impl UserServiceImpl {
     pub fn new(
-        repo: Repository,
+        repo: PgRepository,
         contact_service: contact::Service,
         event_service: event::Service,
         redis: cache::Redis,
@@ -57,9 +57,8 @@ impl UserServiceImpl {
 
 #[async_trait]
 impl UserService for UserServiceImpl {
-    async fn project(&self, user_info: &UserInfo) -> super::Result<bool> {
-        let user = user_info.to_owned().into();
-        self.repo.insert(&user).await
+    fn project(&self, user_info: &UserInfo) -> super::Result<bool> {
+        self.repo.insert(&NewUser::from(user_info)).map(|_| true)
     }
 
     async fn find_one(&self, sub: &Sub) -> super::Result<UserInfo> {
@@ -68,7 +67,7 @@ impl UserService for UserServiceImpl {
         if let Some(user_info) = cached {
             Ok(user_info)
         } else {
-            let user_info = self.repo.find_by_sub(sub).await?.into();
+            let user_info = self.repo.find_by_sub(sub).map(UserInfo::from)?;
             self.cache(&user_info).await;
             Ok(user_info)
         }
@@ -80,6 +79,7 @@ impl UserService for UserServiceImpl {
         if let Some(name) = cached {
             Ok(name)
         } else {
+            // TODO: SELECT name FROM users
             let user_info = self.find_one(sub).await?;
             Ok(user_info.name().to_owned())
         }
@@ -91,6 +91,7 @@ impl UserService for UserServiceImpl {
         if let Some(p) = cached {
             Picture::try_from(p.as_str())
         } else {
+            // TODO: SELECT picture FROM users
             let user_info = self.find_one(sub).await?;
             Ok(user_info.picture().clone())
         }
@@ -111,8 +112,7 @@ impl UserService for UserServiceImpl {
     ) -> super::Result<Vec<UserInfo>> {
         let users = self
             .repo
-            .search_by_nickname_excluding(nickname, auth_user.nickname())
-            .await?;
+            .search_by_nickname_excluding(nickname, auth_user.nickname())?;
 
         Ok(users.into_iter().map(Into::into).collect())
     }

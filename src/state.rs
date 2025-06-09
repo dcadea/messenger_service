@@ -11,7 +11,7 @@ use crate::message::repository::MongoMessageRepository;
 use crate::message::service::MessageServiceImpl;
 use crate::talk::repository::MongoTalkRepository;
 use crate::talk::service::{TalkServiceImpl, TalkValidatorImpl};
-use crate::user::repository::MongoUserRepository;
+use crate::user::repository::PgUserRepository;
 use crate::user::service::UserServiceImpl;
 use crate::{auth, contact, event, message, talk, user};
 
@@ -35,6 +35,7 @@ pub struct AppState {
 impl AppState {
     pub async fn init(cfg: integration::Config) -> crate::Result<Self> {
         let db = cfg.mongo().connect();
+        let pg = cfg.pg().connect();
         let redis = cfg.redis().connect().await;
         let pubsub = cfg.pubsub().connect().await;
         let s3 = cfg.s3().connect().await;
@@ -45,7 +46,7 @@ impl AppState {
         let contact_repo = Arc::new(MongoContactRepository::new(&db));
         let contact_service = Arc::new(ContactServiceImpl::new(contact_repo, redis.clone()));
 
-        let user_repo = Arc::new(MongoUserRepository::new(&db));
+        let user_repo = Arc::new(PgUserRepository::new(pg));
         let user_service = Arc::new(UserServiceImpl::new(
             user_repo,
             contact_service.clone(),

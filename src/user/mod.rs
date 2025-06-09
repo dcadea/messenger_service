@@ -17,7 +17,7 @@ pub mod repository;
 pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
-pub type Repository = Arc<dyn UserRepository + Send + Sync>;
+pub type PgRepository = Arc<dyn UserRepository + Send + Sync>;
 pub type Service = Arc<dyn UserService + Send + Sync>;
 
 pub fn api<S>(s: AppState) -> Router<S> {
@@ -136,6 +136,12 @@ impl Display for Picture {
 
 #[derive(Serialize, Deserialize, FromSqlRow, Clone, PartialEq, Eq, Debug)]
 pub struct Email(String);
+
+impl Email {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
 
 impl TryFrom<&str> for Email {
     type Error = Error;

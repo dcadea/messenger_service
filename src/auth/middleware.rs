@@ -57,7 +57,7 @@ pub async fn authorize(
         Err(user::Error::NotFound(_)) => {
             debug!("{sub:?} not projected, fetching from IdP");
             let user_info = auth_service.get_user_info(token.secret()).await?;
-            user_service.project(&user_info).await?;
+            user_service.project(&user_info)?;
             user_info
         }
         Err(e) => return Err(e.into()),

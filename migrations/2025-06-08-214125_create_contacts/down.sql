@@ -1,1 +1,1 @@
-DROP TABLE contacts
+DROP TABLE contacts;

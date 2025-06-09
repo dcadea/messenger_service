@@ -157,12 +157,8 @@ pub mod mongo {
 pub mod pg {
     use std::env;
 
-    use diesel::{
-        PgConnection, deserialize::FromSql, r2d2::ConnectionManager, serialize::ToSql, sql_types,
-    };
+    use diesel::{PgConnection, r2d2::ConnectionManager};
     use log::warn;
-
-    use crate::user;
 
     #[derive(Clone)]
     pub struct Config {
@@ -236,50 +232,6 @@ pub mod pg {
                 user: String::from("postgres"),
                 password: String::from("postgres"),
             }
-        }
-    }
-
-    impl<DB> FromSql<sql_types::Text, DB> for user::Sub
-    where
-        DB: diesel::backend::Backend,
-        String: FromSql<sql_types::Text, DB>,
-    {
-        fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-            let sub = String::from_sql(bytes)?;
-            Ok(Self::from(sub))
-        }
-    }
-
-    impl<DB> FromSql<sql_types::Text, DB> for user::Nickname
-    where
-        DB: diesel::backend::Backend,
-        String: FromSql<sql_types::Text, DB>,
-    {
-        fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-            let nickname = String::from_sql(bytes)?;
-            Ok(Self::from(nickname))
-        }
-    }
-
-    impl<DB> FromSql<sql_types::Text, DB> for user::Picture
-    where
-        DB: diesel::backend::Backend,
-        String: FromSql<sql_types::Text, DB>,
-    {
-        fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-            let picture = String::from_sql(bytes)?;
-            Ok(Self::try_from(picture.as_str()).unwrap()) // FIXME
-        }
-    }
-
-    impl<DB> FromSql<sql_types::Text, DB> for user::Email
-    where
-        DB: diesel::backend::Backend,
-        String: FromSql<sql_types::Text, DB>,
-    {
-        fn from_sql(bytes: DB::RawValue<'_>) -> diesel::deserialize::Result<Self> {
-            let email = String::from_sql(bytes)?;
-            Ok(Self::try_from(email.as_str()).unwrap()) // FIXME
         }
     }
 }
