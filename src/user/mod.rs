@@ -17,7 +17,7 @@ pub mod repository;
 pub mod service;
 
 type Result<T> = std::result::Result<T, Error>;
-pub type PgRepository = Arc<dyn UserRepository + Send + Sync>;
+pub type Repository = Arc<dyn UserRepository + Send + Sync>;
 pub type Service = Arc<dyn UserService + Send + Sync>;
 
 pub fn api<S>(s: AppState) -> Router<S> {

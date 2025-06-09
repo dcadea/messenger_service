@@ -6,7 +6,7 @@ use crate::user::model::UserInfo;
 use crate::{auth, contact, event};
 
 use super::model::{NewUser, OnlineStatus};
-use super::{Nickname, PgRepository, Picture, Sub};
+use super::{Nickname, Picture, Repository, Sub};
 
 #[async_trait]
 pub trait UserService {
@@ -29,7 +29,7 @@ pub trait UserService {
 
 #[derive(Clone)]
 pub struct UserServiceImpl {
-    repo: PgRepository,
+    repo: Repository,
     contact_service: contact::Service,
     event_service: event::Service,
     redis: cache::Redis,
@@ -37,7 +37,7 @@ pub struct UserServiceImpl {
 
 impl UserServiceImpl {
     pub fn new(
-        repo: PgRepository,
+        repo: Repository,
         contact_service: contact::Service,
         event_service: event::Service,
         redis: cache::Redis,
