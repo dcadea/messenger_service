@@ -365,7 +365,7 @@ mod test {
             Sub::from("jora"),
             Nickname::from("jora"),
             "Jora",
-            Picture::parse("jora://picture").unwrap(),
+            Picture::try_from("jora://picture").unwrap(),
         );
         let talks = [
             TalkDto::new(
@@ -465,7 +465,7 @@ mod test {
             Sub::from("jora"),
             Nickname::from("jora"),
             "Jora",
-            Picture::parse("jora://picture").unwrap(),
+            Picture::try_from("jora://picture").unwrap(),
         );
         let talks = [
             TalkDto::new(
@@ -633,7 +633,7 @@ mod test {
             Sub::from("jora"),
             Nickname::from("jora"),
             "Jora",
-            Picture::parse("jora://picture").unwrap(),
+            Picture::try_from("jora://picture").unwrap(),
         );
         let actual = ActiveTalk(&auth_user, &t).render().into_string();
 
@@ -656,7 +656,7 @@ mod test {
             Sub::from("jora"),
             Nickname::from("jora"),
             "Jora",
-            Picture::parse("jora://picture").unwrap(),
+            Picture::try_from("jora://picture").unwrap(),
         );
         let t = TalkDto::new(
             talk::Id("680d10a4042fe1d7f2d6138b".into()),

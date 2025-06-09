@@ -13,6 +13,7 @@ diesel::table! {
         id -> Uuid,
         sub -> Text,
         nickname -> Text,
+        name -> Text,
         picture -> Text,
         email -> Text,
     }

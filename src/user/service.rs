@@ -89,7 +89,7 @@ impl UserService for UserServiceImpl {
         let cached = self.find_cached_picture(sub).await;
 
         if let Some(p) = cached {
-            Picture::parse(&p)
+            Picture::try_from(p.as_str())
         } else {
             let user_info = self.find_one(sub).await?;
             Ok(user_info.picture().clone())

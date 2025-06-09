@@ -1,13 +1,84 @@
 use async_trait::async_trait;
+use diesel::BoolExpressionMethods;
+use diesel::ExpressionMethods;
+use diesel::PgConnection;
+use diesel::QueryDsl;
+use diesel::RunQueryDsl;
+use diesel::SelectableHelper;
+use diesel::r2d2::ConnectionManager;
 use futures::TryStreamExt;
 use mongodb::Database;
 use mongodb::bson::doc;
 
+use crate::schema::users;
+
 use super::Nickname;
 use super::Sub;
+use super::model::NewUser;
+use super::model::PgUser;
 use super::model::User;
 
 const USERS_COLLECTION: &str = "users";
+
+pub trait PgUserRepository {
+    fn insert(&self, user: &NewUser) -> super::Result<()>;
+
+    fn find_by_sub(&self, sub: &Sub) -> super::Result<PgUser>;
+
+    async fn search_by_nickname_excluding(
+        &self,
+        nickname: &Nickname,
+        exclude: &Nickname,
+    ) -> super::Result<Vec<PgUser>>;
+}
+
+pub struct PgUserRepositoryImpl {
+    pool: r2d2::Pool<ConnectionManager<PgConnection>>,
+}
+
+impl PgUserRepository for PgUserRepositoryImpl {
+    fn insert(&self, u: &NewUser) -> super::Result<()> {
+        let mut conn = self.pool.get()?;
+
+        let _ = diesel::insert_into(users::table)
+            .values(u)
+            .returning(users::sub)
+            .get_result::<Sub>(&mut conn)?;
+
+        Ok(())
+    }
+
+    fn find_by_sub(&self, s: &Sub) -> super::Result<PgUser> {
+        let mut conn = self.pool.get()?;
+
+        let u = users::table
+            .filter(users::sub.eq(s.as_str()))
+            .limit(1)
+            .select(PgUser::as_select())
+            .first(&mut conn)?;
+
+        Ok(u)
+    }
+
+    async fn search_by_nickname_excluding(
+        &self,
+        nickname: &Nickname,
+        exclude: &Nickname,
+    ) -> super::Result<Vec<PgUser>> {
+        let mut conn = self.pool.get()?;
+
+        let users = users::table
+            .filter(
+                users::nickname
+                    .eq(nickname.as_str())
+                    .and(users::nickname.ne(exclude.as_str())),
+            )
+            .select(PgUser::as_select())
+            .get_results(&mut conn)?;
+
+        Ok(users)
+    }
+}
 
 #[async_trait]
 pub trait UserRepository {
@@ -90,8 +161,8 @@ mod test {
             sub.clone(),
             Nickname::from("valera_kardan"),
             "valera".to_owned(),
-            Picture::parse("picture").unwrap(),
-            Email::parse("valera@test.com").unwrap(),
+            Picture::try_from("picture").unwrap(),
+            Email::try_from("valera@test.com").unwrap(),
         );
 
         let inserted = repo.insert(&user).await.unwrap();
@@ -124,8 +195,8 @@ mod test {
             Sub::from("test|123"),
             Nickname::from("valera_kardan"),
             "valera",
-            Picture::parse("picture").unwrap(),
-            Email::parse("valera@test.com").unwrap(),
+            Picture::try_from("picture").unwrap(),
+            Email::try_from("valera@test.com").unwrap(),
         );
 
         let jora = &User::new(
@@ -133,8 +204,8 @@ mod test {
             Sub::from("test|456"),
             Nickname::from("jora_partizan"),
             "jora",
-            Picture::parse("picture").unwrap(),
-            Email::parse("jora@test.com").unwrap(),
+            Picture::try_from("picture").unwrap(),
+            Email::try_from("jora@test.com").unwrap(),
         );
 
         let radu = &User::new(
@@ -142,8 +213,8 @@ mod test {
             Sub::from("test|135"),
             Nickname::from("radu_carlig"),
             "radu",
-            Picture::parse("picture").unwrap(),
-            Email::parse("radu@test.com").unwrap(),
+            Picture::try_from("picture").unwrap(),
+            Email::try_from("radu@test.com").unwrap(),
         );
 
         let igor = &User::new(
@@ -151,8 +222,8 @@ mod test {
             Sub::from("test|246"),
             Nickname::from("igor_frina"),
             "igor",
-            Picture::parse("picture").unwrap(),
-            Email::parse("igor@test.com").unwrap(),
+            Picture::try_from("picture").unwrap(),
+            Email::try_from("igor@test.com").unwrap(),
         );
 
         tokio::try_join!(

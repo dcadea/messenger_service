@@ -93,7 +93,7 @@ impl From<Picture> for String {
 
 impl From<user::Picture> for Picture {
     fn from(p: user::Picture) -> Self {
-        Self(p.0)
+        Self(p.as_str().to_string())
     }
 }
 

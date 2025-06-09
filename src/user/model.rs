@@ -1,6 +1,30 @@
+use diesel::prelude::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use super::{Email, Id, Nickname, Picture, Sub};
+
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = crate::schema::users)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct PgUser {
+    id: Uuid,
+    sub: Sub,
+    nickname: Nickname,
+    name: String,
+    picture: Picture,
+    email: Email,
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = crate::schema::users)]
+pub struct NewUser<'a> {
+    sub: &'a str,
+    nickname: &'a str,
+    name: &'a str,
+    picture: &'a str,
+    email: &'a str,
+}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
 pub struct User {

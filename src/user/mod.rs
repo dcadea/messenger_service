@@ -1,6 +1,7 @@
 use std::{fmt::Display, sync::Arc};
 
 use axum::{Router, routing::post};
+use diesel::deserialize::FromSqlRow;
 use log::error;
 use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use repository::UserRepository;
@@ -41,7 +42,7 @@ impl Id {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, FromSqlRow, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Sub(String);
 
 impl Sub {
@@ -81,7 +82,7 @@ impl From<&str> for Sub {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, FromSqlRow, Clone, PartialEq, Eq, Debug)]
 pub struct Nickname(String);
 
 impl Nickname {
@@ -106,13 +107,24 @@ impl From<&str> for Nickname {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
-pub struct Picture(pub String);
+#[derive(Serialize, Deserialize, FromSqlRow, Clone, PartialEq, Eq, Debug)]
+pub struct Picture(String);
 
 impl Picture {
-    pub fn parse(e: &str) -> self::Result<Self> {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl TryFrom<&str> for Picture {
+    type Error = Error;
+
+    fn try_from(s: &str) -> std::result::Result<Self, Self::Error> {
+        if s.len() == 0 {
+            return Err(Self::Error::MalformedPicture(s.to_string()));
+        }
         // TODO: parse picture url here
-        Ok(Self(e.to_string()))
+        Ok(Self(s.to_string()))
     }
 }
 
@@ -122,13 +134,18 @@ impl Display for Picture {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Serialize, Deserialize, FromSqlRow, Clone, PartialEq, Eq, Debug)]
 pub struct Email(String);
 
-impl Email {
-    pub fn parse(e: &str) -> self::Result<Self> {
+impl TryFrom<&str> for Email {
+    type Error = Error;
+
+    fn try_from(s: &str) -> std::result::Result<Self, Self::Error> {
+        if s.len() == 0 {
+            return Err(Self::Error::MalformedEmail(s.to_string()));
+        }
         // TODO: parse email here
-        Ok(Self(e.to_string()))
+        Ok(Self(s.to_string()))
     }
 }
 
@@ -136,7 +153,15 @@ impl Email {
 pub enum Error {
     #[error("user not found: {0:?}")]
     NotFound(Sub),
+    #[error("invalid picture format: {0:?}")]
+    MalformedPicture(String),
+    #[error("invalid email format: {0:?}")]
+    MalformedEmail(String),
 
     #[error(transparent)]
     _MongoDB(#[from] mongodb::error::Error),
+    #[error(transparent)]
+    _R2d2(#[from] r2d2::Error),
+    #[error(transparent)]
+    _Diesel(#[from] diesel::result::Error),
 }

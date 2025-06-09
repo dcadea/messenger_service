@@ -226,7 +226,7 @@ mod test {
             Sub::from("jora"),
             Nickname::from("jora_kardan"),
             "jora",
-            Picture::parse("jora://url").unwrap(),
+            Picture::try_from("jora://url").unwrap(),
         ))
         .render()
         .into_string();
@@ -353,22 +353,22 @@ mod test {
                 Sub::from("jora"),
                 Nickname::from("jora"),
                 "Jora",
-                Picture::parse("jora").unwrap(),
-                Email::parse("jora").unwrap(),
+                Picture::try_from("jora").unwrap(),
+                Email::try_from("jora").unwrap(),
             ),
             UserInfo::new(
                 Sub::from("radu"),
                 Nickname::from("radu"),
                 "Radu",
-                Picture::parse("radu").unwrap(),
-                Email::parse("radu").unwrap(),
+                Picture::try_from("radu").unwrap(),
+                Email::try_from("radu").unwrap(),
             ),
             UserInfo::new(
                 Sub::from("igor"),
                 Nickname::from("igor"),
                 "Igor",
-                Picture::parse("igor").unwrap(),
-                Email::parse("igor").unwrap(),
+                Picture::try_from("igor").unwrap(),
+                Email::try_from("igor").unwrap(),
             ),
         ];
         let actual = SearchResult::new(&contacts, &user_infos)

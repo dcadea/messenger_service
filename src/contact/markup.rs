@@ -270,7 +270,7 @@ mod test {
             Sub::from("valera"),
             Nickname::from("valera"),
             "Valera",
-            Picture::parse("valera://picture").unwrap(),
+            Picture::try_from("valera://picture").unwrap(),
         );
 
         let contact_infos = [
@@ -284,8 +284,8 @@ mod test {
                     Sub::from("jora"),
                     Nickname::from("jora"),
                     "Jora",
-                    Picture::parse("jora://picture").unwrap(),
-                    Email::parse("jora@test.com").unwrap(),
+                    Picture::try_from("jora://picture").unwrap(),
+                    Email::try_from("jora@test.com").unwrap(),
                 ),
             ),
             (
@@ -298,8 +298,8 @@ mod test {
                     Sub::from("igor"),
                     Nickname::from("igor"),
                     "Igor",
-                    Picture::parse("igor://picture").unwrap(),
-                    Email::parse("igor@test.com").unwrap(),
+                    Picture::try_from("igor://picture").unwrap(),
+                    Email::try_from("igor@test.com").unwrap(),
                 ),
             ),
             (
@@ -314,8 +314,8 @@ mod test {
                     Sub::from("radu"),
                     Nickname::from("radu"),
                     "Radu",
-                    Picture::parse("radu://picture").unwrap(),
-                    Email::parse("radu@test.com").unwrap(),
+                    Picture::try_from("radu://picture").unwrap(),
+                    Email::try_from("radu@test.com").unwrap(),
                 ),
             ),
             (
@@ -330,8 +330,8 @@ mod test {
                     Sub::from("gicu"),
                     Nickname::from("gicu"),
                     "Gicu",
-                    Picture::parse("gicu://picture").unwrap(),
-                    Email::parse("gicu@test.com").unwrap(),
+                    Picture::try_from("gicu://picture").unwrap(),
+                    Email::try_from("gicu@test.com").unwrap(),
                 ),
             ),
             (
@@ -346,8 +346,8 @@ mod test {
                     Sub::from("toha"),
                     Nickname::from("toha"),
                     "Toha",
-                    Picture::parse("toha://picture").unwrap(),
-                    Email::parse("toha@test.com").unwrap(),
+                    Picture::try_from("toha://picture").unwrap(),
+                    Email::try_from("toha@test.com").unwrap(),
                 ),
             ),
             (
@@ -362,8 +362,8 @@ mod test {
                     Sub::from("alex"),
                     Nickname::from("alex"),
                     "Alex",
-                    Picture::parse("alex://picture").unwrap(),
-                    Email::parse("alex@test.com").unwrap(),
+                    Picture::try_from("alex://picture").unwrap(),
+                    Email::try_from("alex@test.com").unwrap(),
                 ),
             ),
         ];

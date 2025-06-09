@@ -4,7 +4,11 @@ impl From<super::Error> for StatusCode {
     fn from(e: super::Error) -> Self {
         match e {
             super::Error::NotFound(_) => Self::NOT_FOUND,
-            super::Error::_MongoDB(_) => Self::INTERNAL_SERVER_ERROR,
+            super::Error::MalformedPicture(_)
+            | super::Error::MalformedEmail(_)
+            | super::Error::_MongoDB(_)
+            | super::Error::_R2d2(_)
+            | super::Error::_Diesel(_) => Self::INTERNAL_SERVER_ERROR,
         }
     }
 }
