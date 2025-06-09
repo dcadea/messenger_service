@@ -20,11 +20,7 @@ pub trait UserService {
 
     fn exists(&self, sub: &Sub) -> super::Result<bool>;
 
-    async fn search(
-        &self,
-        nickname: &Nickname,
-        auth_user: &auth::User,
-    ) -> super::Result<Vec<UserInfo>>;
+    fn search(&self, nickname: &Nickname, auth_user: &auth::User) -> super::Result<Vec<UserInfo>>;
 
     async fn notify_online(&self, sub: &Sub);
 
@@ -99,11 +95,7 @@ impl UserService for UserServiceImpl {
         self.repo.exists(sub)
     }
 
-    async fn search(
-        &self,
-        nickname: &Nickname,
-        auth_user: &auth::User,
-    ) -> super::Result<Vec<UserInfo>> {
+    fn search(&self, nickname: &Nickname, auth_user: &auth::User) -> super::Result<Vec<UserInfo>> {
         let users = self
             .repo
             .search_by_nickname_excluding(nickname, auth_user.nickname())?;
