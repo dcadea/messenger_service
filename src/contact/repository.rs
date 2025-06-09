@@ -131,7 +131,7 @@ mod test {
     #[tokio::test]
     async fn should_find() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let jora = Sub::from("jora");
@@ -149,7 +149,7 @@ mod test {
     #[tokio::test]
     async fn should_not_find() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let jora = Sub::from("jora");
@@ -164,7 +164,7 @@ mod test {
     #[tokio::test]
     async fn should_find_by_id() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let expected = Contact::new(&Sub::from("jora"), &Sub::from("valera"));
@@ -178,7 +178,7 @@ mod test {
     #[tokio::test]
     async fn should_not_find_by_id() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let actual = repo.find_by_id(&contact::Id::random()).await.unwrap();
@@ -189,7 +189,7 @@ mod test {
     #[tokio::test]
     async fn should_find_by_sub() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let jora = Sub::from("jora");
@@ -211,7 +211,7 @@ mod test {
     #[tokio::test]
     async fn should_not_find_by_sub() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let actual = repo.find_by_sub(&Sub::from("jora")).await.unwrap();
@@ -222,7 +222,7 @@ mod test {
     #[tokio::test]
     async fn should_find_by_sub_and_status() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let jora = Sub::from("jora");
@@ -266,7 +266,7 @@ mod test {
     #[should_panic]
     async fn should_panic_when_calling_add_with_same_subs() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let jora = Sub::from("jora");
@@ -278,7 +278,7 @@ mod test {
     #[tokio::test]
     async fn should_update_status() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let initiator = Sub::from("jora");
@@ -298,7 +298,7 @@ mod test {
     #[tokio::test]
     async fn should_not_update_status() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let initiator = Sub::from("jora");
@@ -312,7 +312,7 @@ mod test {
     #[tokio::test]
     async fn should_delete() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let jora = Sub::from("jora");
@@ -330,7 +330,7 @@ mod test {
     #[tokio::test]
     async fn should_delete_swapped() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let jora = Sub::from("jora");
@@ -348,7 +348,7 @@ mod test {
     #[tokio::test]
     async fn should_not_delete() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let jora = Sub::from("jora");
@@ -366,7 +366,7 @@ mod test {
     #[tokio::test]
     async fn should_return_true_when_exists_for_subs() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let jora = Sub::from("jora");
@@ -382,7 +382,7 @@ mod test {
     #[tokio::test]
     async fn should_return_true_when_exists_for_subs_swapped() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let jora = Sub::from("jora");
@@ -398,7 +398,7 @@ mod test {
     #[tokio::test]
     async fn should_return_false_when_does_not_exist_for_subs() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoContactRepository::new(&db);
 
         let valera = Sub::from("valera");

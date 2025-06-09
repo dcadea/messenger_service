@@ -81,7 +81,7 @@ mod test {
     async fn should_insert_user() {
         // TODO: switch to reusable containers (https://github.com/testcontainers/testcontainers-rs/issues/742)
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoUserRepository::new(&db);
 
         let sub = Sub::from("test|123");
@@ -104,7 +104,7 @@ mod test {
     #[tokio::test]
     async fn should_not_find_by_sub() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoUserRepository::new(&db);
 
         let sub = Sub::from("valera");
@@ -116,7 +116,7 @@ mod test {
     #[tokio::test]
     async fn should_search_by_nickname_excluding() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoUserRepository::new(&db);
 
         let valera = &User::new(

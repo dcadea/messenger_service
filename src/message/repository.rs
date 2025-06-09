@@ -211,7 +211,7 @@ mod test {
     #[tokio::test]
     async fn should_insert() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let expected = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
@@ -225,7 +225,7 @@ mod test {
     #[tokio::test]
     async fn should_insert_many() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let m1 = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
@@ -241,7 +241,7 @@ mod test {
     #[tokio::test]
     async fn should_not_insert_many() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let m1 = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
@@ -258,7 +258,7 @@ mod test {
     #[tokio::test]
     async fn should_find_by_talk_id() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let talk_id = talk::Id::random();
@@ -277,7 +277,7 @@ mod test {
     #[tokio::test]
     async fn should_find_by_talk_id_limited() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let talk_id = talk::Id::random();
@@ -297,7 +297,7 @@ mod test {
     #[tokio::test]
     async fn should_find_by_talk_id_before() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let talk_id = talk::Id::random();
@@ -322,7 +322,7 @@ mod test {
     #[tokio::test]
     async fn should_find_by_talk_id_limited_before() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let talk_id = talk::Id::random();
@@ -352,7 +352,7 @@ mod test {
     #[tokio::test]
     async fn should_find_most_recent() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let talk_id = talk::Id::random();
@@ -376,7 +376,7 @@ mod test {
     #[tokio::test]
     async fn should_not_find_most_recent() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let m = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
@@ -390,7 +390,7 @@ mod test {
     #[tokio::test]
     async fn should_update_text() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let m = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
@@ -408,7 +408,7 @@ mod test {
     #[tokio::test]
     async fn should_not_update_text() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let m = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
@@ -429,7 +429,7 @@ mod test {
     #[tokio::test]
     async fn should_delete() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let m = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
@@ -448,7 +448,7 @@ mod test {
     #[tokio::test]
     async fn should_not_delete() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let m = Message::new(talk::Id::random(), Sub::from("jora"), "Hello, world!");
@@ -465,7 +465,7 @@ mod test {
     #[tokio::test]
     async fn should_delete_by_talk_id() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let talk_id = talk::Id::random();
@@ -483,7 +483,7 @@ mod test {
     #[tokio::test]
     async fn should_mark_as_seen() {
         let node = Mongo::default().start().await.unwrap();
-        let db = db::Config::test(&node).await.connect();
+        let db = db::mongo::Config::test(&node).await.connect();
         let repo = MongoMessageRepository::new(&db);
 
         let talk_id = talk::Id::random();
