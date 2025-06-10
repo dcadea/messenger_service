@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::{integration::cache, user::Sub};
+use crate::{integration::cache, user};
 
 use super::{
     Id, Repository, Status, StatusTransition,
@@ -9,20 +9,27 @@ use super::{
 
 #[async_trait]
 pub trait ContactService {
-    async fn find(&self, auth_sub: &Sub, recipient: &Sub) -> super::Result<Option<ContactDto>>;
+    async fn find(
+        &self,
+        auth_id: &user::Id,
+        recipient: &user::Id,
+    ) -> super::Result<Option<ContactDto>>;
 
-    async fn find_by_id(&self, auth_sub: &Sub, id: &Id) -> super::Result<ContactDto>;
+    async fn find_by_id(&self, auth_id: &user::Id, id: &Id) -> super::Result<ContactDto>;
 
-    async fn find_by_sub(&self, sub: &Sub) -> super::Result<Vec<ContactDto>>;
+    async fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>>;
 
-    async fn find_by_sub_and_status(&self, sub: &Sub, s: &Status)
-    -> super::Result<Vec<ContactDto>>;
+    async fn find_by_user_id_and_status(
+        &self,
+        sub: &user::Id,
+        s: &Status,
+    ) -> super::Result<Vec<ContactDto>>;
 
     async fn add(&self, c: &Contact) -> super::Result<()>;
 
     async fn transition_status(&self, id: &Id, t: StatusTransition<'_>) -> super::Result<Status>;
 
-    async fn delete(&self, auth_sub: &Sub, contact: &Sub) -> super::Result<()>;
+    async fn delete(&self, auth_id: &user::Id, contact: &user::Id) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -39,27 +46,31 @@ impl ContactServiceImpl {
 
 #[async_trait]
 impl ContactService for ContactServiceImpl {
-    async fn find(&self, auth_sub: &Sub, recipient: &Sub) -> super::Result<Option<ContactDto>> {
-        if auth_sub.eq(recipient) {
-            return Err(super::Error::SameSubs(auth_sub.clone()));
+    async fn find(
+        &self,
+        auth_id: &user::Id,
+        recipient: &user::Id,
+    ) -> super::Result<Option<ContactDto>> {
+        if auth_id.eq(recipient) {
+            return Err(super::Error::SameUsers(auth_id.clone()));
         }
 
         // TODO: cache
         self.repo
-            .find(auth_sub, recipient)
+            .find(auth_id, recipient)
             .await
-            .map(|c| c.map(|c| map_to_dto(auth_sub, &c)))
+            .map(|c| c.map(|c| map_to_dto(auth_id, &c)))
     }
 
-    async fn find_by_id(&self, auth_sub: &Sub, id: &Id) -> super::Result<ContactDto> {
+    async fn find_by_id(&self, auth_id: &user::Id, id: &Id) -> super::Result<ContactDto> {
         // TODO: cache
         let c = self.repo.find_by_id(id).await?;
 
-        c.map(|c| map_to_dto(auth_sub, &c))
+        c.map(|c| map_to_dto(auth_id, &c))
             .ok_or(super::Error::NotFound(id.clone()))
     }
 
-    async fn find_by_sub(&self, sub: &Sub) -> super::Result<Vec<ContactDto>> {
+    async fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>> {
         // TODO: cache contacts
         // let contacts = self
         //     .redis
@@ -71,41 +82,41 @@ impl ContactService for ContactServiceImpl {
         //     None => self.cache_contacts(sub).await,
         // }
 
-        let contacts = self.repo.find_by_sub(sub).await?;
+        let contacts = self.repo.find_by_user_id(user_id).await?;
         let dtos = contacts
             .iter()
-            .map(|c| map_to_dto(sub, c))
+            .map(|c| map_to_dto(user_id, c))
             .collect::<Vec<_>>();
 
         Ok(dtos)
     }
 
-    async fn find_by_sub_and_status(
+    async fn find_by_user_id_and_status(
         &self,
-        sub: &Sub,
+        user_id: &user::Id,
         s: &Status,
     ) -> super::Result<Vec<ContactDto>> {
         // TODO: cache contacts
-        let contacts = self.repo.find_by_sub_and_status(sub, s).await?;
+        let contacts = self.repo.find_by_user_id_and_status(user_id, s).await?;
 
         let dtos = contacts
             .iter()
-            .map(|c| map_to_dto(sub, c))
+            .map(|c| map_to_dto(user_id, c))
             .collect::<Vec<_>>();
 
         Ok(dtos)
     }
 
     async fn add(&self, c: &Contact) -> super::Result<()> {
-        if c.sub1().eq(c.sub2()) {
-            return Err(super::Error::SameSubs(c.sub1().clone()));
+        if c.user_id1().eq(c.user_id2()) {
+            return Err(super::Error::SameUsers(c.user_id1().clone()));
         }
 
-        let exists = self.repo.exists(c.sub1(), c.sub2()).await?;
+        let exists = self.repo.exists(c.user_id1(), c.user_id2()).await?;
         if exists {
             return Err(super::Error::AlreadyExists(
-                c.sub1().clone(),
-                c.sub2().clone(),
+                c.user_id1().clone(),
+                c.user_id2().clone(),
             ));
         }
 
@@ -133,17 +144,18 @@ impl ContactService for ContactServiceImpl {
         }
     }
 
-    async fn delete(&self, auth_sub: &Sub, contact: &Sub) -> super::Result<()> {
-        assert_ne!(auth_sub, contact);
+    async fn delete(&self, auth_id: &user::Id, contact: &user::Id) -> super::Result<()> {
+        assert_ne!(auth_id, contact);
 
-        self.repo.delete(auth_sub, contact).await?;
+        self.repo.delete(auth_id, contact).await?;
 
-        tokio::join!(
-            self.redis
-                .srem(cache::Key::Contacts(auth_sub), contact.to_owned()),
-            self.redis
-                .srem(cache::Key::Contacts(contact), auth_sub.to_owned())
-        );
+        // FIXME:
+        // tokio::join!(
+        //     self.redis
+        //         .srem(cache::Key::Contacts(auth_id), contact.to_owned()),
+        //     self.redis
+        //         .srem(cache::Key::Contacts(contact), auth_sub.to_owned())
+        // );
 
         Ok(())
     }
@@ -172,11 +184,11 @@ impl ContactServiceImpl {
     // }
 }
 
-fn map_to_dto(auth_sub: &Sub, c: &Contact) -> ContactDto {
-    let recipient = if auth_sub.eq(c.sub1()) {
-        c.sub2()
+fn map_to_dto(auth_id: &user::Id, c: &Contact) -> ContactDto {
+    let recipient = if auth_id.eq(c.user_id1()) {
+        c.user_id2()
     } else {
-        c.sub1()
+        c.user_id1()
     };
 
     ContactDto::new(c.id().clone(), recipient.clone(), c.status().clone())

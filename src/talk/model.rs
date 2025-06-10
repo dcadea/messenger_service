@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{message::model::LastMessage, user::Sub};
+use crate::{message::model::LastMessage, user};
 
 use super::Id;
 
@@ -42,12 +42,12 @@ impl From<Details> for Talk {
 #[serde(tag = "kind", content = "details", rename_all = "snake_case")]
 pub enum Details {
     Chat {
-        members: [Sub; 2],
+        members: [user::Id; 2],
     },
     Group {
         name: String,
-        owner: Sub,
-        members: Vec<Sub>,
+        owner: user::Id,
+        members: Vec<user::Id>,
     },
 }
 
@@ -102,6 +102,12 @@ impl TalkDto {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum DetailsDto {
-    Chat { sender: Sub, recipient: Sub },
-    Group { owner: Sub, sender: Sub },
+    Chat {
+        sender: user::Id,
+        recipient: user::Id,
+    },
+    Group {
+        owner: user::Id,
+        sender: user::Id,
+    },
 }

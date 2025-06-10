@@ -11,23 +11,27 @@ use crate::integration::storage::Blob;
 use crate::integration::{cache, storage};
 use crate::message::model::LastMessage;
 use crate::talk::Picture;
-use crate::user::Sub;
 use crate::{auth, contact, event, message, talk, user};
 
 #[async_trait]
 pub trait TalkService {
-    async fn create_chat(&self, auth_sub: &Sub, recipient: &Sub) -> super::Result<TalkDto>;
+    async fn create_chat(&self, auth_id: &user::Id, recipient: &user::Id)
+    -> super::Result<TalkDto>;
 
     async fn create_group(
         &self,
-        auth_sub: &Sub,
+        auth_id: &user::Id,
         name: &str,
-        members: &[Sub],
+        members: &[user::Id],
     ) -> super::Result<TalkDto>;
 
     async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk>;
 
-    async fn find_by_id_and_sub(&self, id: &talk::Id, auth_sub: &Sub) -> super::Result<TalkDto>;
+    async fn find_by_id_and_user_id(
+        &self,
+        id: &talk::Id,
+        user_id: &user::Id,
+    ) -> super::Result<TalkDto>;
 
     async fn find_all_by_kind(
         &self,
@@ -38,8 +42,8 @@ pub trait TalkService {
     async fn find_recipients(
         &self,
         talk_id: &talk::Id,
-        auth_sub: &Sub,
-    ) -> super::Result<HashSet<Sub>>;
+        auth_id: &user::Id,
+    ) -> super::Result<HashSet<user::Id>>;
 
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
 
@@ -90,17 +94,21 @@ impl TalkServiceImpl {
 
 #[async_trait]
 impl TalkService for TalkServiceImpl {
-    async fn create_chat(&self, auth_sub: &Sub, recipient: &Sub) -> super::Result<TalkDto> {
-        assert_ne!(auth_sub, recipient);
+    async fn create_chat(
+        &self,
+        auth_id: &user::Id,
+        recipient: &user::Id,
+    ) -> super::Result<TalkDto> {
+        assert_ne!(auth_id, recipient);
 
-        let members = [auth_sub.clone(), recipient.clone()];
+        let members = [auth_id.clone(), recipient.clone()];
         if self.repo.exists(&members).await? {
             return Err(talk::Error::AlreadyExists);
         }
 
         let contact = self
             .contact_service
-            .find(auth_sub, recipient)
+            .find(auth_id, recipient)
             .await
             .map_err(|e| {
                 error!("could not create contact: {e:?}");
@@ -114,7 +122,7 @@ impl TalkService for TalkServiceImpl {
         let talk = Talk::from(Details::Chat { members });
         self.repo.create(&talk).await?;
 
-        let talk_dto = self.talk_to_dto(talk, auth_sub).await;
+        let talk_dto = self.talk_to_dto(talk, auth_id).await;
 
         self.event_service
             .publish(
@@ -128,11 +136,11 @@ impl TalkService for TalkServiceImpl {
 
     async fn create_group(
         &self,
-        auth_sub: &Sub,
+        auth_id: &user::Id,
         name: &str,
-        members: &[Sub],
+        members: &[user::Id],
     ) -> super::Result<TalkDto> {
-        assert!(members.contains(auth_sub));
+        assert!(members.contains(auth_id));
 
         if name.is_empty() {
             return Err(talk::Error::MissingName);
@@ -152,20 +160,20 @@ impl TalkService for TalkServiceImpl {
 
         let talk = Talk::from(Details::Group {
             name: name.into(),
-            owner: auth_sub.clone(),
+            owner: auth_id.clone(),
             members: members.into(),
         });
-        tokio::try_join!(
-            self.repo.create(&talk),
-            self.s3
-                .generate(Blob::Png(talk.id().as_str()))
-                .map_err(talk::Error::from)
-        )?;
 
-        let talk_dto = self.talk_to_dto(talk, auth_sub).await;
+        self.repo.create(&talk).await?;
+        self.s3
+            .generate(Blob::Png(&talk.id().0.to_string()))
+            .map_err(talk::Error::from)
+            .await?;
+
+        let talk_dto = self.talk_to_dto(talk, auth_id).await;
 
         for m in members {
-            if m.eq(auth_sub) {
+            if m.eq(auth_id) {
                 continue;
             }
 
@@ -185,9 +193,13 @@ impl TalkService for TalkServiceImpl {
         Ok(talk)
     }
 
-    async fn find_by_id_and_sub(&self, id: &talk::Id, auth_sub: &Sub) -> super::Result<TalkDto> {
-        let talk = self.repo.find_by_id_and_sub(id, auth_sub).await?;
-        let dto = self.talk_to_dto(talk, auth_sub).await;
+    async fn find_by_id_and_user_id(
+        &self,
+        id: &talk::Id,
+        auth_id: &user::Id,
+    ) -> super::Result<TalkDto> {
+        let talk = self.repo.find_by_id_and_user_id(id, auth_id).await?;
+        let dto = self.talk_to_dto(talk, auth_id).await;
         Ok(dto)
     }
 
@@ -196,13 +208,13 @@ impl TalkService for TalkServiceImpl {
         auth_user: &auth::User,
         kind: &Kind,
     ) -> super::Result<Vec<TalkDto>> {
-        let auth_sub = auth_user.sub();
-        let talks = self.repo.find_by_sub_and_kind(auth_sub, kind).await?;
+        let auth_id = auth_user.id();
+        let talks = self.repo.find_by_user_id_and_kind(auth_id, kind).await?;
 
         let talk_dtos = join_all(
             talks
                 .into_iter()
-                .map(|t| async { self.talk_to_dto(t, auth_sub).await }),
+                .map(|t| async { self.talk_to_dto(t, auth_id).await }),
         )
         .await;
 
@@ -212,11 +224,11 @@ impl TalkService for TalkServiceImpl {
     async fn find_recipients(
         &self,
         talk_id: &talk::Id,
-        auth_sub: &Sub,
-    ) -> super::Result<HashSet<Sub>> {
+        auth_id: &user::Id,
+    ) -> super::Result<HashSet<user::Id>> {
         let recipients = {
             let mut r = find_members(&self.redis, self.repo.clone(), talk_id).await?;
-            r.remove(auth_sub);
+            r.remove(auth_id);
             r
         };
 
@@ -228,7 +240,7 @@ impl TalkService for TalkServiceImpl {
 
         // TODO: check if the user is the owner of the group
         self.repo.delete(id).await?;
-        if let Err(e) = self.message_repo.delete_by_talk_id(id).await {
+        if let Err(e) = self.message_repo.delete_by_talk_id(id) {
             error!("failed to delete talk: {e:?}");
             return Err(talk::Error::NotDeleted);
             // TODO: tx rollback?
@@ -271,13 +283,13 @@ impl TalkService for TalkServiceImpl {
 }
 
 impl TalkServiceImpl {
-    async fn talk_to_dto(&self, t: Talk, auth_sub: &Sub) -> TalkDto {
+    async fn talk_to_dto(&self, t: Talk, auth_id: &user::Id) -> TalkDto {
         let (name, picture, details) = match t.details().clone() {
             Details::Chat { members } => {
-                assert!(members.contains(auth_sub));
+                assert!(members.contains(auth_id));
 
                 let (sender, recipient) = {
-                    if members[0].eq(auth_sub) {
+                    if members[0].eq(auth_id) {
                         (members[0].clone(), members[1].clone())
                     } else {
                         (members[1].clone(), members[0].clone())
@@ -301,7 +313,7 @@ impl TalkServiceImpl {
                 Picture::from(t.id().clone()),
                 DetailsDto::Group {
                     owner,
-                    sender: auth_sub.clone(),
+                    sender: auth_id.clone(),
                 },
             ),
         };
@@ -337,7 +349,7 @@ impl TalkValidatorImpl {
 impl TalkValidator for TalkValidatorImpl {
     async fn check_member(&self, talk_id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
         let members = find_members(&self.redis, self.repo.clone(), talk_id).await?;
-        let belongs_to_talk = members.contains(auth_user.sub());
+        let belongs_to_talk = members.contains(auth_user.id());
 
         if !belongs_to_talk {
             return Err(talk::Error::NotMember);
@@ -351,9 +363,9 @@ async fn find_members(
     redis: &cache::Redis,
     repo: Repository,
     talk_id: &talk::Id,
-) -> super::Result<HashSet<Sub>> {
+) -> super::Result<HashSet<user::Id>> {
     let talk_key = cache::Key::Talk(talk_id);
-    let members = redis.smembers::<HashSet<Sub>>(talk_key.clone()).await;
+    let members = redis.smembers::<HashSet<user::Id>>(talk_key.clone()).await;
 
     match members {
         Some(m) if !m.is_empty() => Ok(m),

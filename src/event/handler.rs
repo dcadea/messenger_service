@@ -15,7 +15,6 @@ impl From<Error> for StatusCode {
 
 pub mod sse {
     use crate::event::{self, Notification, Subject};
-    use crate::user::Sub;
     use crate::{auth, user};
     use async_stream;
     use axum::Extension;
@@ -35,14 +34,14 @@ pub mod sse {
         user_service: State<user::Service>,
         event_service: State<event::Service>,
     ) -> sse::Sse<impl Stream<Item = crate::Result<sse::Event>>> {
-        let auth_sub = auth_user.sub().clone();
+        let auth_id = auth_user.id().clone();
 
         let stream = async_stream::try_stream! {
             let mut noti_stream = event_service
-                .subscribe_noti(&Subject::Notifications(&auth_sub))
+                .subscribe_noti(&Subject::Notifications(&auth_id))
                 .await?;
 
-            let _osd = OnlineStatusDropper(&auth_sub, &user_service);
+            let _osd = OnlineStatusDropper(&auth_id, &user_service);
             let mut interval = time::interval(ONLINE_NOTI_INTERVAL);
             loop {
                 tokio::select! {
@@ -54,7 +53,7 @@ pub mod sse {
                             }
                         }
                     },
-                    _ = interval.tick() => user_service.notify_online(&auth_sub).await
+                    _ = interval.tick() => user_service.notify_online(&auth_id).await
                 }
             }
             // _osd drops here
@@ -68,7 +67,7 @@ pub mod sse {
         )
     }
 
-    struct OnlineStatusDropper<'a>(&'a Sub, &'a user::Service);
+    struct OnlineStatusDropper<'a>(&'a user::Id, &'a user::Service);
 
     impl Drop for OnlineStatusDropper<'_> {
         fn drop(&mut self) {
@@ -102,8 +101,7 @@ pub mod ws {
     use crate::{
         auth,
         event::{self, Message, Subject},
-        message, talk,
-        user::Sub,
+        message, talk, user,
     };
     use axum::extract::ws;
     use axum::{
@@ -132,13 +130,13 @@ pub mod ws {
         debug!("Upgrading to WS for talk: {}", &talk_id);
         talk_validator.check_member(&talk_id, &auth_user).await?;
 
-        let auth_sub = auth_user.sub().clone();
+        let auth_id = auth_user.id().clone();
         Ok(ws.on_upgrade(move |socket| async {
             let (sender, recv) = socket.split();
             let close = Arc::new(Notify::new());
 
             tokio::spawn(send(
-                auth_sub,
+                auth_id,
                 talk_id.clone(),
                 sender,
                 event_service,
@@ -152,7 +150,7 @@ pub mod ws {
     }
 
     async fn send(
-        auth_sub: Sub,
+        auth_id: user::Id,
         talk_id: talk::Id,
         mut sender: SplitSink<WebSocket, ws::Message>,
         event_service: event::Service,
@@ -161,7 +159,7 @@ pub mod ws {
         close: Arc<Notify>,
     ) -> event::Result<()> {
         let mut msg_stream = event_service
-            .subscribe_event(&Subject::Messages(&auth_sub, &talk_id))
+            .subscribe_event(&Subject::Messages(&auth_id, &talk_id))
             .await?;
 
         loop {
@@ -186,7 +184,7 @@ pub mod ws {
 
                     if let Message::New(msg) = msg {
                         let talk_id = msg.talk_id().clone();
-                        match message_service.mark_as_seen(&auth_sub, &[msg]).await {
+                        match message_service.mark_as_seen(&auth_id, &[msg]).await {
                             Ok(seen_qty) => {
                                 if seen_qty == 0 {
                                     continue;

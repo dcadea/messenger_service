@@ -104,28 +104,32 @@ pub mod mongo {
 
     impl From<talk::Id> for mongodb::bson::Bson {
         fn from(val: talk::Id) -> Self {
-            match oid::ObjectId::from_str(&val.0) {
-                Ok(oid) => Self::ObjectId(oid),
-                Err(_) => Self::String(val.0.clone()),
-            }
+            // match oid::ObjectId::from_str(&val.0) {
+            //     Ok(oid) => Self::ObjectId(oid),
+            //     Err(_) => Self::String(val.0.clone()),
+            // }
+            todo!()
         }
     }
 
     impl From<message::Id> for mongodb::bson::Bson {
         fn from(id: message::Id) -> Self {
-            match oid::ObjectId::from_str(&id.0) {
-                Ok(oid) => Self::ObjectId(oid),
-                Err(_) => Self::String(id.0.clone()), // FIXME: implement TryFrom
-            }
+            // match oid::ObjectId::from_str(&id.0) {
+            //     Ok(oid) => Self::ObjectId(oid),
+            //     Err(_) => Self::String(id.0.clone()), // FIXME: implement TryFrom
+            // }
+            todo!()
         }
     }
 
     impl From<user::Id> for mongodb::bson::Bson {
         fn from(id: user::Id) -> Self {
-            match oid::ObjectId::from_str(id.as_str()) {
-                Ok(oid) => Self::ObjectId(oid),
-                Err(_) => Self::String(id.as_str().to_string()), // FIXME: implement TryFrom
-            }
+            // match oid::ObjectId::from_str(id.as_str()) {
+            //     Ok(oid) => Self::ObjectId(oid),
+            //     Err(_) => Self::String(id.as_str().to_string()), // FIXME: implement TryFrom
+            // }
+            //
+            todo!()
         }
     }
 
@@ -143,13 +147,14 @@ pub mod mongo {
 
     impl From<message::model::LastMessage> for mongodb::bson::Bson {
         fn from(lm: message::model::LastMessage) -> Self {
-            Self::Document(doc! {
-                "id": lm.id(),
-                "text": lm.text(),
-                "owner": lm.owner(),
-                "timestamp": lm.timestamp(),
-                "seen": lm.seen()
-            })
+            // Self::Document(doc! {
+            //     "id": lm.id(),
+            //     "text": lm.text(),
+            //     "owner": lm.owner(),
+            //     "timestamp": lm.timestamp(),
+            //     "seen": lm.seen()
+            // })
+            todo!()
         }
     }
 }
@@ -157,8 +162,10 @@ pub mod mongo {
 pub mod pg {
     use std::env;
 
-    use diesel::{PgConnection, r2d2::ConnectionManager};
+    use diesel::{PgConnection, deserialize::FromSqlRow, r2d2::ConnectionManager};
     use log::warn;
+
+    use crate::user;
 
     #[derive(Clone)]
     pub struct Config {

@@ -2,7 +2,7 @@ use diesel::prelude::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{Email, Nickname, Picture, Sub};
+use super::{Email, Id, Nickname, Picture, Sub};
 
 #[derive(Queryable, Selectable)]
 #[diesel(table_name = crate::schema::users)]
@@ -41,17 +41,17 @@ impl<'a> From<&'a UserInfo> for NewUser<'a> {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct OnlineStatus {
     // TODO: add lifetime
-    sub: Sub,
+    id: Id,
     online: bool,
 }
 
 impl OnlineStatus {
-    pub const fn new(sub: Sub, online: bool) -> Self {
-        Self { sub, online }
+    pub const fn new(id: Id, online: bool) -> Self {
+        Self { id, online }
     }
 
-    pub fn id(&self) -> &str {
-        self.sub.id()
+    pub fn id(&self) -> &Id {
+        &self.id
     }
 
     pub const fn online(&self) -> bool {
@@ -61,6 +61,7 @@ impl OnlineStatus {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UserInfo {
+    id: Id,
     sub: Sub,
     nickname: Nickname,
     name: String,
@@ -69,6 +70,10 @@ pub struct UserInfo {
 }
 
 impl UserInfo {
+    pub const fn id(&self) -> &Id {
+        &self.id
+    }
+
     pub const fn sub(&self) -> &Sub {
         &self.sub
     }
@@ -93,6 +98,7 @@ impl UserInfo {
 impl From<User> for UserInfo {
     fn from(user: User) -> Self {
         Self {
+            id: Id(user.id),
             sub: Sub(user.sub),
             nickname: Nickname(user.nickname),
             name: user.name,
@@ -105,6 +111,7 @@ impl From<User> for UserInfo {
 #[cfg(test)]
 impl UserInfo {
     pub fn new(
+        id: Id,
         sub: Sub,
         nickname: Nickname,
         name: impl Into<String>,
@@ -112,6 +119,7 @@ impl UserInfo {
         email: Email,
     ) -> Self {
         Self {
+            id,
             sub,
             nickname,
             name: name.into(),

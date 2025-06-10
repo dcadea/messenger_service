@@ -6,9 +6,10 @@ use log::{error, trace, warn};
 use messenger_service::Raw;
 use redis::{AsyncCommands, JsonAsyncCommands};
 use serde::Serialize;
+use uuid::Uuid;
 
-use crate::user::Sub;
 use crate::user::model::UserInfo;
+use crate::user::{self, Sub};
 use crate::{auth, talk};
 
 #[derive(Clone)]
@@ -222,8 +223,8 @@ impl Config {
 
 #[derive(Clone, Debug)]
 pub enum Key<'a> {
-    UserInfo(&'a Sub),
-    Contacts(&'a Sub),
+    UserInfo(&'a user::Id),
+    Contacts(&'a user::Id),
     Talk(&'a talk::Id),
     Session(&'a auth::Session),
     Csrf(&'a auth::Csrf),
@@ -247,8 +248,8 @@ impl Key<'_> {
 impl Display for Key<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::UserInfo(sub) => write!(f, "userinfo:{sub}"),
-            Self::Contacts(sub) => write!(f, "contacts:{sub}"),
+            Self::UserInfo(id) => write!(f, "userinfo:{id}"),
+            Self::Contacts(id) => write!(f, "contacts:{id}"),
             Self::Talk(id) => write!(f, "talk:{id}"),
             Self::Session(s) => write!(f, "session:{}", s.raw()),
             Self::Csrf(csrf) => write!(f, "csrf:{}", csrf.raw()),
@@ -265,19 +266,21 @@ impl redis::ToRedisArgs for Key<'_> {
     }
 }
 
-impl redis::FromRedisValue for Sub {
+impl redis::FromRedisValue for user::Id {
     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
+        // FIXME:
+        let uuid = Uuid::try_parse(&String::from_redis_value(v)?).unwrap();
         let s = String::from_redis_value(v)?;
-        Ok(Self::new(&s))
+        Ok(Self(uuid))
     }
 }
 
-impl redis::ToRedisArgs for Sub {
+impl redis::ToRedisArgs for user::Id {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + redis::RedisWrite,
     {
-        self.as_str().write_redis_args(out);
+        self.0.to_string().write_redis_args(out);
     }
 }
 

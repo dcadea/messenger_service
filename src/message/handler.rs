@@ -5,10 +5,11 @@ impl From<super::Error> for StatusCode {
         match e {
             super::Error::NotFound(_) => Self::NOT_FOUND,
             super::Error::NotOwner => Self::FORBIDDEN,
-            super::Error::EmptyText => Self::BAD_REQUEST,
+            super::Error::EmptyContent => Self::BAD_REQUEST,
             super::Error::IdNotPresent
             | super::Error::Unexpected(_)
-            | super::Error::_MongoDB(_) => Self::INTERNAL_SERVER_ERROR,
+            | super::Error::_R2d2(_)
+            | super::Error::_Diesel(_) => Self::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -26,7 +27,7 @@ pub(super) mod api {
     use crate::{auth, message, talk};
 
     use crate::message::markup;
-    use crate::message::model::{LastMessage, Message};
+    use crate::message::model::LastMessage;
 
     #[derive(Deserialize)]
     pub struct CreateParams {
@@ -40,10 +41,9 @@ pub(super) mod api {
         talk_service: State<talk::Service>,
         Form(params): Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let auth_sub = auth_user.sub();
-        let msg = Message::new(params.talk_id, auth_sub.clone(), params.text.trim());
-
-        let msgs = message_service.create(&msg).await?;
+        let msgs = message_service
+            .create(&params.talk_id, &auth_user, params.text.trim())
+            .await?;
 
         if let Some(last) = msgs.last() {
             let last_msg = LastMessage::from(last);
@@ -52,7 +52,7 @@ pub(super) mod api {
                 .await?;
         }
 
-        Ok(markup::MessageList::prepend(&msgs, auth_sub).render())
+        Ok(markup::MessageList::prepend(&msgs, auth_user.id()).render())
     }
 
     #[derive(Deserialize)]
@@ -75,16 +75,20 @@ pub(super) mod api {
 
         talk_validator.check_member(&talk_id, &auth_user).await?;
 
-        let auth_sub = auth_user.sub();
         let (msgs, seen_qty) = message_service
-            .find_by_talk_id_and_params(auth_sub, &talk_id, params.limit, params.end_time)
+            .find_by_talk_id_and_params(
+                &auth_user,
+                &talk_id,
+                params.limit,
+                None, /* FIXME: params.end_time*/
+            )
             .await?;
 
         if seen_qty > 0 {
             talk_service.mark_as_seen(&talk_id).await?;
         }
 
-        Ok(markup::MessageList::append(&msgs, auth_sub).render())
+        Ok(markup::MessageList::append(&msgs, auth_user.id()).render())
     }
 
     #[derive(Deserialize)]
@@ -105,7 +109,7 @@ pub(super) mod api {
         Ok((
             StatusCode::OK,
             [("HX-Trigger", "msg:afterUpdate")],
-            markup::MessageItem::new(&msg, Some(auth_user.sub())).render(),
+            markup::MessageItem::new(&msg, Some(auth_user.id())).render(),
         ))
     }
 
@@ -120,8 +124,7 @@ pub(super) mod api {
             if is_last {
                 let talk_id = deleted_msg.talk_id();
                 let last_msg = message_service
-                    .find_most_recent(talk_id)
-                    .await?
+                    .find_most_recent(talk_id)?
                     .map(|msg| LastMessage::from(&msg));
 
                 talk_service
@@ -169,9 +172,9 @@ pub(super) mod templates {
         params: Query<EditParams>,
         message_service: State<message::Service>,
     ) -> crate::Result<Markup> {
-        let msg = message_service.find_by_id(&params.message_id).await?;
+        let msg = message_service.find_by_id(&params.message_id)?;
 
-        if msg.owner().ne(auth_user.sub()) {
+        if msg.owner().ne(auth_user.id()) {
             return Err(crate::error::Error::from(message::Error::NotOwner));
         }
 

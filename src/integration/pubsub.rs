@@ -47,8 +47,10 @@ impl Config {
 impl async_nats::subject::ToSubject for &event::Subject<'_> {
     fn to_subject(&self) -> async_nats::Subject {
         match self {
-            event::Subject::Notifications(sub) => format!("noti.{sub}").into(),
-            event::Subject::Messages(sub, talk_id) => format!("messages.{sub}.{talk_id}").into(),
+            event::Subject::Notifications(user_id) => format!("noti.{user_id}").into(),
+            event::Subject::Messages(user_id, talk_id) => {
+                format!("messages.{user_id}.{talk_id}").into()
+            }
         }
     }
 }
@@ -56,8 +58,8 @@ impl async_nats::subject::ToSubject for &event::Subject<'_> {
 impl fmt::Display for &event::Subject<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            event::Subject::Notifications(sub) => write!(f, "noti.{sub}"),
-            event::Subject::Messages(sub, talk_id) => write!(f, "messages.{sub}.{talk_id}"),
+            event::Subject::Notifications(user_id) => write!(f, "noti.{user_id}"),
+            event::Subject::Messages(user_id, talk_id) => write!(f, "messages.{user_id}.{talk_id}"),
         }
     }
 }

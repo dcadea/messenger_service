@@ -52,7 +52,7 @@ pub async fn authorize(
     let sub: &Sub = ext.get().ok_or(super::Error::Unauthorized)?;
     let token: &AccessToken = ext.get().ok_or(super::Error::Unauthorized)?;
 
-    let user_info = match user_service.find_one(sub).await {
+    let user_info = match user_service.find_by_sub(sub).await {
         Ok(user_info) => user_info,
         Err(user::Error::NotFound(_)) => {
             debug!("{sub:?} not projected, fetching from IdP");

@@ -6,7 +6,6 @@ impl From<super::Error> for StatusCode {
             super::Error::NotFound(_) => Self::NOT_FOUND,
             super::Error::MalformedPicture(_)
             | super::Error::MalformedEmail(_)
-            | super::Error::_MongoDB(_)
             | super::Error::_R2d2(_)
             | super::Error::_Diesel(_) => Self::INTERNAL_SERVER_ERROR,
         }
@@ -41,7 +40,7 @@ pub(super) mod api {
         let users = user_service.search(&params.nickname, &auth_user)?;
 
         let contacts = contact_service
-            .find_by_sub(auth_user.sub())
+            .find_by_user_id(auth_user.id())
             .await
             .unwrap_or_else(|_| Vec::with_capacity(0));
 

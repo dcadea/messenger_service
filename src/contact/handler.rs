@@ -11,12 +11,12 @@ pub(super) mod api {
     use crate::{
         auth,
         contact::{self, Transition, model::Contact},
-        user::Sub,
+        user,
     };
 
     #[derive(Deserialize)]
     pub struct CreateParams {
-        sub: Sub,
+        user_id: user::Id,
     }
 
     pub async fn create(
@@ -24,17 +24,17 @@ pub(super) mod api {
         contact_service: State<contact::Service>,
         params: Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let c = Contact::new(auth_user.sub(), &params.sub);
+        let c = Contact::new(auth_user.id(), &params.user_id);
         contact_service.add(&c).await?;
         Ok(c.status().render())
     }
 
     pub async fn delete(
         auth_user: Extension<auth::User>,
-        sub: Query<Sub>,
+        user_id: Query<user::Id>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        contact_service.delete(auth_user.sub(), &sub).await?;
+        contact_service.delete(auth_user.id(), &user_id).await?;
         Ok(())
     }
 
@@ -45,16 +45,16 @@ pub(super) mod api {
     ) -> crate::Result<Markup> {
         let st = match transition {
             Transition::Accept => contact::StatusTransition::Accept {
-                responder: auth_user.sub(),
+                responder: auth_user.id(),
             },
             Transition::Reject => contact::StatusTransition::Reject {
-                responder: auth_user.sub(),
+                responder: auth_user.id(),
             },
             Transition::Block => contact::StatusTransition::Block {
-                initiator: auth_user.sub(),
+                initiator: auth_user.id(),
             },
             Transition::Unblock => {
-                let c = contact_service.find_by_id(auth_user.sub(), &id).await?;
+                let c = contact_service.find_by_id(auth_user.id(), &id).await?;
 
                 contact::StatusTransition::Unblock {
                     target: &c.recipient().clone(),
@@ -72,7 +72,7 @@ pub(super) mod api {
             match e {
                 contact::Error::NotFound(_) => Self::NOT_FOUND,
                 contact::Error::AlreadyExists(..) => Self::CONFLICT,
-                contact::Error::SameSubs(_) | contact::Error::StatusTransitionFailed => {
+                contact::Error::SameUsers(_) | contact::Error::StatusTransitionFailed => {
                     Self::BAD_REQUEST
                 }
                 contact::Error::_MongoDB(_) => Self::INTERNAL_SERVER_ERROR,

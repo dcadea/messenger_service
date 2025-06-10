@@ -8,14 +8,10 @@ use log::error;
 use repository::TalkRepository;
 use serde::{Deserialize, Serialize};
 
-use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use service::{TalkService, TalkValidator};
+use uuid::Uuid;
 
-use crate::{
-    integration,
-    state::AppState,
-    user::{self, Sub},
-};
+use crate::{integration, state::AppState, user};
 
 mod handler;
 pub mod markup;
@@ -50,15 +46,11 @@ pub fn templates<S>(s: AppState) -> Router<S> {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
+pub struct Id(pub Uuid);
 
 impl Id {
     pub fn random() -> Self {
-        Self(mongodb::bson::oid::ObjectId::new().to_hex())
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
+        Self(Uuid::now_v7())
     }
 }
 
@@ -114,7 +106,7 @@ pub enum Error {
     #[error("Missing group name")]
     MissingName,
     #[error("Selected user does not exist: {0}")]
-    NonExistingUser(Sub),
+    NonExistingUser(user::Id),
     #[error("contact is missing or in non-accepted status")]
     UnsupportedStatus,
 

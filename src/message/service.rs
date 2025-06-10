@@ -1,49 +1,56 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use chrono::NaiveDateTime;
 use log::{debug, error};
 use text_splitter::{Characters, TextSplitter};
 
-use crate::user::Sub;
+use crate::message::model::NewMessage;
+use crate::user::{self};
 use crate::{auth, event, message, talk};
 
 use super::Repository;
-use super::model::Message;
+use super::model::MessageDto;
 
 const MAX_MESSAGE_LENGTH: usize = 1000;
 
 #[async_trait]
 pub trait MessageService {
-    async fn create(&self, msg: &Message) -> super::Result<Vec<Message>>;
+    async fn create(
+        &self,
+        talk_id: &talk::Id,
+        auth_user: &auth::User,
+        text: &str,
+    ) -> super::Result<Vec<MessageDto>>;
 
-    async fn find_by_id(&self, id: &message::Id) -> super::Result<Message>;
+    fn find_by_id(&self, id: &message::Id) -> super::Result<MessageDto>;
 
-    async fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<Message>>;
+    fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<MessageDto>>;
 
     async fn update(
         &self,
         auth_user: &auth::User,
         id: &message::Id,
         text: &str,
-    ) -> super::Result<Message>;
+    ) -> super::Result<MessageDto>;
 
     async fn delete(
         &self,
         auth_user: &auth::User,
         id: &message::Id,
-    ) -> super::Result<Option<Message>>;
+    ) -> super::Result<Option<MessageDto>>;
 
     async fn find_by_talk_id_and_params(
         &self,
-        auth_sub: &Sub,
+        auth_user: &auth::User,
         talk_id: &talk::Id,
         limit: Option<i64>,
-        end_time: Option<i64>,
-    ) -> super::Result<(Vec<Message>, usize)>;
+        end_time: Option<NaiveDateTime>,
+    ) -> super::Result<(Vec<MessageDto>, usize)>;
 
-    async fn mark_as_seen(&self, auth_sub: &Sub, msgs: &[Message]) -> super::Result<usize>;
+    async fn mark_as_seen(&self, auth_id: &user::Id, msgs: &[MessageDto]) -> super::Result<usize>;
 
-    async fn is_last_message(&self, msg: &Message) -> super::Result<bool>;
+    async fn is_last_message(&self, msg: &MessageDto) -> super::Result<bool>;
 }
 
 #[derive(Clone)]
@@ -74,34 +81,49 @@ impl MessageServiceImpl {
 
 #[async_trait]
 impl MessageService for MessageServiceImpl {
-    async fn create(&self, msg: &Message) -> super::Result<Vec<Message>> {
-        if msg.text().is_empty() {
-            return Err(super::Error::EmptyText);
+    async fn create(
+        &self,
+        talk_id: &talk::Id,
+        auth_user: &auth::User,
+        content: &str,
+    ) -> super::Result<Vec<MessageDto>> {
+        let content: String = content.into();
+        if content.is_empty() {
+            return Err(super::Error::EmptyContent);
         }
 
-        let msgs = match msg.text().len() {
+        let auth_id = auth_user.id();
+
+        let msgs = match content.len() {
             text_length if text_length <= MAX_MESSAGE_LENGTH => {
-                self.repo.insert(msg).await?;
-                vec![msg.clone()]
+                let new_msg = NewMessage::new(&talk_id.0, &auth_id.0, &content);
+                let msg = self.repo.insert(&new_msg)?;
+                vec![msg]
             }
             _ => {
-                let msgs = split_message(&self.splitter, msg);
-                self.repo.insert_many(&msgs).await?;
-                msgs
+                let msgs = split_content(&self.splitter, talk_id, auth_id, &content);
+                self.repo.insert_many(&msgs)?
             }
         };
 
-        self.notify_new(msg.talk_id(), msg.owner(), &msgs).await;
+        let msgs = msgs
+            .into_iter()
+            .map(MessageDto::from)
+            .collect::<Vec<MessageDto>>();
+
+        self.notify_new(talk_id, auth_id, &msgs).await;
 
         Ok(msgs)
     }
 
-    async fn find_by_id(&self, id: &message::Id) -> super::Result<Message> {
-        self.repo.find_by_id(id).await
+    fn find_by_id(&self, id: &message::Id) -> super::Result<MessageDto> {
+        self.repo.find_by_id(id).map(MessageDto::from)
     }
 
-    async fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<Message>> {
-        self.repo.find_most_recent(talk_id).await
+    fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<MessageDto>> {
+        self.repo
+            .find_most_recent(talk_id)
+            .map(|o| o.map(MessageDto::from))
     }
 
     async fn update(
@@ -109,16 +131,18 @@ impl MessageService for MessageServiceImpl {
         auth_user: &auth::User,
         id: &message::Id,
         text: &str,
-    ) -> super::Result<Message> {
-        let msg = self.repo.find_by_id(id).await?;
+    ) -> super::Result<MessageDto> {
+        let msg = self.repo.find_by_id(id).map(MessageDto::from)?;
 
-        if msg.owner().ne(auth_user.sub()) {
+        if msg.owner().ne(auth_user.id()) {
             return Err(super::Error::NotOwner);
         }
 
-        self.repo.update(id, text).await?;
-        let msg = msg.with_text(text);
-        self.notify_updated(&msg).await;
+        if self.repo.update(id, text)? {
+            let msg = msg.with_text(text);
+            self.notify_updated(&msg).await;
+            return Ok(msg);
+        }
 
         Ok(msg)
     }
@@ -127,8 +151,8 @@ impl MessageService for MessageServiceImpl {
         &self,
         auth_user: &auth::User,
         id: &message::Id,
-    ) -> super::Result<Option<Message>> {
-        let msg = self.repo.find_by_id(id).await?;
+    ) -> super::Result<Option<MessageDto>> {
+        let msg = self.repo.find_by_id(id).map(MessageDto::from)?;
         let talk_id = msg.talk_id();
 
         self.talk_validator
@@ -136,11 +160,11 @@ impl MessageService for MessageServiceImpl {
             .await
             .map_err(|_| super::Error::NotOwner)?;
 
-        if msg.owner().ne(auth_user.sub()) {
+        if msg.owner().ne(auth_user.id()) {
             return Err(super::Error::NotOwner);
         }
 
-        if self.repo.delete(id).await? {
+        if self.repo.delete(id)? {
             self.notify_deleted(&msg).await;
             return Ok(Some(msg));
         }
@@ -153,28 +177,31 @@ impl MessageService for MessageServiceImpl {
     // Due to this side effect consider using other methods for read-only messages retrieval.
     async fn find_by_talk_id_and_params(
         &self,
-        auth_sub: &Sub,
+        auth_user: &auth::User,
         talk_id: &talk::Id,
         limit: Option<i64>,
-        end_time: Option<i64>,
-    ) -> super::Result<(Vec<Message>, usize)> {
+        end_time: Option<NaiveDateTime>,
+    ) -> super::Result<(Vec<MessageDto>, usize)> {
         let msgs = match (limit, end_time) {
-            (None, None) => self.repo.find_by_talk_id(talk_id).await,
-            (Some(limit), None) => self.repo.find_by_talk_id_limited(talk_id, limit).await,
-            (None, Some(end_time)) => self.repo.find_by_talk_id_before(talk_id, end_time).await,
-            (Some(limit), Some(end_time)) => {
-                self.repo
-                    .find_by_talk_id_limited_before(talk_id, limit, end_time)
-                    .await
-            }
+            (None, None) => self.repo.find_by_talk_id(talk_id),
+            (Some(limit), None) => self.repo.find_by_talk_id_limited(talk_id, limit),
+            (None, Some(end_time)) => self.repo.find_by_talk_id_before(talk_id, end_time),
+            (Some(limit), Some(end_time)) => self
+                .repo
+                .find_by_talk_id_limited_before(talk_id, limit, end_time),
         }?;
 
-        let seen_qty = self.mark_as_seen(auth_sub, &msgs).await?;
+        let msgs = msgs
+            .into_iter()
+            .map(MessageDto::from)
+            .collect::<Vec<MessageDto>>();
+
+        let seen_qty = self.mark_as_seen(auth_user.id(), &msgs).await?;
 
         Ok((msgs, seen_qty))
     }
 
-    async fn mark_as_seen(&self, auth_sub: &Sub, msgs: &[Message]) -> super::Result<usize> {
+    async fn mark_as_seen(&self, auth_id: &user::Id, msgs: &[MessageDto]) -> super::Result<usize> {
         if msgs.is_empty() {
             debug!("attempting to mark as seen but messages list is empty");
             return Ok(0);
@@ -182,7 +209,7 @@ impl MessageService for MessageServiceImpl {
 
         let anothers_messages = msgs
             .iter()
-            .filter(|msg| msg.owner().ne(auth_sub))
+            .filter(|msg| msg.owner().ne(auth_id))
             .collect::<Vec<_>>();
 
         if anothers_messages.is_empty() {
@@ -205,7 +232,7 @@ impl MessageService for MessageServiceImpl {
             .map(|msg| msg.id().clone())
             .collect::<Vec<_>>();
 
-        self.repo.mark_as_seen(&unseen_ids).await?;
+        self.repo.mark_as_seen(&unseen_ids)?;
 
         let msg_evts = unseen_msgs
             .iter()
@@ -226,7 +253,7 @@ impl MessageService for MessageServiceImpl {
         Ok(seen_qty)
     }
 
-    async fn is_last_message(&self, msg: &Message) -> super::Result<bool> {
+    async fn is_last_message(&self, msg: &MessageDto) -> super::Result<bool> {
         let talk = self
             .talk_service
             .find_by_id(msg.talk_id())
@@ -245,7 +272,7 @@ impl MessageService for MessageServiceImpl {
 }
 
 impl MessageServiceImpl {
-    async fn notify_new(&self, talk_id: &talk::Id, owner: &Sub, msgs: &[Message]) {
+    async fn notify_new(&self, talk_id: &talk::Id, owner: &user::Id, msgs: &[MessageDto]) {
         match self.talk_service.find_recipients(talk_id, owner).await {
             Ok(recipients) => {
                 let msg_evts = msgs
@@ -267,11 +294,11 @@ impl MessageServiceImpl {
         }
     }
 
-    async fn notify_updated(&self, msg: &Message) {
+    async fn notify_updated(&self, msg: &MessageDto) {
         let talk_id = msg.talk_id();
-        let sub = msg.owner();
+        let auth_id = msg.owner();
 
-        match self.talk_service.find_recipients(talk_id, sub).await {
+        match self.talk_service.find_recipients(talk_id, auth_id).await {
             Ok(recipients) => {
                 let subjects = recipients
                     .iter()
@@ -283,7 +310,7 @@ impl MessageServiceImpl {
                         &subjects,
                         event::Message::Updated {
                             msg: msg.clone(),
-                            auth_sub: sub.clone(),
+                            auth_id: auth_id.clone(),
                         }
                         .into(),
                     )
@@ -293,7 +320,7 @@ impl MessageServiceImpl {
         }
     }
 
-    async fn notify_deleted(&self, msg: &Message) {
+    async fn notify_deleted(&self, msg: &MessageDto) {
         let talk_id = msg.talk_id();
         let sub = msg.owner();
 
@@ -313,10 +340,15 @@ impl MessageServiceImpl {
     }
 }
 
-fn split_message(splitter: &TextSplitter<Characters>, msg: &Message) -> Vec<Message> {
-    let chunks = splitter.chunks(msg.text());
+fn split_content<'a>(
+    splitter: &'a TextSplitter<Characters>,
+    talk_id: &'a talk::Id,
+    owner: &'a user::Id,
+    content: &'a str,
+) -> Vec<NewMessage<'a>> {
+    let chunks = splitter.chunks(content);
 
     chunks
-        .map(|text| msg.with_random_id().with_text(text))
-        .collect::<Vec<Message>>()
+        .map(|chunk| NewMessage::new(&talk_id.0, &owner.0, chunk))
+        .collect::<Vec<NewMessage<'a>>>()
 }

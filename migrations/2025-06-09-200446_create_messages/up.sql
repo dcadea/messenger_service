@@ -4,7 +4,7 @@ CREATE TABLE messages (
     owner UUID NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL,
-    seen BOOLEAN DEFAULT FALSE,
+    seen BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (talk_id) REFERENCES talks (id),
     FOREIGN KEY (owner) REFERENCES users (id)
 );

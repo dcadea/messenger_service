@@ -5,10 +5,10 @@ use axum::{
     routing::{delete, get, post, put},
 };
 use log::error;
-use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use repository::MessageRepository;
 use serde::{Deserialize, Serialize};
 use service::MessageService;
+use uuid::Uuid;
 
 use crate::state::AppState;
 
@@ -23,11 +23,11 @@ pub type Repository = Arc<dyn MessageRepository + Send + Sync>;
 pub type Service = Arc<dyn MessageService + Send + Sync>;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
+pub struct Id(pub Uuid);
 
 impl Id {
     pub fn random() -> Self {
-        Self(mongodb::bson::oid::ObjectId::new().to_hex())
+        Self(Uuid::now_v7())
     }
 }
 
@@ -60,8 +60,8 @@ pub enum Error {
     NotFound(Option<Id>),
     #[error("not owner of message")]
     NotOwner,
-    #[error("message text is empty")]
-    EmptyText,
+    #[error("message content is empty")]
+    EmptyContent,
 
     #[error("message id not present")]
     IdNotPresent,
@@ -71,5 +71,7 @@ pub enum Error {
     Unexpected(String),
 
     #[error(transparent)]
-    _MongoDB(#[from] mongodb::error::Error),
+    _R2d2(#[from] r2d2::Error),
+    #[error(transparent)]
+    _Diesel(#[from] diesel::result::Error),
 }

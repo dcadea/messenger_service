@@ -28,7 +28,7 @@ impl Render for Message {
                 Self::New(msg) => div #(MESSAGE_LIST_ID) hx-swap-oob="afterbegin" {
                     (message::markup::MessageItem::new(&msg, None))
                 },
-                Self::Updated{ msg, auth_sub } => (message::markup::MessageItem::new(msg, Some(auth_sub))),
+                Self::Updated{ msg, auth_id } => (message::markup::MessageItem::new(msg, Some(auth_id))),
                 Self::Deleted(id) => div #(id.attr()) ."message-item flex items-center items-baseline" {
                     div ."message-bubble flex flex-row rounded-lg p-2 mt-2 max-w-xs"
                         ."bg-gray-300 text-gray-600 italic" {

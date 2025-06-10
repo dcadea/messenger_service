@@ -37,7 +37,7 @@ pub(super) mod pages {
         talk_service: State<talk::Service>,
     ) -> crate::Result<Markup> {
         let talk = &talk_service
-            .find_by_id_and_sub(&id, auth_user.sub())
+            .find_by_id_and_user_id(&id, auth_user.id())
             .await?;
 
         Ok(html! {(markup::ActiveTalk(&auth_user, &talk))})
@@ -57,7 +57,7 @@ pub(super) mod api {
         auth,
         integration::storage::{self, Blob},
         talk::{self, markup},
-        user::Sub,
+        user,
     };
 
     pub async fn find_one(
@@ -66,7 +66,7 @@ pub(super) mod api {
         Path(id): Path<talk::Id>,
     ) -> crate::Result<Markup> {
         let talk = talk_service
-            .find_by_id_and_sub(&id, auth_user.sub())
+            .find_by_id_and_user_id(&id, auth_user.id())
             .await?;
         Ok(html! { (talk) })
     }
@@ -76,7 +76,7 @@ pub(super) mod api {
         id: Path<talk::Id>,
     ) -> crate::Result<axum::body::Body> {
         // TODO: handle result
-        let content = s3.find_one(Blob::Png(id.as_str())).await.unwrap();
+        let content = s3.find_one(Blob::Png(&id.0.to_string())).await.unwrap();
         let x = content.to_stream().await.unwrap().0;
         Ok(axum::body::Body::from_stream(x))
     }
@@ -84,7 +84,7 @@ pub(super) mod api {
     #[derive(Deserialize)]
     #[serde(tag = "kind", rename_all = "snake_case")]
     pub enum CreateParams {
-        Chat { sub: Sub },
+        Chat { user_id: user::Id },
         Group(CreateGroupParams),
     }
 
@@ -93,8 +93,14 @@ pub(super) mod api {
     #[derive(Deserialize)]
     #[serde(untagged)]
     pub enum CreateGroupParams {
-        Valid { name: String, members: Vec<Sub> },
-        Invalid { name: String, members: Sub },
+        Valid {
+            name: String,
+            members: Vec<user::Id>,
+        },
+        Invalid {
+            name: String,
+            members: user::Id,
+        },
     }
 
     #[axum::debug_handler]
@@ -103,16 +109,16 @@ pub(super) mod api {
         talk_service: State<talk::Service>,
         Json(params): Json<CreateParams>,
     ) -> crate::Result<Markup> {
-        let auth_sub = auth_user.sub();
+        let auth_id = auth_user.id();
         let talk = match params {
-            CreateParams::Chat { sub } => talk_service.create_chat(auth_sub, &sub).await,
+            CreateParams::Chat { user_id } => talk_service.create_chat(auth_id, &user_id).await,
             CreateParams::Group(params) => {
                 let (name, members) = match params {
                     CreateGroupParams::Valid { name, members } => (name, members),
                     CreateGroupParams::Invalid { name, members } => (name, vec![members]),
                 };
 
-                talk_service.create_group(auth_sub, &name, &members).await
+                talk_service.create_group(auth_id, &name, &members).await
             }
         }?;
 
@@ -138,28 +144,25 @@ pub(super) mod templates {
     use axum::{Extension, extract::State};
     use maud::{Markup, Render};
 
-    use crate::{
-        auth, contact, talk,
-        user::{self, Sub},
-    };
+    use crate::{auth, contact, talk, user};
 
     pub struct GroupMemberDto {
-        sub: Sub,
+        user_id: user::Id,
         name: String,
         picture: String,
     }
 
     impl GroupMemberDto {
-        pub fn new(sub: Sub, name: impl Into<String>, picture: impl Into<String>) -> Self {
+        pub fn new(user_id: user::Id, name: impl Into<String>, picture: impl Into<String>) -> Self {
             Self {
-                sub,
+                user_id,
                 name: name.into(),
                 picture: picture.into(),
             }
         }
 
-        pub const fn sub(&self) -> &Sub {
-            &self.sub
+        pub const fn user_id(&self) -> &user::Id {
+            &self.user_id
         }
 
         pub fn name(&self) -> &str {
@@ -177,7 +180,7 @@ pub(super) mod templates {
         user_service: State<user::Service>,
     ) -> crate::Result<Markup> {
         let contacts = contact_service
-            .find_by_sub_and_status(auth_user.sub(), &contact::Status::Accepted)
+            .find_by_user_id_and_status(auth_user.id(), &contact::Status::Accepted)
             .await?;
 
         let mut members: Vec<GroupMemberDto> = Vec::with_capacity(contacts.len());

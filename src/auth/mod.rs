@@ -2,7 +2,7 @@ use std::fmt;
 use std::sync::Arc;
 
 use crate::user::model::UserInfo;
-use crate::user::{Picture, Sub};
+use crate::user::{self, Picture, Sub};
 use crate::{state::AppState, user::Nickname};
 use axum::Router;
 use axum::routing::get;
@@ -40,6 +40,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
 
 #[derive(Clone)]
 pub struct User {
+    id: user::Id,
     sub: Sub,
     nickname: Nickname,
     name: String,
@@ -47,13 +48,24 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(sub: Sub, nickname: Nickname, name: impl Into<String>, picture: Picture) -> Self {
+    pub fn new(
+        id: user::Id,
+        sub: Sub,
+        nickname: Nickname,
+        name: impl Into<String>,
+        picture: Picture,
+    ) -> Self {
         Self {
+            id,
             sub,
             nickname,
             name: name.into(),
             picture,
         }
+    }
+
+    pub const fn id(&self) -> &user::Id {
+        &self.id
     }
 
     pub const fn sub(&self) -> &Sub {
@@ -74,12 +86,13 @@ impl User {
 }
 
 impl From<UserInfo> for User {
-    fn from(user_info: UserInfo) -> Self {
+    fn from(ui: UserInfo) -> Self {
         Self::new(
-            user_info.sub().clone(),
-            user_info.nickname().clone(),
-            user_info.name(),
-            user_info.picture().clone(),
+            ui.id().clone(),
+            ui.sub().clone(),
+            ui.nickname().clone(),
+            ui.name(),
+            ui.picture().clone(),
         )
     }
 }

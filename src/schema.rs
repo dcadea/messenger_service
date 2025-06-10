@@ -49,7 +49,7 @@ diesel::table! {
         owner -> Uuid,
         content -> Text,
         created_at -> Timestamp,
-        seen -> Nullable<Bool>,
+        seen -> Bool,
     }
 }
 

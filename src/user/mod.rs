@@ -3,10 +3,10 @@ use std::{fmt::Display, sync::Arc};
 use axum::{Router, routing::post};
 use diesel::deserialize::FromSqlRow;
 use log::error;
-use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use repository::UserRepository;
 use serde::{Deserialize, Serialize};
 use service::UserService;
+use uuid::Uuid;
 
 use crate::state::AppState;
 
@@ -26,23 +26,23 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-#[derive(Clone, Deserialize, Serialize, PartialEq, Eq, Debug)]
-pub struct Id(#[serde(with = "hex_string_as_object_id")] String);
-
-impl Id {
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
+#[derive(Clone, Deserialize, Serialize, Hash, PartialEq, Eq, Debug)]
+pub struct Id(pub Uuid);
 
 #[cfg(test)]
 impl Id {
     pub fn random() -> Self {
-        Self(mongodb::bson::oid::ObjectId::new().to_hex())
+        Self(Uuid::now_v7())
     }
 }
 
-#[derive(Serialize, Deserialize, FromSqlRow, Clone, Debug, Hash, PartialEq, Eq)]
+impl Display for Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0.to_string())
+    }
+}
+
+#[derive(Serialize, Deserialize, FromSqlRow, Clone, Debug, PartialEq, Eq)]
 pub struct Sub(String);
 
 impl Sub {
@@ -164,8 +164,6 @@ pub enum Error {
     #[error("invalid email format: {0:?}")]
     MalformedEmail(String),
 
-    #[error(transparent)]
-    _MongoDB(#[from] mongodb::error::Error),
     #[error(transparent)]
     _R2d2(#[from] r2d2::Error),
     #[error(transparent)]
