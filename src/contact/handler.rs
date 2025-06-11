@@ -10,7 +10,7 @@ pub(super) mod api {
 
     use crate::{
         auth,
-        contact::{self, Transition, model::Contact},
+        contact::{self, StatusTransition, Transition},
         user,
     };
 
@@ -24,9 +24,8 @@ pub(super) mod api {
         contact_service: State<contact::Service>,
         params: Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let c = Contact::new(auth_user.id(), &params.user_id);
-        contact_service.add(&c).await?;
-        Ok(c.status().render())
+        let s = contact_service.add(auth_user.id(), &params.user_id).await?;
+        Ok(s.render())
     }
 
     pub async fn delete(
@@ -43,26 +42,21 @@ pub(super) mod api {
         Path((id, transition)): Path<(contact::Id, Transition)>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<Markup> {
+        let auth_id = auth_user.id();
         let st = match transition {
-            Transition::Accept => contact::StatusTransition::Accept {
-                responder: auth_user.id(),
-            },
-            Transition::Reject => contact::StatusTransition::Reject {
-                responder: auth_user.id(),
-            },
-            Transition::Block => contact::StatusTransition::Block {
-                initiator: auth_user.id(),
-            },
+            Transition::Accept => StatusTransition::Accept { responder: auth_id },
+            Transition::Reject => StatusTransition::Reject { responder: auth_id },
+            Transition::Block => StatusTransition::Block { initiator: auth_id },
             Transition::Unblock => {
-                let c = contact_service.find_by_id(auth_user.id(), &id).await?;
+                let c = contact_service.find_by_id(auth_id, &id).await?;
 
-                contact::StatusTransition::Unblock {
+                StatusTransition::Unblock {
                     target: &c.recipient().clone(),
                 }
             }
         };
 
-        let new_status = contact_service.transition_status(&id, st).await?;
+        let new_status = contact_service.transition_status(auth_user.id(), &id, st)?;
 
         Ok(contact::markup::Icons::new(&id, &new_status, &auth_user).render())
     }
@@ -75,7 +69,9 @@ pub(super) mod api {
                 contact::Error::SameUsers(_) | contact::Error::StatusTransitionFailed => {
                     Self::BAD_REQUEST
                 }
-                contact::Error::_MongoDB(_) => Self::INTERNAL_SERVER_ERROR,
+                contact::Error::_R2d2(_) | contact::Error::_Diesel(_) => {
+                    Self::INTERNAL_SERVER_ERROR
+                }
             }
         }
     }

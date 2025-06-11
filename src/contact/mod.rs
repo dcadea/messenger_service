@@ -4,11 +4,12 @@ use axum::{
     Router,
     routing::{delete, post, put},
 };
+use model::Contact;
 use repository::ContactRepository;
 use serde::{Deserialize, Serialize};
 
-use mongodb::bson::serde_helpers::hex_string_as_object_id;
 use service::ContactService;
+use uuid::Uuid;
 
 use crate::{state::AppState, user};
 
@@ -23,11 +24,11 @@ pub type Repository = Arc<dyn ContactRepository + Send + Sync>;
 pub type Service = Arc<dyn ContactService + Send + Sync>;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct Id(#[serde(with = "hex_string_as_object_id")] pub String);
+pub struct Id(pub Uuid);
 
 impl Id {
     pub fn random() -> Self {
-        Self(mongodb::bson::oid::ObjectId::new().to_hex())
+        Self(Uuid::now_v7())
     }
 }
 
@@ -49,12 +50,55 @@ pub enum Status {
 }
 
 impl Status {
+    pub const fn as_str(&self) -> &str {
+        match self {
+            Status::Pending { .. } => "pending",
+            Status::Accepted => "accepted",
+            Status::Rejected => "rejected",
+            Status::Blocked { .. } => "blocked",
+        }
+    }
+
+    pub const fn initiator(&self) -> Option<&user::Id> {
+        match self {
+            Status::Pending { initiator } => Some(&initiator),
+            Status::Accepted => None,
+            Status::Rejected => None,
+            Status::Blocked { initiator } => Some(&initiator),
+        }
+    }
+
     pub const fn is_pending(&self) -> bool {
         matches!(self, Self::Pending { .. })
     }
 
     pub const fn is_rejected(&self) -> bool {
         matches!(self, Self::Rejected)
+    }
+}
+
+impl From<&Contact> for Status {
+    fn from(c: &Contact) -> Self {
+        match c.initiator().map(|id| user::Id(id.clone())) {
+            Some(initiator) => {
+                if c.status().eq("pending") {
+                    Status::Pending { initiator }
+                } else if c.status().eq("blocked") {
+                    Status::Blocked { initiator }
+                } else {
+                    unreachable!("unsupported status")
+                }
+            }
+            None => {
+                if c.status().eq("accepted") {
+                    Status::Accepted
+                } else if c.status().eq("rejected") {
+                    Status::Rejected
+                } else {
+                    unreachable!("unsupported status")
+                }
+            }
+        }
     }
 }
 
@@ -86,5 +130,7 @@ pub enum Error {
     StatusTransitionFailed,
 
     #[error(transparent)]
-    _MongoDB(#[from] mongodb::error::Error),
+    _R2d2(#[from] r2d2::Error),
+    #[error(transparent)]
+    _Diesel(#[from] diesel::result::Error),
 }

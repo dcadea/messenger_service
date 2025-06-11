@@ -20,10 +20,12 @@ diesel::table! {
 }
 
 diesel::table! {
-    contacts (user_id_1, user_id_2) {
+    contacts (id) {
+        id -> Uuid,
         user_id_1 -> Uuid,
         user_id_2 -> Uuid,
         status -> Text,
+        initiator -> Nullable<Uuid>,
     }
 }
 

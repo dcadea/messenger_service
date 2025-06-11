@@ -4,7 +4,7 @@ use crate::{integration::cache, user};
 
 use super::{
     Id, Repository, Status, StatusTransition,
-    model::{Contact, ContactDto},
+    model::{Contact, ContactDto, NewContact},
 };
 
 #[async_trait]
@@ -25,9 +25,14 @@ pub trait ContactService {
         s: &Status,
     ) -> super::Result<Vec<ContactDto>>;
 
-    async fn add(&self, c: &Contact) -> super::Result<()>;
+    async fn add(&self, me: &user::Id, you: &user::Id) -> super::Result<Status>;
 
-    async fn transition_status(&self, id: &Id, t: StatusTransition<'_>) -> super::Result<Status>;
+    fn transition_status(
+        &self,
+        auth_id: &user::Id,
+        id: &Id,
+        t: StatusTransition<'_>,
+    ) -> super::Result<Status>;
 
     async fn delete(&self, auth_id: &user::Id, contact: &user::Id) -> super::Result<()>;
 }
@@ -58,13 +63,12 @@ impl ContactService for ContactServiceImpl {
         // TODO: cache
         self.repo
             .find(auth_id, recipient)
-            .await
             .map(|c| c.map(|c| map_to_dto(auth_id, &c)))
     }
 
     async fn find_by_id(&self, auth_id: &user::Id, id: &Id) -> super::Result<ContactDto> {
         // TODO: cache
-        let c = self.repo.find_by_id(id).await?;
+        let c = self.repo.find_by_id(id)?;
 
         c.map(|c| map_to_dto(auth_id, &c))
             .ok_or(super::Error::NotFound(id.clone()))
@@ -82,7 +86,7 @@ impl ContactService for ContactServiceImpl {
         //     None => self.cache_contacts(sub).await,
         // }
 
-        let contacts = self.repo.find_by_user_id(user_id).await?;
+        let contacts = self.repo.find_by_user_id(user_id)?;
         let dtos = contacts
             .iter()
             .map(|c| map_to_dto(user_id, c))
@@ -97,7 +101,7 @@ impl ContactService for ContactServiceImpl {
         s: &Status,
     ) -> super::Result<Vec<ContactDto>> {
         // TODO: cache contacts
-        let contacts = self.repo.find_by_user_id_and_status(user_id, s).await?;
+        let contacts = self.repo.find_by_user_id_and_status(user_id, s)?;
 
         let dtos = contacts
             .iter()
@@ -107,38 +111,43 @@ impl ContactService for ContactServiceImpl {
         Ok(dtos)
     }
 
-    async fn add(&self, c: &Contact) -> super::Result<()> {
-        if c.user_id1().eq(c.user_id2()) {
-            return Err(super::Error::SameUsers(c.user_id1().clone()));
+    async fn add(&self, me: &user::Id, you: &user::Id) -> super::Result<Status> {
+        if me.eq(you) {
+            return Err(super::Error::SameUsers(me.clone()));
         }
 
-        let exists = self.repo.exists(c.user_id1(), c.user_id2()).await?;
+        let exists = self.repo.exists(me, you)?;
         if exists {
-            return Err(super::Error::AlreadyExists(
-                c.user_id1().clone(),
-                c.user_id2().clone(),
-            ));
+            return Err(super::Error::AlreadyExists(me.clone(), you.clone()));
         }
 
-        tokio::try_join!(
-            self.repo.add(c),
-            // TODO
-            // self.cache_contacts(&c.sub1),
-            // self.cache_contacts(&c.sub2)
-        )?;
+        self.repo.add(&NewContact::new(me, you))?;
+        // tokio::try_join!(
+        // TODO
+        // self.cache_contacts(&c.sub1),
+        // self.cache_contacts(&c.sub2)
+        // )?;
 
-        Ok(())
+        Ok(Status::Pending {
+            initiator: me.clone(),
+        })
     }
 
-    async fn transition_status(&self, id: &Id, st: StatusTransition<'_>) -> super::Result<Status> {
-        let contact = self.repo.find_by_id(id).await?;
+    fn transition_status(
+        &self,
+        auth_id: &user::Id,
+        id: &Id,
+        st: StatusTransition<'_>,
+    ) -> super::Result<Status> {
+        let contact = self.repo.find_by_id(id)?;
         match contact {
-            Some(mut c) => {
-                if !c.transition(st) {
+            Some(c) => {
+                let mut dto = map_to_dto(auth_id, &c);
+                if !dto.transition(st) {
                     return Err(super::Error::StatusTransitionFailed);
                 }
-                self.repo.update_status(&c).await?;
-                Ok(c.status().clone())
+                self.repo.update_status(&c)?;
+                Ok(Status::from(&c))
             }
             None => return Err(super::Error::NotFound(id.clone())),
         }
@@ -147,7 +156,7 @@ impl ContactService for ContactServiceImpl {
     async fn delete(&self, auth_id: &user::Id, contact: &user::Id) -> super::Result<()> {
         assert_ne!(auth_id, contact);
 
-        self.repo.delete(auth_id, contact).await?;
+        self.repo.delete(auth_id, contact)?;
 
         // FIXME:
         // tokio::join!(
@@ -185,11 +194,16 @@ impl ContactServiceImpl {
 }
 
 fn map_to_dto(auth_id: &user::Id, c: &Contact) -> ContactDto {
-    let recipient = if auth_id.eq(c.user_id1()) {
-        c.user_id2()
+    let (sender, recipient) = if auth_id.0.eq(c.user_id_1()) {
+        (c.user_id_1(), c.user_id_2())
     } else {
-        c.user_id1()
+        (c.user_id_2(), c.user_id_1())
     };
 
-    ContactDto::new(c.id().clone(), recipient.clone(), c.status().clone())
+    ContactDto::new(
+        Id(c.id().clone()),
+        user::Id(sender.clone()),
+        user::Id(recipient.clone()),
+        Status::from(c),
+    )
 }

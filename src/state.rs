@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::extract::FromRef;
 
 use crate::auth::service::AuthServiceImpl;
-use crate::contact::repository::MongoContactRepository;
+use crate::contact::repository::PgContactRepository;
 use crate::contact::service::ContactServiceImpl;
 use crate::event::service::EventServiceImpl;
 use crate::integration::storage;
@@ -43,7 +43,7 @@ impl AppState {
         let auth_service = Arc::new(AuthServiceImpl::try_new(cfg.idp(), redis.clone()));
         let event_service = Arc::new(EventServiceImpl::new(pubsub));
 
-        let contact_repo = Arc::new(MongoContactRepository::new(&db));
+        let contact_repo = Arc::new(PgContactRepository::new(pg.clone()));
         let contact_service = Arc::new(ContactServiceImpl::new(contact_repo, redis.clone()));
 
         let user_repo = Arc::new(PgUserRepository::new(pg.clone()));

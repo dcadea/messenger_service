@@ -9,8 +9,7 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::user::model::UserInfo;
-use crate::user::{self, Sub};
-use crate::{auth, talk};
+use crate::{auth, talk, user};
 
 #[derive(Clone)]
 pub struct Redis {
@@ -270,7 +269,6 @@ impl redis::FromRedisValue for user::Id {
     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
         // FIXME:
         let uuid = Uuid::try_parse(&String::from_redis_value(v)?).unwrap();
-        let s = String::from_redis_value(v)?;
         Ok(Self(uuid))
     }
 }

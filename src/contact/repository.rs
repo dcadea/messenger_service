@@ -1,128 +1,148 @@
-use async_trait::async_trait;
-use futures::TryStreamExt;
-use mongodb::{Database, bson::doc};
+use diesel::{
+    BoolExpressionMethods, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
+    RunQueryDsl, SelectableHelper, r2d2::ConnectionManager,
+};
 
-use crate::user;
+use crate::{schema::contacts::dsl::*, user};
 
-use super::{Id, Status, model::Contact};
+use super::{
+    Id, Status,
+    model::{Contact, NewContact},
+};
 
-const CONTACTS_COLLECTION: &str = "contacts";
-
-#[async_trait]
 pub trait ContactRepository {
-    async fn find(&self, u1: &user::Id, u2: &user::Id) -> super::Result<Option<Contact>>;
+    fn find(&self, u1: &user::Id, u2: &user::Id) -> super::Result<Option<Contact>>;
 
-    async fn find_by_id(&self, id: &Id) -> super::Result<Option<Contact>>;
+    fn find_by_id(&self, c_id: &Id) -> super::Result<Option<Contact>>;
 
-    async fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<Contact>>;
+    fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<Contact>>;
 
-    async fn find_by_user_id_and_status(
+    fn find_by_user_id_and_status(
         &self,
         user_id: &user::Id,
         s: &Status,
     ) -> super::Result<Vec<Contact>>;
 
-    async fn add(&self, contact: &Contact) -> super::Result<()>;
+    fn add(&self, c: &NewContact) -> super::Result<()>;
 
-    async fn update_status(&self, c: &Contact) -> super::Result<bool>;
+    fn update_status(&self, c: &Contact) -> super::Result<bool>;
 
-    async fn delete(&self, me: &user::Id, you: &user::Id) -> super::Result<bool>;
+    fn delete(&self, me: &user::Id, you: &user::Id) -> super::Result<bool>;
 
-    async fn exists(&self, u1: &user::Id, u2: &user::Id) -> super::Result<bool>;
+    fn exists(&self, u1: &user::Id, u2: &user::Id) -> super::Result<bool>;
 }
 
-pub struct MongoContactRepository {
-    col: mongodb::Collection<Contact>,
+pub struct PgContactRepository {
+    pool: r2d2::Pool<ConnectionManager<PgConnection>>,
 }
 
-impl MongoContactRepository {
-    pub fn new(db: &Database) -> Self {
-        Self {
-            col: db.collection(CONTACTS_COLLECTION),
-        }
+impl PgContactRepository {
+    pub fn new(pool: r2d2::Pool<ConnectionManager<PgConnection>>) -> Self {
+        Self { pool }
     }
 }
 
-#[async_trait]
-impl ContactRepository for MongoContactRepository {
-    async fn find(&self, u1: &user::Id, u2: &user::Id) -> super::Result<Option<Contact>> {
-        let filter = doc! {};
-        // let filter = doc! { "$or": [ {"sub1": sub1, "sub2": sub2}, {"sub2": sub1, "sub1": sub2} ] };
+impl ContactRepository for PgContactRepository {
+    fn find(&self, u1: &user::Id, u2: &user::Id) -> super::Result<Option<Contact>> {
+        let mut conn = self.pool.get()?;
 
-        self.col.find_one(filter).await.map_err(super::Error::from)
-    }
-
-    async fn find_by_id(&self, id: &Id) -> super::Result<Option<Contact>> {
-        self.col
-            .find_one(doc! { "_id": id })
-            .await
+        contacts
+            .filter(
+                (user_id_1.eq(u1.0).and(user_id_2.eq(u2.0)))
+                    .or(user_id_1.eq(u2.0).and(user_id_2.eq(u1.0))),
+            )
+            .first::<Contact>(&mut conn)
+            .optional()
             .map_err(super::Error::from)
     }
 
-    async fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<Contact>> {
-        let filter = doc! {};
-        // let filter = doc! { "$or": [ {"sub1": sub}, {"sub2": sub} ] };
+    fn find_by_id(&self, c_id: &Id) -> super::Result<Option<Contact>> {
+        let mut conn = self.pool.get()?;
 
-        let cursor = self.col.find(filter).await?;
-
-        cursor.try_collect().await.map_err(super::Error::from)
+        contacts
+            .find(c_id.0)
+            .first::<Contact>(&mut conn)
+            .optional()
+            .map_err(super::Error::from)
     }
 
-    async fn find_by_user_id_and_status(
+    fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<Contact>> {
+        let mut conn = self.pool.get()?;
+
+        contacts
+            .filter(user_id_1.eq(user_id.0).or(user_id_2.eq(user_id.0)))
+            .select(Contact::as_select())
+            .get_results(&mut conn)
+            .map_err(super::Error::from)
+    }
+
+    fn find_by_user_id_and_status(
         &self,
         user_id: &user::Id,
         s: &Status,
     ) -> super::Result<Vec<Contact>> {
-        let filter = doc! {
-            "$or": [
-                // { "sub1": sub, "status": s },
-                // { "sub2": sub, "status": s }
-            ]
-        };
+        let mut conn = self.pool.get()?;
 
-        let cursor = self.col.find(filter).await?;
-
-        cursor.try_collect().await.map_err(super::Error::from)
+        contacts
+            .filter(
+                (user_id_1.eq(user_id.0).or(user_id_2.eq(user_id.0)))
+                    .and(status.eq(s.as_str()))
+                    .and(initiator.eq(s.initiator().map(|i| i.0))),
+            )
+            .select(Contact::as_select())
+            .get_results(&mut conn)
+            .map_err(super::Error::from)
     }
 
-    async fn add(&self, c: &Contact) -> super::Result<()> {
-        assert_ne!(c.user_id1(), c.user_id2());
+    fn add(&self, c: &NewContact) -> super::Result<()> {
+        assert_ne!(c.user_id_1(), c.user_id_2());
 
-        self.col.insert_one(c).await?;
+        let mut conn = self.pool.get()?;
+
+        diesel::insert_into(contacts).values(c).execute(&mut conn)?;
 
         Ok(())
     }
 
-    async fn update_status(&self, c: &Contact) -> super::Result<bool> {
-        let res = self
-            .col
-            .update_one(
-                doc! { "_id": c.id() },
-                doc! { "$set": { "status": c.status() } },
+    fn update_status(&self, c: &Contact) -> super::Result<bool> {
+        let mut conn = self.pool.get()?;
+
+        let modified_count = diesel::update(contacts)
+            .filter(
+                (user_id_1.eq(c.user_id_1()).and(user_id_2.eq(c.user_id_2())))
+                    .or(user_id_1.eq(c.user_id_2()).and(user_id_2.eq(c.user_id_1()))),
             )
-            .await?;
+            .set((status.eq(c.status()), initiator.eq(c.initiator())))
+            .execute(&mut conn)?;
 
-        Ok(res.modified_count > 0)
+        Ok(modified_count > 0)
     }
 
-    async fn delete(&self, me: &user::Id, you: &user::Id) -> super::Result<bool> {
-        let filter = doc! { "$or": [ {"sub1": me, "sub2": you}, {"sub2": me, "sub1": you} ] };
+    fn delete(&self, me: &user::Id, you: &user::Id) -> super::Result<bool> {
+        let mut conn = self.pool.get()?;
 
-        let res = self.col.delete_one(filter).await?;
+        let deleted_count = diesel::delete(contacts)
+            .filter(
+                (user_id_1.eq(me.0).and(user_id_2.eq(you.0)))
+                    .or(user_id_1.eq(you.0).and(user_id_2.eq(me.0))),
+            )
+            .execute(&mut conn)?;
 
-        Ok(res.deleted_count > 0)
+        Ok(deleted_count > 0)
     }
 
-    async fn exists(&self, u1: &user::Id, u2: &user::Id) -> super::Result<bool> {
-        let filter = doc! {
-            "$or": [
-                // {"sub1": sub1, "sub2": sub2},
-                // {"sub2": sub1, "sub1": sub2}
-            ]
-        };
+    fn exists(&self, u1: &user::Id, u2: &user::Id) -> super::Result<bool> {
+        let mut conn = self.pool.get()?;
+        let count = contacts
+            .filter(
+                (user_id_1.eq(u1.0).and(user_id_2.eq(u2.0)))
+                    .or(user_id_1.eq(u2.0).and(user_id_2.eq(u1.0))),
+            )
+            .select(id)
+            .count()
+            .execute(&mut conn)?;
 
-        let result = self.col.find_one(filter).await?;
-        Ok(result.is_some())
+        Ok(count > 0)
     }
 }
 

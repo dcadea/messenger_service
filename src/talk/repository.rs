@@ -61,7 +61,7 @@ impl TalkRepository for MongoTalkRepository {
 
     async fn find_by_user_id_and_kind(
         &self,
-        user_id: &user::Id,
+        _user_id: &user::Id,
         kind: &talk::Kind,
     ) -> super::Result<Vec<Talk>> {
         let cursor = self
@@ -81,7 +81,7 @@ impl TalkRepository for MongoTalkRepository {
     async fn find_by_id_and_user_id(
         &self,
         id: &talk::Id,
-        user_id: &user::Id,
+        _user_id: &user::Id,
     ) -> super::Result<Talk> {
         let talk = self
             .col
@@ -106,10 +106,10 @@ impl TalkRepository for MongoTalkRepository {
         Ok(res.deleted_count > 0)
     }
 
-    async fn exists(&self, members: &[user::Id; 2]) -> super::Result<bool> {
+    async fn exists(&self, _members: &[user::Id; 2]) -> super::Result<bool> {
         let count = self
             .col
-            .count_documents(doc! { "details.members": { "$all": members.to_vec() } })
+            .count_documents(doc! { /*"details.members": { "$all": members.to_vec() }*/ })
             .await?;
 
         Ok(count > 0)
@@ -118,13 +118,13 @@ impl TalkRepository for MongoTalkRepository {
     async fn update_last_message(
         &self,
         id: &talk::Id,
-        msg: Option<&LastMessage>,
+        _msg: Option<&LastMessage>,
     ) -> super::Result<()> {
         self.col
             .update_one(
                 doc! { "_id": id },
                 doc! {"$set": {
-                    "last_message": msg,
+                    /*"last_message": msg,*/
                 }},
             )
             .await?;

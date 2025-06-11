@@ -1,27 +1,85 @@
-use serde::{Deserialize, Serialize};
+use diesel::prelude::{Insertable, Queryable, Selectable};
+use uuid::Uuid;
 
 use crate::user;
 
 use super::{Id, Status, StatusTransition};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(Queryable, Selectable)]
+#[diesel(table_name = crate::schema::contacts)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Contact {
-    #[serde(rename = "_id")]
-    id: Id,
-    user_id_1: user::Id,
-    user_id_2: user::Id,
-    status: Status,
+    id: Uuid,
+    user_id_1: Uuid,
+    user_id_2: Uuid,
+    status: String,
+    initiator: Option<Uuid>,
 }
 
 impl Contact {
-    pub fn new(initiator: &user::Id, responder: &user::Id) -> Self {
+    pub const fn id(&self) -> &Uuid {
+        &self.id
+    }
+
+    pub const fn user_id_1(&self) -> &Uuid {
+        &self.user_id_1
+    }
+
+    pub const fn user_id_2(&self) -> &Uuid {
+        &self.user_id_2
+    }
+
+    pub fn status(&self) -> &str {
+        &self.status
+    }
+
+    pub const fn initiator(&self) -> Option<&Uuid> {
+        self.initiator.as_ref()
+    }
+}
+
+#[derive(Insertable)]
+#[diesel(table_name = crate::schema::contacts)]
+pub struct NewContact<'a> {
+    user_id_1: &'a Uuid,
+    user_id_2: &'a Uuid,
+    status: &'a str,
+    initiator: &'a Uuid,
+}
+
+impl<'a> NewContact<'a> {
+    pub fn new(initiator: &'a user::Id, responder: &'a user::Id) -> Self {
         Self {
-            id: Id::random(),
-            user_id_1: initiator.clone(),
-            user_id_2: responder.clone(),
-            status: Status::Pending {
-                initiator: initiator.clone(),
-            },
+            user_id_1: &initiator.0,
+            user_id_2: &responder.0,
+            status: "pending",
+            initiator: &initiator.0,
+        }
+    }
+
+    pub const fn user_id_1(&self) -> &Uuid {
+        &self.user_id_1
+    }
+
+    pub const fn user_id_2(&self) -> &Uuid {
+        &self.user_id_2
+    }
+}
+
+pub struct ContactDto {
+    id: Id,
+    sender: user::Id,
+    recipient: user::Id,
+    status: Status,
+}
+
+impl ContactDto {
+    pub const fn new(id: Id, sender: user::Id, recipient: user::Id, status: Status) -> Self {
+        Self {
+            id,
+            sender,
+            recipient,
+            status,
         }
     }
 
@@ -29,18 +87,20 @@ impl Contact {
         &self.id
     }
 
-    pub const fn user_id1(&self) -> &user::Id {
-        &self.user_id_1
-    }
-
-    pub const fn user_id2(&self) -> &user::Id {
-        &self.user_id_2
+    pub const fn recipient(&self) -> &user::Id {
+        &self.recipient
     }
 
     pub const fn status(&self) -> &Status {
         &self.status
     }
 
+    pub const fn is_accepted(&self) -> bool {
+        matches!(self.status, Status::Accepted)
+    }
+}
+
+impl ContactDto {
     /// Possible transitions:
     /// - Pending -> (Accept) -> Accepted
     /// - Pending -> (Reject) -> Rejected
@@ -99,11 +159,11 @@ impl Contact {
     }
 
     fn is_member(&self, id: &user::Id) -> bool {
-        if self.user_id_1.eq(id) {
+        if self.sender.eq(id) {
             return true;
         }
 
-        if self.user_id_2.eq(id) {
+        if self.recipient.eq(id) {
             return true;
         }
 
@@ -111,44 +171,12 @@ impl Contact {
     }
 }
 
-pub struct ContactDto {
-    id: Id,
-    recipient: user::Id,
-    status: Status,
-}
-
-impl ContactDto {
-    pub const fn new(id: Id, recipient: user::Id, status: Status) -> Self {
-        Self {
-            id,
-            recipient,
-            status,
-        }
-    }
-
-    pub const fn id(&self) -> &Id {
-        &self.id
-    }
-
-    pub const fn recipient(&self) -> &user::Id {
-        &self.recipient
-    }
-
-    pub const fn status(&self) -> &Status {
-        &self.status
-    }
-
-    pub const fn is_accepted(&self) -> bool {
-        matches!(self.status, Status::Accepted)
-    }
-}
-
-#[cfg(test)]
-impl Contact {
-    pub fn set_status(&mut self, status: Status) {
-        self.status = status;
-    }
-}
+// #[cfg(test)]
+// impl Contact {
+//     pub fn set_status(&mut self, status: Status) {
+//         self.status = status;
+//     }
+// }
 
 // FIXME
 // #[cfg(test)]

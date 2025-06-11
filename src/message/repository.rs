@@ -3,16 +3,13 @@ use diesel::{
     BoolExpressionMethods, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
     RunQueryDsl, SelectableHelper, r2d2::ConnectionManager,
 };
-use mongodb::Database;
 use uuid::Uuid;
 
 use super::{
     Id,
-    model::{Message, MessageDto, NewMessage},
+    model::{Message, NewMessage},
 };
 use crate::{schema::messages, talk};
-
-const MESSAGES_COLLECTION: &str = "messages";
 
 pub trait MessageRepository {
     fn insert(&self, msg: &NewMessage) -> super::Result<Message>;
@@ -61,19 +58,6 @@ pub struct PgMessageRepository {
 impl PgMessageRepository {
     pub fn new(pool: r2d2::Pool<ConnectionManager<PgConnection>>) -> Self {
         Self { pool }
-    }
-}
-
-#[derive(Clone)]
-pub struct MongoMessageRepository {
-    col: mongodb::Collection<MessageDto>,
-}
-
-impl MongoMessageRepository {
-    pub fn new(db: &Database) -> Self {
-        Self {
-            col: db.collection(MESSAGES_COLLECTION),
-        }
     }
 }
 
