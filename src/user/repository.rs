@@ -5,6 +5,7 @@ use diesel::QueryDsl;
 use diesel::RunQueryDsl;
 use diesel::SelectableHelper;
 use diesel::TextExpressionMethods;
+use diesel::insert_into;
 use diesel::r2d2::ConnectionManager;
 
 use crate::schema::users::dsl::*;
@@ -45,7 +46,7 @@ impl UserRepository for PgUserRepository {
     fn insert(&self, u: &NewUser) -> super::Result<()> {
         let mut conn = self.pool.get()?;
 
-        let _ = diesel::insert_into(users)
+        let _ = insert_into(users)
             .values(u)
             .returning(sub)
             .get_result::<String>(&mut conn)?;

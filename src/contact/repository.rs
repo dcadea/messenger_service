@@ -1,6 +1,6 @@
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
-    RunQueryDsl, SelectableHelper, r2d2::ConnectionManager,
+    RunQueryDsl, SelectableHelper, delete, insert_into, r2d2::ConnectionManager, update,
 };
 
 use crate::{schema::contacts::dsl::*, user};
@@ -99,7 +99,7 @@ impl ContactRepository for PgContactRepository {
 
         let mut conn = self.pool.get()?;
 
-        diesel::insert_into(contacts).values(c).execute(&mut conn)?;
+        insert_into(contacts).values(c).execute(&mut conn)?;
 
         Ok(())
     }
@@ -107,7 +107,7 @@ impl ContactRepository for PgContactRepository {
     fn update_status(&self, c: &Contact) -> super::Result<bool> {
         let mut conn = self.pool.get()?;
 
-        let modified_count = diesel::update(contacts)
+        let modified_count = update(contacts)
             .filter(
                 (user_id_1.eq(c.user_id_1()).and(user_id_2.eq(c.user_id_2())))
                     .or(user_id_1.eq(c.user_id_2()).and(user_id_2.eq(c.user_id_1()))),
@@ -121,7 +121,7 @@ impl ContactRepository for PgContactRepository {
     fn delete(&self, me: &user::Id, you: &user::Id) -> super::Result<bool> {
         let mut conn = self.pool.get()?;
 
-        let deleted_count = diesel::delete(contacts)
+        let deleted_count = delete(contacts)
             .filter(
                 (user_id_1.eq(me.0).and(user_id_2.eq(you.0)))
                     .or(user_id_1.eq(you.0).and(user_id_2.eq(me.0))),

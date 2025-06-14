@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
-    RunQueryDsl, SelectableHelper, r2d2::ConnectionManager,
+    RunQueryDsl, SelectableHelper, delete, insert_into, r2d2::ConnectionManager, update,
 };
 use uuid::Uuid;
 
@@ -61,7 +61,7 @@ impl MessageRepository for PgMessageRepository {
     fn insert(&self, msg: &NewMessage) -> super::Result<Message> {
         let mut conn = self.pool.get()?;
 
-        let m = diesel::insert_into(messages)
+        let m = insert_into(messages)
             .values(msg)
             .returning(Message::as_select())
             .get_result(&mut conn)?;
@@ -72,7 +72,7 @@ impl MessageRepository for PgMessageRepository {
     fn insert_many(&self, msgs: &[NewMessage]) -> super::Result<Vec<Message>> {
         let mut conn = self.pool.get()?;
 
-        let msgs = diesel::insert_into(messages)
+        let msgs = insert_into(messages)
             .values(msgs)
             .returning(Message::as_select())
             .get_results(&mut conn)?;
@@ -166,7 +166,7 @@ impl MessageRepository for PgMessageRepository {
     fn update(&self, m_id: &Id, new_content: &str) -> super::Result<bool> {
         let mut conn = self.pool.get()?;
 
-        let res = diesel::update(messages.find(m_id.0))
+        let res = update(messages.find(m_id.0))
             .set(content.eq(new_content))
             .execute(&mut conn)?;
 
@@ -176,7 +176,7 @@ impl MessageRepository for PgMessageRepository {
     fn delete(&self, m_id: &Id) -> super::Result<bool> {
         let mut conn = self.pool.get()?;
 
-        let deleted_count = diesel::delete(messages.find(m_id.0)).execute(&mut conn)?;
+        let deleted_count = delete(messages.find(m_id.0)).execute(&mut conn)?;
 
         Ok(deleted_count > 0)
     }
@@ -184,8 +184,7 @@ impl MessageRepository for PgMessageRepository {
     fn delete_by_talk_id(&self, t_id: &talk::Id) -> super::Result<usize> {
         let mut conn = self.pool.get()?;
 
-        let deleted_count =
-            diesel::delete(messages.filter(talk_id.eq(t_id.0))).execute(&mut conn)?;
+        let deleted_count = delete(messages.filter(talk_id.eq(t_id.0))).execute(&mut conn)?;
 
         Ok(deleted_count)
     }
@@ -195,7 +194,7 @@ impl MessageRepository for PgMessageRepository {
 
         let ids = ids.iter().map(|i| i.0).collect::<Vec<Uuid>>();
 
-        let modified_count = diesel::update(messages.filter(id.eq_any(ids)))
+        let modified_count = update(messages.filter(id.eq_any(ids)))
             .set(seen.eq(true))
             .execute(&mut conn)?;
 
