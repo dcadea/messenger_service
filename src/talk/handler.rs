@@ -13,8 +13,7 @@ impl From<super::Error> for StatusCode {
             super::Error::NotCreated
             | super::Error::NotDeleted
             | super::Error::_User(_)
-            | super::Error::_Integration(_)
-            | super::Error::_MongoDB(_) => Self::INTERNAL_SERVER_ERROR,
+            | super::Error::_Integration(_) => Self::INTERNAL_SERVER_ERROR,
         }
     }
 }

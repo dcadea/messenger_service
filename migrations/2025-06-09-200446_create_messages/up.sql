@@ -5,7 +5,7 @@ CREATE TABLE messages (
     content TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL,
     seen BOOLEAN NOT NULL DEFAULT FALSE,
-    FOREIGN KEY (talk_id) REFERENCES talks (id),
+    FOREIGN KEY (talk_id) REFERENCES talks (id) ON DELETE CASCADE,
     FOREIGN KEY (owner) REFERENCES users (id)
 );
 

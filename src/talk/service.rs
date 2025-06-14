@@ -11,7 +11,7 @@ use crate::integration::storage::Blob;
 use crate::integration::{cache, storage};
 use crate::message::model::LastMessage;
 use crate::talk::Picture;
-use crate::{auth, contact, event, message, talk, user};
+use crate::{auth, contact, event, talk, user};
 
 #[async_trait]
 pub trait TalkService {
@@ -25,7 +25,7 @@ pub trait TalkService {
         members: &[user::Id],
     ) -> super::Result<TalkDto>;
 
-    async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk>;
+    fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk>;
 
     async fn find_by_id_and_user_id(
         &self,
@@ -53,7 +53,7 @@ pub trait TalkService {
         msg: Option<&LastMessage>,
     ) -> super::Result<()>;
 
-    async fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()>;
+    fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -63,7 +63,6 @@ pub struct TalkServiceImpl {
     user_service: user::Service,
     contact_service: contact::Service,
     event_service: event::Service,
-    message_repo: message::Repository,
     redis: cache::Redis,
     s3: storage::S3,
 }
@@ -75,7 +74,6 @@ impl TalkServiceImpl {
         user_service: user::Service,
         contact_service: contact::Service,
         event_service: event::Service,
-        message_repo: message::Repository,
         redis: cache::Redis,
         s3: storage::S3,
     ) -> Self {
@@ -85,7 +83,6 @@ impl TalkServiceImpl {
             user_service,
             contact_service,
             event_service,
-            message_repo,
             redis,
             s3,
         }
@@ -102,7 +99,7 @@ impl TalkService for TalkServiceImpl {
         assert_ne!(auth_id, recipient);
 
         let members = [auth_id.clone(), recipient.clone()];
-        if self.repo.exists(&members).await? {
+        if self.repo.exists(&members)? {
             return Err(talk::Error::AlreadyExists);
         }
 
@@ -120,7 +117,7 @@ impl TalkService for TalkServiceImpl {
         }
 
         let talk = Talk::from(Details::Chat { members });
-        self.repo.create(&talk).await?;
+        self.repo.create(&talk)?;
 
         let talk_dto = self.talk_to_dto(talk, auth_id).await;
 
@@ -164,7 +161,7 @@ impl TalkService for TalkServiceImpl {
             members: members.into(),
         });
 
-        self.repo.create(&talk).await?;
+        self.repo.create(&talk)?;
         self.s3
             .generate(Blob::Png(&talk.id().0.to_string()))
             .map_err(talk::Error::from)
@@ -188,8 +185,8 @@ impl TalkService for TalkServiceImpl {
         Ok(talk_dto)
     }
 
-    async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk> {
-        let talk = self.repo.find_by_id(id).await?;
+    fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk> {
+        let talk = self.repo.find_by_id(id)?;
         Ok(talk)
     }
 
@@ -198,7 +195,7 @@ impl TalkService for TalkServiceImpl {
         id: &talk::Id,
         auth_id: &user::Id,
     ) -> super::Result<TalkDto> {
-        let talk = self.repo.find_by_id_and_user_id(id, auth_id).await?;
+        let talk = self.repo.find_by_id_and_user_id(id, auth_id)?;
         let dto = self.talk_to_dto(talk, auth_id).await;
         Ok(dto)
     }
@@ -209,7 +206,7 @@ impl TalkService for TalkServiceImpl {
         kind: &Kind,
     ) -> super::Result<Vec<TalkDto>> {
         let auth_id = auth_user.id();
-        let talks = self.repo.find_by_user_id_and_kind(auth_id, kind).await?;
+        let talks = self.repo.find_by_user_id_and_kind(auth_id, kind)?;
 
         let talk_dtos = join_all(
             talks
@@ -238,13 +235,7 @@ impl TalkService for TalkServiceImpl {
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
         self.validator.check_member(id, auth_user).await?;
 
-        // TODO: check if the user is the owner of the group
-        self.repo.delete(id).await?;
-        if let Err(e) = self.message_repo.delete_by_talk_id(id) {
-            error!("failed to delete talk: {e:?}");
-            return Err(talk::Error::NotDeleted);
-            // TODO: tx rollback?
-        }
+        self.repo.delete(id)?;
 
         Ok(())
     }
@@ -254,7 +245,7 @@ impl TalkService for TalkServiceImpl {
         id: &talk::Id,
         msg: Option<&LastMessage>,
     ) -> super::Result<()> {
-        self.repo.update_last_message(id, msg).await?;
+        self.repo.update_last_message(id, msg)?;
 
         if let Some(last_msg) = msg {
             let recipients = self.find_recipients(id, last_msg.owner()).await?;
@@ -277,8 +268,8 @@ impl TalkService for TalkServiceImpl {
         Ok(())
     }
 
-    async fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()> {
-        self.repo.mark_as_seen(id).await
+    fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()> {
+        self.repo.mark_as_seen(id)
     }
 }
 
@@ -370,7 +361,7 @@ async fn find_members(
     match members {
         Some(m) if !m.is_empty() => Ok(m),
         _ => {
-            let talk = repo.find_by_id(talk_id).await?;
+            let talk = repo.find_by_id(talk_id)?;
             let m = match talk.details().clone() {
                 Details::Chat { members } => members.into(),
                 Details::Group { members, .. } => HashSet::from_iter(members),

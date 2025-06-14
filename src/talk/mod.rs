@@ -61,7 +61,7 @@ pub enum Kind {
 }
 
 impl Kind {
-    const fn as_str(&self) -> &str {
+    const fn _as_str(&self) -> &str {
         match self {
             Self::Chat => "chat",
             Self::Group => "group",
@@ -114,6 +114,4 @@ pub enum Error {
     _User(#[from] user::Error),
     #[error(transparent)]
     _Integration(#[from] integration::Error),
-    #[error(transparent)]
-    _MongoDB(#[from] mongodb::error::Error),
 }

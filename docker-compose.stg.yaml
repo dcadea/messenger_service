@@ -31,28 +31,16 @@ services:
       REQUIRED_CLAIMS: iss,sub,aud,exp,permissions
 
       REDIS_HOST: awg.stg.redis
-      MONGO_HOST: awg.stg.mongo
-      MONGO_DB: stg-messenger
+      POSTGRES_HOST: awg.stg.postgres
+      POSTGRES_DB: stg-messenger
       NATS_HOST: awg.stg.nats
     depends_on:
-      mongo:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       nats:
         condition: service_healthy
-
-  mongo:
-    image: mongo:latest
-    container_name: awg.stg.mongo
-    restart: always
-    volumes:
-      - ./docker-volumes/stg/mongo/data:/data
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   redis:
     image: redis/redis-stack-server:latest

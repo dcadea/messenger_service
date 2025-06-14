@@ -20,30 +20,20 @@ services:
       REQUIRED_CLAIMS: iss,sub,aud,exp,permissions
 
       REDIS_HOST: awg.redis
-      MONGO_HOST: awg.mongo
-      MONGO_DB: messenger
+      POSTGRES_HOST: awg.postgres
+      POSTGRES_DB: messenger
       NATS_HOST: awg.nats
     volumes:
       - ./conf/prod/messenger_service_cert.pem:/etc/ssl/certs/messenger_service_cert.pem
       - ./conf/prod/messenger_service.pem:/etc/ssl/private/messenger_service.pem
       - ./docker-volumes/prod/messenger_service/service.log:/usr/local/bin/service.log
     depends_on:
-      mongo:
+      postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       nats:
         condition: service_healthy
-
-  mongo:
-    image: mongo:latest
-    container_name: awg.mongo
-    restart: always
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   redis:
     image: redis/redis-stack-server:latest

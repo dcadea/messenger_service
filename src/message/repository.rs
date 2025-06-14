@@ -42,8 +42,6 @@ pub trait MessageRepository {
 
     fn delete(&self, m_id: &Id) -> super::Result<bool>;
 
-    fn delete_by_talk_id(&self, t_id: &talk::Id) -> super::Result<usize>;
-
     fn mark_as_seen(&self, ids: &[Id]) -> super::Result<usize>;
 }
 
@@ -179,14 +177,6 @@ impl MessageRepository for PgMessageRepository {
         let deleted_count = delete(messages.find(m_id.0)).execute(&mut conn)?;
 
         Ok(deleted_count > 0)
-    }
-
-    fn delete_by_talk_id(&self, t_id: &talk::Id) -> super::Result<usize> {
-        let mut conn = self.pool.get()?;
-
-        let deleted_count = delete(messages.filter(talk_id.eq(t_id.0))).execute(&mut conn)?;
-
-        Ok(deleted_count)
     }
 
     fn mark_as_seen(&self, ids: &[Id]) -> super::Result<usize> {

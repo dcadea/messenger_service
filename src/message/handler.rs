@@ -58,7 +58,7 @@ pub(super) mod api {
     #[derive(Deserialize)]
     pub struct FindAllParams {
         talk_id: Option<talk::Id>,
-        end_time: Option<i64>,
+        _end_time: Option<i64>,
         limit: Option<i64>,
     }
 
@@ -85,7 +85,7 @@ pub(super) mod api {
             .await?;
 
         if seen_qty > 0 {
-            talk_service.mark_as_seen(&talk_id).await?;
+            talk_service.mark_as_seen(&talk_id)?;
         }
 
         Ok(markup::MessageList::append(&msgs, auth_user.id()).render())
@@ -120,7 +120,7 @@ pub(super) mod api {
         talk_service: State<talk::Service>,
     ) -> crate::Result<()> {
         if let Some(deleted_msg) = message_service.delete(&auth_user, &id).await? {
-            let is_last = message_service.is_last_message(&deleted_msg).await?;
+            let is_last = message_service.is_last_message(&deleted_msg)?;
             if is_last {
                 let talk_id = deleted_msg.talk_id();
                 let last_msg = message_service

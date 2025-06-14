@@ -9,7 +9,7 @@ use crate::event::service::EventServiceImpl;
 use crate::integration::storage;
 use crate::message::repository::PgMessageRepository;
 use crate::message::service::MessageServiceImpl;
-use crate::talk::repository::MongoTalkRepository;
+use crate::talk::repository::PgTalkRepository;
 use crate::talk::service::{TalkServiceImpl, TalkValidatorImpl};
 use crate::user::repository::PgUserRepository;
 use crate::user::service::UserServiceImpl;
@@ -34,7 +34,6 @@ pub struct AppState {
 
 impl AppState {
     pub async fn init(cfg: integration::Config) -> crate::Result<Self> {
-        let db = cfg.mongo().connect();
         let pg = cfg.pg().connect();
         let redis = cfg.redis().connect().await;
         let pubsub = cfg.pubsub().connect().await;
@@ -54,7 +53,7 @@ impl AppState {
             redis.clone(),
         ));
 
-        let talk_repo = Arc::new(MongoTalkRepository::new(&db));
+        let talk_repo = Arc::new(PgTalkRepository::new(pg.clone()));
         let message_repo = Arc::new(PgMessageRepository::new(pg));
 
         let talk_validator = Arc::new(TalkValidatorImpl::new(talk_repo.clone(), redis.clone()));
@@ -64,7 +63,6 @@ impl AppState {
             user_service.clone(),
             contact_service.clone(),
             event_service.clone(),
-            message_repo.clone(),
             redis,
             s3.clone(),
         ));

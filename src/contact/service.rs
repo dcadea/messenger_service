@@ -40,12 +40,15 @@ pub trait ContactService {
 #[derive(Clone)]
 pub struct ContactServiceImpl {
     repo: Repository,
-    redis: cache::Redis,
+    _redis: cache::Redis,
 }
 
 impl ContactServiceImpl {
     pub fn new(repo: Repository, redis: cache::Redis) -> Self {
-        Self { repo, redis }
+        Self {
+            repo,
+            _redis: redis,
+        }
     }
 }
 

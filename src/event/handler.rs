@@ -190,7 +190,7 @@ pub mod ws {
                                     continue;
                                 }
 
-                                if let Err(e) = talk_service.mark_as_seen(&talk_id).await {
+                                if let Err(e) = talk_service.mark_as_seen(&talk_id) {
                                     error!("Failed to mark talk as seen: {e}");
                                 }
                             }

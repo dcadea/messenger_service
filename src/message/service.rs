@@ -50,7 +50,7 @@ pub trait MessageService {
 
     async fn mark_as_seen(&self, auth_id: &user::Id, msgs: &[MessageDto]) -> super::Result<usize>;
 
-    async fn is_last_message(&self, msg: &MessageDto) -> super::Result<bool>;
+    fn is_last_message(&self, msg: &MessageDto) -> super::Result<bool>;
 }
 
 #[derive(Clone)]
@@ -253,11 +253,10 @@ impl MessageService for MessageServiceImpl {
         Ok(seen_qty)
     }
 
-    async fn is_last_message(&self, msg: &MessageDto) -> super::Result<bool> {
+    fn is_last_message(&self, msg: &MessageDto) -> super::Result<bool> {
         let talk = self
             .talk_service
             .find_by_id(msg.talk_id())
-            .await
             .map_err(|e| match e {
                 talk::Error::NotFound(_) => message::Error::NotFound(Some(msg.id().clone())),
                 e => message::Error::Unexpected(e.to_string()),

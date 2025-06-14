@@ -19,15 +19,15 @@ services:
   #     REQUIRED_CLAIMS: iss,sub,aud,exp,permissions
 
   #     REDIS_HOST: awg.dev.redis
-  #     MONGO_HOST: awg.dev.mongo
-  #     MONGO_DB: dev-messenger
+  #     POSTGRES_HOST: awg.dev.postgres
+  #     POSTGRES_DB: dev-messenger
   #     NATS_HOST: awg.dev.nats
   #   volumes:
   #     - ./docker-volumes/dev/messenger_service/service.log:/usr/local/bin/service.log
   #   depends_on:
   #     postgres:
   #       condition: service_healthy
-  #     mongo:
+  #     postgres:
   #       condition: service_healthy
   #     redis:
   #       condition: service_healthy
@@ -36,37 +36,13 @@ services:
   #     minio:
   #       condition: service_healthy
 
-  mongo:
-    image: mongo:latest
-    container_name: awg.dev.mongo
-    ports:
-      - 27017:27017
-    volumes:
-      - ./docker-volumes/dev/mongo/data:/data
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  mongo-express:
-    image: mongo-express:latest
-    container_name: awg.dev.mongo-express
-    ports:
-      - 8081:8081
-    environment:
-      ME_CONFIG_MONGODB_URL: mongodb://awg.dev.mongo:27017/
-    depends_on:
-      mongo:
-        condition: service_healthy
-
   postgres:
       image: postgres:alpine
       container_name: awg.dev.postgres
       ports:
         - 5432:5432
       environment:
-        POSTGRES_DB: messenger
+        POSTGRES_DB: dev-messenger
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
       volumes:

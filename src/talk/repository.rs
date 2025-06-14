@@ -1,151 +1,135 @@
-use async_trait::async_trait;
-use futures::TryStreamExt;
-use mongodb::bson::doc;
+use diesel::{PgConnection, r2d2::ConnectionManager};
 
 use super::model::Talk;
 use crate::{message::model::LastMessage, talk, user};
 
-const TALKS_COLLECTION: &str = "talks";
-
-#[async_trait]
 pub trait TalkRepository {
-    async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk>;
+    fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk>;
 
-    async fn find_by_user_id_and_kind(
+    fn find_by_user_id_and_kind(
         &self,
         user_id: &user::Id,
         kind: &talk::Kind,
     ) -> super::Result<Vec<Talk>>;
 
-    async fn find_by_id_and_user_id(
-        &self,
-        id: &talk::Id,
-        user_id: &user::Id,
-    ) -> super::Result<Talk>;
+    fn find_by_id_and_user_id(&self, id: &talk::Id, user_id: &user::Id) -> super::Result<Talk>;
 
-    async fn create(&self, talk: &Talk) -> super::Result<()>;
+    fn create(&self, talk: &Talk) -> super::Result<()>;
 
-    async fn delete(&self, id: &talk::Id) -> super::Result<bool>;
+    fn delete(&self, id: &talk::Id) -> super::Result<bool>;
 
-    async fn exists(&self, members: &[user::Id; 2]) -> super::Result<bool>;
+    fn exists(&self, members: &[user::Id; 2]) -> super::Result<bool>;
 
-    async fn update_last_message(
-        &self,
-        id: &talk::Id,
-        msg: Option<&LastMessage>,
-    ) -> super::Result<()>;
+    fn update_last_message(&self, id: &talk::Id, msg: Option<&LastMessage>) -> super::Result<()>;
 
-    async fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()>;
+    fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()>;
 }
 
 #[derive(Clone)]
-pub struct MongoTalkRepository {
-    col: mongodb::Collection<Talk>,
+pub struct PgTalkRepository {
+    _pool: r2d2::Pool<ConnectionManager<PgConnection>>,
 }
 
-impl MongoTalkRepository {
-    pub fn new(db: &mongodb::Database) -> Self {
-        Self {
-            col: db.collection(TALKS_COLLECTION),
-        }
+impl PgTalkRepository {
+    pub fn new(pool: r2d2::Pool<ConnectionManager<PgConnection>>) -> Self {
+        Self { _pool: pool }
     }
 }
 
-#[async_trait]
-impl TalkRepository for MongoTalkRepository {
-    async fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk> {
-        let talk = self.col.find_one(doc! { "_id": id }).await?;
+impl TalkRepository for PgTalkRepository {
+    fn find_by_id(&self, _id: &talk::Id) -> super::Result<Talk> {
+        // let talk = self.col.find_one(doc! { "_id": id }).await?;
 
-        talk.ok_or(talk::Error::NotFound(Some(id.to_owned())))
+        // talk.ok_or(talk::Error::NotFound(Some(id.to_owned())))
+        todo!()
     }
 
-    async fn find_by_user_id_and_kind(
+    fn find_by_user_id_and_kind(
         &self,
         _user_id: &user::Id,
-        kind: &talk::Kind,
+        _kind: &talk::Kind,
     ) -> super::Result<Vec<Talk>> {
-        let cursor = self
-            .col
-            .find(doc! {
-                "kind": kind.as_str(),
-                // "details.members": sub,
-            })
-            .sort(doc! {"last_message.timestamp": -1})
-            .await?;
+        // let cursor = self
+        //     .col
+        //     .find(doc! {
+        //         "kind": kind.as_str(),
+        //         // "details.members": sub,
+        //     })
+        //     .sort(doc! {"last_message.timestamp": -1})
+        //     .await?;
 
-        let talks: Vec<Talk> = cursor.try_collect().await?;
+        // let talks: Vec<Talk> = cursor.try_collect().await?;
 
-        Ok(talks)
+        // Ok(talks)
+        todo!()
     }
 
-    async fn find_by_id_and_user_id(
-        &self,
-        id: &talk::Id,
-        _user_id: &user::Id,
-    ) -> super::Result<Talk> {
-        let talk = self
-            .col
-            .find_one(doc! {
-                "_id": id,
-                // "details.members": sub
-            })
-            .await?;
+    fn find_by_id_and_user_id(&self, _id: &talk::Id, _user_id: &user::Id) -> super::Result<Talk> {
+        // let talk = self
+        //     .col
+        //     .find_one(doc! {
+        //         "_id": id,
+        //         // "details.members": sub
+        //     })
+        //     .await?;
 
-        talk.ok_or(talk::Error::NotFound(Some(id.to_owned())))
+        // talk.ok_or(talk::Error::NotFound(Some(id.to_owned())))
+        todo!()
     }
 
-    async fn create(&self, talk: &Talk) -> super::Result<()> {
-        self.col.insert_one(talk).await?;
+    fn create(&self, _talk: &Talk) -> super::Result<()> {
+        // self.col.insert_one(talk).await?;
 
-        Ok(())
+        // Ok(())
+        todo!()
     }
 
-    async fn delete(&self, id: &talk::Id) -> super::Result<bool> {
-        let res = self.col.delete_one(doc! {"_id": id}).await?;
+    fn delete(&self, _id: &talk::Id) -> super::Result<bool> {
+        // let res = self.col.delete_one(doc! {"_id": id}).await?;
 
-        Ok(res.deleted_count > 0)
+        // Ok(res.deleted_count > 0)
+        todo!()
     }
 
-    async fn exists(&self, _members: &[user::Id; 2]) -> super::Result<bool> {
-        let count = self
-            .col
-            .count_documents(doc! { /*"details.members": { "$all": members.to_vec() }*/ })
-            .await?;
+    fn exists(&self, _members: &[user::Id; 2]) -> super::Result<bool> {
+        // let count = self
+        //     .col
+        //     .count_documents(doc! { /*"details.members": { "$all": members.to_vec() }*/ })
+        //     .await?;
 
-        Ok(count > 0)
+        // Ok(count > 0)
+        todo!()
     }
 
-    async fn update_last_message(
-        &self,
-        id: &talk::Id,
-        _msg: Option<&LastMessage>,
-    ) -> super::Result<()> {
-        self.col
-            .update_one(
-                doc! { "_id": id },
-                doc! {"$set": {
-                    /*"last_message": msg,*/
-                }},
-            )
-            .await?;
-        Ok(())
+    fn update_last_message(&self, _id: &talk::Id, _msg: Option<&LastMessage>) -> super::Result<()> {
+        // self.col
+        //     .update_one(
+        //         doc! { "_id": id },
+        //         doc! {"$set": {
+        //             /*"last_message": msg,*/
+        //         }},
+        //     )
+        //     .await?;
+        // Ok(())
+        todo!()
     }
 
-    async fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()> {
-        self.col
-            .update_one(
-                doc! {
-                    "$and": [
-                        {"_id": id },
-                        { "last_message.seen": { "$exists": true }}
-                    ]
-                },
-                doc! {"$set": {
-                    "last_message.seen": true,
-                }},
-            )
-            .await?;
-        Ok(())
+    fn mark_as_seen(&self, _id: &talk::Id) -> super::Result<()> {
+        // self.col
+        //     .update_one(
+        //         doc! {
+        //             "$and": [
+        //                 {"_id": id },
+        //                 { "last_message.seen": { "$exists": true }}
+        //             ]
+        //         },
+        //         doc! {"$set": {
+        //             "last_message.seen": true,
+        //         }},
+        //     )
+        //     .await?;
+        // Ok(())
+        todo!()
     }
 }
 
