@@ -216,7 +216,7 @@ impl Render for TalkDto {
                     (user::model::OnlineStatus::new(recipient.clone(), false))
                 }
                 img ."w-8 h-8 rounded-full"
-                    src=(self.picture()) alt="Talk avatar" {}
+                    src=(self.picture().as_str()) alt="Talk avatar" {}
 
                 span ."talk-recipient font-bold mx-2" { (self.name()) }
 

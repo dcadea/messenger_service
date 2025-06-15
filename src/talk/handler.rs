@@ -12,8 +12,11 @@ impl From<super::Error> for StatusCode {
             | super::Error::UnsupportedStatus => Self::BAD_REQUEST,
             super::Error::NotCreated
             | super::Error::NotDeleted
+            | super::Error::UnsupportedKind(_)
             | super::Error::_User(_)
-            | super::Error::_Integration(_) => Self::INTERNAL_SERVER_ERROR,
+            | super::Error::_Integration(_)
+            | super::Error::_R2d2(_)
+            | super::Error::_Diesel(_) => Self::INTERNAL_SERVER_ERROR,
         }
     }
 }

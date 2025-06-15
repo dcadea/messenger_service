@@ -4,6 +4,7 @@ use axum::{
     Router,
     routing::{delete, get, post},
 };
+use diesel::{deserialize::FromSqlRow, expression::AsExpression};
 use log::error;
 use repository::TalkRepository;
 use serde::{Deserialize, Serialize};
@@ -11,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use service::{TalkService, TalkValidator};
 use uuid::Uuid;
 
-use crate::{integration, state::AppState, user};
+use crate::{integration, schema::sql_types, state::AppState, user};
 
 mod handler;
 pub mod markup;
@@ -54,7 +55,8 @@ impl Id {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, AsExpression, FromSqlRow)]
+#[diesel(sql_type = sql_types::TalkKind)]
 pub enum Kind {
     Chat,
     Group,
@@ -69,7 +71,14 @@ impl Kind {
     }
 }
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Picture(String);
+
+impl Picture {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
 
 impl From<Id> for Picture {
     fn from(id: Id) -> Self {
@@ -109,9 +118,15 @@ pub enum Error {
     NonExistingUser(user::Id),
     #[error("contact is missing or in non-accepted status")]
     UnsupportedStatus,
+    #[error("unsupported talk kind: {0:?}")]
+    UnsupportedKind(String),
 
     #[error(transparent)]
     _User(#[from] user::Error),
     #[error(transparent)]
     _Integration(#[from] integration::Error),
+    #[error(transparent)]
+    _R2d2(#[from] r2d2::Error),
+    #[error(transparent)]
+    _Diesel(#[from] diesel::result::Error),
 }

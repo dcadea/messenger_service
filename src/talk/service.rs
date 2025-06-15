@@ -11,6 +11,7 @@ use crate::integration::storage::Blob;
 use crate::integration::{cache, storage};
 use crate::message::model::LastMessage;
 use crate::talk::Picture;
+use crate::talk::model::NewTalk;
 use crate::{auth, contact, event, talk, user};
 
 #[async_trait]
@@ -24,8 +25,6 @@ pub trait TalkService {
         name: &str,
         members: &[user::Id],
     ) -> super::Result<TalkDto>;
-
-    fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk>;
 
     async fn find_by_id_and_user_id(
         &self,
@@ -116,10 +115,21 @@ impl TalkService for TalkServiceImpl {
             return Err(talk::Error::UnsupportedStatus);
         }
 
-        let talk = Talk::from(Details::Chat { members });
-        self.repo.create(&talk)?;
+        let id = self
+            .repo
+            .create(&NewTalk::new(&Details::Chat { members }))?;
 
-        let talk_dto = self.talk_to_dto(talk, auth_id).await;
+        let r = self.user_service.find_one(&recipient).await?;
+        let talk_dto = TalkDto::new(
+            id,
+            Picture::from(r.picture().clone()),
+            r.name(),
+            DetailsDto::Chat {
+                sender: auth_id.clone(),
+                recipient: r.id().clone(),
+            },
+            None,
+        );
 
         self.event_service
             .publish(
@@ -155,19 +165,28 @@ impl TalkService for TalkServiceImpl {
             }
         }
 
-        let talk = Talk::from(Details::Group {
+        let details = Details::Group {
             name: name.into(),
             owner: auth_id.clone(),
             members: members.into(),
-        });
+        };
 
-        self.repo.create(&talk)?;
+        let id = self.repo.create(&NewTalk::new(&details))?;
         self.s3
-            .generate(Blob::Png(&talk.id().0.to_string()))
+            .generate(Blob::Png(&id.0.to_string()))
             .map_err(talk::Error::from)
             .await?;
 
-        let talk_dto = self.talk_to_dto(talk, auth_id).await;
+        let talk_dto = TalkDto::new(
+            id.clone(),
+            Picture::from(id.clone()),
+            name,
+            DetailsDto::Group {
+                owner: auth_id.clone(),
+                sender: auth_id.clone(),
+            },
+            None,
+        );
 
         for m in members {
             if m.eq(auth_id) {
@@ -185,19 +204,15 @@ impl TalkService for TalkServiceImpl {
         Ok(talk_dto)
     }
 
-    fn find_by_id(&self, id: &talk::Id) -> super::Result<Talk> {
-        let talk = self.repo.find_by_id(id)?;
-        Ok(talk)
-    }
-
     async fn find_by_id_and_user_id(
         &self,
         id: &talk::Id,
         auth_id: &user::Id,
     ) -> super::Result<TalkDto> {
         let talk = self.repo.find_by_id_and_user_id(id, auth_id)?;
-        let dto = self.talk_to_dto(talk, auth_id).await;
-        Ok(dto)
+        // let dto = self.talk_to_dto(talk, auth_id).await;
+        // Ok(dto)
+        todo!()
     }
 
     async fn find_all_by_kind(
@@ -275,47 +290,48 @@ impl TalkService for TalkServiceImpl {
 
 impl TalkServiceImpl {
     async fn talk_to_dto(&self, t: Talk, auth_id: &user::Id) -> TalkDto {
-        let (name, picture, details) = match t.details().clone() {
-            Details::Chat { members } => {
-                assert!(members.contains(auth_id));
+        // let (name, picture, details) = match t.details().clone() {
+        //     Details::Chat { members } => {
+        //         assert!(members.contains(auth_id));
 
-                let (sender, recipient) = {
-                    if members[0].eq(auth_id) {
-                        (members[0].clone(), members[1].clone())
-                    } else {
-                        (members[1].clone(), members[0].clone())
-                    }
-                };
+        //         let (sender, recipient) = {
+        //             if members[0].eq(auth_id) {
+        //                 (members[0].clone(), members[1].clone())
+        //             } else {
+        //                 (members[1].clone(), members[0].clone())
+        //             }
+        //         };
 
-                let r = self
-                    .user_service
-                    .find_one(&recipient)
-                    .await
-                    .expect("recipient info should be present");
+        //         let r = self
+        //             .user_service
+        //             .find_one(&recipient)
+        //             .await
+        //             .expect("recipient info should be present");
 
-                (
-                    r.name().to_string(),
-                    Picture::from(r.picture().clone()),
-                    DetailsDto::Chat { sender, recipient },
-                )
-            }
-            Details::Group { name, owner, .. } => (
-                name,
-                Picture::from(t.id().clone()),
-                DetailsDto::Group {
-                    owner,
-                    sender: auth_id.clone(),
-                },
-            ),
-        };
+        //         (
+        //             r.name().to_string(),
+        //             Picture::from(r.picture().clone()),
+        //             DetailsDto::Chat { sender, recipient },
+        //         )
+        //     }
+        //     Details::Group { name, owner, .. } => (
+        //         name,
+        //         Picture::from(t.id().clone()),
+        //         DetailsDto::Group {
+        //             owner,
+        //             sender: auth_id.clone(),
+        //         },
+        //     ),
+        // };
 
-        TalkDto::new(
-            t.id().clone(),
-            picture,
-            name,
-            details,
-            t.last_message().cloned(),
-        )
+        // TalkDto::new(
+        //     t.id().clone(),
+        //     picture,
+        //     name,
+        //     details,
+        //     t.last_message().cloned(),
+        // )
+        todo!()
     }
 }
 
@@ -358,19 +374,21 @@ async fn find_members(
     let talk_key = cache::Key::Talk(talk_id);
     let members = redis.smembers::<HashSet<user::Id>>(talk_key.clone()).await;
 
-    match members {
-        Some(m) if !m.is_empty() => Ok(m),
-        _ => {
-            let talk = repo.find_by_id(talk_id)?;
-            let m = match talk.details().clone() {
-                Details::Chat { members } => members.into(),
-                Details::Group { members, .. } => HashSet::from_iter(members),
-            };
+    // TODO: write a proper db query
+    // match members {
+    //     Some(m) if !m.is_empty() => Ok(m),
+    //     _ => {
+    //         let talk = repo.find_by_id(talk_id)?;
+    //         let m = match talk.details().clone() {
+    //             Details::Chat { members } => members.into(),
+    //             Details::Group { members, .. } => HashSet::from_iter(members),
+    //         };
 
-            redis.sadd(talk_key.clone(), &m).await;
-            redis.expire(talk_key).await;
+    //         redis.sadd(talk_key.clone(), &m).await;
+    //         redis.expire(talk_key).await;
 
-            Ok(m)
-        }
-    }
+    //         Ok(m)
+    //     }
+    // }
+    todo!()
 }

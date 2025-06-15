@@ -254,19 +254,21 @@ impl MessageService for MessageServiceImpl {
     }
 
     fn is_last_message(&self, msg: &MessageDto) -> super::Result<bool> {
-        let talk = self
-            .talk_service
-            .find_by_id(msg.talk_id())
-            .map_err(|e| match e {
-                talk::Error::NotFound(_) => message::Error::NotFound(Some(msg.id().clone())),
-                e => message::Error::Unexpected(e.to_string()),
-            })?;
+        // TODO: write proper SQL
+        // let talk = self
+        //     .talk_service
+        //     .find_by_id(msg.talk_id())
+        //     .map_err(|e| match e {
+        //         talk::Error::NotFound(_) => message::Error::NotFound(Some(msg.id().clone())),
+        //         e => message::Error::Unexpected(e.to_string()),
+        //     })?;
 
-        if let Some(last_message) = talk.last_message() {
-            return Ok(last_message.id().eq(msg.id()));
-        }
+        // if let Some(last_message) = talk.last_message() {
+        //     return Ok(last_message.id().eq(msg.id()));
+        // }
 
-        Ok(false)
+        // Ok(false)
+        todo!()
     }
 }
 
