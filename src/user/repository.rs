@@ -10,22 +10,22 @@ use diesel::r2d2::ConnectionManager;
 
 use crate::schema::users::dsl::*;
 
-use super::Id;
 use super::Nickname;
 use super::Sub;
 use super::model::NewUser;
 use super::model::User;
+use crate::user;
 
 pub trait UserRepository {
-    fn insert(&self, u: &NewUser) -> super::Result<()>;
+    fn create(&self, u: &NewUser) -> super::Result<()>;
 
-    fn find_by_id(&self, u_id: &Id) -> super::Result<User>;
+    fn find_by_id(&self, u_id: &user::Id) -> super::Result<User>;
 
     fn find_by_sub(&self, s: &Sub) -> super::Result<User>;
 
-    fn exists(&self, u_id: &Id) -> super::Result<bool>;
+    fn exists(&self, u_id: &user::Id) -> super::Result<bool>;
 
-    fn search_by_nickname_excluding(
+    fn find_by_nickname_like_and_excluding(
         &self,
         n: &Nickname,
         exclude: &Nickname,
@@ -43,7 +43,7 @@ impl PgUserRepository {
 }
 
 impl UserRepository for PgUserRepository {
-    fn insert(&self, u: &NewUser) -> super::Result<()> {
+    fn create(&self, u: &NewUser) -> super::Result<()> {
         let mut conn = self.pool.get()?;
 
         let _ = insert_into(users)
@@ -54,7 +54,7 @@ impl UserRepository for PgUserRepository {
         Ok(())
     }
 
-    fn find_by_id(&self, u_id: &Id) -> super::Result<User> {
+    fn find_by_id(&self, u_id: &user::Id) -> super::Result<User> {
         let mut conn = self.pool.get()?;
 
         let u = users
@@ -76,7 +76,7 @@ impl UserRepository for PgUserRepository {
         Ok(u)
     }
 
-    fn exists(&self, u_id: &Id) -> super::Result<bool> {
+    fn exists(&self, u_id: &user::Id) -> super::Result<bool> {
         let mut conn = self.pool.get()?;
 
         let count = users.find(u_id.0).count().get_result::<i64>(&mut conn)?;
@@ -84,7 +84,7 @@ impl UserRepository for PgUserRepository {
         Ok(count > 0)
     }
 
-    fn search_by_nickname_excluding(
+    fn find_by_nickname_like_and_excluding(
         &self,
         n: &Nickname,
         exclude: &Nickname,
