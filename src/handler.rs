@@ -9,7 +9,7 @@ use crate::{
 use axum::{Extension, extract::State};
 use maud::{Markup, Render};
 
-use crate::{talk, user::model::UserInfo};
+use crate::{talk, user::model::UserDto};
 
 // first shown component is chats page
 pub async fn home() -> crate::Result<Wrappable> {
@@ -50,11 +50,11 @@ pub async fn contacts_tab(
 ) -> crate::Result<Markup> {
     let contacts = contact_service.find_by_user_id(auth_user.id()).await?;
 
-    let contact_infos: Vec<(ContactDto, UserInfo)> = {
-        let mut ci: Vec<(ContactDto, UserInfo)> = Vec::with_capacity(contacts.len());
+    let contact_infos: Vec<(ContactDto, UserDto)> = {
+        let mut ci: Vec<(ContactDto, UserDto)> = Vec::with_capacity(contacts.len());
         for c in contacts {
-            let ui = user_service.find_one(c.recipient()).await?;
-            ci.push((c, ui));
+            let u = user_service.find_one(c.recipient()).await?;
+            ci.push((c, u));
         }
         ci
     };

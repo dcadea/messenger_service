@@ -6,7 +6,7 @@ use maud::{Markup, Render, html};
 use crate::{
     auth,
     contact::{self, Status, Transition},
-    user::model::UserInfo,
+    user::model::UserDto,
 };
 
 use super::model::ContactDto;
@@ -19,13 +19,13 @@ impl Display for super::Id {
 
 pub struct ContactInfos<'a> {
     pub auth_user: &'a auth::User,
-    pub contact_infos: &'a [(ContactDto, UserInfo)],
+    pub contact_infos: &'a [(ContactDto, UserDto)],
 }
 
 impl<'a> ContactInfos<'a> {
     pub const fn new(
         auth_user: &'a auth::User,
-        contact_infos: &'a [(ContactDto, UserInfo)],
+        contact_infos: &'a [(ContactDto, UserDto)],
     ) -> Self {
         Self {
             auth_user,
@@ -44,12 +44,12 @@ impl Render for ContactInfos<'_> {
                 h2.text-2xl { "Contacts" }
             }
             ul ."flex flex-col space-y-2" {
-                @for (c, ui) in self.contact_infos {
+                @for (c, u) in self.contact_infos {
                     li .(CONTACT_ITEM_CLASS) {
                         img ."w-9 h-9 rounded-full float-left mr-2"
-                            src=(ui.picture())
+                            src=(u.picture())
                             alt="User avatar" {}
-                        (ui.name())
+                        (u.name())
 
                         (Icons::new(c.id(), c.status(), self.auth_user))
                     }

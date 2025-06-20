@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use log::error;
 
 use crate::integration::cache;
-use crate::user::model::UserInfo;
+use crate::user::model::UserDto;
 use crate::{auth, contact, event, user};
 
 use super::model::{NewUser, OnlineStatus};
@@ -10,11 +10,11 @@ use super::{Nickname, Picture, Repository, Sub};
 
 #[async_trait]
 pub trait UserService {
-    fn project(&self, user_info: &UserInfo) -> super::Result<bool>;
+    fn project(&self, user_info: &auth::UserInfo) -> super::Result<user::Id>;
 
-    async fn find_one(&self, id: &user::Id) -> super::Result<UserInfo>;
+    async fn find_one(&self, id: &user::Id) -> super::Result<UserDto>;
 
-    async fn find_by_sub(&self, sub: &Sub) -> super::Result<UserInfo>;
+    async fn find_by_sub(&self, sub: &Sub) -> super::Result<UserDto>;
 
     async fn find_name(&self, id: &user::Id) -> super::Result<String>;
 
@@ -22,7 +22,7 @@ pub trait UserService {
 
     fn exists(&self, id: &user::Id) -> super::Result<bool>;
 
-    fn search(&self, nickname: &Nickname, auth_user: &auth::User) -> super::Result<Vec<UserInfo>>;
+    fn search(&self, nickname: &Nickname, auth_user: &auth::User) -> super::Result<Vec<UserDto>>;
 
     async fn notify_online(&self, id: &user::Id);
 
@@ -55,24 +55,29 @@ impl UserServiceImpl {
 
 #[async_trait]
 impl UserService for UserServiceImpl {
-    fn project(&self, u: &UserInfo) -> super::Result<bool> {
-        self.repo.create(&NewUser::from(u)).map(|_| true)
+    fn project(&self, u: &auth::UserInfo) -> super::Result<user::Id> {
+        self.repo.create(&NewUser::from(u))
     }
 
-    async fn find_one(&self, id: &user::Id) -> super::Result<UserInfo> {
+    async fn find_one(&self, id: &user::Id) -> super::Result<UserDto> {
         if let Some(u) = self.find_cached(id).await {
             Ok(u)
         } else {
-            let u = self.repo.find_by_id(id).map(UserInfo::from)?;
+            let u = self.repo.find_by_id(id).map(UserDto::from)?;
             self.cache(&u).await;
             Ok(u)
         }
     }
 
-    async fn find_by_sub(&self, sub: &Sub) -> super::Result<UserInfo> {
-        let u = self.repo.find_by_sub(sub).map(UserInfo::from)?;
-        self.cache(&u).await;
-        Ok(u)
+    async fn find_by_sub(&self, sub: &Sub) -> super::Result<UserDto> {
+        let u = self.repo.find_by_sub(sub)?.map(UserDto::from);
+        match u {
+            Some(u) => {
+                self.cache(&u).await;
+                Ok(u)
+            }
+            None => Err(super::Error::NotFound(sub.clone())),
+        }
     }
 
     async fn find_name(&self, id: &user::Id) -> super::Result<String> {
@@ -97,12 +102,12 @@ impl UserService for UserServiceImpl {
         self.repo.exists(id)
     }
 
-    fn search(&self, nickname: &Nickname, auth_user: &auth::User) -> super::Result<Vec<UserInfo>> {
+    fn search(&self, nickname: &Nickname, auth_user: &auth::User) -> super::Result<Vec<UserDto>> {
         let users = self
             .repo
             .find_by_nickname_like_and_excluding(nickname, auth_user.nickname())?;
 
-        Ok(users.into_iter().map(UserInfo::from).collect())
+        Ok(users.into_iter().map(UserDto::from).collect())
     }
 
     async fn notify_online(&self, id: &user::Id) {
@@ -145,14 +150,14 @@ impl UserServiceImpl {
 
 // cache operations
 impl UserServiceImpl {
-    async fn cache(&self, u: &UserInfo) {
-        let k = cache::Key::UserInfo(u.id());
+    async fn cache(&self, u: &UserDto) {
+        let k = cache::Key::User(u.id());
         self.redis.json_set_ex(k, u).await;
     }
 
-    async fn find_cached(&self, id: &user::Id) -> Option<UserInfo> {
-        let k = cache::Key::UserInfo(id);
-        self.redis.json_get::<UserInfo>(k, None).await
+    async fn find_cached(&self, id: &user::Id) -> Option<UserDto> {
+        let k = cache::Key::User(id);
+        self.redis.json_get::<UserDto>(k, None).await
     }
 
     async fn find_cached_name(&self, id: &user::Id) -> Option<String> {
@@ -164,7 +169,7 @@ impl UserServiceImpl {
     }
 
     async fn find_cached_field(&self, id: &user::Id, path: &str) -> Option<String> {
-        let k = cache::Key::UserInfo(id);
+        let k = cache::Key::User(id);
         self.redis
             .json_get::<String>(k, Some(path))
             .await

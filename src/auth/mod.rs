@@ -1,8 +1,8 @@
 use std::fmt;
 use std::sync::Arc;
 
-use crate::user::model::UserInfo;
-use crate::user::{self, Picture, Sub};
+use crate::user::model::UserDto;
+use crate::user::{self, Email, Picture, Sub};
 use crate::{state::AppState, user::Nickname};
 use axum::Router;
 use axum::routing::get;
@@ -85,15 +85,46 @@ impl User {
     }
 }
 
-impl From<UserInfo> for User {
-    fn from(ui: UserInfo) -> Self {
-        Self::new(
-            ui.id().clone(),
-            ui.sub().clone(),
-            ui.nickname().clone(),
-            ui.name(),
-            ui.picture().clone(),
-        )
+impl From<UserDto> for User {
+    fn from(u: UserDto) -> Self {
+        Self {
+            id: u.id().clone(),
+            sub: u.sub().clone(),
+            nickname: u.nickname().clone(),
+            name: u.name().to_string(),
+            picture: u.picture().clone(),
+        }
+    }
+}
+
+#[derive(Deserialize, Clone, Debug)]
+pub struct UserInfo {
+    sub: Sub,
+    nickname: Nickname,
+    name: String,
+    picture: Picture,
+    email: Email,
+}
+
+impl UserInfo {
+    pub const fn sub(&self) -> &Sub {
+        &self.sub
+    }
+
+    pub const fn nickname(&self) -> &Nickname {
+        &self.nickname
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub const fn email(&self) -> &Email {
+        &self.email
+    }
+
+    pub const fn picture(&self) -> &Picture {
+        &self.picture
     }
 }
 

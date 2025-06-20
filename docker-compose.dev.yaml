@@ -20,7 +20,7 @@ services:
 
   #     REDIS_HOST: awg.dev.redis
   #     POSTGRES_HOST: awg.dev.postgres
-  #     POSTGRES_DB: dev-messenger
+  #     POSTGRES_DB: messenger
   #     NATS_HOST: awg.dev.nats
   #   volumes:
   #     - ./docker-volumes/dev/messenger_service/service.log:/usr/local/bin/service.log
@@ -42,7 +42,7 @@ services:
       ports:
         - 5432:5432
       environment:
-        POSTGRES_DB: dev-messenger
+        POSTGRES_DB: messenger
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
       volumes:

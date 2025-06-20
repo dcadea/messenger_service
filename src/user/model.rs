@@ -2,6 +2,8 @@ use diesel::prelude::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::auth::{self, UserInfo};
+
 use super::{Email, Id, Nickname, Picture, Sub};
 
 #[derive(Queryable, Selectable)]
@@ -26,14 +28,14 @@ pub struct NewUser<'a> {
     email: &'a str,
 }
 
-impl<'a> From<&'a UserInfo> for NewUser<'a> {
-    fn from(ui: &'a UserInfo) -> Self {
+impl<'a> From<&'a auth::UserInfo> for NewUser<'a> {
+    fn from(ui: &'a auth::UserInfo) -> Self {
         Self {
-            sub: ui.sub.as_str(),
-            nickname: ui.nickname.as_str(),
-            name: &ui.name,
-            picture: ui.picture.as_str(),
-            email: ui.email.as_str(),
+            sub: ui.sub().as_str(),
+            nickname: ui.nickname().as_str(),
+            name: ui.name(),
+            picture: ui.picture().as_str(),
+            email: ui.email().as_str(),
         }
     }
 }
@@ -60,7 +62,7 @@ impl OnlineStatus {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct UserInfo {
+pub struct UserDto {
     id: Id,
     sub: Sub,
     nickname: Nickname,
@@ -69,7 +71,18 @@ pub struct UserInfo {
     email: Email,
 }
 
-impl UserInfo {
+impl UserDto {
+    pub fn new(id: Id, ui: &UserInfo) -> Self {
+        Self {
+            id,
+            sub: ui.sub().clone(),
+            nickname: ui.nickname().clone(),
+            name: ui.name().to_string(),
+            picture: ui.picture().clone(),
+            email: ui.email().clone(),
+        }
+    }
+
     pub const fn id(&self) -> &Id {
         &self.id
     }
@@ -95,7 +108,7 @@ impl UserInfo {
     }
 }
 
-impl From<User> for UserInfo {
+impl From<User> for UserDto {
     fn from(user: User) -> Self {
         Self {
             id: Id(user.id),
@@ -108,23 +121,23 @@ impl From<User> for UserInfo {
     }
 }
 
-#[cfg(test)]
-impl UserInfo {
-    pub fn new(
-        id: Id,
-        sub: Sub,
-        nickname: Nickname,
-        name: impl Into<String>,
-        picture: Picture,
-        email: Email,
-    ) -> Self {
-        Self {
-            id,
-            sub,
-            nickname,
-            name: name.into(),
-            picture,
-            email,
-        }
-    }
-}
+// #[cfg(test)]
+// impl UserDto {
+//     pub fn new(
+//         id: Id,
+//         sub: Sub,
+//         nickname: Nickname,
+//         name: impl Into<String>,
+//         picture: Picture,
+//         email: Email,
+//     ) -> Self {
+//         Self {
+//             id,
+//             sub,
+//             nickname,
+//             name: name.into(),
+//             picture,
+//             email,
+//         }
+//     }
+// }

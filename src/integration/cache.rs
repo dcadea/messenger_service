@@ -8,7 +8,7 @@ use redis::{AsyncCommands, JsonAsyncCommands};
 use serde::Serialize;
 use uuid::Uuid;
 
-use crate::user::model::UserInfo;
+use crate::user::model::UserDto;
 use crate::{auth, talk, user};
 
 #[derive(Clone)]
@@ -222,7 +222,7 @@ impl Config {
 
 #[derive(Clone, Debug)]
 pub enum Key<'a> {
-    UserInfo(&'a user::Id),
+    User(&'a user::Id),
     Contacts(&'a user::Id),
     Talk(&'a talk::Id),
     Session(&'a auth::Session),
@@ -235,7 +235,7 @@ impl Key<'_> {
         match self {
             // Just in case if token response does not provide an expiration claim
             // fallback with 3600 for Key::Session
-            Key::UserInfo(_) | Key::Talk(_) | Key::Session(_) => 3600,
+            Key::User(_) | Key::Talk(_) | Key::Session(_) => 3600,
             Key::Contacts(_) => u64::MAX,
             // Since most of IDPs don't provide a code exchange TTL through
             // introspection endpoint - we set a limit of 120 seconds.
@@ -247,7 +247,7 @@ impl Key<'_> {
 impl Display for Key<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::UserInfo(id) => write!(f, "userinfo:{id}"),
+            Self::User(id) => write!(f, "user:{id}"),
             Self::Contacts(id) => write!(f, "contacts:{id}"),
             Self::Talk(id) => write!(f, "talk:{id}"),
             Self::Session(s) => write!(f, "session:{}", s.raw()),
@@ -282,14 +282,14 @@ impl redis::ToRedisArgs for user::Id {
     }
 }
 
-impl redis::FromRedisValue for UserInfo {
+impl redis::FromRedisValue for UserDto {
     fn from_redis_value(value: &redis::Value) -> redis::RedisResult<Self> {
-        let user_info: Self = serde_json::from_str(&String::from_redis_value(value)?)?;
-        Ok(user_info)
+        let u: Self = serde_json::from_str(&String::from_redis_value(value)?)?;
+        Ok(u)
     }
 }
 
-impl redis::ToRedisArgs for UserInfo {
+impl redis::ToRedisArgs for UserDto {
     fn write_redis_args<W>(&self, out: &mut W)
     where
         W: ?Sized + redis::RedisWrite,

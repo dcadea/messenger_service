@@ -7,7 +7,7 @@ use axum_extra::extract::CookieJar;
 use log::debug;
 use oauth2::AccessToken;
 
-use crate::user;
+use crate::user::{self, model::UserDto};
 use crate::{
     auth::{self, Session},
     user::Sub,
@@ -52,18 +52,18 @@ pub async fn authorize(
     let sub: &Sub = ext.get().ok_or(super::Error::Unauthorized)?;
     let token: &AccessToken = ext.get().ok_or(super::Error::Unauthorized)?;
 
-    let user_info = match user_service.find_by_sub(sub).await {
-        Ok(user_info) => user_info,
+    let user_dto = match user_service.find_by_sub(sub).await {
+        Ok(u) => u,
         Err(user::Error::NotFound(_)) => {
             debug!("{sub:?} not projected, fetching from IdP");
             let user_info = auth_service.get_user_info(token.secret()).await?;
-            user_service.project(&user_info)?;
-            user_info
+            let id = user_service.project(&user_info)?;
+            UserDto::new(id, &user_info)
         }
         Err(e) => return Err(e.into()),
     };
 
-    let auth_user = auth::User::from(user_info);
+    let auth_user = auth::User::from(user_dto);
     req.extensions_mut().insert(auth_user);
 
     Ok(next.run(req).await)

@@ -11,7 +11,7 @@ use crate::{
 
 use super::{
     Sub,
-    model::{OnlineStatus, UserInfo},
+    model::{OnlineStatus, UserDto},
 };
 
 impl Display for Sub {
@@ -105,11 +105,11 @@ impl Render for AddContact<'_> {
 
 pub struct SearchResult<'a> {
     contacts: &'a [ContactDto],
-    users: &'a [UserInfo],
+    users: &'a [UserDto],
 }
 
 impl<'a> SearchResult<'a> {
-    pub const fn new(contacts: &'a [ContactDto], users: &'a [UserInfo]) -> Self {
+    pub const fn new(contacts: &'a [ContactDto], users: &'a [UserDto]) -> Self {
         Self { contacts, users }
     }
 }

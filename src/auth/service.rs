@@ -10,13 +10,12 @@ use messenger_service::Raw;
 use oauth2::{AccessToken, CsrfToken, Scope, StandardRevocableToken, TokenResponse};
 use tokio::sync::RwLock;
 
-use super::{Code, Csrf, Session, TokenClaims};
+use super::{Code, Csrf, Session, TokenClaims, UserInfo};
 
 use crate::integration;
 use crate::integration::cache;
 use crate::integration::idp;
 use crate::user::Sub;
-use crate::user::model::UserInfo;
 
 const ONE_DAY: Duration = Duration::from_secs(24 * 60 * 60);
 const RETRY_DELAY: Duration = Duration::from_secs(15);

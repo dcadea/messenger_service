@@ -107,7 +107,7 @@ impl TalkService for TalkServiceImpl {
             .find(auth_id, recipient)
             .await
             .map_err(|e| {
-                error!("could not create contact: {e:?}");
+                error!("could not find contact: {e:?}");
                 talk::Error::NotCreated
             })?;
 
@@ -209,7 +209,7 @@ impl TalkService for TalkServiceImpl {
         id: &talk::Id,
         auth_id: &user::Id,
     ) -> super::Result<TalkDto> {
-        let talk = self.repo.find_by_id_and_user_id(id, auth_id)?;
+        let _talk = self.repo.find_by_id_and_user_id(id, auth_id)?;
         // let dto = self.talk_to_dto(talk, auth_id).await;
         // Ok(dto)
         todo!()
@@ -289,7 +289,7 @@ impl TalkService for TalkServiceImpl {
 }
 
 impl TalkServiceImpl {
-    async fn talk_to_dto(&self, t: Talk, auth_id: &user::Id) -> TalkDto {
+    async fn talk_to_dto(&self, _t: Talk, _auth_id: &user::Id) -> TalkDto {
         // let (name, picture, details) = match t.details().clone() {
         //     Details::Chat { members } => {
         //         assert!(members.contains(auth_id));
@@ -368,11 +368,11 @@ impl TalkValidator for TalkValidatorImpl {
 
 async fn find_members(
     redis: &cache::Redis,
-    repo: Repository,
+    _repo: Repository,
     talk_id: &talk::Id,
 ) -> super::Result<HashSet<user::Id>> {
     let talk_key = cache::Key::Talk(talk_id);
-    let members = redis.smembers::<HashSet<user::Id>>(talk_key.clone()).await;
+    let _members = redis.smembers::<HashSet<user::Id>>(talk_key.clone()).await;
 
     // TODO: write a proper db query
     // match members {
