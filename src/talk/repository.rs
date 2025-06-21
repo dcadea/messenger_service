@@ -8,7 +8,10 @@ use crate::{
     schema::{chats, chats_users, groups, groups_users, talks},
     talk::{
         self, Kind,
-        model::{ChatTalk, Details, NewChat, NewChatUser, NewGroup, NewGroupUser, NewTalk, Talk},
+        model::{
+            ChatTalk, Details, GroupTalk, NewChat, NewChatUser, NewGroup, NewGroupUser, NewTalk,
+            Talk,
+        },
     },
     user,
 };
@@ -17,6 +20,8 @@ pub trait TalkRepository {
     fn find_by_id(&self, id: &talk::Id) -> super::Result<Option<Talk>>;
 
     fn find_chats_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ChatTalk>>;
+
+    fn find_groups_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<GroupTalk>>;
 
     fn find_by_id_and_user_id(&self, id: &talk::Id, user_id: &user::Id) -> super::Result<()>;
 
@@ -56,9 +61,33 @@ impl TalkRepository for PgTalkRepository {
     fn find_chats_by_user_id(&self, u_id: &user::Id) -> super::Result<Vec<ChatTalk>> {
         let mut conn = self.pool.get()?;
 
-        sql_query("SELECT * FROM chats_for_user($1)")
+        sql_query(
+            r#"
+            SELECT
+                t.id,
+                t.last_message_id,
+                u.id AS recipient,
+                u.name,
+                u.picture
+            FROM talks t
+            JOIN chats c ON c.id = t.id
+            JOIN chats_users cu_self ON cu_self.chat_id = t.id AND cu_self.user_id = $1
+            JOIN chats_users cu_other ON cu_other.chat_id = t.id AND cu_other.user_id != $1
+            JOIN users u ON u.id = cu_other.user_id
+            WHERE t.kind = 'chat'
+            "#,
+        )
+        .bind::<sql_types::Uuid, _>(u_id.get())
+        .load::<ChatTalk>(&mut conn)
+        .map_err(super::Error::from)
+    }
+
+    fn find_groups_by_user_id(&self, u_id: &user::Id) -> super::Result<Vec<GroupTalk>> {
+        let mut conn = self.pool.get()?;
+
+        sql_query("SELECT * FROM groups_by_user_id($1)")
             .bind::<sql_types::Uuid, _>(u_id.get())
-            .load::<ChatTalk>(&mut conn)
+            .load::<GroupTalk>(&mut conn)
             .map_err(super::Error::from)
     }
 

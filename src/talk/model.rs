@@ -35,24 +35,6 @@ impl Talk {
     }
 }
 
-// #[derive(Queryable, Identifiable, Associations)]
-// #[diesel(table_name = crate::schema::chats)]
-// #[diesel(check_for_backend(diesel::pg::Pg))]
-// #[diesel(belongs_to(Talk, foreign_key = id))]
-// pub struct Chat {
-//     id: Uuid,
-// }
-
-// #[derive(Queryable, Identifiable, Associations)]
-// #[diesel(table_name = crate::schema::groups)]
-// #[diesel(check_for_backend(diesel::pg::Pg))]
-// #[diesel(belongs_to(Talk, foreign_key = id))]
-// pub struct Group {
-//     id: Uuid,
-//     owner: Uuid,
-//     name: String,
-// }
-
 pub struct NewTalk<'a> {
     details: &'a Details,
 }
@@ -164,6 +146,42 @@ impl ChatTalk {
 
     pub fn picture(&self) -> &str {
         &self.picture
+    }
+}
+
+#[derive(QueryableByName, Debug)]
+pub struct GroupTalk {
+    #[diesel(sql_type = sql_types::Uuid)]
+    id: Id,
+    #[diesel(sql_type = sql_types::Nullable<sql_types::Uuid>)]
+    last_message_id: Option<message::Id>,
+    #[diesel(sql_type = sql_types::Uuid)]
+    owner: user::Id,
+    #[diesel(sql_type = sql_types::Text)]
+    name: String,
+    #[diesel(sql_type = sql_types::Array<sql_types::Uuid>)]
+    members: Vec<user::Id>,
+}
+
+impl GroupTalk {
+    pub const fn id(&self) -> &Id {
+        &self.id
+    }
+
+    pub const fn last_message_id(&self) -> Option<&message::Id> {
+        self.last_message_id.as_ref()
+    }
+
+    pub const fn owner(&self) -> &user::Id {
+        &self.owner
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn members(&self) -> &Vec<user::Id> {
+        &self.members
     }
 }
 

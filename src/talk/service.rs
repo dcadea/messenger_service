@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use futures::TryFutureExt;
 use log::error;
 
-use super::model::{ChatTalk, Details, DetailsDto, Talk, TalkDto};
+use super::model::{ChatTalk, Details, DetailsDto, GroupTalk, Talk, TalkDto};
 use super::{Kind, Repository, Validator};
 use crate::integration::storage::Blob;
 use crate::integration::{cache, storage};
@@ -228,10 +228,12 @@ impl TalkService for TalkServiceImpl {
                 .iter()
                 .map(|c| self.chat_to_dto(c, auth_id))
                 .collect(),
-            Kind::Group => {
-                // let talks = self.repo.find_by_user_id_and_kind(auth_id, kind)?;
-                todo!("find_all_by_kind for groups not implemented")
-            }
+            Kind::Group => self
+                .repo
+                .find_groups_by_user_id(auth_id)?
+                .iter()
+                .map(|g| self.group_to_dto(g, auth_id))
+                .collect(),
         };
 
         Ok(talk_dtos)
@@ -298,11 +300,26 @@ impl TalkServiceImpl {
 
         TalkDto::new(
             c.id().clone(),
-            Picture::from(user::Picture::try_from(c.picture()).unwrap()),
+            Picture::from(user::Picture::try_from(c.picture()).unwrap()), // FIXME
             c.name(),
             DetailsDto::Chat {
                 sender: auth_id.clone(),
                 recipient: c.recipient().clone(),
+            },
+            lm,
+        )
+    }
+
+    fn group_to_dto(&self, g: &GroupTalk, auth_id: &user::Id) -> TalkDto {
+        let lm = g.last_message_id().map(|_| todo!("fetch last message"));
+
+        TalkDto::new(
+            g.id().clone(),
+            Picture::from(g.id().clone()),
+            g.name(),
+            DetailsDto::Group {
+                owner: g.owner().clone(),
+                sender: auth_id.clone(),
             },
             lm,
         )
