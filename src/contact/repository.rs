@@ -86,11 +86,7 @@ impl ContactRepository for PgContactRepository {
         let mut conn = self.pool.get()?;
 
         contacts
-            .filter(
-                (user_id_1.eq(user_id).or(user_id_2.eq(user_id)))
-                    .and(status.eq(s.as_str()))
-                    .and(initiator.eq(s.initiator())),
-            )
+            .filter((user_id_1.eq(user_id).or(user_id_2.eq(user_id))).and(status.eq(s.as_str())))
             .select(Contact::as_select())
             .get_results(&mut conn)
             .map_err(super::Error::from)

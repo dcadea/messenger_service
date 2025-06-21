@@ -214,10 +214,13 @@ impl TalkService for TalkServiceImpl {
             Kind::Chat => self
                 .repo
                 .find_chat_by_id_and_user_id(id, auth_id)?
-                .map(|c| self.chat_to_dto(&c, auth_id))
-                .ok_or(super::Error::NotFound(Some(id.clone()))),
-            Kind::Group => unimplemented!("search by group kind not implemented"),
+                .map(|c| self.chat_to_dto(&c, auth_id)),
+            Kind::Group => self
+                .repo
+                .find_group_by_id_and_user_id(id, auth_id)?
+                .map(|g| self.group_to_dto(&g, auth_id)),
         }
+        .ok_or(super::Error::NotFound(Some(id.clone())))
     }
 
     async fn find_all_by_kind(
@@ -413,27 +416,23 @@ impl TalkValidator for TalkValidatorImpl {
 
 async fn find_members(
     redis: &cache::Redis,
-    _repo: Repository,
+    repo: Repository,
     talk_id: &talk::Id,
 ) -> super::Result<HashSet<user::Id>> {
     let talk_key = cache::Key::Talk(talk_id);
-    let _members = redis.smembers::<HashSet<user::Id>>(talk_key.clone()).await;
+    let members = redis.smembers::<HashSet<user::Id>>(talk_key.clone()).await;
 
     // TODO: write a proper db query
-    // match members {
-    //     Some(m) if !m.is_empty() => Ok(m),
-    //     _ => {
-    //         let talk = repo.find_by_id(talk_id)?;
-    //         let m = match talk.details().clone() {
-    //             Details::Chat { members } => members.into(),
-    //             Details::Group { members, .. } => HashSet::from_iter(members),
-    //         };
+    match members {
+        Some(m) if !m.is_empty() => Ok(m),
+        _ => {
+            let m = repo.find_members(talk_id)?;
+            let m = HashSet::from_iter(m);
 
-    //         redis.sadd(talk_key.clone(), &m).await;
-    //         redis.expire(talk_key).await;
+            redis.sadd(talk_key.clone(), &m).await;
+            redis.expire(talk_key).await;
 
-    //         Ok(m)
-    //     }
-    // }
-    todo!()
+            Ok(m)
+        }
+    }
 }

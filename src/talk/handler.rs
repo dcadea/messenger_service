@@ -118,7 +118,6 @@ pub(super) mod api {
         },
     }
 
-    #[axum::debug_handler]
     pub async fn create(
         Extension(auth_user): Extension<auth::User>,
         talk_service: State<talk::Service>,

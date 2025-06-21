@@ -164,6 +164,22 @@ pub struct GroupTalk {
 }
 
 impl GroupTalk {
+    pub fn new(
+        id: Id,
+        last_message_id: Option<message::Id>,
+        owner: user::Id,
+        name: String,
+        members: Vec<user::Id>,
+    ) -> Self {
+        Self {
+            id,
+            last_message_id,
+            owner,
+            name,
+            members,
+        }
+    }
+
     pub const fn id(&self) -> &Id {
         &self.id
     }

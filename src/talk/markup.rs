@@ -274,7 +274,7 @@ impl Render for CreateGroupForm<'_> {
                     ."space-y-2 border border-gray-300 rounded-md px-3 pb-3 h-3/4 mb-4"
                 {
                     legend { "Select at least two members" }
-                    input type="hidden" name="members" value=(self.auth_user.sub()) {}
+                    input type="hidden" name="members" value=(self.auth_user.id()) {}
                     @for m in self.members {
                         label ."flex items-center justify-between px-3 py-2"
                             ."rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer"

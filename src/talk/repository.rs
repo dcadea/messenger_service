@@ -1,11 +1,11 @@
 use diesel::{
-    Connection, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl, QueryResult,
-    RunQueryDsl, insert_into, r2d2::ConnectionManager, sql_query, sql_types,
+    CombineDsl, Connection, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
+    QueryResult, RunQueryDsl, insert_into, r2d2::ConnectionManager, sql_query, sql_types,
 };
 
 use crate::{
     message::{self, model::LastMessage},
-    schema::{chats, chats_users, groups, groups_users, talks},
+    schema::{chats, chats_users, groups, groups_users, talks::dsl::*},
     talk::{
         self, Kind,
         model::{
@@ -29,6 +29,12 @@ pub trait TalkRepository {
         user_id: &user::Id,
     ) -> super::Result<Option<ChatTalk>>;
 
+    fn find_group_by_id_and_user_id(
+        &self,
+        id: &talk::Id,
+        user_id: &user::Id,
+    ) -> super::Result<Option<GroupTalk>>;
+
     fn create(&self, t: &NewTalk) -> super::Result<talk::Id>;
 
     fn delete(&self, id: &talk::Id) -> super::Result<bool>;
@@ -38,6 +44,8 @@ pub trait TalkRepository {
     fn update_last_message(&self, id: &talk::Id, msg: Option<&LastMessage>) -> super::Result<()>;
 
     fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()>;
+
+    fn find_members(&self, id: &talk::Id) -> super::Result<Vec<user::Id>>;
 }
 
 #[derive(Clone)]
@@ -55,8 +63,8 @@ impl TalkRepository for PgTalkRepository {
     fn find_by_id(&self, t_id: &talk::Id) -> super::Result<Option<Talk>> {
         let mut conn = self.pool.get()?;
 
-        talks::table
-            .find(t_id.0)
+        talks
+            .find(t_id)
             .first::<Talk>(&mut conn)
             .optional()
             .map_err(super::Error::from)
@@ -126,17 +134,39 @@ impl TalkRepository for PgTalkRepository {
             .map_err(super::Error::from)
     }
 
+    fn find_group_by_id_and_user_id(
+        &self,
+        t_id: &talk::Id,
+        u_id: &user::Id,
+    ) -> super::Result<Option<GroupTalk>> {
+        use crate::schema::groups::dsl as g;
+        use crate::schema::groups_users::dsl as gu;
+
+        let mut conn = self.pool.get()?;
+
+        let res: Option<(talk::Id, Option<message::Id>, user::Id, String)> = talks
+            .filter(id.eq(t_id))
+            .filter(kind.eq(Kind::Group))
+            .filter(gu::user_id.eq(u_id))
+            .inner_join(g::groups.inner_join(gu::groups_users))
+            .select((id, last_message_id, g::owner, g::name))
+            .get_result(&mut conn)
+            .optional()?;
+
+        Ok(res.map(|r| GroupTalk::new(r.0, r.1, r.2, r.3, vec![])))
+    }
+
     fn create(&self, t: &NewTalk) -> super::Result<talk::Id> {
         let mut conn = self.pool.get()?;
 
         let tx_res: QueryResult<talk::Id> = conn.transaction(|conn| {
             let new_talk = (
-                talks::kind.eq(Kind::Chat),
-                talks::last_message_id.eq::<Option<message::Id>>(None),
+                kind.eq(Kind::Chat),
+                last_message_id.eq::<Option<message::Id>>(None),
             );
-            let t_id: talk::Id = insert_into(talks::table)
+            let t_id: talk::Id = insert_into(talks)
                 .values(new_talk)
-                .returning(talks::id)
+                .returning(id)
                 .get_result(conn)?;
 
             match t.details() {
@@ -233,6 +263,24 @@ impl TalkRepository for PgTalkRepository {
         //     .await?;
         // Ok(())
         todo!("update_last_message")
+    }
+
+    fn find_members(&self, t_id: &talk::Id) -> super::Result<Vec<user::Id>> {
+        use crate::schema::chats_users::dsl as cu;
+        use crate::schema::groups_users::dsl as gu;
+
+        let mut conn = self.pool.get()?;
+
+        gu::groups_users
+            .filter(gu::group_id.eq(t_id))
+            .select(gu::user_id)
+            .union(
+                cu::chats_users
+                    .filter(cu::chat_id.eq(t_id))
+                    .select(cu::user_id),
+            )
+            .load(&mut conn)
+            .map_err(super::Error::from)
     }
 }
 
