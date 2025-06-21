@@ -160,10 +160,12 @@ impl TalkRepository for PgTalkRepository {
         let mut conn = self.pool.get()?;
 
         let tx_res: QueryResult<talk::Id> = conn.transaction(|conn| {
-            let new_talk = (
-                kind.eq(Kind::Chat),
-                last_message_id.eq::<Option<message::Id>>(None),
-            );
+            let k = match t.details() {
+                Details::Chat { .. } => Kind::Chat,
+                Details::Group { .. } => Kind::Group,
+            };
+
+            let new_talk = (kind.eq(k), last_message_id.eq::<Option<message::Id>>(None));
             let t_id: talk::Id = insert_into(talks)
                 .values(new_talk)
                 .returning(id)

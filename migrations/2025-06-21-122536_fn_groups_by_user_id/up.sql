@@ -2,9 +2,9 @@ CREATE OR REPLACE FUNCTION groups_by_user_id(_user_id UUID)
 RETURNS TABLE (
     id UUID,
     last_message_id UUID,
-    recipient UUID,
+    owner UUID,
     name TEXT,
-    picture TEXT
+    members UUID[]
 )
 AS $$
     SELECT
