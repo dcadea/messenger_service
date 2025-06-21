@@ -45,12 +45,13 @@ impl PgContactRepository {
 }
 
 impl ContactRepository for PgContactRepository {
-    fn find(&self, u1: &user::Id, u2: &user::Id) -> super::Result<Option<Contact>> {
+    fn find(&self, me: &user::Id, you: &user::Id) -> super::Result<Option<Contact>> {
         let mut conn = self.pool.get()?;
 
         contacts
             .filter(
-                (user_id_1.eq(u1).and(user_id_2.eq(u2))).or(user_id_1.eq(u2).and(user_id_2.eq(u1))),
+                (user_id_1.eq(me).and(user_id_2.eq(you)))
+                    .or(user_id_1.eq(you).and(user_id_2.eq(me))),
             )
             .first::<Contact>(&mut conn)
             .optional()

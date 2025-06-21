@@ -1,6 +1,5 @@
 use diesel::prelude::{Associations, Identifiable, Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::{
     message::{self, model::LastMessage},
@@ -14,13 +13,13 @@ use super::{Id, Kind, Picture};
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(belongs_to(message::model::Message, foreign_key = last_message_id))]
 pub struct Talk {
-    id: Uuid,
+    id: Id,
     kind: Kind,
-    last_message_id: Option<Uuid>,
+    last_message_id: Option<message::Id>,
 }
 
 impl Talk {
-    pub const fn id(&self) -> &Uuid {
+    pub const fn id(&self) -> &Id {
         &self.id
     }
 
@@ -28,7 +27,7 @@ impl Talk {
         &self.kind
     }
 
-    pub const fn last_message_id(&self) -> Option<&Uuid> {
+    pub const fn last_message_id(&self) -> Option<&message::Id> {
         self.last_message_id.as_ref()
     }
 }
@@ -68,11 +67,11 @@ impl<'a> NewTalk<'a> {
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::chats)]
 pub struct NewChat<'a> {
-    id: &'a Uuid,
+    id: &'a Id,
 }
 
 impl<'a> NewChat<'a> {
-    pub fn new(id: &'a Uuid) -> Self {
+    pub fn new(id: &'a Id) -> Self {
         Self { id }
     }
 }
@@ -80,12 +79,12 @@ impl<'a> NewChat<'a> {
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::chats_users)]
 pub struct NewChatUser<'a> {
-    chat_id: &'a Uuid,
+    chat_id: &'a Id,
     user_id: &'a user::Id,
 }
 
 impl<'a> NewChatUser<'a> {
-    pub fn new(chat_id: &'a Uuid, user_id: &'a user::Id) -> Self {
+    pub fn new(chat_id: &'a Id, user_id: &'a user::Id) -> Self {
         Self { chat_id, user_id }
     }
 }
@@ -93,13 +92,13 @@ impl<'a> NewChatUser<'a> {
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::groups)]
 pub struct NewGroup<'a> {
-    id: &'a Uuid,
+    id: &'a Id,
     owner: &'a user::Id,
     name: &'a str,
 }
 
 impl<'a> NewGroup<'a> {
-    pub fn new(id: &'a Uuid, owner: &'a user::Id, name: &'a str) -> Self {
+    pub fn new(id: &'a Id, owner: &'a user::Id, name: &'a str) -> Self {
         Self { id, owner, name }
     }
 }
@@ -107,12 +106,12 @@ impl<'a> NewGroup<'a> {
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::groups_users)]
 pub struct NewGroupUser<'a> {
-    group_id: &'a Uuid,
+    group_id: &'a Id,
     user_id: &'a user::Id,
 }
 
 impl<'a> NewGroupUser<'a> {
-    pub fn new(group_id: &'a Uuid, user_id: &'a user::Id) -> Self {
+    pub fn new(group_id: &'a Id, user_id: &'a user::Id) -> Self {
         Self { group_id, user_id }
     }
 }

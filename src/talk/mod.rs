@@ -46,12 +46,19 @@ pub fn templates<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct Id(pub Uuid);
+#[derive(Clone, Debug, Deserialize, Serialize, Hash, PartialEq, Eq, FromSqlRow, AsExpression)]
+#[diesel(sql_type = diesel::sql_types::Uuid)]
+pub struct Id(Uuid);
 
 impl Id {
-    pub fn random() -> Self {
-        Self(Uuid::now_v7())
+    pub fn get(&self) -> &Uuid {
+        &self.0
+    }
+}
+
+impl From<Uuid> for Id {
+    fn from(uuid: Uuid) -> Self {
+        Self(uuid)
     }
 }
 

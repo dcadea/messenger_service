@@ -91,7 +91,7 @@ impl MessageRepository for PgMessageRepository {
         let mut conn = self.pool.get()?;
 
         let msgs = messages
-            .filter(talk_id.eq(t_id.0))
+            .filter(talk_id.eq(t_id))
             .select(Message::as_select())
             .get_results(&mut conn)?;
 
@@ -102,7 +102,7 @@ impl MessageRepository for PgMessageRepository {
         let mut conn = self.pool.get()?;
 
         let msgs = messages
-            .filter(talk_id.eq(t_id.0))
+            .filter(talk_id.eq(t_id))
             .limit(limit)
             .order(created_at.desc())
             .select(Message::as_select())
@@ -119,7 +119,7 @@ impl MessageRepository for PgMessageRepository {
         let mut conn = self.pool.get()?;
 
         let msgs = messages
-            .filter(talk_id.eq(t_id.0).and(created_at.lt(before)))
+            .filter(talk_id.eq(t_id).and(created_at.lt(before)))
             .order(created_at.desc())
             .select(Message::as_select())
             .get_results(&mut conn)?;
@@ -136,7 +136,7 @@ impl MessageRepository for PgMessageRepository {
         let mut conn = self.pool.get()?;
 
         let msgs = messages
-            .filter(talk_id.eq(t_id.0).and(created_at.lt(before)))
+            .filter(talk_id.eq(t_id).and(created_at.lt(before)))
             .limit(limit)
             .order(created_at.desc())
             .select(Message::as_select())
@@ -149,7 +149,7 @@ impl MessageRepository for PgMessageRepository {
         let mut conn = self.pool.get()?;
 
         let msg = messages
-            .filter(talk_id.eq(t_id.0))
+            .filter(talk_id.eq(t_id))
             .limit(1)
             .order(created_at.desc())
             .select(Message::as_select())

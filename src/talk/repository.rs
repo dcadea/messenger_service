@@ -3,12 +3,10 @@ use diesel::{
     NullableExpressionMethods, OptionalExtension, PgConnection, QueryDsl, QueryResult, RunQueryDsl,
     SelectableHelper, Table, insert_into, r2d2::ConnectionManager,
 };
-use talk::Id;
-use uuid::Uuid;
 
 use super::model::{NewTalk, Talk, TalkWithDetails};
 use crate::{
-    message::model::LastMessage,
+    message::{self, model::LastMessage},
     schema::{chats, chats_users, groups, groups_users, talks},
     talk::{
         self, Kind,
@@ -18,7 +16,7 @@ use crate::{
 };
 
 pub trait TalkRepository {
-    fn find_by_id(&self, id: &Id) -> super::Result<Option<Talk>>;
+    fn find_by_id(&self, id: &talk::Id) -> super::Result<Option<Talk>>;
 
     fn find_by_user_id_and_kind(
         &self,
@@ -26,18 +24,21 @@ pub trait TalkRepository {
         kind: &talk::Kind,
     ) -> super::Result<Vec<Talk>>;
 
-    fn find_by_id_and_user_id(&self, id: &Id, user_id: &user::Id)
-    -> super::Result<TalkWithDetails>;
+    fn find_by_id_and_user_id(
+        &self,
+        id: &talk::Id,
+        user_id: &user::Id,
+    ) -> super::Result<TalkWithDetails>;
 
-    fn create(&self, t: &NewTalk) -> super::Result<Id>;
+    fn create(&self, t: &NewTalk) -> super::Result<talk::Id>;
 
-    fn delete(&self, id: &Id) -> super::Result<bool>;
+    fn delete(&self, id: &talk::Id) -> super::Result<bool>;
 
     fn exists(&self, members: &[user::Id; 2]) -> super::Result<bool>;
 
-    fn update_last_message(&self, id: &Id, msg: Option<&LastMessage>) -> super::Result<()>;
+    fn update_last_message(&self, id: &talk::Id, msg: Option<&LastMessage>) -> super::Result<()>;
 
-    fn mark_as_seen(&self, id: &Id) -> super::Result<()>;
+    fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -52,7 +53,7 @@ impl PgTalkRepository {
 }
 
 impl TalkRepository for PgTalkRepository {
-    fn find_by_id(&self, t_id: &Id) -> super::Result<Option<Talk>> {
+    fn find_by_id(&self, t_id: &talk::Id) -> super::Result<Option<Talk>> {
         let mut conn = self.pool.get()?;
 
         talks::table
@@ -111,7 +112,11 @@ impl TalkRepository for PgTalkRepository {
         todo!()
     }
 
-    fn find_by_id_and_user_id(&self, id: &Id, u_id: &user::Id) -> super::Result<TalkWithDetails> {
+    fn find_by_id_and_user_id(
+        &self,
+        id: &talk::Id,
+        u_id: &user::Id,
+    ) -> super::Result<TalkWithDetails> {
         let mut conn = self.pool.get()?;
 
         // TODO
@@ -139,22 +144,22 @@ impl TalkRepository for PgTalkRepository {
         todo!()
     }
 
-    fn create(&self, t: &NewTalk) -> super::Result<Id> {
+    fn create(&self, t: &NewTalk) -> super::Result<talk::Id> {
         let mut conn = self.pool.get()?;
 
-        let tx_res: QueryResult<Id> = conn.transaction(|conn| {
+        let tx_res: QueryResult<talk::Id> = conn.transaction(|conn| {
             let new_talk = (
                 talks::kind.eq(Kind::Chat),
-                talks::last_message_id.eq::<Option<Uuid>>(None),
+                talks::last_message_id.eq::<Option<message::Id>>(None),
             );
-            let t_id = insert_into(talks::table)
+            let t_id: talk::Id = insert_into(talks::table)
                 .values(new_talk)
                 .returning(talks::id)
-                .get_result::<Uuid>(conn)?;
+                .get_result(conn)?;
 
             match t.details() {
                 Details::Chat { members } => {
-                    let c_id: Uuid = insert_into(chats::table)
+                    let c_id: talk::Id = insert_into(chats::table)
                         .values(NewChat::new(&t_id))
                         .returning(chats::id)
                         .get_result(conn)?;
@@ -173,7 +178,7 @@ impl TalkRepository for PgTalkRepository {
                     owner,
                     members,
                 } => {
-                    let g_id: Uuid = insert_into(groups::table)
+                    let g_id: talk::Id = insert_into(groups::table)
                         .values(NewGroup::new(&t_id, owner, name))
                         .returning(groups::id)
                         .get_result(conn)?;
@@ -188,13 +193,13 @@ impl TalkRepository for PgTalkRepository {
                         .execute(conn)?;
                 }
             }
-            Ok(Id(t_id))
+            Ok(t_id)
         });
 
         tx_res.map_err(super::Error::from)
     }
 
-    fn delete(&self, _id: &Id) -> super::Result<bool> {
+    fn delete(&self, _id: &talk::Id) -> super::Result<bool> {
         // let res = self.col.delete_one(doc! {"_id": id}).await?;
 
         // Ok(res.deleted_count > 0)
@@ -211,7 +216,7 @@ impl TalkRepository for PgTalkRepository {
         todo!()
     }
 
-    fn update_last_message(&self, _id: &Id, _msg: Option<&LastMessage>) -> super::Result<()> {
+    fn update_last_message(&self, _id: &talk::Id, _msg: Option<&LastMessage>) -> super::Result<()> {
         // self.col
         //     .update_one(
         //         doc! { "_id": id },
@@ -224,7 +229,7 @@ impl TalkRepository for PgTalkRepository {
         todo!()
     }
 
-    fn mark_as_seen(&self, _id: &Id) -> super::Result<()> {
+    fn mark_as_seen(&self, _id: &talk::Id) -> super::Result<()> {
         // self.col
         //     .update_one(
         //         doc! {

@@ -1,7 +1,6 @@
 use chrono::{NaiveDateTime, Utc};
 use diesel::prelude::{Associations, Identifiable, Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::{
     talk,
@@ -16,7 +15,7 @@ use super::Id;
 #[diesel(belongs_to(user::model::User, foreign_key = owner))]
 pub struct Message {
     id: Id,
-    talk_id: Uuid,
+    talk_id: talk::Id,
     owner: user::Id,
     content: String,
     created_at: NaiveDateTime,
@@ -26,13 +25,13 @@ pub struct Message {
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::messages)]
 pub struct NewMessage<'a> {
-    talk_id: &'a Uuid,
+    talk_id: &'a talk::Id,
     owner: &'a user::Id,
     content: &'a str,
 }
 
 impl<'a> NewMessage<'a> {
-    pub fn new(talk_id: &'a Uuid, owner: &'a user::Id, content: &'a str) -> Self {
+    pub fn new(talk_id: &'a talk::Id, owner: &'a user::Id, content: &'a str) -> Self {
         Self {
             talk_id,
             owner,
@@ -106,7 +105,7 @@ impl From<Message> for MessageDto {
     fn from(m: Message) -> Self {
         Self {
             id: m.id,
-            talk_id: talk::Id(m.talk_id),
+            talk_id: m.talk_id,
             owner: m.owner,
             content: m.content,
             created_at: m.created_at,
