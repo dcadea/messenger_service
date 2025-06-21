@@ -95,7 +95,11 @@ impl UserRepository for PgUserRepository {
         let mut conn = self.pool.get()?;
 
         users
-            .filter(nickname.like(n.as_str()).and(nickname.ne(exclude.as_str())))
+            .filter(
+                nickname
+                    .like(format!("%{}%", n.as_str()))
+                    .and(nickname.ne(exclude.as_str())),
+            )
             .select(User::as_select())
             .get_results(&mut conn)
             .map_err(super::Error::from)
