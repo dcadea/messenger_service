@@ -161,7 +161,7 @@ impl TalkRepository for PgTalkRepository {
 
                     let users: Vec<NewChatUser> = members
                         .into_iter()
-                        .map(|m| NewChatUser::new(&c_id, &m.0))
+                        .map(|m| NewChatUser::new(&c_id, m))
                         .collect();
 
                     insert_into(chats_users::table)
@@ -174,13 +174,13 @@ impl TalkRepository for PgTalkRepository {
                     members,
                 } => {
                     let g_id: Uuid = insert_into(groups::table)
-                        .values(NewGroup::new(&t_id, &owner.0, &name))
+                        .values(NewGroup::new(&t_id, owner, name))
                         .returning(groups::id)
                         .get_result(conn)?;
 
                     let users: Vec<NewGroupUser> = members
                         .into_iter()
-                        .map(|m| NewGroupUser::new(&g_id, &m.0))
+                        .map(|m| NewGroupUser::new(&g_id, m))
                         .collect();
 
                     insert_into(groups_users::table)

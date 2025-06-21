@@ -1,6 +1,16 @@
 pub mod pg {
     use std::env;
 
+    use diesel::backend::Backend;
+    use diesel::deserialize::FromSql;
+    use diesel::serialize::{IsNull, Output, ToSql};
+    use diesel::{deserialize, serialize, sql_types};
+    use std::io::Write;
+    use uuid::Uuid;
+
+    use crate::schema::sql_types::TalkKind;
+    use crate::{talk, user};
+
     use diesel::{PgConnection, r2d2::ConnectionManager};
     use log::warn;
 
@@ -76,6 +86,48 @@ pub mod pg {
                 user: String::from("postgres"),
                 password: String::from("postgres"),
             }
+        }
+    }
+
+    impl<DB> FromSql<TalkKind, DB> for talk::Kind
+    where
+        DB: Backend,
+        String: FromSql<sql_types::Text, DB>,
+    {
+        fn from_sql(bytes: DB::RawValue<'_>) -> deserialize::Result<Self> {
+            let s = String::from_sql(bytes)?;
+            match s.as_str() {
+                "chat" => Ok(Self::Chat),
+                "group" => Ok(Self::Group),
+                other => Err(Box::new(talk::Error::UnsupportedKind(other.to_string()))),
+            }
+        }
+    }
+
+    impl ToSql<TalkKind, diesel::pg::Pg> for talk::Kind {
+        fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::pg::Pg>) -> serialize::Result {
+            match *self {
+                Self::Chat => out.write_all(b"chat")?,
+                Self::Group => out.write_all(b"group")?,
+            }
+            Ok(IsNull::No)
+        }
+    }
+
+    impl<DB> FromSql<sql_types::Uuid, DB> for user::Id
+    where
+        DB: Backend,
+        Uuid: FromSql<sql_types::Uuid, DB>,
+    {
+        fn from_sql(bytes: DB::RawValue<'_>) -> deserialize::Result<Self> {
+            Uuid::from_sql(bytes).map(Self::from)
+        }
+    }
+
+    impl ToSql<sql_types::Uuid, diesel::pg::Pg> for user::Id {
+        fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::pg::Pg>) -> serialize::Result {
+            out.write_all(self.get().as_bytes())?;
+            Ok(IsNull::No)
         }
     }
 }

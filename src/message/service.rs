@@ -96,7 +96,7 @@ impl MessageService for MessageServiceImpl {
 
         let msgs = match content.len() {
             text_length if text_length <= MAX_MESSAGE_LENGTH => {
-                let new_msg = NewMessage::new(&talk_id.0, &auth_id.0, &content);
+                let new_msg = NewMessage::new(&talk_id.0, &auth_id, &content);
                 let msg = self.repo.insert(&new_msg)?;
                 vec![msg]
             }
@@ -350,6 +350,6 @@ fn split_content<'a>(
     let chunks = splitter.chunks(content);
 
     chunks
-        .map(|chunk| NewMessage::new(&talk_id.0, &owner.0, chunk))
+        .map(|chunk| NewMessage::new(&talk_id.0, &owner, chunk))
         .collect::<Vec<NewMessage<'a>>>()
 }

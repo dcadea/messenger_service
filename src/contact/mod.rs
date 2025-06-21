@@ -79,7 +79,7 @@ impl Status {
 
 impl From<&Contact> for Status {
     fn from(c: &Contact) -> Self {
-        match c.initiator().map(|id| user::Id(id.clone())) {
+        match c.initiator().cloned() {
             Some(initiator) => {
                 if c.status().eq("pending") {
                     Status::Pending { initiator }

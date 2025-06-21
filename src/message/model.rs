@@ -17,7 +17,7 @@ use super::Id;
 pub struct Message {
     id: Uuid,
     talk_id: Uuid,
-    owner: Uuid,
+    owner: user::Id,
     content: String,
     created_at: NaiveDateTime,
     seen: bool,
@@ -27,12 +27,12 @@ pub struct Message {
 #[diesel(table_name = crate::schema::messages)]
 pub struct NewMessage<'a> {
     talk_id: &'a Uuid,
-    owner: &'a Uuid,
+    owner: &'a user::Id,
     content: &'a str,
 }
 
 impl<'a> NewMessage<'a> {
-    pub fn new(talk_id: &'a Uuid, owner: &'a Uuid, content: &'a str) -> Self {
+    pub fn new(talk_id: &'a Uuid, owner: &'a user::Id, content: &'a str) -> Self {
         Self {
             talk_id,
             owner,
@@ -107,7 +107,7 @@ impl From<Message> for MessageDto {
         Self {
             id: Id(m.id),
             talk_id: talk::Id(m.talk_id),
-            owner: user::Id(m.owner),
+            owner: m.owner,
             content: m.content,
             created_at: m.created_at,
             seen: m.seen,

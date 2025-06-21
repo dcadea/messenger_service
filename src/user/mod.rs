@@ -1,7 +1,7 @@
 use std::{fmt::Display, sync::Arc};
 
 use axum::{Router, routing::post};
-use diesel::deserialize::FromSqlRow;
+use diesel::{deserialize::FromSqlRow, expression::AsExpression, sql_types};
 use log::error;
 use repository::UserRepository;
 use serde::{Deserialize, Serialize};
@@ -26,19 +26,31 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-#[derive(Clone, Deserialize, Serialize, Hash, PartialEq, Eq, Debug)]
-pub struct Id(pub Uuid);
+#[derive(Clone, Deserialize, Serialize, Hash, PartialEq, Eq, Debug, FromSqlRow, AsExpression)]
+#[diesel(sql_type = sql_types::Uuid)]
+pub struct Id(Uuid);
 
-#[cfg(test)]
 impl Id {
-    pub fn random() -> Self {
-        Self(Uuid::now_v7())
+    pub fn get(&self) -> &Uuid {
+        &self.0
     }
 }
 
 impl Display for Id {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0.to_string())
+    }
+}
+
+impl From<Uuid> for Id {
+    fn from(uuid: Uuid) -> Self {
+        Self(uuid)
+    }
+}
+
+impl From<&Uuid> for Id {
+    fn from(uuid: &Uuid) -> Self {
+        Self(uuid.clone())
     }
 }
 

@@ -1,6 +1,5 @@
 use diesel::prelude::{Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 use crate::auth::{self, UserInfo};
 
@@ -10,7 +9,7 @@ use super::{Email, Id, Nickname, Picture, Sub};
 #[diesel(table_name = crate::schema::users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct User {
-    id: Uuid,
+    id: Id,
     sub: String,
     nickname: String,
     name: String,
@@ -111,7 +110,7 @@ impl UserDto {
 impl From<User> for UserDto {
     fn from(user: User) -> Self {
         Self {
-            id: Id(user.id),
+            id: user.id,
             sub: Sub(user.sub),
             nickname: Nickname(user.nickname),
             name: user.name,

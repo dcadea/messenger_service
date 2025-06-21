@@ -10,10 +10,10 @@ use super::{Id, Status, StatusTransition};
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Contact {
     id: Uuid,
-    user_id_1: Uuid,
-    user_id_2: Uuid,
+    user_id_1: user::Id,
+    user_id_2: user::Id,
     status: String,
-    initiator: Option<Uuid>,
+    initiator: Option<user::Id>,
 }
 
 impl Contact {
@@ -21,11 +21,11 @@ impl Contact {
         &self.id
     }
 
-    pub const fn user_id_1(&self) -> &Uuid {
+    pub const fn user_id_1(&self) -> &user::Id {
         &self.user_id_1
     }
 
-    pub const fn user_id_2(&self) -> &Uuid {
+    pub const fn user_id_2(&self) -> &user::Id {
         &self.user_id_2
     }
 
@@ -33,7 +33,7 @@ impl Contact {
         &self.status
     }
 
-    pub const fn initiator(&self) -> Option<&Uuid> {
+    pub const fn initiator(&self) -> Option<&user::Id> {
         self.initiator.as_ref()
     }
 }
@@ -41,27 +41,27 @@ impl Contact {
 #[derive(Insertable)]
 #[diesel(table_name = crate::schema::contacts)]
 pub struct NewContact<'a> {
-    user_id_1: &'a Uuid,
-    user_id_2: &'a Uuid,
+    user_id_1: &'a user::Id,
+    user_id_2: &'a user::Id,
     status: &'a str,
-    initiator: &'a Uuid,
+    initiator: &'a user::Id,
 }
 
 impl<'a> NewContact<'a> {
     pub fn new(initiator: &'a user::Id, responder: &'a user::Id) -> Self {
         Self {
-            user_id_1: &initiator.0,
-            user_id_2: &responder.0,
+            user_id_1: initiator,
+            user_id_2: responder,
             status: "pending",
-            initiator: &initiator.0,
+            initiator,
         }
     }
 
-    pub const fn user_id_1(&self) -> &Uuid {
+    pub const fn user_id_1(&self) -> &user::Id {
         &self.user_id_1
     }
 
-    pub const fn user_id_2(&self) -> &Uuid {
+    pub const fn user_id_2(&self) -> &user::Id {
         &self.user_id_2
     }
 }

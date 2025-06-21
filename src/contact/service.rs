@@ -197,7 +197,7 @@ impl ContactServiceImpl {
 }
 
 fn map_to_dto(auth_id: &user::Id, c: &Contact) -> ContactDto {
-    let (sender, recipient) = if auth_id.0.eq(c.user_id_1()) {
+    let (sender, recipient) = if auth_id.eq(c.user_id_1()) {
         (c.user_id_1(), c.user_id_2())
     } else {
         (c.user_id_2(), c.user_id_1())
@@ -205,8 +205,8 @@ fn map_to_dto(auth_id: &user::Id, c: &Contact) -> ContactDto {
 
     ContactDto::new(
         Id(c.id().clone()),
-        user::Id(sender.clone()),
-        user::Id(recipient.clone()),
+        sender.clone(),
+        recipient.clone(),
         Status::from(c),
     )
 }

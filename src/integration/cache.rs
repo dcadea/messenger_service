@@ -267,9 +267,10 @@ impl redis::ToRedisArgs for Key<'_> {
 
 impl redis::FromRedisValue for user::Id {
     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
-        // FIXME:
-        let uuid = Uuid::try_parse(&String::from_redis_value(v)?).unwrap();
-        Ok(Self(uuid))
+        let s = String::from_redis_value(v)?;
+        Uuid::try_parse(&s).map(Self::from).map_err(|e| {
+            redis::RedisError::from((redis::ErrorKind::TypeError, "Invalid UUID", e.to_string()))
+        })
     }
 }
 
@@ -278,7 +279,7 @@ impl redis::ToRedisArgs for user::Id {
     where
         W: ?Sized + redis::RedisWrite,
     {
-        self.0.to_string().write_redis_args(out);
+        self.get().hyphenated().to_string().write_redis_args(out);
     }
 }
 

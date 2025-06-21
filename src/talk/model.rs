@@ -81,11 +81,11 @@ impl<'a> NewChat<'a> {
 #[diesel(table_name = crate::schema::chats_users)]
 pub struct NewChatUser<'a> {
     chat_id: &'a Uuid,
-    user_id: &'a Uuid,
+    user_id: &'a user::Id,
 }
 
 impl<'a> NewChatUser<'a> {
-    pub fn new(chat_id: &'a Uuid, user_id: &'a Uuid) -> Self {
+    pub fn new(chat_id: &'a Uuid, user_id: &'a user::Id) -> Self {
         Self { chat_id, user_id }
     }
 }
@@ -94,12 +94,12 @@ impl<'a> NewChatUser<'a> {
 #[diesel(table_name = crate::schema::groups)]
 pub struct NewGroup<'a> {
     id: &'a Uuid,
-    owner: &'a Uuid,
+    owner: &'a user::Id,
     name: &'a str,
 }
 
 impl<'a> NewGroup<'a> {
-    pub fn new(id: &'a Uuid, owner: &'a Uuid, name: &'a str) -> Self {
+    pub fn new(id: &'a Uuid, owner: &'a user::Id, name: &'a str) -> Self {
         Self { id, owner, name }
     }
 }
@@ -108,11 +108,11 @@ impl<'a> NewGroup<'a> {
 #[diesel(table_name = crate::schema::groups_users)]
 pub struct NewGroupUser<'a> {
     group_id: &'a Uuid,
-    user_id: &'a Uuid,
+    user_id: &'a user::Id,
 }
 
 impl<'a> NewGroupUser<'a> {
-    pub fn new(group_id: &'a Uuid, user_id: &'a Uuid) -> Self {
+    pub fn new(group_id: &'a Uuid, user_id: &'a user::Id) -> Self {
         Self { group_id, user_id }
     }
 }
@@ -200,41 +200,4 @@ pub enum DetailsDto {
         owner: user::Id,
         sender: user::Id,
     },
-}
-
-pub mod pg {
-    use diesel::backend::Backend;
-    use diesel::deserialize::FromSql;
-    use diesel::serialize::{IsNull, Output, ToSql};
-    use diesel::sql_types::Text;
-    use diesel::{deserialize, serialize};
-    use std::io::Write;
-
-    use crate::schema::sql_types::TalkKind;
-    use crate::talk::{self, Kind};
-
-    impl<DB> FromSql<TalkKind, DB> for Kind
-    where
-        DB: Backend,
-        String: FromSql<Text, DB>,
-    {
-        fn from_sql(bytes: DB::RawValue<'_>) -> deserialize::Result<Self> {
-            let s = String::from_sql(bytes)?;
-            match s.as_str() {
-                "chat" => Ok(Kind::Chat),
-                "group" => Ok(Kind::Group),
-                other => Err(Box::new(talk::Error::UnsupportedKind(other.to_string()))),
-            }
-        }
-    }
-
-    impl ToSql<TalkKind, diesel::pg::Pg> for Kind {
-        fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::pg::Pg>) -> serialize::Result {
-            match *self {
-                Kind::Chat => out.write_all(b"chat")?,
-                Kind::Group => out.write_all(b"group")?,
-            }
-            Ok(IsNull::No)
-        }
-    }
 }

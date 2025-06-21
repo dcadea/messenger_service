@@ -48,8 +48,7 @@ impl ContactRepository for PgContactRepository {
 
         contacts
             .filter(
-                (user_id_1.eq(u1.0).and(user_id_2.eq(u2.0)))
-                    .or(user_id_1.eq(u2.0).and(user_id_2.eq(u1.0))),
+                (user_id_1.eq(u1).and(user_id_2.eq(u2))).or(user_id_1.eq(u2).and(user_id_2.eq(u1))),
             )
             .first::<Contact>(&mut conn)
             .optional()
@@ -70,7 +69,7 @@ impl ContactRepository for PgContactRepository {
         let mut conn = self.pool.get()?;
 
         contacts
-            .filter(user_id_1.eq(user_id.0).or(user_id_2.eq(user_id.0)))
+            .filter(user_id_1.eq(user_id).or(user_id_2.eq(user_id)))
             .select(Contact::as_select())
             .get_results(&mut conn)
             .map_err(super::Error::from)
@@ -85,9 +84,9 @@ impl ContactRepository for PgContactRepository {
 
         contacts
             .filter(
-                (user_id_1.eq(user_id.0).or(user_id_2.eq(user_id.0)))
+                (user_id_1.eq(user_id).or(user_id_2.eq(user_id)))
                     .and(status.eq(s.as_str()))
-                    .and(initiator.eq(s.initiator().map(|i| i.0))),
+                    .and(initiator.eq(s.initiator())),
             )
             .select(Contact::as_select())
             .get_results(&mut conn)
@@ -123,8 +122,8 @@ impl ContactRepository for PgContactRepository {
 
         let deleted_count = delete(contacts)
             .filter(
-                (user_id_1.eq(me.0).and(user_id_2.eq(you.0)))
-                    .or(user_id_1.eq(you.0).and(user_id_2.eq(me.0))),
+                (user_id_1.eq(me).and(user_id_2.eq(you)))
+                    .or(user_id_1.eq(you).and(user_id_2.eq(me))),
             )
             .execute(&mut conn)?;
 
@@ -135,8 +134,7 @@ impl ContactRepository for PgContactRepository {
         let mut conn = self.pool.get()?;
         let count = contacts
             .filter(
-                (user_id_1.eq(u1.0).and(user_id_2.eq(u2.0)))
-                    .or(user_id_1.eq(u2.0).and(user_id_2.eq(u1.0))),
+                (user_id_1.eq(u1).and(user_id_2.eq(u2))).or(user_id_1.eq(u2).and(user_id_2.eq(u1))),
             )
             .select(id)
             .count()
