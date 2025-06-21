@@ -253,7 +253,7 @@ impl MessageService for MessageServiceImpl {
         Ok(seen_qty)
     }
 
-    fn is_last_message(&self, msg: &MessageDto) -> super::Result<bool> {
+    fn is_last_message(&self, _msg: &MessageDto) -> super::Result<bool> {
         // TODO: write proper SQL
         // let talk = self
         //     .talk_service

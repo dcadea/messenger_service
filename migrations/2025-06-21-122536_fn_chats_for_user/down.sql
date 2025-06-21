@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS chats_for_user(UUID);

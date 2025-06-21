@@ -106,10 +106,7 @@ pub mod pg {
 
     impl ToSql<TalkKind, diesel::pg::Pg> for talk::Kind {
         fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::pg::Pg>) -> serialize::Result {
-            match *self {
-                Self::Chat => out.write_all(b"chat")?,
-                Self::Group => out.write_all(b"group")?,
-            }
+            out.write_all(self.as_str().as_bytes())?;
             Ok(IsNull::No)
         }
     }

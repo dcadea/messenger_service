@@ -5,3 +5,5 @@ CREATE TABLE talks (
     kind talk_kind NOT NULL,
     last_message_id UUID
 );
+
+CREATE INDEX idx_talks_kind ON talks (kind);

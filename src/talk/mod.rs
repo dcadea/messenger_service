@@ -70,7 +70,7 @@ pub enum Kind {
 }
 
 impl Kind {
-    const fn _as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &str {
         match self {
             Self::Chat => "chat",
             Self::Group => "group",

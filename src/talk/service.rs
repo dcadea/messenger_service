@@ -2,10 +2,9 @@ use std::collections::HashSet;
 
 use async_trait::async_trait;
 use futures::TryFutureExt;
-use futures::future::join_all;
 use log::error;
 
-use super::model::{Details, DetailsDto, Talk, TalkDto};
+use super::model::{ChatTalk, Details, DetailsDto, Talk, TalkDto};
 use super::{Kind, Repository, Validator};
 use crate::integration::storage::Blob;
 use crate::integration::{cache, storage};
@@ -221,14 +220,19 @@ impl TalkService for TalkServiceImpl {
         kind: &Kind,
     ) -> super::Result<Vec<TalkDto>> {
         let auth_id = auth_user.id();
-        let talks = self.repo.find_by_user_id_and_kind(auth_id, kind)?;
 
-        let talk_dtos = join_all(
-            talks
-                .into_iter()
-                .map(|t| async { self.talk_to_dto(t, auth_id).await }),
-        )
-        .await;
+        let talk_dtos: Vec<TalkDto> = match kind {
+            Kind::Chat => self
+                .repo
+                .find_chats_by_user_id(auth_id)?
+                .iter()
+                .map(|c| self.chat_to_dto(c, auth_id))
+                .collect(),
+            Kind::Group => {
+                // let talks = self.repo.find_by_user_id_and_kind(auth_id, kind)?;
+                todo!("find_all_by_kind for groups not implemented")
+            }
+        };
 
         Ok(talk_dtos)
     }
@@ -289,7 +293,22 @@ impl TalkService for TalkServiceImpl {
 }
 
 impl TalkServiceImpl {
-    async fn talk_to_dto(&self, _t: Talk, _auth_id: &user::Id) -> TalkDto {
+    fn chat_to_dto(&self, c: &ChatTalk, auth_id: &user::Id) -> TalkDto {
+        let lm = c.last_message_id().map(|_| todo!("fetch last message"));
+
+        TalkDto::new(
+            c.id().clone(),
+            Picture::from(user::Picture::try_from(c.picture()).unwrap()),
+            c.name(),
+            DetailsDto::Chat {
+                sender: auth_id.clone(),
+                recipient: c.recipient().clone(),
+            },
+            lm,
+        )
+    }
+
+    async fn _talk_to_dto(&self, _t: Talk, _auth_id: &user::Id) -> TalkDto {
         // let (name, picture, details) = match t.details().clone() {
         //     Details::Chat { members } => {
         //         assert!(members.contains(auth_id));

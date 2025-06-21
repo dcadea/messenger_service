@@ -1,4 +1,7 @@
-use diesel::prelude::{Associations, Identifiable, Insertable, Queryable, Selectable};
+use diesel::{
+    prelude::{Associations, Identifiable, Insertable, Queryable, QueryableByName, Selectable},
+    sql_types,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -128,17 +131,41 @@ pub enum Details {
     },
 }
 
-pub struct TalkWithDetails {}
+#[derive(QueryableByName, Debug)]
+pub struct ChatTalk {
+    #[diesel(sql_type = sql_types::Uuid)]
+    id: Id,
+    #[diesel(sql_type = sql_types::Nullable<sql_types::Uuid>)]
+    last_message_id: Option<message::Id>,
+    #[diesel(sql_type = sql_types::Uuid)]
+    recipient: user::Id,
+    #[diesel(sql_type = sql_types::Text)]
+    name: String, // TODO: implement FromSql and ToSql ofr nickname and picture
+    #[diesel(sql_type = sql_types::Text)]
+    picture: String,
+}
 
-// impl From<Details> for TalkWithDetails {
-//     fn from(details: Details) -> Self {
-//         Self {
-//             id: Id::random(),
-//             details,
-//             last_message: None,
-//         }
-//     }
-// }
+impl ChatTalk {
+    pub const fn id(&self) -> &Id {
+        &self.id
+    }
+
+    pub const fn last_message_id(&self) -> Option<&message::Id> {
+        self.last_message_id.as_ref()
+    }
+
+    pub const fn recipient(&self) -> &user::Id {
+        &self.recipient
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn picture(&self) -> &str {
+        &self.picture
+    }
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct TalkDto {
