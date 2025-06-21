@@ -62,10 +62,12 @@ impl From<Uuid> for Id {
     }
 }
 
-#[derive(Clone, Debug, AsExpression, FromSqlRow)]
+#[derive(Clone, Debug, Deserialize, AsExpression, FromSqlRow)]
 #[diesel(sql_type = sql_types::TalkKind)]
 pub enum Kind {
+    #[serde(rename = "chat")]
     Chat,
+    #[serde(rename = "group")]
     Group,
 }
 

@@ -23,7 +23,11 @@ pub trait TalkRepository {
 
     fn find_groups_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<GroupTalk>>;
 
-    fn find_by_id_and_user_id(&self, id: &talk::Id, user_id: &user::Id) -> super::Result<()>;
+    fn find_chat_by_id_and_user_id(
+        &self,
+        id: &talk::Id,
+        user_id: &user::Id,
+    ) -> super::Result<Option<ChatTalk>>;
 
     fn create(&self, t: &NewTalk) -> super::Result<talk::Id>;
 
@@ -70,7 +74,6 @@ impl TalkRepository for PgTalkRepository {
                 u.name,
                 u.picture
             FROM talks t
-            JOIN chats c ON c.id = t.id
             JOIN chats_users cu_self ON cu_self.chat_id = t.id AND cu_self.user_id = $1
             JOIN chats_users cu_other ON cu_other.chat_id = t.id AND cu_other.user_id != $1
             JOIN users u ON u.id = cu_other.user_id
@@ -91,32 +94,36 @@ impl TalkRepository for PgTalkRepository {
             .map_err(super::Error::from)
     }
 
-    fn find_by_id_and_user_id(&self, _id: &talk::Id, _u_id: &user::Id) -> super::Result<()> {
-        // TODO:
-        // let mut conn = self.pool.get()?;
-        //
-        // let res = chats_users::table
-        //     .filter(
-        //         chats_users::chat_id
-        //             .eq(id.0)
-        //             .and(chats_users::user_id.eq(u_id.0)),
-        //     )
-        //     .inner_join(chats::table.inner_join(talks::table))
-        //     .select(chats_users::chat_id)
-        //     .union(
-        //         groups_users::table
-        //             .filter(
-        //                 groups_users::group_id
-        //                     .eq(id.0)
-        //                     .and(groups_users::user_id.eq(u_id.0)),
-        //             )
-        //             .inner_join(groups::table.inner_join(talks::table))
-        //             .select(groups_users::group_id),
-        //     )
-        //     .load::<Uuid>(&mut conn);
+    fn find_chat_by_id_and_user_id(
+        &self,
+        t_id: &talk::Id,
+        u_id: &user::Id,
+    ) -> super::Result<Option<ChatTalk>> {
+        let mut conn = self.pool.get()?;
 
-        // talk.ok_or(talk::Error::NotFound(Some(id.to_owned())))
-        todo!("find_by_id_and_user_id")
+        let query = sql_query(
+            r#"
+            SELECT
+                t.id,
+                t.last_message_id,
+                u.id AS recipient,
+                u.name,
+                u.picture
+            FROM talks t
+            JOIN chats_users cu_self ON cu_self.chat_id = t.id AND cu_self.user_id = $1
+            JOIN chats_users cu_other ON cu_other.chat_id = t.id AND cu_other.user_id != $1
+            JOIN users u ON u.id = cu_other.user_id
+            WHERE t.id = $2
+            AND t.kind = 'chat'
+            "#,
+        )
+        .bind::<sql_types::Uuid, _>(u_id.get())
+        .bind::<sql_types::Uuid, _>(t_id.get());
+
+        query
+            .get_result::<ChatTalk>(&mut conn)
+            .optional()
+            .map_err(super::Error::from)
     }
 
     fn create(&self, t: &NewTalk) -> super::Result<talk::Id> {
@@ -181,14 +188,20 @@ impl TalkRepository for PgTalkRepository {
         todo!("delete")
     }
 
-    fn exists(&self, _members: &[user::Id; 2]) -> super::Result<bool> {
-        // let count = self
-        //     .col
-        //     .count_documents(doc! { /*"details.members": { "$all": members.to_vec() }*/ })
-        //     .await?;
+    fn exists(&self, members: &[user::Id; 2]) -> super::Result<bool> {
+        use crate::schema::chats_users::dsl::*;
 
-        // Ok(count > 0)
-        todo!("exists")
+        let mut conn = self.pool.get()?;
+
+        chats_users
+            .filter(user_id.eq_any(members))
+            .select(chat_id)
+            .group_by(chat_id)
+            .having(diesel::dsl::count_distinct(user_id).eq(2))
+            .first::<talk::Id>(&mut conn)
+            .optional()
+            .map(|r| r.is_some())
+            .map_err(super::Error::from)
     }
 
     fn update_last_message(&self, _id: &talk::Id, _msg: Option<&LastMessage>) -> super::Result<()> {

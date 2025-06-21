@@ -5,6 +5,7 @@ use maud::{Markup, Render, html};
 
 use crate::markup::IdExt;
 use crate::message::markup::{MESSAGE_INPUT_TARGET, MESSAGE_LIST_ID, MESSAGE_LIST_TARGET};
+use crate::talk::Kind;
 use crate::talk::model::DetailsDto;
 use crate::{auth, message, talk, user};
 
@@ -205,10 +206,15 @@ impl crate::markup::IdExt for talk::Id {
 
 impl Render for TalkDto {
     fn render(&self) -> Markup {
+        let kind = match self.details() {
+            DetailsDto::Chat { .. } => Kind::Chat,
+            DetailsDto::Group { .. } => Kind::Group,
+        };
+
         html! {
             div #(self.id().attr())
                 ."talk-item px-3 py-2 rounded-md bg-gray-100 hover:bg-gray-200 cursor-pointer flex items-center"
-                hx-get={"/talks/" (self.id())}
+                hx-get={"/talks/" (self.id()) "?kind=" (kind.as_str())}
                 hx-target=(TALK_WINDOW_TARGET)
                 hx-swap="innerHTML"
             {

@@ -27,6 +27,7 @@ pub trait TalkService {
 
     async fn find_by_id_and_user_id(
         &self,
+        kind: &Kind,
         id: &talk::Id,
         user_id: &user::Id,
     ) -> super::Result<TalkDto>;
@@ -205,13 +206,18 @@ impl TalkService for TalkServiceImpl {
 
     async fn find_by_id_and_user_id(
         &self,
+        kind: &Kind,
         id: &talk::Id,
         auth_id: &user::Id,
     ) -> super::Result<TalkDto> {
-        let _talk = self.repo.find_by_id_and_user_id(id, auth_id)?;
-        // let dto = self.talk_to_dto(talk, auth_id).await;
-        // Ok(dto)
-        todo!()
+        match kind {
+            Kind::Chat => self
+                .repo
+                .find_chat_by_id_and_user_id(id, auth_id)?
+                .map(|c| self.chat_to_dto(&c, auth_id))
+                .ok_or(super::Error::NotFound(Some(id.clone()))),
+            Kind::Group => unimplemented!("search by group kind not implemented"),
+        }
     }
 
     async fn find_all_by_kind(

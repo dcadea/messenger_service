@@ -24,22 +24,29 @@ impl From<super::Error> for StatusCode {
 pub(super) mod pages {
     use axum::{
         Extension,
-        extract::{Path, State},
+        extract::{Path, Query, State},
     };
     use maud::{Markup, html};
+    use serde::Deserialize;
 
     use crate::{
         auth,
-        talk::{self, markup},
+        talk::{self, Kind, markup},
     };
+
+    #[derive(Deserialize)]
+    pub struct KindParams {
+        kind: Kind,
+    }
 
     pub async fn active_talk(
         id: Path<talk::Id>,
         auth_user: Extension<auth::User>,
+        params: Query<KindParams>,
         talk_service: State<talk::Service>,
     ) -> crate::Result<Markup> {
         let talk = &talk_service
-            .find_by_id_and_user_id(&id, auth_user.id())
+            .find_by_id_and_user_id(&params.kind, &id, auth_user.id())
             .await?;
 
         Ok(html! {(markup::ActiveTalk(&auth_user, &talk))})
@@ -49,7 +56,7 @@ pub(super) mod pages {
 pub(super) mod api {
     use axum::{
         Extension, Json,
-        extract::{Path, State},
+        extract::{Path, Query, State},
         response::IntoResponse,
     };
     use maud::{Markup, html};
@@ -58,17 +65,23 @@ pub(super) mod api {
     use crate::{
         auth,
         integration::storage::{self, Blob},
-        talk::{self, markup},
+        talk::{self, Kind, markup},
         user,
     };
 
+    #[derive(Deserialize)]
+    pub struct KindParams {
+        kind: Kind,
+    }
+
     pub async fn find_one(
         auth_user: Extension<auth::User>,
+        params: Query<KindParams>,
         talk_service: State<talk::Service>,
         Path(id): Path<talk::Id>,
     ) -> crate::Result<Markup> {
         let talk = talk_service
-            .find_by_id_and_user_id(&id, auth_user.id())
+            .find_by_id_and_user_id(&params.kind, &id, auth_user.id())
             .await?;
         Ok(html! { (talk) })
     }
