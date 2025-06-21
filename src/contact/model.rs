@@ -105,55 +105,51 @@ impl ContactDto {
     /// - Pending -> (Reject) -> Rejected
     /// - Accepted -> (Block) -> Blocked
     /// - Blocked -> (Unblock) -> Accepted
-    pub fn transition(&mut self, t: StatusTransition) -> bool {
+    pub fn transition(&mut self, t: StatusTransition) -> super::Result<Status> {
         match (&self.status, t) {
             (Status::Pending { initiator }, StatusTransition::Accept { responder }) => {
                 if !self.is_member(responder) {
-                    return false;
+                    return Err(super::Error::StatusTransitionFailed);
                 }
 
                 if initiator.eq(responder) {
-                    return false;
+                    return Err(super::Error::StatusTransitionFailed);
                 }
 
-                self.status = Status::Accepted;
-                true
+                Ok(Status::Accepted)
             }
             (Status::Pending { initiator }, StatusTransition::Reject { responder }) => {
                 if !self.is_member(responder) {
-                    return false;
+                    return Err(super::Error::StatusTransitionFailed);
                 }
 
                 if initiator.eq(responder) {
-                    return false;
+                    return Err(super::Error::StatusTransitionFailed);
                 }
 
-                self.status = Status::Rejected;
-                true
+                Ok(Status::Rejected)
             }
             (Status::Accepted, StatusTransition::Block { initiator }) => {
                 if !self.is_member(initiator) {
-                    return false;
+                    return Err(super::Error::StatusTransitionFailed);
                 }
 
-                self.status = Status::Blocked {
+                Ok(Status::Blocked {
                     initiator: initiator.clone(),
-                };
-                true
+                })
             }
             (Status::Blocked { initiator }, StatusTransition::Unblock { target }) => {
                 if !self.is_member(target) {
-                    return false;
+                    return Err(super::Error::StatusTransitionFailed);
                 }
 
                 if initiator.eq(target) {
-                    return false;
+                    return Err(super::Error::StatusTransitionFailed);
                 }
 
-                self.status = Status::Accepted;
-                true
+                Ok(Status::Accepted)
             }
-            _ => false, /* no change */
+            _ => Err(super::Error::StatusTransitionFailed), /* no change */
         }
     }
 

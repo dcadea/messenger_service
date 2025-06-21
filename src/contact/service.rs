@@ -121,7 +121,7 @@ impl ContactService for ContactServiceImpl {
 
         let exists = self.repo.exists(me, you)?;
         if exists {
-            return Err(super::Error::AlreadyExists(me.clone(), you.clone()));
+            return Err(super::Error::AlreadyExists);
         }
 
         self.repo.add(&NewContact::new(me, you))?;
@@ -146,10 +146,8 @@ impl ContactService for ContactServiceImpl {
         match contact {
             Some(c) => {
                 let mut dto = map_to_dto(auth_id, &c);
-                if !dto.transition(st) {
-                    return Err(super::Error::StatusTransitionFailed);
-                }
-                self.repo.update_status(&c)?;
+                let s = dto.transition(st)?;
+                self.repo.update_status(c.id(), &s)?;
                 Ok(Status::from(&c))
             }
             None => return Err(super::Error::NotFound(id.clone())),

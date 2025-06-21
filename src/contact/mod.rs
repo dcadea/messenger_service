@@ -130,8 +130,8 @@ pub enum StatusTransition<'a> {
 pub enum Error {
     #[error("contact not found: {0:?}")]
     NotFound(Id),
-    #[error("contact ({0:?} : {1:?}) already exists")]
-    AlreadyExists(user::Id, user::Id),
+    #[error("contact already exists")]
+    AlreadyExists,
     #[error("contacts should be different, got both: {0:?}")]
     SameUsers(user::Id),
     #[error("could not transition contact status")]

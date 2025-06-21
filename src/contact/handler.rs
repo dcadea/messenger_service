@@ -65,7 +65,7 @@ pub(super) mod api {
         fn from(e: contact::Error) -> Self {
             match e {
                 contact::Error::NotFound(_) => Self::NOT_FOUND,
-                contact::Error::AlreadyExists(..) => Self::CONFLICT,
+                contact::Error::AlreadyExists => Self::CONFLICT,
                 contact::Error::SameUsers(_) | contact::Error::StatusTransitionFailed => {
                     Self::BAD_REQUEST
                 }

@@ -1,13 +1,13 @@
 use std::fmt::Display;
 
-use maud::{Markup, Render, html};
-
+use crate::user;
 use crate::{
     auth,
     contact::{self, model::ContactDto},
     markup::IdExt,
     talk::markup::TALK_WINDOW_TARGET,
 };
+use maud::{Markup, Render, html};
 
 use super::{
     Sub,
@@ -65,7 +65,7 @@ impl Render for Search {
     }
 }
 
-struct StartTalk<'a>(&'a Sub);
+struct StartTalk<'a>(&'a user::Id);
 
 impl Render for StartTalk<'_> {
     fn render(&self) -> Markup {
@@ -76,7 +76,7 @@ impl Render for StartTalk<'_> {
                 hx-ext="json-enc"
             {
                 input type="hidden" name="kind" value="chat" {}
-                input type="hidden" name="sub" value=(self.0) {}
+                input type="hidden" name="user_id" value=(self.0) {}
                 input ."px-2 py-1 text-white bg-blue-700 hover:bg-blue-800 font-medium rounded-lg text-xs focus:outline-none"
                     type="submit"
                     value="Start talk" {}
@@ -85,7 +85,7 @@ impl Render for StartTalk<'_> {
     }
 }
 
-struct AddContact<'a>(&'a Sub);
+struct AddContact<'a>(&'a user::Id);
 
 impl Render for AddContact<'_> {
     fn render(&self) -> Markup {
@@ -94,7 +94,7 @@ impl Render for AddContact<'_> {
                 hx-target="this"
                 hx-swap="outerHTML"
             {
-                input type="hidden" name="sub" value=(self.0) {}
+                input type="hidden" name="user_id" value=(self.0) {}
                 input ."px-2 py-1 text-white bg-green-700 hover:bg-green-800 font-medium rounded-lg text-xs focus:outline-none"
                     type="submit"
                     value="Add contact" {}
@@ -133,10 +133,10 @@ impl Render for SearchResult<'_> {
 
                             @match self.contacts.iter().find(|c| user.id().eq(c.recipient())) {
                                 Some(c) => @match c.status() {
-                                    contact::Status::Accepted => (StartTalk(user.sub())),
+                                    contact::Status::Accepted => (StartTalk(user.id())),
                                     _ => (c.status())
                                 },
-                                None => (AddContact(user.sub()))
+                                None => (AddContact(user.id()))
                             }
                         }
                     }
