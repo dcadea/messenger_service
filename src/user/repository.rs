@@ -60,7 +60,7 @@ impl UserRepository for PgUserRepository {
         let mut conn = self.pool.get()?;
 
         let u = users
-            .find(u_id.0)
+            .find(u_id)
             .select(User::as_select())
             .first(&mut conn)?;
 
@@ -82,7 +82,7 @@ impl UserRepository for PgUserRepository {
     fn exists(&self, u_id: &user::Id) -> super::Result<bool> {
         let mut conn = self.pool.get()?;
 
-        let count = users.find(u_id.0).count().get_result::<i64>(&mut conn)?;
+        let count = users.find(u_id).count().get_result::<i64>(&mut conn)?;
 
         Ok(count > 0)
     }

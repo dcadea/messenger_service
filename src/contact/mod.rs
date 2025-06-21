@@ -4,6 +4,7 @@ use axum::{
     Router,
     routing::{delete, post, put},
 };
+use diesel::{deserialize::FromSqlRow, expression::AsExpression, sql_types};
 use model::Contact;
 use repository::ContactRepository;
 use serde::{Deserialize, Serialize};
@@ -23,12 +24,19 @@ type Result<T> = std::result::Result<T, Error>;
 pub type Repository = Arc<dyn ContactRepository + Send + Sync>;
 pub type Service = Arc<dyn ContactService + Send + Sync>;
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub struct Id(pub Uuid);
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq, FromSqlRow, AsExpression)]
+#[diesel(sql_type = sql_types::Uuid)]
+pub struct Id(Uuid);
 
 impl Id {
-    pub fn random() -> Self {
-        Self(Uuid::now_v7())
+    pub fn get(&self) -> &Uuid {
+        &self.0
+    }
+}
+
+impl From<Uuid> for Id {
+    fn from(uuid: Uuid) -> Self {
+        Self(uuid)
     }
 }
 

@@ -204,7 +204,7 @@ fn map_to_dto(auth_id: &user::Id, c: &Contact) -> ContactDto {
     };
 
     ContactDto::new(
-        Id(c.id().clone()),
+        c.id().clone(),
         sender.clone(),
         recipient.clone(),
         Status::from(c),

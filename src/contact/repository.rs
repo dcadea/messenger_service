@@ -5,15 +5,17 @@ use diesel::{
 
 use crate::{schema::contacts::dsl::*, user};
 
+use crate::contact::{self};
+
 use super::{
-    Id, Status,
+    Status,
     model::{Contact, NewContact},
 };
 
 pub trait ContactRepository {
     fn find(&self, u1: &user::Id, u2: &user::Id) -> super::Result<Option<Contact>>;
 
-    fn find_by_id(&self, c_id: &Id) -> super::Result<Option<Contact>>;
+    fn find_by_id(&self, c_id: &contact::Id) -> super::Result<Option<Contact>>;
 
     fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<Contact>>;
 
@@ -55,11 +57,11 @@ impl ContactRepository for PgContactRepository {
             .map_err(super::Error::from)
     }
 
-    fn find_by_id(&self, c_id: &Id) -> super::Result<Option<Contact>> {
+    fn find_by_id(&self, c_id: &contact::Id) -> super::Result<Option<Contact>> {
         let mut conn = self.pool.get()?;
 
         contacts
-            .find(c_id.0)
+            .find(c_id)
             .first::<Contact>(&mut conn)
             .optional()
             .map_err(super::Error::from)
@@ -106,10 +108,13 @@ impl ContactRepository for PgContactRepository {
     fn update_status(&self, c: &Contact) -> super::Result<bool> {
         let mut conn = self.pool.get()?;
 
+        let me = c.user_id_1();
+        let you = c.user_id_2();
+
         let modified_count = update(contacts)
             .filter(
-                (user_id_1.eq(c.user_id_1()).and(user_id_2.eq(c.user_id_2())))
-                    .or(user_id_1.eq(c.user_id_2()).and(user_id_2.eq(c.user_id_1()))),
+                (user_id_1.eq(me).and(user_id_2.eq(you)))
+                    .or(user_id_1.eq(you).and(user_id_2.eq(me))),
             )
             .set((status.eq(c.status()), initiator.eq(c.initiator())))
             .execute(&mut conn)?;
@@ -130,11 +135,12 @@ impl ContactRepository for PgContactRepository {
         Ok(deleted_count > 0)
     }
 
-    fn exists(&self, u1: &user::Id, u2: &user::Id) -> super::Result<bool> {
+    fn exists(&self, me: &user::Id, you: &user::Id) -> super::Result<bool> {
         let mut conn = self.pool.get()?;
         let count = contacts
             .filter(
-                (user_id_1.eq(u1).and(user_id_2.eq(u2))).or(user_id_1.eq(u2).and(user_id_2.eq(u1))),
+                (user_id_1.eq(me).and(user_id_2.eq(you)))
+                    .or(user_id_1.eq(you).and(user_id_2.eq(me))),
             )
             .select(id)
             .count()

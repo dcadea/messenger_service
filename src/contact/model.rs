@@ -1,5 +1,4 @@
 use diesel::prelude::{Insertable, Queryable, Selectable};
-use uuid::Uuid;
 
 use crate::user;
 
@@ -9,7 +8,7 @@ use super::{Id, Status, StatusTransition};
 #[diesel(table_name = crate::schema::contacts)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Contact {
-    id: Uuid,
+    id: Id,
     user_id_1: user::Id,
     user_id_2: user::Id,
     status: String,
@@ -17,7 +16,7 @@ pub struct Contact {
 }
 
 impl Contact {
-    pub const fn id(&self) -> &Uuid {
+    pub const fn id(&self) -> &Id {
         &self.id
     }
 
