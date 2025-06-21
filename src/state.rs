@@ -70,7 +70,6 @@ impl AppState {
         let message_service = Arc::new(MessageServiceImpl::new(
             message_repo,
             talk_service.clone(),
-            talk_validator.clone(),
             event_service.clone(),
         ));
 

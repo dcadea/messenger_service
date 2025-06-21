@@ -260,6 +260,9 @@ impl TalkService for TalkServiceImpl {
     }
 
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
+        // check on db level if
+        // 1. chat -> user is a member
+        // 2. group -> user is owner
         self.validator.check_member(id, auth_user).await?;
 
         self.repo.delete(id)?;

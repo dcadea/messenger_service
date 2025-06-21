@@ -23,7 +23,7 @@ pub trait MessageService {
         text: &str,
     ) -> super::Result<Vec<MessageDto>>;
 
-    fn find_by_id(&self, id: &message::Id) -> super::Result<MessageDto>;
+    fn find_by_id(&self, auth_user: &auth::User, id: &message::Id) -> super::Result<MessageDto>;
 
     fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<MessageDto>>;
 
@@ -57,7 +57,6 @@ pub trait MessageService {
 pub struct MessageServiceImpl {
     repo: Repository,
     talk_service: talk::Service,
-    talk_validator: talk::Validator,
     event_service: event::Service,
     splitter: Arc<TextSplitter<Characters>>,
 }
@@ -66,13 +65,11 @@ impl MessageServiceImpl {
     pub fn new(
         repo: Repository,
         talk_service: talk::Service,
-        talk_validator: talk::Validator,
         event_service: event::Service,
     ) -> Self {
         Self {
             repo,
             talk_service,
-            talk_validator,
             event_service,
             splitter: Arc::new(TextSplitter::new(MAX_MESSAGE_LENGTH)),
         }
@@ -116,8 +113,10 @@ impl MessageService for MessageServiceImpl {
         Ok(msgs)
     }
 
-    fn find_by_id(&self, id: &message::Id) -> super::Result<MessageDto> {
-        self.repo.find_by_id(id).map(MessageDto::from)
+    fn find_by_id(&self, auth_user: &auth::User, id: &message::Id) -> super::Result<MessageDto> {
+        self.repo
+            .find_by_id(auth_user.id(), id)
+            .map(MessageDto::from)
     }
 
     fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<MessageDto>> {
@@ -132,13 +131,12 @@ impl MessageService for MessageServiceImpl {
         id: &message::Id,
         text: &str,
     ) -> super::Result<MessageDto> {
-        let msg = self.repo.find_by_id(id).map(MessageDto::from)?;
+        let msg = self
+            .repo
+            .find_by_id(auth_user.id(), id)
+            .map(MessageDto::from)?;
 
-        if msg.owner().ne(auth_user.id()) {
-            return Err(super::Error::NotOwner);
-        }
-
-        if self.repo.update(id, text)? {
+        if self.repo.update(auth_user.id(), id, text)? {
             let msg = msg.with_text(text);
             self.notify_updated(&msg).await;
             return Ok(msg);
@@ -152,19 +150,12 @@ impl MessageService for MessageServiceImpl {
         auth_user: &auth::User,
         id: &message::Id,
     ) -> super::Result<Option<MessageDto>> {
-        let msg = self.repo.find_by_id(id).map(MessageDto::from)?;
-        let talk_id = msg.talk_id();
+        let msg = self
+            .repo
+            .find_by_id(auth_user.id(), id)
+            .map(MessageDto::from)?;
 
-        self.talk_validator
-            .check_member(talk_id, auth_user)
-            .await
-            .map_err(|_| super::Error::NotOwner)?;
-
-        if msg.owner().ne(auth_user.id()) {
-            return Err(super::Error::NotOwner);
-        }
-
-        if self.repo.delete(id)? {
+        if self.repo.delete(auth_user.id(), id)? {
             self.notify_deleted(&msg).await;
             return Ok(Some(msg));
         }

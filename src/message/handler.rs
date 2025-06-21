@@ -4,7 +4,6 @@ impl From<super::Error> for StatusCode {
     fn from(e: super::Error) -> Self {
         match e {
             super::Error::NotFound(_) => Self::NOT_FOUND,
-            super::Error::NotOwner => Self::FORBIDDEN,
             super::Error::EmptyContent => Self::BAD_REQUEST,
             super::Error::IdNotPresent
             | super::Error::Unexpected(_)
@@ -172,11 +171,7 @@ pub(super) mod templates {
         params: Query<EditParams>,
         message_service: State<message::Service>,
     ) -> crate::Result<Markup> {
-        let msg = message_service.find_by_id(&params.message_id)?;
-
-        if msg.owner().ne(auth_user.id()) {
-            return Err(crate::error::Error::from(message::Error::NotOwner));
-        }
+        let msg = message_service.find_by_id(&auth_user, &params.message_id)?;
 
         Ok(markup::InputEdit::new(msg.id(), msg.text()).render())
     }
