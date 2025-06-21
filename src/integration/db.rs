@@ -9,7 +9,7 @@ pub mod pg {
     use uuid::Uuid;
 
     use crate::schema::sql_types::TalkKind;
-    use crate::{contact, talk, user};
+    use crate::{contact, message, talk, user};
 
     use diesel::{PgConnection, r2d2::ConnectionManager};
     use log::warn;
@@ -142,6 +142,23 @@ pub mod pg {
     }
 
     impl ToSql<sql_types::Uuid, diesel::pg::Pg> for contact::Id {
+        fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::pg::Pg>) -> serialize::Result {
+            out.write_all(self.get().as_bytes())?;
+            Ok(IsNull::No)
+        }
+    }
+
+    impl<DB> FromSql<sql_types::Uuid, DB> for message::Id
+    where
+        DB: Backend,
+        Uuid: FromSql<sql_types::Uuid, DB>,
+    {
+        fn from_sql(bytes: DB::RawValue<'_>) -> deserialize::Result<Self> {
+            Uuid::from_sql(bytes).map(Self::from)
+        }
+    }
+
+    impl ToSql<sql_types::Uuid, diesel::pg::Pg> for message::Id {
         fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::pg::Pg>) -> serialize::Result {
             out.write_all(self.get().as_bytes())?;
             Ok(IsNull::No)

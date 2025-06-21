@@ -3,12 +3,10 @@ use diesel::{
     BoolExpressionMethods, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
     RunQueryDsl, SelectableHelper, delete, insert_into, r2d2::ConnectionManager, update,
 };
-use uuid::Uuid;
 
-use super::{
-    Id,
-    model::{Message, NewMessage},
-};
+use crate::message;
+
+use super::model::{Message, NewMessage};
 use crate::{schema::messages::dsl::*, talk};
 
 pub trait MessageRepository {
@@ -17,7 +15,7 @@ pub trait MessageRepository {
     fn insert_many(&self, msgs: &[NewMessage]) -> super::Result<Vec<Message>>;
 
     // TODO: use super::Id
-    fn find_by_id(&self, m_id: &Id) -> super::Result<Message>;
+    fn find_by_id(&self, m_id: &message::Id) -> super::Result<Message>;
 
     fn find_by_talk_id(&self, t_id: &talk::Id) -> super::Result<Vec<Message>>;
 
@@ -38,11 +36,11 @@ pub trait MessageRepository {
 
     fn find_most_recent(&self, t_id: &talk::Id) -> super::Result<Option<Message>>;
 
-    fn update(&self, m_id: &Id, new_content: &str) -> super::Result<bool>;
+    fn update(&self, m_id: &message::Id, new_content: &str) -> super::Result<bool>;
 
-    fn delete(&self, m_id: &Id) -> super::Result<bool>;
+    fn delete(&self, m_id: &message::Id) -> super::Result<bool>;
 
-    fn mark_as_seen(&self, ids: &[Id]) -> super::Result<usize>;
+    fn mark_as_seen(&self, ids: &[message::Id]) -> super::Result<usize>;
 }
 
 pub struct PgMessageRepository {
@@ -78,11 +76,11 @@ impl MessageRepository for PgMessageRepository {
         Ok(msgs)
     }
 
-    fn find_by_id(&self, m_id: &Id) -> super::Result<Message> {
+    fn find_by_id(&self, m_id: &message::Id) -> super::Result<Message> {
         let mut conn = self.pool.get()?;
 
         let m = messages
-            .find(m_id.0)
+            .find(m_id)
             .select(Message::as_select())
             .first(&mut conn)?;
 
@@ -161,28 +159,26 @@ impl MessageRepository for PgMessageRepository {
         Ok(msg)
     }
 
-    fn update(&self, m_id: &Id, new_content: &str) -> super::Result<bool> {
+    fn update(&self, m_id: &message::Id, new_content: &str) -> super::Result<bool> {
         let mut conn = self.pool.get()?;
 
-        let res = update(messages.find(m_id.0))
+        let res = update(messages.find(m_id))
             .set(content.eq(new_content))
             .execute(&mut conn)?;
 
         Ok(res > 0)
     }
 
-    fn delete(&self, m_id: &Id) -> super::Result<bool> {
+    fn delete(&self, m_id: &message::Id) -> super::Result<bool> {
         let mut conn = self.pool.get()?;
 
-        let deleted_count = delete(messages.find(m_id.0)).execute(&mut conn)?;
+        let deleted_count = delete(messages.find(m_id)).execute(&mut conn)?;
 
         Ok(deleted_count > 0)
     }
 
-    fn mark_as_seen(&self, ids: &[Id]) -> super::Result<usize> {
+    fn mark_as_seen(&self, ids: &[message::Id]) -> super::Result<usize> {
         let mut conn = self.pool.get()?;
-
-        let ids = ids.iter().map(|i| i.0).collect::<Vec<Uuid>>();
 
         let modified_count = update(messages.filter(id.eq_any(ids)))
             .set(seen.eq(true))

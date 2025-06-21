@@ -15,7 +15,7 @@ use super::Id;
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(belongs_to(user::model::User, foreign_key = owner))]
 pub struct Message {
-    id: Uuid,
+    id: Id,
     talk_id: Uuid,
     owner: user::Id,
     content: String,
@@ -105,7 +105,7 @@ impl MessageDto {
 impl From<Message> for MessageDto {
     fn from(m: Message) -> Self {
         Self {
-            id: Id(m.id),
+            id: m.id,
             talk_id: talk::Id(m.talk_id),
             owner: m.owner,
             content: m.content,
