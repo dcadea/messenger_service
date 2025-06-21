@@ -1,10 +1,10 @@
 use diesel::{
     CombineDsl, Connection, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
-    QueryResult, RunQueryDsl, insert_into, r2d2::ConnectionManager, sql_query, sql_types,
+    QueryResult, RunQueryDsl, insert_into, r2d2::ConnectionManager, sql_query, sql_types, update,
 };
 
 use crate::{
-    message::{self, model::LastMessage},
+    message,
     schema::{chats, chats_users, groups, groups_users, talks::dsl::*},
     talk::{
         self, Kind,
@@ -41,7 +41,11 @@ pub trait TalkRepository {
 
     fn exists(&self, members: &[user::Id; 2]) -> super::Result<bool>;
 
-    fn update_last_message(&self, id: &talk::Id, msg: Option<&LastMessage>) -> super::Result<()>;
+    fn update_last_message(
+        &self,
+        id: &talk::Id,
+        message_id: Option<&message::Id>,
+    ) -> super::Result<()>;
 
     fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()>;
 
@@ -236,17 +240,19 @@ impl TalkRepository for PgTalkRepository {
             .map_err(super::Error::from)
     }
 
-    fn update_last_message(&self, _id: &talk::Id, _msg: Option<&LastMessage>) -> super::Result<()> {
-        // self.col
-        //     .update_one(
-        //         doc! { "_id": id },
-        //         doc! {"$set": {
-        //             /*"last_message": msg,*/
-        //         }},
-        //     )
-        //     .await?;
-        // Ok(())
-        todo!("update_last_message")
+    fn update_last_message(
+        &self,
+        t_id: &talk::Id,
+        m_id: Option<&message::Id>,
+    ) -> super::Result<()> {
+        let mut conn = self.pool.get()?;
+
+        update(talks)
+            .filter(id.eq(t_id))
+            .set(last_message_id.eq(m_id))
+            .execute(&mut conn)?;
+
+        Ok(())
     }
 
     fn mark_as_seen(&self, _id: &talk::Id) -> super::Result<()> {

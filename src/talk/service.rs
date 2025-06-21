@@ -278,7 +278,7 @@ impl TalkService for TalkServiceImpl {
         id: &talk::Id,
         msg: Option<&LastMessage>,
     ) -> super::Result<()> {
-        self.repo.update_last_message(id, msg)?;
+        self.repo.update_last_message(id, msg.map(|m| m.id()))?;
 
         if let Some(last_msg) = msg {
             let recipients = self.find_recipients(id, last_msg.owner()).await?;
