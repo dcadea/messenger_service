@@ -148,7 +148,7 @@ impl ContactService for ContactServiceImpl {
                 let mut dto = map_to_dto(auth_id, &c);
                 let s = dto.transition(st)?;
                 self.repo.update_status(c.id(), &s)?;
-                Ok(Status::from(&c))
+                Ok(s)
             }
             None => return Err(super::Error::NotFound(id.clone())),
         }
