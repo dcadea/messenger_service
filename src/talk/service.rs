@@ -5,7 +5,7 @@ use futures::TryFutureExt;
 use log::error;
 
 use super::model::{ChatTalk, Details, DetailsDto, GroupTalk, Talk, TalkDto};
-use super::{Kind, Repository, Validator};
+use super::{Kind, Repository};
 use crate::integration::storage::Blob;
 use crate::integration::{cache, storage};
 use crate::message::model::LastMessage;
@@ -41,7 +41,7 @@ pub trait TalkService {
     async fn find_recipients(
         &self,
         talk_id: &talk::Id,
-        auth_id: &user::Id,
+        exclude: &user::Id,
     ) -> super::Result<HashSet<user::Id>>;
 
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
@@ -58,7 +58,6 @@ pub trait TalkService {
 #[derive(Clone)]
 pub struct TalkServiceImpl {
     repo: Repository,
-    validator: Validator,
     user_service: user::Service,
     contact_service: contact::Service,
     event_service: event::Service,
@@ -69,7 +68,6 @@ pub struct TalkServiceImpl {
 impl TalkServiceImpl {
     pub fn new(
         repo: Repository,
-        validator: Validator,
         user_service: user::Service,
         contact_service: contact::Service,
         event_service: event::Service,
@@ -78,7 +76,6 @@ impl TalkServiceImpl {
     ) -> Self {
         Self {
             repo,
-            validator,
             user_service,
             contact_service,
             event_service,
@@ -251,11 +248,11 @@ impl TalkService for TalkServiceImpl {
     async fn find_recipients(
         &self,
         talk_id: &talk::Id,
-        auth_id: &user::Id,
+        exclude: &user::Id,
     ) -> super::Result<HashSet<user::Id>> {
         let recipients = {
             let mut r = find_members(&self.redis, self.repo.clone(), talk_id).await?;
-            r.remove(auth_id);
+            r.remove(exclude);
             r
         };
 
@@ -263,14 +260,7 @@ impl TalkService for TalkServiceImpl {
     }
 
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
-        // check on db level if
-        // 1. chat -> user is a member
-        // 2. group -> user is owner
-        self.validator.check_member(id, auth_user).await?;
-
-        self.repo.delete(id)?;
-
-        Ok(())
+        self.repo.delete(auth_user.id(), id).map(|_| ())
     }
 
     async fn update_last_message(

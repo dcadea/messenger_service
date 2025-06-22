@@ -59,7 +59,6 @@ impl AppState {
         let talk_validator = Arc::new(TalkValidatorImpl::new(talk_repo.clone(), redis.clone()));
         let talk_service = Arc::new(TalkServiceImpl::new(
             talk_repo,
-            talk_validator.clone(),
             user_service.clone(),
             contact_service.clone(),
             event_service.clone(),

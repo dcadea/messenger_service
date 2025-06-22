@@ -288,9 +288,9 @@ impl MessageServiceImpl {
 
     async fn notify_updated(&self, msg: &MessageDto) {
         let talk_id = msg.talk_id();
-        let auth_id = msg.owner();
+        let owner = msg.owner();
 
-        match self.talk_service.find_recipients(talk_id, auth_id).await {
+        match self.talk_service.find_recipients(talk_id, owner).await {
             Ok(recipients) => {
                 let subjects = recipients
                     .iter()
@@ -302,7 +302,7 @@ impl MessageServiceImpl {
                         &subjects,
                         event::Message::Updated {
                             msg: msg.clone(),
-                            auth_id: auth_id.clone(),
+                            auth_id: owner.clone(),
                         }
                         .into(),
                     )
@@ -314,9 +314,9 @@ impl MessageServiceImpl {
 
     async fn notify_deleted(&self, msg: &MessageDto) {
         let talk_id = msg.talk_id();
-        let sub = msg.owner();
+        let owner = msg.owner();
 
-        match self.talk_service.find_recipients(talk_id, sub).await {
+        match self.talk_service.find_recipients(talk_id, owner).await {
             Ok(recipients) => {
                 let subjects = recipients
                     .iter()

@@ -1,6 +1,7 @@
 use diesel::{
     CombineDsl, Connection, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
-    QueryResult, RunQueryDsl, insert_into, r2d2::ConnectionManager, sql_query, sql_types, update,
+    QueryResult, RunQueryDsl, dsl::delete, insert_into, r2d2::ConnectionManager, sql_query,
+    sql_types, update,
 };
 
 use crate::{
@@ -37,7 +38,7 @@ pub trait TalkRepository {
 
     fn create(&self, t: &NewTalk) -> super::Result<talk::Id>;
 
-    fn delete(&self, id: &talk::Id) -> super::Result<bool>;
+    fn delete(&self, owner: &user::Id, id: &talk::Id) -> super::Result<bool>;
 
     fn exists(&self, members: &[user::Id; 2]) -> super::Result<bool>;
 
@@ -217,11 +218,15 @@ impl TalkRepository for PgTalkRepository {
         tx_res.map_err(super::Error::from)
     }
 
-    fn delete(&self, _id: &talk::Id) -> super::Result<bool> {
-        // let res = self.col.delete_one(doc! {"_id": id}).await?;
+    fn delete(&self, _o: &user::Id, t_id: &talk::Id) -> super::Result<bool> {
+        let mut conn = self.pool.get()?;
 
-        // Ok(res.deleted_count > 0)
-        todo!("delete")
+        // TODO: check if
+        // 1. chat -> user is a member
+        // 2. group -> user is owner
+        let deleted_count = delete(talks.filter(id.eq(t_id))).execute(&mut conn)?;
+
+        Ok(deleted_count > 0)
     }
 
     fn exists(&self, members: &[user::Id; 2]) -> super::Result<bool> {
