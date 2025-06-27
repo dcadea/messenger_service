@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use diesel::{
     prelude::{Associations, Identifiable, Insertable, Queryable, QueryableByName, Selectable},
     sql_types,
@@ -5,7 +6,10 @@ use diesel::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    message::{self, model::LastMessage},
+    message::{
+        self,
+        model::{Message, MessageDto},
+    },
     user,
 };
 
@@ -113,17 +117,11 @@ pub enum Details {
     },
 }
 
-#[derive(QueryableByName, Debug)]
 pub struct ChatTalk {
-    #[diesel(sql_type = sql_types::Uuid)]
     id: Id,
-    #[diesel(sql_type = sql_types::Nullable<sql_types::Uuid>)]
-    last_message_id: Option<message::Id>,
-    #[diesel(sql_type = sql_types::Uuid)]
+    last_message: Option<Message>,
     recipient: user::Id,
-    #[diesel(sql_type = sql_types::Text)]
     name: String, // TODO: implement FromSql and ToSql ofr nickname and picture
-    #[diesel(sql_type = sql_types::Text)]
     picture: String,
 }
 
@@ -132,8 +130,8 @@ impl ChatTalk {
         &self.id
     }
 
-    pub const fn last_message_id(&self) -> Option<&message::Id> {
-        self.last_message_id.as_ref()
+    pub const fn last_message(&self) -> Option<&Message> {
+        self.last_message.as_ref()
     }
 
     pub const fn recipient(&self) -> &user::Id {
@@ -149,34 +147,67 @@ impl ChatTalk {
     }
 }
 
+impl From<ChatWithLastMessage> for ChatTalk {
+    fn from(c: ChatWithLastMessage) -> Self {
+        let last_message = if c.message_id.is_some() {
+            Some(Message::new(
+                c.message_id.expect("message_id should be present"),
+                c.id.clone(),
+                c.owner.expect("owner should be present"),
+                c.content.expect("content should be present"),
+                c.created_at.expect("created_at should be present"),
+                c.seen.expect("seen should be present"),
+            ))
+        } else {
+            None
+        };
+
+        Self {
+            id: c.id,
+            last_message,
+            recipient: c.recipient,
+            name: c.name,
+            picture: c.picture,
+        }
+    }
+}
+
 #[derive(QueryableByName, Debug)]
-pub struct GroupTalk {
+pub(super) struct ChatWithLastMessage {
     #[diesel(sql_type = sql_types::Uuid)]
     id: Id,
     #[diesel(sql_type = sql_types::Nullable<sql_types::Uuid>)]
-    last_message_id: Option<message::Id>,
+    message_id: Option<message::Id>,
+    #[diesel(sql_type = sql_types::Nullable<sql_types::Uuid>)]
+    owner: Option<user::Id>,
+    #[diesel(sql_type = sql_types::Nullable<sql_types::Text>)]
+    content: Option<String>,
+    #[diesel(sql_type = sql_types::Nullable<sql_types::Bool>)]
+    seen: Option<bool>,
+    #[diesel(sql_type = sql_types::Nullable<sql_types::Timestamp>)]
+    created_at: Option<NaiveDateTime>,
     #[diesel(sql_type = sql_types::Uuid)]
-    owner: user::Id,
+    recipient: user::Id,
     #[diesel(sql_type = sql_types::Text)]
     name: String,
-    #[diesel(sql_type = sql_types::Array<sql_types::Uuid>)]
-    members: Vec<user::Id>,
+    #[diesel(sql_type = sql_types::Text)]
+    picture: String,
+}
+
+pub struct GroupTalk {
+    id: Id,
+    last_message: Option<Message>,
+    owner: user::Id,
+    name: String,
 }
 
 impl GroupTalk {
-    pub fn new(
-        id: Id,
-        last_message_id: Option<message::Id>,
-        owner: user::Id,
-        name: String,
-        members: Vec<user::Id>,
-    ) -> Self {
+    pub fn new(id: Id, last_message: Option<Message>, owner: user::Id, name: String) -> Self {
         Self {
             id,
-            last_message_id,
+            last_message,
             owner,
             name,
-            members,
         }
     }
 
@@ -184,8 +215,8 @@ impl GroupTalk {
         &self.id
     }
 
-    pub const fn last_message_id(&self) -> Option<&message::Id> {
-        self.last_message_id.as_ref()
+    pub const fn last_message(&self) -> Option<&Message> {
+        self.last_message.as_ref()
     }
 
     pub const fn owner(&self) -> &user::Id {
@@ -194,10 +225,6 @@ impl GroupTalk {
 
     pub fn name(&self) -> &str {
         &self.name
-    }
-
-    pub fn members(&self) -> &Vec<user::Id> {
-        &self.members
     }
 }
 
@@ -208,7 +235,7 @@ pub struct TalkDto {
     name: String,
     details: DetailsDto,
     #[serde(skip_serializing_if = "Option::is_none")]
-    last_message: Option<LastMessage>,
+    last_message: Option<MessageDto>,
 }
 
 impl TalkDto {
@@ -217,7 +244,7 @@ impl TalkDto {
         picture: Picture,
         name: impl Into<String>,
         details: DetailsDto,
-        last_message: Option<LastMessage>,
+        last_message: Option<MessageDto>,
     ) -> Self {
         Self {
             id,
@@ -244,7 +271,7 @@ impl TalkDto {
         &self.details
     }
 
-    pub const fn last_message(&self) -> Option<&LastMessage> {
+    pub const fn last_message(&self) -> Option<&MessageDto> {
         self.last_message.as_ref()
     }
 }

@@ -1,25 +1,24 @@
 use diesel::{
-    CombineDsl, Connection, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
-    QueryResult, RunQueryDsl, dsl::delete, insert_into, r2d2::ConnectionManager, sql_query,
-    sql_types, update,
+    Connection, ExpressionMethods, JoinOnDsl, NullableExpressionMethods, OptionalExtension,
+    PgConnection, QueryDsl, QueryResult, RunQueryDsl, dsl::delete, insert_into,
+    r2d2::ConnectionManager, sql_query, sql_types, update,
 };
 
 use crate::{
-    message,
+    message::{self, model::Message},
     schema::{chats, chats_users, groups, groups_users, talks::dsl::*},
     talk::{
         self, Kind,
         model::{
             ChatTalk, Details, GroupTalk, NewChat, NewChatUser, NewGroup, NewGroupUser, NewTalk,
-            Talk,
         },
     },
     user,
 };
 
-pub trait TalkRepository {
-    fn find_by_id(&self, id: &talk::Id) -> super::Result<Option<Talk>>;
+use super::model::ChatWithLastMessage;
 
+pub trait TalkRepository {
     fn find_chats_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ChatTalk>>;
 
     fn find_groups_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<GroupTalk>>;
@@ -49,8 +48,6 @@ pub trait TalkRepository {
     ) -> super::Result<()>;
 
     fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()>;
-
-    fn find_members(&self, id: &talk::Id) -> super::Result<Vec<user::Id>>;
 }
 
 #[derive(Clone)]
@@ -65,46 +62,67 @@ impl PgTalkRepository {
 }
 
 impl TalkRepository for PgTalkRepository {
-    fn find_by_id(&self, t_id: &talk::Id) -> super::Result<Option<Talk>> {
-        let mut conn = self.pool.get()?;
-
-        talks
-            .find(t_id)
-            .first::<Talk>(&mut conn)
-            .optional()
-            .map_err(super::Error::from)
-    }
-
     fn find_chats_by_user_id(&self, u_id: &user::Id) -> super::Result<Vec<ChatTalk>> {
         let mut conn = self.pool.get()?;
 
-        sql_query(
+        let res: Vec<ChatWithLastMessage> = sql_query(
             r#"
             SELECT
-                t.id,
-                t.last_message_id,
-                u.id AS recipient,
-                u.name,
-                u.picture
+               	t.id,
+               	m.id AS message_id,
+               	m.owner,
+               	m.content,
+               	m.seen,
+               	m.created_at,
+               	u.id AS recipient,
+               	u.name,
+               	u.picture
             FROM talks t
             JOIN chats_users cu_self ON cu_self.chat_id = t.id AND cu_self.user_id = $1
             JOIN chats_users cu_other ON cu_other.chat_id = t.id AND cu_other.user_id != $1
             JOIN users u ON u.id = cu_other.user_id
+            LEFT JOIN messages m ON m.id = t.last_message_id
             WHERE t.kind = 'chat'
             "#,
         )
         .bind::<sql_types::Uuid, _>(u_id.get())
-        .load::<ChatTalk>(&mut conn)
-        .map_err(super::Error::from)
+        .load::<ChatWithLastMessage>(&mut conn)?;
+
+        Ok(res.into_iter().map(ChatTalk::from).collect())
     }
 
     fn find_groups_by_user_id(&self, u_id: &user::Id) -> super::Result<Vec<GroupTalk>> {
+        use crate::schema::groups::dsl as g;
+        use crate::schema::groups_users::dsl as gu;
+        use crate::schema::messages::dsl as m;
+
         let mut conn = self.pool.get()?;
 
-        sql_query("SELECT * FROM groups_by_user_id($1)")
-            .bind::<sql_types::Uuid, _>(u_id.get())
-            .load::<GroupTalk>(&mut conn)
-            .map_err(super::Error::from)
+        let res: Vec<(talk::Id, Option<Message>, user::Id, String)> = talks
+            .filter(kind.eq(Kind::Group))
+            .filter(gu::user_id.eq(u_id))
+            .inner_join(g::groups.inner_join(gu::groups_users))
+            .left_join(m::messages.on(last_message_id.eq(m::id.nullable())))
+            .select((
+                id,
+                (
+                    m::id,
+                    m::talk_id,
+                    m::owner,
+                    m::content,
+                    m::created_at,
+                    m::seen,
+                )
+                    .nullable(),
+                g::owner,
+                g::name,
+            ))
+            .get_results(&mut conn)?;
+
+        Ok(res
+            .into_iter()
+            .map(|r| GroupTalk::new(r.0, r.1, r.2, r.3))
+            .collect())
     }
 
     fn find_chat_by_id_and_user_id(
@@ -126,6 +144,7 @@ impl TalkRepository for PgTalkRepository {
             JOIN chats_users cu_self ON cu_self.chat_id = t.id AND cu_self.user_id = $1
             JOIN chats_users cu_other ON cu_other.chat_id = t.id AND cu_other.user_id != $1
             JOIN users u ON u.id = cu_other.user_id
+            LEFT JOIN messages m ON m.id = t.last_message_id
             WHERE t.id = $2
             AND t.kind = 'chat'
             "#,
@@ -134,7 +153,8 @@ impl TalkRepository for PgTalkRepository {
         .bind::<sql_types::Uuid, _>(t_id.get());
 
         query
-            .get_result::<ChatTalk>(&mut conn)
+            .get_result::<ChatWithLastMessage>(&mut conn)
+            .map(ChatTalk::from)
             .optional()
             .map_err(super::Error::from)
     }
@@ -146,19 +166,34 @@ impl TalkRepository for PgTalkRepository {
     ) -> super::Result<Option<GroupTalk>> {
         use crate::schema::groups::dsl as g;
         use crate::schema::groups_users::dsl as gu;
+        use crate::schema::messages::dsl as m;
 
         let mut conn = self.pool.get()?;
 
-        let res: Option<(talk::Id, Option<message::Id>, user::Id, String)> = talks
+        let res: Option<(talk::Id, Option<Message>, user::Id, String)> = talks
             .filter(id.eq(t_id))
             .filter(kind.eq(Kind::Group))
             .filter(gu::user_id.eq(u_id))
             .inner_join(g::groups.inner_join(gu::groups_users))
-            .select((id, last_message_id, g::owner, g::name))
+            .left_join(m::messages.on(last_message_id.eq(m::id.nullable())))
+            .select((
+                id,
+                (
+                    m::id,
+                    m::talk_id,
+                    m::owner,
+                    m::content,
+                    m::created_at,
+                    m::seen,
+                )
+                    .nullable(),
+                g::owner,
+                g::name,
+            ))
             .get_result(&mut conn)
             .optional()?;
 
-        Ok(res.map(|r| GroupTalk::new(r.0, r.1, r.2, r.3, vec![])))
+        Ok(res.map(|r| GroupTalk::new(r.0, r.1, r.2, r.3)))
     }
 
     fn create(&self, t: &NewTalk) -> super::Result<talk::Id> {
@@ -276,24 +311,6 @@ impl TalkRepository for PgTalkRepository {
         //     .await?;
         // Ok(())
         todo!("update_last_message")
-    }
-
-    fn find_members(&self, t_id: &talk::Id) -> super::Result<Vec<user::Id>> {
-        use crate::schema::chats_users::dsl as cu;
-        use crate::schema::groups_users::dsl as gu;
-
-        let mut conn = self.pool.get()?;
-
-        gu::groups_users
-            .filter(gu::group_id.eq(t_id))
-            .select(gu::user_id)
-            .union(
-                cu::chats_users
-                    .filter(cu::chat_id.eq(t_id))
-                    .select(cu::user_id),
-            )
-            .load(&mut conn)
-            .map_err(super::Error::from)
     }
 }
 

@@ -4,11 +4,11 @@ use async_trait::async_trait;
 use futures::TryFutureExt;
 use log::error;
 
-use super::model::{ChatTalk, Details, DetailsDto, GroupTalk, Talk, TalkDto};
+use super::model::{ChatTalk, Details, DetailsDto, GroupTalk, TalkDto};
 use super::{Kind, Repository};
+use crate::integration::storage;
 use crate::integration::storage::Blob;
-use crate::integration::{cache, storage};
-use crate::message::model::LastMessage;
+use crate::message::model::MessageDto;
 use crate::talk::Picture;
 use crate::talk::model::NewTalk;
 use crate::{auth, contact, event, talk, user};
@@ -49,7 +49,7 @@ pub trait TalkService {
     async fn update_last_message(
         &self,
         id: &talk::Id,
-        msg: Option<&LastMessage>,
+        msg: Option<&MessageDto>,
     ) -> super::Result<()>;
 
     fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()>;
@@ -61,7 +61,6 @@ pub struct TalkServiceImpl {
     user_service: user::Service,
     contact_service: contact::Service,
     event_service: event::Service,
-    redis: cache::Redis,
     s3: storage::S3,
 }
 
@@ -71,7 +70,6 @@ impl TalkServiceImpl {
         user_service: user::Service,
         contact_service: contact::Service,
         event_service: event::Service,
-        redis: cache::Redis,
         s3: storage::S3,
     ) -> Self {
         Self {
@@ -79,7 +77,6 @@ impl TalkServiceImpl {
             user_service,
             contact_service,
             event_service,
-            redis,
             s3,
         }
     }
@@ -251,7 +248,7 @@ impl TalkService for TalkServiceImpl {
         exclude: &user::Id,
     ) -> super::Result<HashSet<user::Id>> {
         let recipients = {
-            let mut r = find_members(&self.redis, self.repo.clone(), talk_id).await?;
+            let mut r = self.user_service.find_members(talk_id).await?;
             r.remove(exclude);
             r
         };
@@ -266,7 +263,7 @@ impl TalkService for TalkServiceImpl {
     async fn update_last_message(
         &self,
         id: &talk::Id,
-        msg: Option<&LastMessage>,
+        msg: Option<&MessageDto>,
     ) -> super::Result<()> {
         self.repo.update_last_message(id, msg.map(|m| m.id()))?;
 
@@ -298,8 +295,6 @@ impl TalkService for TalkServiceImpl {
 
 impl TalkServiceImpl {
     fn chat_to_dto(&self, c: &ChatTalk, auth_id: &user::Id) -> TalkDto {
-        let lm = c.last_message_id().map(|_| todo!("fetch last message"));
-
         TalkDto::new(
             c.id().clone(),
             Picture::from(user::Picture::try_from(c.picture()).unwrap()), // FIXME
@@ -308,13 +303,11 @@ impl TalkServiceImpl {
                 sender: auth_id.clone(),
                 recipient: c.recipient().clone(),
             },
-            lm,
+            c.last_message().map(|m| MessageDto::from(m.clone())),
         )
     }
 
     fn group_to_dto(&self, g: &GroupTalk, auth_id: &user::Id) -> TalkDto {
-        let lm = g.last_message_id().map(|_| todo!("fetch last message"));
-
         TalkDto::new(
             g.id().clone(),
             Picture::from(g.id().clone()),
@@ -323,106 +316,7 @@ impl TalkServiceImpl {
                 owner: g.owner().clone(),
                 sender: auth_id.clone(),
             },
-            lm,
+            g.last_message().map(|m| MessageDto::from(m.clone())),
         )
-    }
-
-    async fn _talk_to_dto(&self, _t: Talk, _auth_id: &user::Id) -> TalkDto {
-        // let (name, picture, details) = match t.details().clone() {
-        //     Details::Chat { members } => {
-        //         assert!(members.contains(auth_id));
-
-        //         let (sender, recipient) = {
-        //             if members[0].eq(auth_id) {
-        //                 (members[0].clone(), members[1].clone())
-        //             } else {
-        //                 (members[1].clone(), members[0].clone())
-        //             }
-        //         };
-
-        //         let r = self
-        //             .user_service
-        //             .find_one(&recipient)
-        //             .await
-        //             .expect("recipient info should be present");
-
-        //         (
-        //             r.name().to_string(),
-        //             Picture::from(r.picture().clone()),
-        //             DetailsDto::Chat { sender, recipient },
-        //         )
-        //     }
-        //     Details::Group { name, owner, .. } => (
-        //         name,
-        //         Picture::from(t.id().clone()),
-        //         DetailsDto::Group {
-        //             owner,
-        //             sender: auth_id.clone(),
-        //         },
-        //     ),
-        // };
-
-        // TalkDto::new(
-        //     t.id().clone(),
-        //     picture,
-        //     name,
-        //     details,
-        //     t.last_message().cloned(),
-        // )
-        todo!()
-    }
-}
-
-#[async_trait]
-pub trait TalkValidator {
-    async fn check_member(&self, talk_id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
-}
-
-#[derive(Clone)]
-pub struct TalkValidatorImpl {
-    repo: Repository,
-    redis: cache::Redis,
-}
-
-impl TalkValidatorImpl {
-    pub fn new(repo: Repository, redis: cache::Redis) -> Self {
-        Self { repo, redis }
-    }
-}
-
-#[async_trait]
-impl TalkValidator for TalkValidatorImpl {
-    async fn check_member(&self, talk_id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
-        let members = find_members(&self.redis, self.repo.clone(), talk_id).await?;
-        let belongs_to_talk = members.contains(auth_user.id());
-
-        if !belongs_to_talk {
-            return Err(talk::Error::NotMember);
-        }
-
-        Ok(())
-    }
-}
-
-async fn find_members(
-    redis: &cache::Redis,
-    repo: Repository,
-    talk_id: &talk::Id,
-) -> super::Result<HashSet<user::Id>> {
-    let talk_key = cache::Key::Talk(talk_id);
-    let members = redis.smembers::<HashSet<user::Id>>(talk_key.clone()).await;
-
-    // TODO: write a proper db query
-    match members {
-        Some(m) if !m.is_empty() => Ok(m),
-        _ => {
-            let m = repo.find_members(talk_id)?;
-            let m = HashSet::from_iter(m);
-
-            redis.sadd(talk_key.clone(), &m).await;
-            redis.expire(talk_key).await;
-
-            Ok(m)
-        }
     }
 }

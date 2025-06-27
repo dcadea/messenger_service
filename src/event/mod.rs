@@ -38,7 +38,7 @@ pub enum Notification {
     NewTalk(talk::model::TalkDto),
     NewMessage {
         talk_id: talk::Id,
-        last_message: message::model::LastMessage,
+        last_message: message::model::MessageDto,
     },
 }
 

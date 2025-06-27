@@ -175,6 +175,8 @@ pub enum Error {
     MalformedPicture(String),
     #[error("invalid email format: {0:?}")]
     MalformedEmail(String),
+    #[error("authenticated user is not a member")]
+    NotMember,
 
     #[error(transparent)]
     _R2d2(#[from] r2d2::Error),

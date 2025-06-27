@@ -23,10 +23,9 @@ pub(super) mod api {
     use serde::Deserialize;
 
     use crate::error::Error;
-    use crate::{auth, message, talk};
+    use crate::{auth, message, talk, user};
 
     use crate::message::markup;
-    use crate::message::model::LastMessage;
 
     #[derive(Deserialize)]
     pub struct CreateParams {
@@ -45,9 +44,8 @@ pub(super) mod api {
             .await?;
 
         if let Some(last) = msgs.last() {
-            let last_msg = LastMessage::from(last);
             talk_service
-                .update_last_message(last.talk_id(), Some(&last_msg))
+                .update_last_message(last.talk_id(), Some(last))
                 .await?;
         }
 
@@ -64,7 +62,7 @@ pub(super) mod api {
     pub async fn find_all(
         auth_user: Extension<auth::User>,
         Query(params): Query<FindAllParams>,
-        talk_validator: State<talk::Validator>,
+        user_service: State<user::Service>,
         talk_service: State<talk::Service>,
         message_service: State<message::Service>,
     ) -> crate::Result<impl IntoResponse> {
@@ -72,7 +70,7 @@ pub(super) mod api {
             .talk_id
             .ok_or(Error::QueryParamRequired("talk_id".to_owned()))?;
 
-        talk_validator.check_member(&talk_id, &auth_user).await?;
+        user_service.check_member(&talk_id, &auth_user).await?;
 
         let (msgs, seen_qty) = message_service
             .find_by_talk_id_and_params(
@@ -122,9 +120,7 @@ pub(super) mod api {
             let is_last = message_service.is_last_message(&deleted_msg)?;
             if is_last {
                 let talk_id = deleted_msg.talk_id();
-                let last_msg = message_service
-                    .find_most_recent(talk_id)?
-                    .map(|msg| LastMessage::from(&msg));
+                let last_msg = message_service.find_most_recent(talk_id)?;
 
                 talk_service
                     .update_last_message(talk_id, last_msg.as_ref())

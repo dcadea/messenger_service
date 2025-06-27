@@ -1,9 +1,11 @@
+use std::collections::HashSet;
+
 use async_trait::async_trait;
 use log::error;
 
 use crate::integration::cache;
 use crate::user::model::UserDto;
-use crate::{auth, contact, event, user};
+use crate::{auth, contact, event, talk, user};
 
 use super::model::{NewUser, OnlineStatus};
 use super::{Nickname, Picture, Repository, Sub};
@@ -15,6 +17,10 @@ pub trait UserService {
     async fn find_one(&self, id: &user::Id) -> super::Result<UserDto>;
 
     async fn find_by_sub(&self, sub: &Sub) -> super::Result<UserDto>;
+
+    async fn find_members(&self, talk_id: &talk::Id) -> super::Result<HashSet<user::Id>>;
+
+    async fn check_member(&self, talk_id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
 
     async fn find_name(&self, id: &user::Id) -> super::Result<String>;
 
@@ -78,6 +84,37 @@ impl UserService for UserServiceImpl {
             }
             None => Err(super::Error::NotFound(sub.clone())),
         }
+    }
+
+    async fn find_members(&self, talk_id: &talk::Id) -> super::Result<HashSet<user::Id>> {
+        let talk_key = cache::Key::Talk(talk_id);
+        let members = self
+            .redis
+            .smembers::<HashSet<user::Id>>(talk_key.clone())
+            .await;
+
+        match members {
+            Some(m) if !m.is_empty() => Ok(m),
+            _ => {
+                let m = self.repo.find_by_talk_id(talk_id)?;
+                let m = HashSet::from_iter(m);
+
+                self.redis.sadd(talk_key.clone(), &m).await;
+                self.redis.expire(talk_key).await;
+
+                Ok(m)
+            }
+        }
+    }
+
+    async fn check_member(&self, talk_id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
+        let members = self.find_members(talk_id).await?;
+
+        if !members.contains(auth_user.id()) {
+            return Err(super::Error::NotMember);
+        }
+
+        Ok(())
     }
 
     async fn find_name(&self, id: &user::Id) -> super::Result<String> {

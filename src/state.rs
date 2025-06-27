@@ -10,7 +10,7 @@ use crate::integration::storage;
 use crate::message::repository::PgMessageRepository;
 use crate::message::service::MessageServiceImpl;
 use crate::talk::repository::PgTalkRepository;
-use crate::talk::service::{TalkServiceImpl, TalkValidatorImpl};
+use crate::talk::service::TalkServiceImpl;
 use crate::user::repository::PgUserRepository;
 use crate::user::service::UserServiceImpl;
 use crate::{auth, contact, event, message, talk, user};
@@ -25,7 +25,6 @@ pub struct AppState {
     user_service: user::Service,
     contact_service: contact::Service,
     talk_service: talk::Service,
-    talk_validator: talk::Validator,
     message_service: message::Service,
     event_service: event::Service,
 
@@ -56,13 +55,11 @@ impl AppState {
         let talk_repo = Arc::new(PgTalkRepository::new(pg.clone()));
         let message_repo = Arc::new(PgMessageRepository::new(pg));
 
-        let talk_validator = Arc::new(TalkValidatorImpl::new(talk_repo.clone(), redis.clone()));
         let talk_service = Arc::new(TalkServiceImpl::new(
             talk_repo,
             user_service.clone(),
             contact_service.clone(),
             event_service.clone(),
-            redis,
             s3.clone(),
         ));
 
@@ -78,7 +75,6 @@ impl AppState {
             user_service,
             contact_service,
             talk_service,
-            talk_validator,
             message_service,
             event_service,
             s3,
@@ -113,12 +109,6 @@ impl FromRef<AppState> for contact::Service {
 impl FromRef<AppState> for talk::Service {
     fn from_ref(s: &AppState) -> Self {
         s.talk_service.clone()
-    }
-}
-
-impl FromRef<AppState> for talk::Validator {
-    fn from_ref(s: &AppState) -> Self {
-        s.talk_validator.clone()
     }
 }
 

@@ -9,7 +9,7 @@ use log::error;
 use repository::TalkRepository;
 use serde::{Deserialize, Serialize};
 
-use service::{TalkService, TalkValidator};
+use service::TalkService;
 use uuid::Uuid;
 
 use crate::{integration, schema::sql_types, state::AppState, user};
@@ -23,7 +23,6 @@ pub mod service;
 type Result<T> = std::result::Result<T, Error>;
 pub type Repository = Arc<dyn TalkRepository + Send + Sync>;
 pub type Service = Arc<dyn TalkService + Send + Sync>;
-pub type Validator = Arc<dyn TalkValidator + Send + Sync>;
 
 pub fn pages<S>(s: AppState) -> Router<S> {
     Router::new()

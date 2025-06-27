@@ -4,7 +4,7 @@ use maud::{Markup, Render, html};
 
 use crate::{markup::IdExt, message, talk, user};
 
-use super::model::{LastMessage, MessageDto};
+use super::model::MessageDto;
 
 const MESSAGE_INPUT_ID: &str = "message-input";
 pub const MESSAGE_INPUT_TARGET: &str = "#message-input";
@@ -251,11 +251,11 @@ impl Render for MessageList<'_> {
 const MAX_LEN: usize = 25;
 
 pub fn last_message(
-    lm: Option<&LastMessage>,
+    lm: Option<&MessageDto>,
     talk_id: &talk::Id,
     sender: Option<&user::Id>,
 ) -> Markup {
-    let trim = |lm: &LastMessage| {
+    let trim = |lm: &MessageDto| {
         let mut text = lm.text().to_string();
         if text.len() > MAX_LEN {
             text.truncate(MAX_LEN);

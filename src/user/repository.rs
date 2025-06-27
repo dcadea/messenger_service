@@ -1,4 +1,5 @@
 use diesel::BoolExpressionMethods;
+use diesel::CombineDsl;
 use diesel::ExpressionMethods;
 use diesel::OptionalExtension;
 use diesel::PgConnection;
@@ -11,6 +12,7 @@ use diesel::r2d2::ConnectionManager;
 use uuid::Uuid;
 
 use crate::schema::users::dsl::*;
+use crate::talk;
 
 use super::Nickname;
 use super::Sub;
@@ -24,6 +26,8 @@ pub trait UserRepository {
     fn find_by_id(&self, u_id: &user::Id) -> super::Result<User>;
 
     fn find_by_sub(&self, s: &Sub) -> super::Result<Option<User>>;
+
+    fn find_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<Vec<user::Id>>;
 
     fn exists(&self, u_id: &user::Id) -> super::Result<bool>;
 
@@ -77,6 +81,24 @@ impl UserRepository for PgUserRepository {
             .optional()?;
 
         Ok(u)
+    }
+
+    fn find_by_talk_id(&self, t_id: &talk::Id) -> super::Result<Vec<user::Id>> {
+        use crate::schema::chats_users::dsl as cu;
+        use crate::schema::groups_users::dsl as gu;
+
+        let mut conn = self.pool.get()?;
+
+        gu::groups_users
+            .filter(gu::group_id.eq(t_id))
+            .select(gu::user_id)
+            .union(
+                cu::chats_users
+                    .filter(cu::chat_id.eq(t_id))
+                    .select(cu::user_id),
+            )
+            .load(&mut conn)
+            .map_err(super::Error::from)
     }
 
     fn exists(&self, u_id: &user::Id) -> super::Result<bool> {

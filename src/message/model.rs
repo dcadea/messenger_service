@@ -9,7 +9,7 @@ use crate::{
 
 use super::Id;
 
-#[derive(Queryable, Selectable, Identifiable, Associations)]
+#[derive(Clone, Queryable, Selectable, Identifiable, Associations)]
 #[diesel(table_name = crate::schema::messages)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 #[diesel(belongs_to(user::model::User, foreign_key = owner))]
@@ -20,6 +20,26 @@ pub struct Message {
     content: String,
     created_at: NaiveDateTime,
     seen: bool,
+}
+
+impl Message {
+    pub fn new(
+        id: Id,
+        talk_id: talk::Id,
+        owner: user::Id,
+        content: String,
+        created_at: NaiveDateTime,
+        seen: bool,
+    ) -> Self {
+        Self {
+            id,
+            talk_id,
+            owner,
+            content,
+            created_at,
+            seen,
+        }
+    }
 }
 
 #[derive(Insertable)]
@@ -122,64 +142,5 @@ impl MessageDto {
 
     pub const fn set_seen(&mut self, seen: bool) {
         self.seen = seen;
-    }
-}
-
-#[derive(Deserialize, Serialize, Clone, PartialEq, Eq, Debug)]
-pub struct LastMessage {
-    id: Id,
-    text: String,
-    owner: user::Id,
-    timestamp: NaiveDateTime,
-    seen: bool,
-}
-
-impl LastMessage {
-    pub fn new(
-        id: Id,
-        text: impl Into<String>,
-        owner: user::Id,
-        timestamp: NaiveDateTime,
-        seen: bool,
-    ) -> Self {
-        Self {
-            id,
-            text: text.into(),
-            owner,
-            timestamp,
-            seen,
-        }
-    }
-
-    pub const fn id(&self) -> &Id {
-        &self.id
-    }
-
-    pub fn text(&self) -> &str {
-        &self.text
-    }
-
-    pub const fn owner(&self) -> &user::Id {
-        &self.owner
-    }
-
-    pub const fn timestamp(&self) -> NaiveDateTime {
-        self.timestamp
-    }
-
-    pub const fn seen(&self) -> bool {
-        self.seen
-    }
-}
-
-impl From<&MessageDto> for LastMessage {
-    fn from(msg: &MessageDto) -> Self {
-        Self {
-            id: msg.id.clone(),
-            text: msg.content.clone(),
-            owner: msg.owner.clone(),
-            timestamp: msg.created_at,
-            seen: msg.seen,
-        }
     }
 }

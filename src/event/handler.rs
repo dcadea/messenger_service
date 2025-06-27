@@ -122,13 +122,13 @@ pub mod ws {
         auth_user: Extension<auth::User>,
         ws: WebSocketUpgrade,
         Path(talk_id): Path<talk::Id>,
-        State(talk_validator): State<talk::Validator>,
+        State(user_service): State<user::Service>,
         State(event_service): State<event::Service>,
         State(message_service): State<message::Service>,
         State(talk_service): State<talk::Service>,
     ) -> crate::Result<Response> {
         debug!("Upgrading to WS for talk: {}", &talk_id);
-        talk_validator.check_member(&talk_id, &auth_user).await?;
+        user_service.check_member(&talk_id, &auth_user).await?;
 
         let auth_id = auth_user.id().clone();
         Ok(ws.on_upgrade(move |socket| async {
