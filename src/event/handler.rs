@@ -125,7 +125,6 @@ pub mod ws {
         State(user_service): State<user::Service>,
         State(event_service): State<event::Service>,
         State(message_service): State<message::Service>,
-        State(talk_service): State<talk::Service>,
     ) -> crate::Result<Response> {
         debug!("Upgrading to WS for talk: {}", &talk_id);
         user_service.check_member(&talk_id, &auth_user).await?;
@@ -141,7 +140,6 @@ pub mod ws {
                 sender,
                 event_service,
                 message_service,
-                talk_service,
                 close.clone(),
             ));
 
@@ -155,7 +153,6 @@ pub mod ws {
         mut sender: SplitSink<WebSocket, ws::Message>,
         event_service: event::Service,
         message_service: message::Service,
-        talk_service: talk::Service,
         close: Arc<Notify>,
     ) -> event::Result<()> {
         let mut msg_stream = event_service
@@ -183,18 +180,8 @@ pub mod ws {
                     }
 
                     if let Message::New(msg) = msg {
-                        let talk_id = msg.talk_id().clone();
-                        match message_service.mark_as_seen(&auth_id, &[msg]).await {
-                            Ok(seen_qty) => {
-                                if seen_qty == 0 {
-                                    continue;
-                                }
-
-                                if let Err(e) = talk_service.mark_as_seen(&talk_id) {
-                                    error!("Failed to mark talk as seen: {e}");
-                                }
-                            }
-                            Err(e) => error!("Failed to mark message as seen: {e}"),
+                        if let Err(e) = message_service.mark_as_seen(&auth_id, &[msg]).await {
+                            error!("Failed to mark message as seen: {e}")
                         }
                     }
                 }

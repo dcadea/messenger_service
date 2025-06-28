@@ -46,8 +46,6 @@ pub trait TalkRepository {
         id: &talk::Id,
         message_id: Option<&message::Id>,
     ) -> super::Result<()>;
-
-    fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -136,7 +134,11 @@ impl TalkRepository for PgTalkRepository {
             r#"
             SELECT
                 t.id,
-                t.last_message_id,
+                m.id AS message_id,
+               	m.owner,
+               	m.content,
+               	m.seen,
+               	m.created_at,
                 u.id AS recipient,
                 u.name,
                 u.picture
@@ -293,24 +295,6 @@ impl TalkRepository for PgTalkRepository {
             .execute(&mut conn)?;
 
         Ok(())
-    }
-
-    fn mark_as_seen(&self, _id: &talk::Id) -> super::Result<()> {
-        // self.col
-        //     .update_one(
-        //         doc! {
-        //             "$and": [
-        //                 {"_id": id },
-        //                 { "last_message.seen": { "$exists": true }}
-        //             ]
-        //         },
-        //         doc! {"$set": {
-        //             "last_message.seen": true,
-        //         }},
-        //     )
-        //     .await?;
-        // Ok(())
-        todo!("update_last_message")
     }
 }
 

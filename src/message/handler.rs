@@ -63,7 +63,6 @@ pub(super) mod api {
         auth_user: Extension<auth::User>,
         Query(params): Query<FindAllParams>,
         user_service: State<user::Service>,
-        talk_service: State<talk::Service>,
         message_service: State<message::Service>,
     ) -> crate::Result<impl IntoResponse> {
         let talk_id = params
@@ -72,7 +71,7 @@ pub(super) mod api {
 
         user_service.check_member(&talk_id, &auth_user).await?;
 
-        let (msgs, seen_qty) = message_service
+        let msgs = message_service
             .find_by_talk_id_and_params(
                 &auth_user,
                 &talk_id,
@@ -80,10 +79,6 @@ pub(super) mod api {
                 None, /* FIXME: params.end_time*/
             )
             .await?;
-
-        if seen_qty > 0 {
-            talk_service.mark_as_seen(&talk_id)?;
-        }
 
         Ok(markup::MessageList::append(&msgs, auth_user.id()).render())
     }

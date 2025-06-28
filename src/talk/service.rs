@@ -51,8 +51,6 @@ pub trait TalkService {
         id: &talk::Id,
         msg: Option<&MessageDto>,
     ) -> super::Result<()>;
-
-    fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -286,10 +284,6 @@ impl TalkService for TalkServiceImpl {
                 .await;
         }
         Ok(())
-    }
-
-    fn mark_as_seen(&self, id: &talk::Id) -> super::Result<()> {
-        self.repo.mark_as_seen(id)
     }
 }
 

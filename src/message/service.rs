@@ -46,7 +46,7 @@ pub trait MessageService {
         talk_id: &talk::Id,
         limit: Option<i64>,
         end_time: Option<NaiveDateTime>,
-    ) -> super::Result<(Vec<MessageDto>, usize)>;
+    ) -> super::Result<Vec<MessageDto>>;
 
     async fn mark_as_seen(&self, auth_id: &user::Id, msgs: &[MessageDto]) -> super::Result<usize>;
 
@@ -172,7 +172,7 @@ impl MessageService for MessageServiceImpl {
         talk_id: &talk::Id,
         limit: Option<i64>,
         end_time: Option<NaiveDateTime>,
-    ) -> super::Result<(Vec<MessageDto>, usize)> {
+    ) -> super::Result<Vec<MessageDto>> {
         let msgs = match (limit, end_time) {
             (None, None) => self.repo.find_by_talk_id(talk_id),
             (Some(limit), None) => self.repo.find_by_talk_id_limited(talk_id, limit),
@@ -187,9 +187,9 @@ impl MessageService for MessageServiceImpl {
             .map(MessageDto::from)
             .collect::<Vec<MessageDto>>();
 
-        let seen_qty = self.mark_as_seen(auth_user.id(), &msgs).await?;
+        self.mark_as_seen(auth_user.id(), &msgs).await?;
 
-        Ok((msgs, seen_qty))
+        Ok(msgs)
     }
 
     async fn mark_as_seen(&self, auth_id: &user::Id, msgs: &[MessageDto]) -> super::Result<usize> {
