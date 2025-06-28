@@ -49,8 +49,6 @@ pub trait MessageService {
     ) -> super::Result<Vec<MessageDto>>;
 
     async fn mark_as_seen(&self, auth_id: &user::Id, msgs: &[MessageDto]) -> super::Result<usize>;
-
-    fn is_last_message(&self, msg: &MessageDto) -> super::Result<bool>;
 }
 
 #[derive(Clone)]
@@ -242,24 +240,6 @@ impl MessageService for MessageServiceImpl {
             .await;
 
         Ok(seen_qty)
-    }
-
-    fn is_last_message(&self, _msg: &MessageDto) -> super::Result<bool> {
-        // TODO: write proper SQL
-        // let talk = self
-        //     .talk_service
-        //     .find_by_id(msg.talk_id())
-        //     .map_err(|e| match e {
-        //         talk::Error::NotFound(_) => message::Error::NotFound(Some(msg.id().clone())),
-        //         e => message::Error::Unexpected(e.to_string()),
-        //     })?;
-
-        // if let Some(last_message) = talk.last_message() {
-        //     return Ok(last_message.id().eq(msg.id()));
-        // }
-
-        // Ok(false)
-        todo!()
     }
 }
 

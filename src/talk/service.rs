@@ -11,7 +11,7 @@ use crate::integration::storage::Blob;
 use crate::message::model::MessageDto;
 use crate::talk::Picture;
 use crate::talk::model::NewTalk;
-use crate::{auth, contact, event, talk, user};
+use crate::{auth, contact, event, message, talk, user};
 
 #[async_trait]
 pub trait TalkService {
@@ -46,10 +46,12 @@ pub trait TalkService {
 
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
 
+    fn is_last_message(&self, id: &talk::Id, message_id: &message::Id) -> super::Result<bool>;
+
     async fn update_last_message(
         &self,
         id: &talk::Id,
-        msg: Option<&MessageDto>,
+        message_id: Option<&MessageDto>,
     ) -> super::Result<()>;
 }
 
@@ -256,6 +258,10 @@ impl TalkService for TalkServiceImpl {
 
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
         self.repo.delete(auth_user.id(), id).map(|_| ())
+    }
+
+    fn is_last_message(&self, id: &talk::Id, message_id: &message::Id) -> super::Result<bool> {
+        self.repo.is_last_message(id, message_id)
     }
 
     async fn update_last_message(

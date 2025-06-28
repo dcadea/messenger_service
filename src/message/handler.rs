@@ -111,10 +111,12 @@ pub(super) mod api {
         message_service: State<message::Service>,
         talk_service: State<talk::Service>,
     ) -> crate::Result<()> {
+        // FIXME: "update or delete on table \"messages\" violates foreign key constraint \"fk_last_message\" on table \"talks\""
+        // happens when message that is deleted is "last"
         if let Some(deleted_msg) = message_service.delete(&auth_user, &id).await? {
-            let is_last = message_service.is_last_message(&deleted_msg)?;
-            if is_last {
-                let talk_id = deleted_msg.talk_id();
+            let talk_id = deleted_msg.talk_id();
+
+            if talk_service.is_last_message(talk_id, &id)? {
                 let last_msg = message_service.find_most_recent(talk_id)?;
 
                 talk_service

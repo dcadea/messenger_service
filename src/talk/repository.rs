@@ -41,6 +41,8 @@ pub trait TalkRepository {
 
     fn exists(&self, members: &[user::Id; 2]) -> super::Result<bool>;
 
+    fn is_last_message(&self, id: &talk::Id, message_id: &message::Id) -> super::Result<bool>;
+
     fn update_last_message(
         &self,
         id: &talk::Id,
@@ -261,7 +263,7 @@ impl TalkRepository for PgTalkRepository {
         // TODO: check if
         // 1. chat -> user is a member
         // 2. group -> user is owner
-        let deleted_count = delete(talks.filter(id.eq(t_id))).execute(&mut conn)?;
+        let deleted_count = delete(talks.find(t_id)).execute(&mut conn)?;
 
         Ok(deleted_count > 0)
     }
@@ -282,6 +284,17 @@ impl TalkRepository for PgTalkRepository {
             .map_err(super::Error::from)
     }
 
+    fn is_last_message(&self, t_id: &talk::Id, m_id: &message::Id) -> super::Result<bool> {
+        let mut conn = self.pool.get()?;
+        let count: i64 = talks
+            .find(t_id)
+            .filter(last_message_id.eq(m_id))
+            .count()
+            .get_result(&mut conn)?;
+
+        Ok(count > 0)
+    }
+
     fn update_last_message(
         &self,
         t_id: &talk::Id,
@@ -289,8 +302,7 @@ impl TalkRepository for PgTalkRepository {
     ) -> super::Result<()> {
         let mut conn = self.pool.get()?;
 
-        update(talks)
-            .filter(id.eq(t_id))
+        update(talks.find(t_id))
             .set(last_message_id.eq(m_id))
             .execute(&mut conn)?;
 
