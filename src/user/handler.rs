@@ -42,7 +42,6 @@ pub(super) mod api {
 
         let contacts = contact_service
             .find_by_user_id(auth_user.id())
-            .await
             .unwrap_or_else(|_| Vec::with_capacity(0));
 
         Ok(markup::SearchResult::new(&contacts, &users).render())

@@ -1,5 +1,3 @@
-use async_trait::async_trait;
-
 use crate::{integration::cache, user};
 
 use super::{
@@ -7,25 +5,20 @@ use super::{
     model::{Contact, ContactDto, NewContact},
 };
 
-#[async_trait]
 pub trait ContactService {
-    async fn find(
-        &self,
-        auth_id: &user::Id,
-        recipient: &user::Id,
-    ) -> super::Result<Option<ContactDto>>;
+    fn find(&self, auth_id: &user::Id, recipient: &user::Id) -> super::Result<Option<ContactDto>>;
 
-    async fn find_by_id(&self, auth_id: &user::Id, id: &Id) -> super::Result<ContactDto>;
+    fn find_by_id(&self, auth_id: &user::Id, id: &Id) -> super::Result<ContactDto>;
 
-    async fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>>;
+    fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>>;
 
-    async fn find_by_user_id_and_status(
+    fn find_by_user_id_and_status(
         &self,
         sub: &user::Id,
         s: &Status,
     ) -> super::Result<Vec<ContactDto>>;
 
-    async fn add(&self, me: &user::Id, you: &user::Id) -> super::Result<Status>;
+    fn add(&self, me: &user::Id, you: &user::Id) -> super::Result<Status>;
 
     fn transition_status(
         &self,
@@ -34,7 +27,7 @@ pub trait ContactService {
         t: StatusTransition<'_>,
     ) -> super::Result<Status>;
 
-    async fn delete(&self, auth_id: &user::Id, contact: &user::Id) -> super::Result<()>;
+    fn delete(&self, auth_id: &user::Id, contact: &user::Id) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -52,13 +45,8 @@ impl ContactServiceImpl {
     }
 }
 
-#[async_trait]
 impl ContactService for ContactServiceImpl {
-    async fn find(
-        &self,
-        auth_id: &user::Id,
-        recipient: &user::Id,
-    ) -> super::Result<Option<ContactDto>> {
+    fn find(&self, auth_id: &user::Id, recipient: &user::Id) -> super::Result<Option<ContactDto>> {
         if auth_id.eq(recipient) {
             return Err(super::Error::SameUsers(auth_id.clone()));
         }
@@ -69,7 +57,7 @@ impl ContactService for ContactServiceImpl {
             .map(|c| c.map(|c| map_to_dto(auth_id, &c)))
     }
 
-    async fn find_by_id(&self, auth_id: &user::Id, id: &Id) -> super::Result<ContactDto> {
+    fn find_by_id(&self, auth_id: &user::Id, id: &Id) -> super::Result<ContactDto> {
         // TODO: cache
         let c = self.repo.find_by_id(id)?;
 
@@ -77,7 +65,7 @@ impl ContactService for ContactServiceImpl {
             .ok_or(super::Error::NotFound(id.clone()))
     }
 
-    async fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>> {
+    fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>> {
         // TODO: cache contacts
         // let contacts = self
         //     .redis
@@ -98,7 +86,7 @@ impl ContactService for ContactServiceImpl {
         Ok(dtos)
     }
 
-    async fn find_by_user_id_and_status(
+    fn find_by_user_id_and_status(
         &self,
         user_id: &user::Id,
         s: &Status,
@@ -114,7 +102,7 @@ impl ContactService for ContactServiceImpl {
         Ok(dtos)
     }
 
-    async fn add(&self, me: &user::Id, you: &user::Id) -> super::Result<Status> {
+    fn add(&self, me: &user::Id, you: &user::Id) -> super::Result<Status> {
         if me.eq(you) {
             return Err(super::Error::SameUsers(me.clone()));
         }
@@ -154,7 +142,7 @@ impl ContactService for ContactServiceImpl {
         }
     }
 
-    async fn delete(&self, auth_id: &user::Id, contact: &user::Id) -> super::Result<()> {
+    fn delete(&self, auth_id: &user::Id, contact: &user::Id) -> super::Result<()> {
         assert_ne!(auth_id, contact);
 
         self.repo.delete(auth_id, contact)?;

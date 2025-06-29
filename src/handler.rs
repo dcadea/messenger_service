@@ -21,9 +21,7 @@ pub async fn chats_tab(
     auth_user: Extension<auth::User>,
     talk_service: State<talk::Service>,
 ) -> crate::Result<Markup> {
-    let chats = talk_service
-        .find_all_by_kind(&auth_user, &talk::Kind::Chat)
-        .await?;
+    let chats = talk_service.find_all_by_kind(&auth_user, &talk::Kind::Chat)?;
 
     let tab_content = TalkWindow::chats(&auth_user, &chats);
     Ok(Tab::new(TabControls::Chats, tab_content).render())
@@ -34,9 +32,7 @@ pub async fn groups_tab(
     auth_user: Extension<auth::User>,
     talk_service: State<talk::Service>,
 ) -> crate::Result<Markup> {
-    let groups = talk_service
-        .find_all_by_kind(&auth_user, &talk::Kind::Group)
-        .await?;
+    let groups = talk_service.find_all_by_kind(&auth_user, &talk::Kind::Group)?;
 
     let tab_content = TalkWindow::groups(&auth_user, &groups);
     Ok(Tab::new(TabControls::Groups, tab_content).render())
@@ -48,7 +44,7 @@ pub async fn contacts_tab(
     contact_service: State<contact::Service>,
     user_service: State<user::Service>,
 ) -> crate::Result<Markup> {
-    let contacts = contact_service.find_by_user_id(auth_user.id()).await?;
+    let contacts = contact_service.find_by_user_id(auth_user.id())?;
 
     let contact_infos: Vec<(ContactDto, UserDto)> = {
         let mut ci: Vec<(ContactDto, UserDto)> = Vec::with_capacity(contacts.len());

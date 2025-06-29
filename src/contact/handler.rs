@@ -24,7 +24,7 @@ pub(super) mod api {
         contact_service: State<contact::Service>,
         params: Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let s = contact_service.add(auth_user.id(), &params.user_id).await?;
+        let s = contact_service.add(auth_user.id(), &params.user_id)?;
         Ok(s.render())
     }
 
@@ -33,7 +33,7 @@ pub(super) mod api {
         user_id: Query<user::Id>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        contact_service.delete(auth_user.id(), &user_id).await?;
+        contact_service.delete(auth_user.id(), &user_id)?;
         Ok(())
     }
 
@@ -48,7 +48,7 @@ pub(super) mod api {
             Transition::Reject => StatusTransition::Reject { responder: auth_id },
             Transition::Block => StatusTransition::Block { initiator: auth_id },
             Transition::Unblock => {
-                let c = contact_service.find_by_id(auth_id, &id).await?;
+                let c = contact_service.find_by_id(auth_id, &id)?;
 
                 StatusTransition::Unblock {
                     target: &c.recipient().clone(),

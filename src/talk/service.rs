@@ -23,20 +23,16 @@ pub trait TalkService {
         members: &[user::Id],
     ) -> super::Result<TalkDto>;
 
-    async fn find_by_id_and_user_id(
+    fn find_by_id_and_user_id(
         &self,
         kind: &Kind,
         id: &talk::Id,
         user_id: &user::Id,
     ) -> super::Result<TalkDto>;
 
-    async fn find_all_by_kind(
-        &self,
-        auth_user: &auth::User,
-        kind: &Kind,
-    ) -> super::Result<Vec<TalkDto>>;
+    fn find_all_by_kind(&self, auth_user: &auth::User, kind: &Kind) -> super::Result<Vec<TalkDto>>;
 
-    async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
+    fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -80,14 +76,10 @@ impl TalkService for TalkServiceImpl {
             return Err(talk::Error::AlreadyExists);
         }
 
-        let contact = self
-            .contact_service
-            .find(auth_id, recipient)
-            .await
-            .map_err(|e| {
-                error!("could not find contact: {e:?}");
-                talk::Error::NotCreated
-            })?;
+        let contact = self.contact_service.find(auth_id, recipient).map_err(|e| {
+            error!("could not find contact: {e:?}");
+            talk::Error::NotCreated
+        })?;
 
         if contact.is_none_or(|c| !c.is_accepted()) {
             return Err(talk::Error::UnsupportedStatus);
@@ -182,7 +174,7 @@ impl TalkService for TalkServiceImpl {
         Ok(talk_dto)
     }
 
-    async fn find_by_id_and_user_id(
+    fn find_by_id_and_user_id(
         &self,
         kind: &Kind,
         id: &talk::Id,
@@ -201,11 +193,7 @@ impl TalkService for TalkServiceImpl {
         .ok_or(super::Error::NotFound(Some(id.clone())))
     }
 
-    async fn find_all_by_kind(
-        &self,
-        auth_user: &auth::User,
-        kind: &Kind,
-    ) -> super::Result<Vec<TalkDto>> {
+    fn find_all_by_kind(&self, auth_user: &auth::User, kind: &Kind) -> super::Result<Vec<TalkDto>> {
         let auth_id = auth_user.id();
 
         let talk_dtos: Vec<TalkDto> = match kind {
@@ -226,7 +214,7 @@ impl TalkService for TalkServiceImpl {
         Ok(talk_dtos)
     }
 
-    async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
+    fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
         self.repo.delete(auth_user.id(), id).map(|_| ())
     }
 }

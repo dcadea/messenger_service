@@ -26,7 +26,7 @@ pub(super) mod pages {
         Extension,
         extract::{Path, Query, State},
     };
-    use maud::{Markup, html};
+    use maud::{Markup, Render};
     use serde::Deserialize;
 
     use crate::{
@@ -45,11 +45,9 @@ pub(super) mod pages {
         params: Query<KindParams>,
         talk_service: State<talk::Service>,
     ) -> crate::Result<Markup> {
-        let talk = &talk_service
-            .find_by_id_and_user_id(&params.kind, &id, auth_user.id())
-            .await?;
+        let talk = &talk_service.find_by_id_and_user_id(&params.kind, &id, auth_user.id())?;
 
-        Ok(html! {(markup::ActiveTalk(&auth_user, &talk))})
+        Ok(markup::ActiveTalk(&auth_user, &talk).render())
     }
 }
 
@@ -59,7 +57,7 @@ pub(super) mod api {
         extract::{Path, Query, State},
         response::IntoResponse,
     };
-    use maud::{Markup, html};
+    use maud::{Markup, Render};
     use serde::Deserialize;
 
     use crate::{
@@ -80,10 +78,9 @@ pub(super) mod api {
         talk_service: State<talk::Service>,
         Path(id): Path<talk::Id>,
     ) -> crate::Result<Markup> {
-        let talk = talk_service
-            .find_by_id_and_user_id(&params.kind, &id, auth_user.id())
-            .await?;
-        Ok(html! { (talk) })
+        let t = talk_service.find_by_id_and_user_id(&params.kind, &id, auth_user.id())?;
+
+        Ok(t.render())
     }
 
     pub async fn find_avatar(
@@ -136,7 +133,7 @@ pub(super) mod api {
             }
         }?;
 
-        Ok(html! {(markup::ActiveTalk(&auth_user, &talk))})
+        Ok(markup::ActiveTalk(&auth_user, &talk).render())
     }
 
     pub async fn delete(
@@ -144,13 +141,13 @@ pub(super) mod api {
         auth_user: Extension<auth::User>,
         talk_service: State<talk::Service>,
     ) -> crate::Result<impl IntoResponse> {
-        talk_service.delete(&id, &auth_user).await?;
+        talk_service.delete(&id, &auth_user)?;
 
         Ok([("HX-Redirect", "/")])
     }
 
     pub async fn _get_avatar(_id: Path<talk::Id>, _s3: State<storage::S3>) {
-        todo!()
+        unimplemented!("get_avatar")
     }
 }
 
@@ -194,8 +191,7 @@ pub(super) mod templates {
         user_service: State<user::Service>,
     ) -> crate::Result<Markup> {
         let contacts = contact_service
-            .find_by_user_id_and_status(auth_user.id(), &contact::Status::Accepted)
-            .await?;
+            .find_by_user_id_and_status(auth_user.id(), &contact::Status::Accepted)?;
 
         let mut members: Vec<GroupMemberDto> = Vec::with_capacity(contacts.len());
         for c in contacts {
