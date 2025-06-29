@@ -7,6 +7,7 @@ impl From<super::Error> for StatusCode {
             super::Error::EmptyContent => Self::BAD_REQUEST,
             super::Error::IdNotPresent
             | super::Error::Unexpected(_)
+            | super::Error::_User(_)
             | super::Error::_R2d2(_)
             | super::Error::_Diesel(_) => Self::INTERNAL_SERVER_ERROR,
         }
@@ -36,18 +37,11 @@ pub(super) mod api {
     pub async fn create(
         auth_user: Extension<auth::User>,
         message_service: State<message::Service>,
-        talk_service: State<talk::Service>,
         Form(params): Form<CreateParams>,
     ) -> crate::Result<Markup> {
         let msgs = message_service
             .create(&params.talk_id, &auth_user, params.text.trim())
             .await?;
-
-        if let Some(last) = msgs.last() {
-            talk_service
-                .update_last_message(last.talk_id(), Some(last))
-                .await?;
-        }
 
         Ok(markup::MessageList::prepend(&msgs, auth_user.id()).render())
     }
@@ -109,21 +103,10 @@ pub(super) mod api {
         auth_user: Extension<auth::User>,
         Path(id): Path<message::Id>,
         message_service: State<message::Service>,
-        talk_service: State<talk::Service>,
     ) -> crate::Result<()> {
         // FIXME: "update or delete on table \"messages\" violates foreign key constraint \"fk_last_message\" on table \"talks\""
         // happens when message that is deleted is "last"
-        if let Some(deleted_msg) = message_service.delete(&auth_user, &id).await? {
-            let talk_id = deleted_msg.talk_id();
-
-            if talk_service.is_last_message(talk_id, &id)? {
-                let last_msg = message_service.find_most_recent(talk_id)?;
-
-                talk_service
-                    .update_last_message(talk_id, last_msg.as_ref())
-                    .await?;
-            }
-
+        if let Some(_) = message_service.delete(&auth_user, &id).await? {
             return Ok(());
         }
 

@@ -8,5 +8,3 @@ CREATE TABLE messages (
     FOREIGN KEY (talk_id) REFERENCES talks (id) ON DELETE CASCADE,
     FOREIGN KEY (owner) REFERENCES users (id)
 );
-
-ALTER TABLE talks ADD CONSTRAINT fk_last_message FOREIGN KEY (last_message_id) REFERENCES messages (id) DEFERRABLE INITIALLY DEFERRED;

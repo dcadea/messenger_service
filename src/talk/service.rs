@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use async_trait::async_trait;
 use futures::TryFutureExt;
 use log::error;
@@ -11,7 +9,7 @@ use crate::integration::storage::Blob;
 use crate::message::model::MessageDto;
 use crate::talk::Picture;
 use crate::talk::model::NewTalk;
-use crate::{auth, contact, event, message, talk, user};
+use crate::{auth, contact, event, talk, user};
 
 #[async_trait]
 pub trait TalkService {
@@ -38,21 +36,7 @@ pub trait TalkService {
         kind: &Kind,
     ) -> super::Result<Vec<TalkDto>>;
 
-    async fn find_recipients(
-        &self,
-        talk_id: &talk::Id,
-        exclude: &user::Id,
-    ) -> super::Result<HashSet<user::Id>>;
-
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
-
-    fn is_last_message(&self, id: &talk::Id, message_id: &message::Id) -> super::Result<bool>;
-
-    async fn update_last_message(
-        &self,
-        id: &talk::Id,
-        message_id: Option<&MessageDto>,
-    ) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -242,54 +226,8 @@ impl TalkService for TalkServiceImpl {
         Ok(talk_dtos)
     }
 
-    async fn find_recipients(
-        &self,
-        talk_id: &talk::Id,
-        exclude: &user::Id,
-    ) -> super::Result<HashSet<user::Id>> {
-        let recipients = {
-            let mut r = self.user_service.find_members(talk_id).await?;
-            r.remove(exclude);
-            r
-        };
-
-        Ok(recipients)
-    }
-
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
         self.repo.delete(auth_user.id(), id).map(|_| ())
-    }
-
-    fn is_last_message(&self, id: &talk::Id, message_id: &message::Id) -> super::Result<bool> {
-        self.repo.is_last_message(id, message_id)
-    }
-
-    async fn update_last_message(
-        &self,
-        id: &talk::Id,
-        msg: Option<&MessageDto>,
-    ) -> super::Result<()> {
-        self.repo.update_last_message(id, msg.map(|m| m.id()))?;
-
-        if let Some(last_msg) = msg {
-            let recipients = self.find_recipients(id, last_msg.owner()).await?;
-            let subjects = recipients
-                .iter()
-                .map(event::Subject::Notifications)
-                .collect::<Vec<_>>();
-
-            self.event_service
-                .broadcast(
-                    &subjects,
-                    event::Notification::NewMessage {
-                        talk_id: id.clone(),
-                        last_message: last_msg.clone(),
-                    }
-                    .into(),
-                )
-                .await;
-        }
-        Ok(())
     }
 }
 

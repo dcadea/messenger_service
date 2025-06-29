@@ -84,6 +84,7 @@ diesel::joinable!(groups -> talks (id));
 diesel::joinable!(groups -> users (owner));
 diesel::joinable!(groups_users -> groups (group_id));
 diesel::joinable!(groups_users -> users (user_id));
+diesel::joinable!(messages -> talks (talk_id));
 diesel::joinable!(messages -> users (owner));
 
 diesel::allow_tables_to_appear_in_same_query!(

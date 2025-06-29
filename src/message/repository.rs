@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
-    RunQueryDsl, SelectableHelper, delete, insert_into, r2d2::ConnectionManager, update,
+    BoolExpressionMethods, ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
+    SelectableHelper, delete, insert_into, r2d2::ConnectionManager, update,
 };
 
 use crate::{message, user};
@@ -36,8 +36,6 @@ pub trait MessageRepository {
         limit: i64,
         before: NaiveDateTime,
     ) -> super::Result<Vec<Message>>;
-
-    fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<Message>>;
 
     fn update(&self, owner: &user::Id, id: &message::Id, new_content: &str) -> super::Result<bool>;
 
@@ -138,19 +136,6 @@ impl MessageRepository for PgMessageRepository {
             .order(created_at.desc())
             .select(Message::as_select())
             .get_results(&mut conn)
-            .map_err(super::Error::from)
-    }
-
-    fn find_most_recent(&self, t_id: &talk::Id) -> super::Result<Option<Message>> {
-        let mut conn = self.pool.get()?;
-
-        messages
-            .filter(talk_id.eq(t_id))
-            .limit(1)
-            .order(created_at.desc())
-            .select(Message::as_select())
-            .first(&mut conn)
-            .optional()
             .map_err(super::Error::from)
     }
 

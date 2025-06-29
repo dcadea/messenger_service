@@ -1,7 +1,7 @@
 use diesel::{
     Connection, ExpressionMethods, JoinOnDsl, NullableExpressionMethods, OptionalExtension,
     PgConnection, QueryDsl, QueryResult, RunQueryDsl, dsl::delete, insert_into,
-    r2d2::ConnectionManager, sql_query, sql_types, update,
+    r2d2::ConnectionManager, sql_query, sql_types,
 };
 
 use crate::{
@@ -40,14 +40,6 @@ pub trait TalkRepository {
     fn delete(&self, owner: &user::Id, id: &talk::Id) -> super::Result<bool>;
 
     fn exists(&self, members: &[user::Id; 2]) -> super::Result<bool>;
-
-    fn is_last_message(&self, id: &talk::Id, message_id: &message::Id) -> super::Result<bool>;
-
-    fn update_last_message(
-        &self,
-        id: &talk::Id,
-        message_id: Option<&message::Id>,
-    ) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -282,31 +274,6 @@ impl TalkRepository for PgTalkRepository {
             .optional()
             .map(|r| r.is_some())
             .map_err(super::Error::from)
-    }
-
-    fn is_last_message(&self, t_id: &talk::Id, m_id: &message::Id) -> super::Result<bool> {
-        let mut conn = self.pool.get()?;
-        let count: i64 = talks
-            .find(t_id)
-            .filter(last_message_id.eq(m_id))
-            .count()
-            .get_result(&mut conn)?;
-
-        Ok(count > 0)
-    }
-
-    fn update_last_message(
-        &self,
-        t_id: &talk::Id,
-        m_id: Option<&message::Id>,
-    ) -> super::Result<()> {
-        let mut conn = self.pool.get()?;
-
-        update(talks.find(t_id))
-            .set(last_message_id.eq(m_id))
-            .execute(&mut conn)?;
-
-        Ok(())
     }
 }
 

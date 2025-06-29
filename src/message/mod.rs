@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use service::MessageService;
 use uuid::Uuid;
 
-use crate::state::AppState;
+use crate::{state::AppState, user};
 
 mod handler;
 pub mod markup;
@@ -80,6 +80,8 @@ pub enum Error {
     #[error("unexpected error occurred: {0:?}")]
     Unexpected(String),
 
+    #[error(transparent)]
+    _User(#[from] user::Error),
     #[error(transparent)]
     _R2d2(#[from] r2d2::Error),
     #[error(transparent)]

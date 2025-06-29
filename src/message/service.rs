@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -24,8 +25,6 @@ pub trait MessageService {
     ) -> super::Result<Vec<MessageDto>>;
 
     fn find_by_id(&self, auth_user: &auth::User, id: &message::Id) -> super::Result<MessageDto>;
-
-    fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<MessageDto>>;
 
     async fn update(
         &self,
@@ -54,7 +53,7 @@ pub trait MessageService {
 #[derive(Clone)]
 pub struct MessageServiceImpl {
     repo: Repository,
-    talk_service: talk::Service,
+    user_service: user::Service,
     event_service: event::Service,
     splitter: Arc<TextSplitter<Characters>>,
 }
@@ -62,12 +61,12 @@ pub struct MessageServiceImpl {
 impl MessageServiceImpl {
     pub fn new(
         repo: Repository,
-        talk_service: talk::Service,
+        user_service: user::Service,
         event_service: event::Service,
     ) -> Self {
         Self {
             repo,
-            talk_service,
+            user_service,
             event_service,
             splitter: Arc::new(TextSplitter::new(MAX_MESSAGE_LENGTH)),
         }
@@ -115,12 +114,6 @@ impl MessageService for MessageServiceImpl {
         self.repo
             .find_by_id(auth_user.id(), id)
             .map(MessageDto::from)
-    }
-
-    fn find_most_recent(&self, talk_id: &talk::Id) -> super::Result<Option<MessageDto>> {
-        self.repo
-            .find_most_recent(talk_id)
-            .map(|o| o.map(MessageDto::from))
     }
 
     async fn update(
@@ -245,7 +238,7 @@ impl MessageService for MessageServiceImpl {
 
 impl MessageServiceImpl {
     async fn notify_new(&self, talk_id: &talk::Id, owner: &user::Id, msgs: &[MessageDto]) {
-        match self.talk_service.find_recipients(talk_id, owner).await {
+        match self.find_recipients(talk_id, owner).await {
             Ok(recipients) => {
                 let msg_evts = msgs
                     .iter()
@@ -270,7 +263,7 @@ impl MessageServiceImpl {
         let talk_id = msg.talk_id();
         let owner = msg.owner();
 
-        match self.talk_service.find_recipients(talk_id, owner).await {
+        match self.find_recipients(talk_id, owner).await {
             Ok(recipients) => {
                 let subjects = recipients
                     .iter()
@@ -296,7 +289,7 @@ impl MessageServiceImpl {
         let talk_id = msg.talk_id();
         let owner = msg.owner();
 
-        match self.talk_service.find_recipients(talk_id, owner).await {
+        match self.find_recipients(talk_id, owner).await {
             Ok(recipients) => {
                 let subjects = recipients
                     .iter()
@@ -309,6 +302,20 @@ impl MessageServiceImpl {
             }
             Err(e) => error!("could not find talk recipients: {e:?}"),
         }
+    }
+
+    async fn find_recipients(
+        &self,
+        talk_id: &talk::Id,
+        exclude: &user::Id,
+    ) -> super::Result<HashSet<user::Id>> {
+        let recipients = {
+            let mut r = self.user_service.find_members(talk_id).await?;
+            r.remove(exclude);
+            r
+        };
+
+        Ok(recipients)
     }
 }
 
