@@ -47,7 +47,7 @@ pub struct NewContact<'a> {
 }
 
 impl<'a> NewContact<'a> {
-    pub fn new(initiator: &'a user::Id, responder: &'a user::Id) -> Self {
+    pub const fn new(initiator: &'a user::Id, responder: &'a user::Id) -> Self {
         Self {
             user_id_1: initiator,
             user_id_2: responder,
@@ -57,11 +57,11 @@ impl<'a> NewContact<'a> {
     }
 
     pub const fn user_id_1(&self) -> &user::Id {
-        &self.user_id_1
+        self.user_id_1
     }
 
     pub const fn user_id_2(&self) -> &user::Id {
-        &self.user_id_2
+        self.user_id_2
     }
 }
 
@@ -105,7 +105,7 @@ impl ContactDto {
     /// - Pending -> (Reject) -> Rejected
     /// - Accepted -> (Block) -> Blocked
     /// - Blocked -> (Unblock) -> Accepted
-    pub fn transition(&mut self, t: StatusTransition) -> super::Result<Status> {
+    pub fn transition(&self, t: StatusTransition) -> super::Result<Status> {
         match (&self.status, t) {
             (Status::Pending { initiator }, StatusTransition::Accept { responder }) => {
                 if !self.is_member(responder) {

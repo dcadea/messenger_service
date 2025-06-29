@@ -7,7 +7,10 @@ use diesel::{
 use crate::{message, user};
 
 use super::model::{Message, NewMessage};
-use crate::{schema::messages::dsl::*, talk};
+use crate::{
+    schema::messages::dsl::{content, created_at, id, messages, owner, seen, talk_id},
+    talk,
+};
 
 pub trait MessageRepository {
     fn insert(&self, new_message: &NewMessage) -> super::Result<Message>;
@@ -49,7 +52,7 @@ pub struct PgMessageRepository {
 }
 
 impl PgMessageRepository {
-    pub fn new(pool: r2d2::Pool<ConnectionManager<PgConnection>>) -> Self {
+    pub const fn new(pool: r2d2::Pool<ConnectionManager<PgConnection>>) -> Self {
         Self { pool }
     }
 }

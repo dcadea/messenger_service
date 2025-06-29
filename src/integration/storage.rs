@@ -14,7 +14,7 @@ pub struct S3 {
 }
 
 impl S3 {
-    pub async fn generate<'a>(&self, blob: Blob<'a>) -> super::Result<()> {
+    pub async fn generate(&self, blob: Blob<'_>) -> super::Result<()> {
         match blob {
             Blob::Png(name) => {
                 let png = identicon_rs::Identicon::new(name).export_png_data()?;
@@ -23,14 +23,20 @@ impl S3 {
                 self.client
                     .put_object_content(BUCKET, blob, png)
                     .send()
-                    .await?;
+                    .await
+                    .map_err(Box::new)?;
             }
         }
         Ok(())
     }
 
-    pub async fn find_one<'a>(&self, blob: Blob<'a>) -> super::Result<ObjectContent> {
-        let res = self.client.get_object(BUCKET, blob).send().await?;
+    pub async fn find_one(&self, blob: Blob<'_>) -> super::Result<ObjectContent> {
+        let res = self
+            .client
+            .get_object(BUCKET, blob)
+            .send()
+            .await
+            .map_err(Box::new)?;
         Ok(res.content)
     }
 }

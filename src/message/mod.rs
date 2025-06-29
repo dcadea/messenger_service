@@ -32,7 +32,7 @@ impl Id {
         Self(Uuid::new_v4())
     }
 
-    pub fn get(&self) -> &Uuid {
+    pub const fn get(&self) -> &Uuid {
         &self.0
     }
 }

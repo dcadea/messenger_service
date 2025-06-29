@@ -31,7 +31,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
 pub struct Id(Uuid);
 
 impl Id {
-    pub fn get(&self) -> &Uuid {
+    pub const fn get(&self) -> &Uuid {
         &self.0
     }
 }
@@ -50,7 +50,7 @@ impl From<Uuid> for Id {
 
 impl From<&Uuid> for Id {
     fn from(uuid: &Uuid) -> Self {
-        Self(uuid.clone())
+        Self(*uuid)
     }
 }
 
@@ -62,8 +62,8 @@ impl Sub {
         Self(s.to_string())
     }
 
-    pub fn as_str(&self) -> &str {
-        &self.0
+    pub const fn as_str(&self) -> &str {
+        self.0.as_str()
     }
 
     fn parts(&self) -> (&str, &str) {
@@ -98,11 +98,11 @@ impl From<&str> for Sub {
 pub struct Nickname(String);
 
 impl Nickname {
-    pub fn as_str(&self) -> &str {
-        &self.0
+    pub const fn as_str(&self) -> &str {
+        self.0.as_str()
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }
@@ -123,8 +123,8 @@ impl From<&str> for Nickname {
 pub struct Picture(String);
 
 impl Picture {
-    pub fn as_str(&self) -> &str {
-        &self.0
+    pub const fn as_str(&self) -> &str {
+        self.0.as_str()
     }
 }
 
@@ -132,7 +132,7 @@ impl TryFrom<&str> for Picture {
     type Error = Error;
 
     fn try_from(s: &str) -> std::result::Result<Self, Self::Error> {
-        if s.len() == 0 {
+        if s.is_empty() {
             return Err(Self::Error::MalformedPicture(s.to_string()));
         }
         // TODO: parse picture url here
@@ -150,8 +150,8 @@ impl Display for Picture {
 pub struct Email(String);
 
 impl Email {
-    pub fn as_str(&self) -> &str {
-        &self.0
+    pub const fn as_str(&self) -> &str {
+        self.0.as_str()
     }
 }
 
@@ -159,7 +159,7 @@ impl TryFrom<&str> for Email {
     type Error = Error;
 
     fn try_from(s: &str) -> std::result::Result<Self, Self::Error> {
-        if s.len() == 0 {
+        if s.is_empty() {
             return Err(Self::Error::MalformedEmail(s.to_string()));
         }
         // TODO: parse email here

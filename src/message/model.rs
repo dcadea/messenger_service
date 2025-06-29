@@ -23,7 +23,7 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn new(
+    pub const fn new(
         id: Id,
         talk_id: talk::Id,
         owner: user::Id,
@@ -51,7 +51,7 @@ pub struct NewMessage<'a> {
 }
 
 impl<'a> NewMessage<'a> {
-    pub fn new(talk_id: &'a talk::Id, owner: &'a user::Id, content: &'a str) -> Self {
+    pub const fn new(talk_id: &'a talk::Id, owner: &'a user::Id, content: &'a str) -> Self {
         Self {
             talk_id,
             owner,
@@ -94,8 +94,8 @@ impl MessageDto {
         &self.owner
     }
 
-    pub fn text(&self) -> &str {
-        &self.content
+    pub const fn text(&self) -> &str {
+        self.content.as_str()
     }
 
     pub const fn created_at(&self) -> NaiveDateTime {

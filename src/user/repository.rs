@@ -11,7 +11,7 @@ use diesel::insert_into;
 use diesel::r2d2::ConnectionManager;
 use uuid::Uuid;
 
-use crate::schema::users::dsl::*;
+use crate::schema::users::dsl::{id, nickname, sub, users};
 use crate::talk;
 
 use super::Nickname;
@@ -43,7 +43,7 @@ pub struct PgUserRepository {
 }
 
 impl PgUserRepository {
-    pub fn new(pool: r2d2::Pool<ConnectionManager<PgConnection>>) -> Self {
+    pub const fn new(pool: r2d2::Pool<ConnectionManager<PgConnection>>) -> Self {
         Self { pool }
     }
 }
@@ -56,7 +56,7 @@ impl UserRepository for PgUserRepository {
             .values(u)
             .returning(id)
             .get_result::<Uuid>(&mut conn)
-            .map(|i| user::Id(i))
+            .map(user::Id)
             .map_err(super::Error::from)
     }
 

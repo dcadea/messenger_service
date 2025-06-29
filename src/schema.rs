@@ -56,7 +56,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    use diesel::sql_types::*;
+    use diesel::sql_types::{Nullable, Uuid};
     use super::sql_types::TalkKind;
 
     talks (id) {

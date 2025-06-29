@@ -50,7 +50,7 @@ pub fn templates<S>(s: AppState) -> Router<S> {
 pub struct Id(Uuid);
 
 impl Id {
-    pub fn get(&self) -> &Uuid {
+    pub const fn get(&self) -> &Uuid {
         &self.0
     }
 }
@@ -83,8 +83,8 @@ impl Kind {
 pub struct Picture(String);
 
 impl Picture {
-    pub fn as_str(&self) -> &str {
-        &self.0
+    pub const fn as_str(&self) -> &str {
+        self.0.as_str()
     }
 }
 
@@ -132,7 +132,7 @@ pub enum Error {
     #[error(transparent)]
     _User(#[from] user::Error),
     #[error(transparent)]
-    _Integration(#[from] integration::Error),
+    _Integration(#[from] Box<integration::Error>),
     #[error(transparent)]
     _R2d2(#[from] r2d2::Error),
     #[error(transparent)]

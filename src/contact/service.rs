@@ -133,12 +133,12 @@ impl ContactService for ContactServiceImpl {
         let contact = self.repo.find_by_id(id)?;
         match contact {
             Some(c) => {
-                let mut dto = map_to_dto(auth_id, &c);
+                let dto = map_to_dto(auth_id, &c);
                 let s = dto.transition(st)?;
                 self.repo.update_status(c.id(), &s)?;
                 Ok(s)
             }
-            None => return Err(super::Error::NotFound(id.clone())),
+            None => Err(super::Error::NotFound(id.clone())),
         }
     }
 

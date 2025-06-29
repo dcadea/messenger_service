@@ -89,7 +89,7 @@ impl TalkService for TalkServiceImpl {
             .repo
             .create(&NewTalk::new(&Details::Chat { members }))?;
 
-        let r = self.user_service.find_one(&recipient).await?;
+        let r = self.user_service.find_one(recipient).await?;
         let talk_dto = TalkDto::new(
             id,
             Picture::from(r.picture().clone()),
@@ -142,7 +142,7 @@ impl TalkService for TalkServiceImpl {
         let id = self.repo.create(&NewTalk::new(&details))?;
         self.s3
             .generate(Blob::Png(&id.0.to_string()))
-            .map_err(talk::Error::from)
+            .map_err(|e| talk::Error::from(Box::new(e)))
             .await?;
 
         let talk_dto = TalkDto::new(
@@ -182,11 +182,11 @@ impl TalkService for TalkServiceImpl {
             Kind::Chat => self
                 .repo
                 .find_chat_by_id_and_user_id(id, auth_id)?
-                .map(|c| self.chat_to_dto(&c, auth_id)),
+                .map(|c| chat_to_dto(&c, auth_id)),
             Kind::Group => self
                 .repo
                 .find_group_by_id_and_user_id(id, auth_id)?
-                .map(|g| self.group_to_dto(&g, auth_id)),
+                .map(|g| group_to_dto(&g, auth_id)),
         }
         .ok_or(super::Error::NotFound(Some(id.clone())))
     }
@@ -199,13 +199,13 @@ impl TalkService for TalkServiceImpl {
                 .repo
                 .find_chats_by_user_id(auth_id)?
                 .iter()
-                .map(|c| self.chat_to_dto(c, auth_id))
+                .map(|c| chat_to_dto(c, auth_id))
                 .collect(),
             Kind::Group => self
                 .repo
                 .find_groups_by_user_id(auth_id)?
                 .iter()
-                .map(|g| self.group_to_dto(g, auth_id))
+                .map(|g| group_to_dto(g, auth_id))
                 .collect(),
         };
 
@@ -217,30 +217,28 @@ impl TalkService for TalkServiceImpl {
     }
 }
 
-impl TalkServiceImpl {
-    fn chat_to_dto(&self, c: &ChatTalk, auth_id: &user::Id) -> TalkDto {
-        TalkDto::new(
-            c.id().clone(),
-            Picture::from(user::Picture::try_from(c.picture()).unwrap()), // FIXME
-            c.name(),
-            DetailsDto::Chat {
-                sender: auth_id.clone(),
-                recipient: c.recipient().clone(),
-            },
-            c.last_message().map(|m| MessageDto::from(m.clone())),
-        )
-    }
+fn chat_to_dto(c: &ChatTalk, auth_id: &user::Id) -> TalkDto {
+    TalkDto::new(
+        c.id().clone(),
+        Picture::from(user::Picture::try_from(c.picture()).expect("wrong picture format")), // FIXME
+        c.name(),
+        DetailsDto::Chat {
+            sender: auth_id.clone(),
+            recipient: c.recipient().clone(),
+        },
+        c.last_message().map(|m| MessageDto::from(m.clone())),
+    )
+}
 
-    fn group_to_dto(&self, g: &GroupTalk, auth_id: &user::Id) -> TalkDto {
-        TalkDto::new(
-            g.id().clone(),
-            Picture::from(g.id().clone()),
-            g.name(),
-            DetailsDto::Group {
-                owner: g.owner().clone(),
-                sender: auth_id.clone(),
-            },
-            g.last_message().map(|m| MessageDto::from(m.clone())),
-        )
-    }
+fn group_to_dto(g: &GroupTalk, auth_id: &user::Id) -> TalkDto {
+    TalkDto::new(
+        g.id().clone(),
+        Picture::from(g.id().clone()),
+        g.name(),
+        DetailsDto::Group {
+            owner: g.owner().clone(),
+            sender: auth_id.clone(),
+        },
+        g.last_message().map(|m| MessageDto::from(m.clone())),
+    )
 }

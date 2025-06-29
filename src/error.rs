@@ -38,15 +38,12 @@ impl IntoResponse for Error {
             error_message
         };
 
-        let response = {
+        {
             let mut r = ErrorResponse { error_message }.render().into_response();
             r.headers_mut()
                 .insert("HX-Retarget", HeaderValue::from_static("#errors"));
-
             r
-        };
-
-        response
+        }
     }
 }
 

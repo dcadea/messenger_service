@@ -3,9 +3,10 @@ use diesel::{
     RunQueryDsl, SelectableHelper, delete, insert_into, r2d2::ConnectionManager, update,
 };
 
-use crate::{schema::contacts::dsl::*, user};
+use crate::schema::contacts::dsl::{contacts, id, initiator, status, user_id_1, user_id_2};
 
 use crate::contact::{self};
+use crate::user;
 
 use super::{
     Status,
@@ -39,7 +40,7 @@ pub struct PgContactRepository {
 }
 
 impl PgContactRepository {
-    pub fn new(pool: r2d2::Pool<ConnectionManager<PgConnection>>) -> Self {
+    pub const fn new(pool: r2d2::Pool<ConnectionManager<PgConnection>>) -> Self {
         Self { pool }
     }
 }
@@ -106,10 +107,8 @@ impl ContactRepository for PgContactRepository {
         let mut conn = self.pool.get()?;
 
         let i = match s {
-            Status::Pending { initiator: i } => Some(i),
-            Status::Accepted => None,
-            Status::Rejected => None,
-            Status::Blocked { initiator: i } => Some(i),
+            Status::Accepted | Status::Rejected => None,
+            Status::Pending { initiator: i } | Status::Blocked { initiator: i } => Some(i),
         };
 
         let modified_count = update(contacts)

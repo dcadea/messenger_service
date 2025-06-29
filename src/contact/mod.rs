@@ -29,7 +29,7 @@ pub type Service = Arc<dyn ContactService + Send + Sync>;
 pub struct Id(Uuid);
 
 impl Id {
-    pub fn get(&self) -> &Uuid {
+    pub const fn get(&self) -> &Uuid {
         &self.0
     }
 }
@@ -60,19 +60,17 @@ pub enum Status {
 impl Status {
     pub const fn as_str(&self) -> &str {
         match self {
-            Status::Pending { .. } => "pending",
-            Status::Accepted => "accepted",
-            Status::Rejected => "rejected",
-            Status::Blocked { .. } => "blocked",
+            Self::Pending { .. } => "pending",
+            Self::Accepted => "accepted",
+            Self::Rejected => "rejected",
+            Self::Blocked { .. } => "blocked",
         }
     }
 
     pub const fn initiator(&self) -> Option<&user::Id> {
         match self {
-            Status::Pending { initiator } => Some(&initiator),
-            Status::Accepted => None,
-            Status::Rejected => None,
-            Status::Blocked { initiator } => Some(&initiator),
+            Self::Accepted | Self::Rejected => None,
+            Self::Pending { initiator } | Self::Blocked { initiator } => Some(initiator),
         }
     }
 
@@ -87,26 +85,30 @@ impl Status {
 
 impl From<&Contact> for Status {
     fn from(c: &Contact) -> Self {
-        match c.initiator().cloned() {
-            Some(initiator) => {
-                if c.status().eq("pending") {
-                    Status::Pending { initiator }
-                } else if c.status().eq("blocked") {
-                    Status::Blocked { initiator }
-                } else {
-                    unreachable!("unsupported status")
-                }
-            }
-            None => {
+        c.initiator().map_or_else(
+            || {
                 if c.status().eq("accepted") {
-                    Status::Accepted
+                    Self::Accepted
                 } else if c.status().eq("rejected") {
-                    Status::Rejected
+                    Self::Rejected
                 } else {
                     unreachable!("unsupported status")
                 }
-            }
-        }
+            },
+            |i| {
+                if c.status().eq("pending") {
+                    Self::Pending {
+                        initiator: i.clone(),
+                    }
+                } else if c.status().eq("blocked") {
+                    Self::Blocked {
+                        initiator: i.clone(),
+                    }
+                } else {
+                    unreachable!("unsupported status")
+                }
+            },
+        )
     }
 }
 

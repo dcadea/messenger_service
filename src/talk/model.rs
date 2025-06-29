@@ -44,12 +44,12 @@ pub struct NewTalk<'a> {
 }
 
 impl<'a> NewTalk<'a> {
-    pub fn new(details: &'a Details) -> Self {
+    pub const fn new(details: &'a Details) -> Self {
         Self { details }
     }
 
     pub const fn details(&self) -> &Details {
-        &self.details
+        self.details
     }
 }
 
@@ -60,7 +60,7 @@ pub struct NewChat<'a> {
 }
 
 impl<'a> NewChat<'a> {
-    pub fn new(id: &'a Id) -> Self {
+    pub const fn new(id: &'a Id) -> Self {
         Self { id }
     }
 }
@@ -73,7 +73,7 @@ pub struct NewChatUser<'a> {
 }
 
 impl<'a> NewChatUser<'a> {
-    pub fn new(chat_id: &'a Id, user_id: &'a user::Id) -> Self {
+    pub const fn new(chat_id: &'a Id, user_id: &'a user::Id) -> Self {
         Self { chat_id, user_id }
     }
 }
@@ -87,7 +87,7 @@ pub struct NewGroup<'a> {
 }
 
 impl<'a> NewGroup<'a> {
-    pub fn new(id: &'a Id, owner: &'a user::Id, name: &'a str) -> Self {
+    pub const fn new(id: &'a Id, owner: &'a user::Id, name: &'a str) -> Self {
         Self { id, owner, name }
     }
 }
@@ -100,7 +100,7 @@ pub struct NewGroupUser<'a> {
 }
 
 impl<'a> NewGroupUser<'a> {
-    pub fn new(group_id: &'a Id, user_id: &'a user::Id) -> Self {
+    pub const fn new(group_id: &'a Id, user_id: &'a user::Id) -> Self {
         Self { group_id, user_id }
     }
 }
@@ -138,12 +138,12 @@ impl ChatTalk {
         &self.recipient
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
+    pub const fn name(&self) -> &str {
+        self.name.as_str()
     }
 
-    pub fn picture(&self) -> &str {
-        &self.picture
+    pub const fn picture(&self) -> &str {
+        self.picture.as_str()
     }
 }
 
@@ -202,7 +202,7 @@ pub struct GroupTalk {
 }
 
 impl GroupTalk {
-    pub fn new(id: Id, last_message: Option<Message>, owner: user::Id, name: String) -> Self {
+    pub const fn new(id: Id, last_message: Option<Message>, owner: user::Id, name: String) -> Self {
         Self {
             id,
             last_message,
@@ -223,8 +223,8 @@ impl GroupTalk {
         &self.owner
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
+    pub const fn name(&self) -> &str {
+        self.name.as_str()
     }
 }
 
@@ -259,12 +259,12 @@ impl TalkDto {
         &self.id
     }
 
-    pub fn picture(&self) -> &Picture {
+    pub const fn picture(&self) -> &Picture {
         &self.picture
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
+    pub const fn name(&self) -> &str {
+        self.name.as_str()
     }
 
     pub const fn details(&self) -> &DetailsDto {

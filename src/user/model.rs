@@ -51,7 +51,7 @@ impl OnlineStatus {
         Self { id, online }
     }
 
-    pub fn id(&self) -> &Id {
+    pub const fn id(&self) -> &Id {
         &self.id
     }
 
@@ -94,8 +94,8 @@ impl UserDto {
         &self.nickname
     }
 
-    pub fn name(&self) -> &str {
-        &self.name
+    pub const fn name(&self) -> &str {
+        self.name.as_str()
     }
 
     pub const fn email(&self) -> &Email {

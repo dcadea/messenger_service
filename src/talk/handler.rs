@@ -47,7 +47,7 @@ pub(super) mod pages {
     ) -> crate::Result<Markup> {
         let talk = &talk_service.find_by_id_and_user_id(&params.kind, &id, auth_user.id())?;
 
-        Ok(markup::ActiveTalk(&auth_user, &talk).render())
+        Ok(markup::ActiveTalk(&auth_user, talk).render())
     }
 }
 
@@ -88,8 +88,15 @@ pub(super) mod api {
         id: Path<talk::Id>,
     ) -> crate::Result<axum::body::Body> {
         // TODO: handle result
-        let content = s3.find_one(Blob::Png(&id.0.to_string())).await.unwrap();
-        let x = content.to_stream().await.unwrap().0;
+        let content = s3
+            .find_one(Blob::Png(&id.0.to_string()))
+            .await
+            .expect("failed to find object in s3");
+        let x = content
+            .to_stream()
+            .await
+            .expect("failed to create stream")
+            .0;
         Ok(axum::body::Body::from_stream(x))
     }
 
@@ -144,10 +151,6 @@ pub(super) mod api {
         talk_service.delete(&id, &auth_user)?;
 
         Ok([("HX-Redirect", "/")])
-    }
-
-    pub async fn _get_avatar(_id: Path<talk::Id>, _s3: State<storage::S3>) {
-        unimplemented!("get_avatar")
     }
 }
 

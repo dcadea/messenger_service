@@ -21,7 +21,7 @@ migrate:
 clippy:
 	cargo fmt && cargo clippy -- \
 	-W clippy::pedantic \
-	# -W clippy::nursery \
+	-W clippy::nursery \
 	-W clippy::unwrap_used
 
 cov:

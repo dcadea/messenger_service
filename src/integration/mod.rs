@@ -217,7 +217,7 @@ pub enum Error {
     #[error(transparent)]
     Identicon(#[from] identicon_rs::error::IdenticonError),
     #[error(transparent)]
-    Minio(#[from] minio::s3::error::Error),
+    Minio(#[from] Box<minio::s3::error::Error>),
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }

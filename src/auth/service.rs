@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
+use futures::FutureExt;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
 use log::{debug, error, warn};
@@ -144,12 +145,14 @@ impl AuthService for AuthServiceImpl {
         })?;
 
         let kid = jwt_header.kid.ok_or(super::Error::UnknownKid)?;
-        let decoding_keys_guard = self.jwk_decoding_keys.read().await;
-        let decoding_key = decoding_keys_guard
-            .get(&kid)
+        let decoding_key = self
+            .jwk_decoding_keys
+            .read()
+            .map(|keys| keys.get(&kid).cloned())
+            .await
             .ok_or(super::Error::UnknownKid)?;
 
-        decode::<TokenClaims>(token, decoding_key, &self.jwt_validator)
+        decode::<TokenClaims>(token, &decoding_key, &self.jwt_validator)
             .map(|data| data.claims)
             .map(|claims| {
                 let sub = claims.sub;

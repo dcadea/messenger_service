@@ -181,7 +181,7 @@ pub mod ws {
 
                     if let Message::New(msg) = msg {
                         if let Err(e) = message_service.mark_as_seen(&auth_id, &[msg]).await {
-                            error!("Failed to mark message as seen: {e}")
+                            error!("Failed to mark message as seen: {e}");
                         }
                     }
                 }

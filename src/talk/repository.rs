@@ -6,7 +6,10 @@ use diesel::{
 
 use crate::{
     message::{self, model::Message},
-    schema::{chats, chats_users, groups, groups_users, talks::dsl::*},
+    schema::{
+        chats, chats_users, groups, groups_users,
+        talks::dsl::{id, kind, last_message_id, talks},
+    },
     talk::{
         self, Kind,
         model::{
@@ -48,7 +51,7 @@ pub struct PgTalkRepository {
 }
 
 impl PgTalkRepository {
-    pub fn new(pool: r2d2::Pool<ConnectionManager<PgConnection>>) -> Self {
+    pub const fn new(pool: r2d2::Pool<ConnectionManager<PgConnection>>) -> Self {
         Self { pool }
     }
 }
@@ -58,7 +61,7 @@ impl TalkRepository for PgTalkRepository {
         let mut conn = self.pool.get()?;
 
         let res: Vec<ChatWithLastMessage> = sql_query(
-            r#"
+            r"
             SELECT
                	t.id,
                	m.id AS message_id,
@@ -75,7 +78,7 @@ impl TalkRepository for PgTalkRepository {
             JOIN users u ON u.id = cu_other.user_id
             LEFT JOIN messages m ON m.id = t.last_message_id
             WHERE t.kind = 'chat'
-            "#,
+            ",
         )
         .bind::<sql_types::Uuid, _>(u_id.get())
         .load::<ChatWithLastMessage>(&mut conn)?;
@@ -125,7 +128,7 @@ impl TalkRepository for PgTalkRepository {
         let mut conn = self.pool.get()?;
 
         let query = sql_query(
-            r#"
+            r"
             SELECT
                 t.id,
                 m.id AS message_id,
@@ -143,7 +146,7 @@ impl TalkRepository for PgTalkRepository {
             LEFT JOIN messages m ON m.id = t.last_message_id
             WHERE t.id = $2
             AND t.kind = 'chat'
-            "#,
+            ",
         )
         .bind::<sql_types::Uuid, _>(u_id.get())
         .bind::<sql_types::Uuid, _>(t_id.get());
@@ -214,10 +217,8 @@ impl TalkRepository for PgTalkRepository {
                         .returning(chats::id)
                         .get_result(conn)?;
 
-                    let users: Vec<NewChatUser> = members
-                        .into_iter()
-                        .map(|m| NewChatUser::new(&c_id, m))
-                        .collect();
+                    let users: Vec<NewChatUser> =
+                        members.iter().map(|m| NewChatUser::new(&c_id, m)).collect();
 
                     insert_into(chats_users::table)
                         .values(users)
@@ -234,7 +235,7 @@ impl TalkRepository for PgTalkRepository {
                         .get_result(conn)?;
 
                     let users: Vec<NewGroupUser> = members
-                        .into_iter()
+                        .iter()
                         .map(|m| NewGroupUser::new(&g_id, m))
                         .collect();
 
@@ -261,7 +262,8 @@ impl TalkRepository for PgTalkRepository {
     }
 
     fn exists(&self, members: &[user::Id; 2]) -> super::Result<bool> {
-        use crate::schema::chats_users::dsl::*;
+        use crate::schema::chats_users::dsl::{chat_id, chats_users, user_id};
+        use diesel::dsl::count_distinct;
 
         let mut conn = self.pool.get()?;
 
@@ -269,7 +271,7 @@ impl TalkRepository for PgTalkRepository {
             .filter(user_id.eq_any(members))
             .select(chat_id)
             .group_by(chat_id)
-            .having(diesel::dsl::count_distinct(user_id).eq(2))
+            .having(count_distinct(user_id).eq(2))
             .first::<talk::Id>(&mut conn)
             .optional()
             .map(|r| r.is_some())
