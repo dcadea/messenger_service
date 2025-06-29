@@ -104,13 +104,11 @@ pub(super) mod api {
         Path(id): Path<message::Id>,
         message_service: State<message::Service>,
     ) -> crate::Result<()> {
-        // FIXME: "update or delete on table \"messages\" violates foreign key constraint \"fk_last_message\" on table \"talks\""
-        // happens when message that is deleted is "last"
-        if let Some(_) = message_service.delete(&auth_user, &id).await? {
-            return Ok(());
+        if message_service.delete(&auth_user, &id).await? {
+            Ok(())
+        } else {
+            Err(message::Error::NotFound(Some(id)))?
         }
-
-        Err(message::Error::NotFound(Some(id)))?
     }
 }
 

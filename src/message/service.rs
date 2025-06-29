@@ -33,11 +33,7 @@ pub trait MessageService {
         text: &str,
     ) -> super::Result<MessageDto>;
 
-    async fn delete(
-        &self,
-        auth_user: &auth::User,
-        id: &message::Id,
-    ) -> super::Result<Option<MessageDto>>;
+    async fn delete(&self, auth_user: &auth::User, id: &message::Id) -> super::Result<bool>;
 
     async fn find_by_talk_id_and_params(
         &self,
@@ -47,7 +43,7 @@ pub trait MessageService {
         end_time: Option<NaiveDateTime>,
     ) -> super::Result<Vec<MessageDto>>;
 
-    async fn mark_as_seen(&self, auth_id: &user::Id, msgs: &[MessageDto]) -> super::Result<usize>;
+    async fn mark_as_seen(&self, auth_id: &user::Id, msgs: &[MessageDto]) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -136,22 +132,19 @@ impl MessageService for MessageServiceImpl {
         Ok(msg)
     }
 
-    async fn delete(
-        &self,
-        auth_user: &auth::User,
-        id: &message::Id,
-    ) -> super::Result<Option<MessageDto>> {
-        let msg = self
-            .repo
-            .find_by_id(auth_user.id(), id)
-            .map(MessageDto::from)?;
+    async fn delete(&self, auth_user: &auth::User, id: &message::Id) -> super::Result<bool> {
+        let deleted = self.repo.delete(auth_user.id(), id)?;
 
-        if self.repo.delete(auth_user.id(), id)? {
+        if deleted {
+            let msg = self
+                .repo
+                .find_by_id(auth_user.id(), id)
+                .map(MessageDto::from)?;
+
             self.notify_deleted(&msg).await;
-            return Ok(Some(msg));
         }
 
-        Ok(None)
+        Ok(deleted)
     }
 
     // This method is designed to be callen when recipient requests messages related to selected talk.
@@ -183,10 +176,10 @@ impl MessageService for MessageServiceImpl {
         Ok(msgs)
     }
 
-    async fn mark_as_seen(&self, auth_id: &user::Id, msgs: &[MessageDto]) -> super::Result<usize> {
+    async fn mark_as_seen(&self, auth_id: &user::Id, msgs: &[MessageDto]) -> super::Result<()> {
         if msgs.is_empty() {
             debug!("attempting to mark as seen but messages list is empty");
-            return Ok(0);
+            return Ok(());
         }
 
         let anothers_messages = msgs
@@ -196,7 +189,7 @@ impl MessageService for MessageServiceImpl {
 
         if anothers_messages.is_empty() {
             debug!("all messages belong to authenticated user, skipping mark as seen");
-            return Ok(0);
+            return Ok(());
         }
 
         let unseen_msgs = anothers_messages
@@ -206,7 +199,7 @@ impl MessageService for MessageServiceImpl {
 
         if unseen_msgs.is_empty() {
             debug!("all messages are already seen, skipping mark as seen");
-            return Ok(0);
+            return Ok(());
         }
 
         let unseen_ids = unseen_msgs
@@ -227,12 +220,11 @@ impl MessageService for MessageServiceImpl {
             .map(|msg| event::Subject::Messages(msg.owner(), msg.talk_id()))
             .collect::<Vec<_>>();
 
-        let seen_qty = msg_evts.len();
         self.event_service
             .broadcast_many(&subjects, &msg_evts)
             .await;
 
-        Ok(seen_qty)
+        Ok(())
     }
 }
 

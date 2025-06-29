@@ -27,7 +27,6 @@ pub struct TalkWindow<'a> {
     kind: talk::Kind,
 }
 
-// TODO: create separate markups for chat and group
 impl<'a> TalkWindow<'a> {
     pub fn chats(auth_user: &'a auth::User, talks: &[TalkDto]) -> Self {
         Self {

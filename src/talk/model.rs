@@ -121,7 +121,7 @@ pub struct ChatTalk {
     id: Id,
     last_message: Option<Message>,
     recipient: user::Id,
-    name: String, // TODO: implement FromSql and ToSql ofr nickname and picture
+    name: String, // TODO: implement FromSql and ToSql for nickname and picture
     picture: String,
 }
 
