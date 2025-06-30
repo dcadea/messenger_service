@@ -2,15 +2,16 @@ use crate::{integration::cache, user};
 
 use super::{
     Id, Repository, Status, StatusTransition,
-    model::{Contact, ContactDto, NewContact},
+    model::{Contact, ContactDto, Contacts, NewContact},
 };
 
+#[async_trait::async_trait]
 pub trait ContactService {
     fn find(&self, auth_id: &user::Id, recipient: &user::Id) -> super::Result<Option<ContactDto>>;
 
     fn find_by_id(&self, auth_id: &user::Id, id: &Id) -> super::Result<ContactDto>;
 
-    fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>>;
+    async fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>>;
 
     fn find_by_user_id_and_status(
         &self,
@@ -33,18 +34,16 @@ pub trait ContactService {
 #[derive(Clone)]
 pub struct ContactServiceImpl {
     repo: Repository,
-    _redis: cache::Redis,
+    redis: cache::Redis,
 }
 
 impl ContactServiceImpl {
     pub fn new(repo: Repository, redis: cache::Redis) -> Self {
-        Self {
-            repo,
-            _redis: redis,
-        }
+        Self { repo, redis }
     }
 }
 
+#[async_trait::async_trait]
 impl ContactService for ContactServiceImpl {
     fn find(&self, auth_id: &user::Id, recipient: &user::Id) -> super::Result<Option<ContactDto>> {
         if auth_id.eq(recipient) {
@@ -65,25 +64,16 @@ impl ContactService for ContactServiceImpl {
             .ok_or(super::Error::NotFound(id.clone()))
     }
 
-    fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>> {
-        // TODO: cache contacts
-        // let contacts = self
-        //     .redis
-        //     .smembers::<HashSet<Sub>>(cache::Key::Contacts(sub.to_owned()))
-        //     .await;
+    async fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>> {
+        let contacts = self
+            .redis
+            .json_get::<Contacts>(cache::Key::Contacts(user_id), None)
+            .await;
 
-        // match contacts {
-        //     Some(c) => Ok(c),
-        //     None => self.cache_contacts(sub).await,
-        // }
-
-        let contacts = self.repo.find_by_user_id(user_id)?;
-        let dtos = contacts
-            .iter()
-            .map(|c| map_to_dto(user_id, c))
-            .collect::<Vec<_>>();
-
-        Ok(dtos)
+        match contacts {
+            Some(c) => Ok(c.get().clone()),
+            None => self.cache_contacts(user_id).await,
+        }
     }
 
     fn find_by_user_id_and_status(
@@ -160,26 +150,25 @@ impl ContactService for ContactServiceImpl {
 }
 
 impl ContactServiceImpl {
-    // TODO: cache contacts
-    // async fn cache_contacts(&self, sub: &Sub) -> super::Result<HashSet<Sub>> {
-    //     let contacts = self.repo.find_by_sub(sub).await?;
+    async fn cache_contacts(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>> {
+        let contacts = self.repo.find_by_user_id(user_id)?;
 
-    //     if contacts.is_empty() {
-    //         return Ok(HashSet::with_capacity(0));
-    //     }
+        if contacts.is_empty() {
+            return Ok(Vec::with_capacity(0));
+        }
 
-    //     let contacts = contacts
-    //         .iter()
-    //         .map(|c| c.get_recipient(sub).clone())
-    //         .collect::<HashSet<_>>();
+        let contacts = contacts
+            .iter()
+            .map(|c| map_to_dto(user_id, c))
+            .collect::<Vec<_>>();
 
-    //     let _: () = self
-    //         .redis
-    //         .sadd(cache::Key::Contacts(sub.clone()), &contacts)
-    //         .await;
+        let _: () = self
+            .redis
+            .json_set_ex(cache::Key::Contacts(user_id), Contacts::from_ref(&contacts))
+            .await;
 
-    //     Ok(contacts.iter().cloned().collect::<HashSet<_>>())
-    // }
+        Ok(contacts)
+    }
 }
 
 fn map_to_dto(auth_id: &user::Id, c: &Contact) -> ContactDto {

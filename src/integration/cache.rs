@@ -8,6 +8,7 @@ use redis::{AsyncCommands, JsonAsyncCommands};
 use serde::Serialize;
 use uuid::Uuid;
 
+use crate::contact::model::Contacts;
 use crate::user::model::UserDto;
 use crate::{auth, talk, user};
 
@@ -302,5 +303,18 @@ impl redis::ToRedisArgs for UserDto {
 impl redis::FromRedisValue for auth::Csrf {
     fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
         Ok(Self::new(String::from_redis_value(v)?))
+    }
+}
+
+impl redis::FromRedisValue for Contacts {
+    fn from_redis_value(v: &redis::Value) -> redis::RedisResult<Self> {
+        let json_str = String::from_redis_value(v)?;
+        serde_json::from_str(&json_str).map_err(|e| {
+            redis::RedisError::from((
+                redis::ErrorKind::TypeError,
+                "Could not deserialize Contacts",
+                e.to_string(),
+            ))
+        })
     }
 }

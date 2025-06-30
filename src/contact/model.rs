@@ -1,4 +1,5 @@
 use diesel::prelude::{Insertable, Queryable, Selectable};
+use serde::{Deserialize, Serialize};
 
 use crate::user;
 
@@ -65,6 +66,7 @@ impl<'a> NewContact<'a> {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct ContactDto {
     id: Id,
     sender: user::Id,
@@ -163,6 +165,21 @@ impl ContactDto {
         }
 
         false
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Contacts {
+    c: Vec<ContactDto>,
+}
+
+impl Contacts {
+    pub fn from_ref(c: &Vec<ContactDto>) -> Self {
+        Self { c: c.to_vec() }
+    }
+
+    pub fn get(&self) -> &Vec<ContactDto> {
+        &self.c
     }
 }
 
