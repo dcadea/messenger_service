@@ -31,7 +31,7 @@ pub trait MessageService {
         auth_user: &auth::User,
         id: &message::Id,
         text: &str,
-    ) -> super::Result<MessageDto>;
+    ) -> super::Result<Option<MessageDto>>;
 
     async fn delete(&self, auth_user: &auth::User, id: &message::Id) -> super::Result<bool>;
 
@@ -117,34 +117,23 @@ impl MessageService for MessageServiceImpl {
         auth_user: &auth::User,
         id: &message::Id,
         text: &str,
-    ) -> super::Result<MessageDto> {
-        let msg = self
-            .repo
-            .find_by_id(auth_user.id(), id)
-            .map(MessageDto::from)?;
-
-        if self.repo.update(auth_user.id(), id, text)? {
-            let msg = msg.with_text(text);
+    ) -> super::Result<Option<MessageDto>> {
+        if let Some(updated) = self.repo.update(auth_user.id(), id, text)? {
+            let msg = MessageDto::from(updated);
             self.notify_updated(&msg).await;
-            return Ok(msg);
+            return Ok(Some(msg));
         }
 
-        Ok(msg)
+        Ok(None)
     }
 
     async fn delete(&self, auth_user: &auth::User, id: &message::Id) -> super::Result<bool> {
-        let deleted = self.repo.delete(auth_user.id(), id)?;
-
-        if deleted {
-            let msg = self
-                .repo
-                .find_by_id(auth_user.id(), id)
-                .map(MessageDto::from)?;
-
-            self.notify_deleted(&msg).await;
+        if let Some(deleted) = self.repo.delete(auth_user.id(), id)? {
+            self.notify_deleted(&MessageDto::from(deleted)).await;
+            return Ok(true);
         }
 
-        Ok(deleted)
+        Ok(false)
     }
 
     // This method is designed to be callen when recipient requests messages related to selected talk.
@@ -238,14 +227,30 @@ impl MessageServiceImpl {
                     .map(bytes::Bytes::from)
                     .collect::<Vec<_>>();
 
-                let subjects = recipients
+                let msg_subjects = recipients
                     .iter()
                     .map(|r| event::Subject::Messages(r, talk_id))
                     .collect::<Vec<_>>();
 
                 self.event_service
-                    .broadcast_many(&subjects, &msg_evts)
+                    .broadcast_many(&msg_subjects, &msg_evts)
                     .await;
+
+                if let Some(noti_evt) = msgs
+                    .last()
+                    .map(|lm| event::Notification::NewMessage {
+                        talk_id: talk_id.clone(),
+                        last_message: lm.clone(),
+                    })
+                    .map(bytes::Bytes::from)
+                {
+                    let noti_subjects = recipients
+                        .iter()
+                        .map(event::Subject::Notifications)
+                        .collect::<Vec<_>>();
+
+                    self.event_service.broadcast(&noti_subjects, noti_evt).await;
+                }
             }
             Err(e) => error!("could not find talk recipients: {e:?}"),
         }
@@ -262,14 +267,11 @@ impl MessageServiceImpl {
                     .map(|r| event::Subject::Messages(r, talk_id))
                     .collect::<Vec<_>>();
 
+                debug!("{recipients:?}");
                 self.event_service
                     .broadcast(
                         &subjects,
-                        event::Message::Updated {
-                            msg: msg.clone(),
-                            auth_id: owner.clone(),
-                        }
-                        .into(),
+                        event::Message::Updated { msg: msg.clone() }.into(),
                     )
                     .await;
             }
@@ -289,7 +291,13 @@ impl MessageServiceImpl {
                     .collect::<Vec<_>>();
 
                 self.event_service
-                    .broadcast(&subjects, event::Message::Deleted(msg.id().clone()).into())
+                    .broadcast(
+                        &subjects,
+                        event::Message::Deleted {
+                            id: msg.id().clone(),
+                        }
+                        .into(),
+                    )
                     .await;
             }
             Err(e) => error!("could not find talk recipients: {e:?}"),

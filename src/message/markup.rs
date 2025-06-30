@@ -211,7 +211,7 @@ impl Render for MessageItem<'_> {
 
 pub struct MessageList<'a> {
     messages: &'a [MessageDto],
-    id: &'a user::Id,
+    auth_id: &'a user::Id,
     append: bool,
 }
 
@@ -219,7 +219,7 @@ impl<'a> MessageList<'a> {
     pub const fn prepend(messages: &'a [MessageDto], id: &'a user::Id) -> Self {
         Self {
             messages,
-            id,
+            auth_id: id,
             append: false,
         }
     }
@@ -227,7 +227,7 @@ impl<'a> MessageList<'a> {
     pub const fn append(messages: &'a [MessageDto], id: &'a user::Id) -> Self {
         Self {
             messages,
-            id,
+            auth_id: id,
             append: true,
         }
     }
@@ -235,7 +235,7 @@ impl<'a> MessageList<'a> {
 
 impl Render for MessageList<'_> {
     fn render(&self) -> Markup {
-        let id = Some(self.id);
+        let id = Some(self.auth_id);
         html! {
             @for i in 0..self.messages.len() {
                 @if self.append && i == self.messages.len() - 1 {

@@ -46,11 +46,8 @@ pub enum Notification {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Message {
     New(message::model::MessageDto),
-    Updated {
-        msg: message::model::MessageDto,
-        auth_id: user::Id,
-    },
-    Deleted(message::Id),
+    Updated { msg: message::model::MessageDto },
+    Deleted { id: message::Id },
     Seen(message::model::MessageDto),
 }
 

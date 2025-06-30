@@ -88,15 +88,18 @@ pub(super) mod api {
         message_service: State<message::Service>,
         Form(params): Form<UpdateParams>,
     ) -> crate::Result<impl IntoResponse> {
-        let msg = message_service
+        if let Some(msg) = message_service
             .update(&auth_user, &params.message_id, &params.text)
-            .await?;
+            .await?
+        {
+            return Ok((
+                StatusCode::OK,
+                [("HX-Trigger", "msg:afterUpdate")],
+                markup::MessageItem::new(&msg, Some(auth_user.id())).render(),
+            ));
+        }
 
-        Ok((
-            StatusCode::OK,
-            [("HX-Trigger", "msg:afterUpdate")],
-            markup::MessageItem::new(&msg, Some(auth_user.id())).render(),
-        ))
+        Err(message::Error::NotFound(Some(params.message_id)))?
     }
 
     pub async fn delete(

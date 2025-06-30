@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use diesel::{
-    BoolExpressionMethods, ExpressionMethods, PgConnection, QueryDsl, RunQueryDsl,
-    SelectableHelper, delete, insert_into, r2d2::ConnectionManager, update,
+    BoolExpressionMethods, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
+    RunQueryDsl, SelectableHelper, delete, insert_into, r2d2::ConnectionManager, update,
 };
 
 use crate::{message, user};
@@ -40,9 +40,14 @@ pub trait MessageRepository {
         before: NaiveDateTime,
     ) -> super::Result<Vec<Message>>;
 
-    fn update(&self, owner: &user::Id, id: &message::Id, new_content: &str) -> super::Result<bool>;
+    fn update(
+        &self,
+        owner: &user::Id,
+        id: &message::Id,
+        new_content: &str,
+    ) -> super::Result<Option<Message>>;
 
-    fn delete(&self, owner: &user::Id, id: &message::Id) -> super::Result<bool>;
+    fn delete(&self, owner: &user::Id, id: &message::Id) -> super::Result<Option<Message>>;
 
     fn mark_as_seen(&self, ids: &[message::Id]) -> super::Result<usize>;
 }
@@ -142,23 +147,32 @@ impl MessageRepository for PgMessageRepository {
             .map_err(super::Error::from)
     }
 
-    fn update(&self, o: &user::Id, m_id: &message::Id, new_content: &str) -> super::Result<bool> {
+    fn update(
+        &self,
+        o: &user::Id,
+        m_id: &message::Id,
+        new_content: &str,
+    ) -> super::Result<Option<Message>> {
         let mut conn = self.pool.get()?;
 
-        let res = update(messages.filter(id.eq(m_id).and(owner.eq(o))))
+        let updated_msg = update(messages.filter(id.eq(m_id).and(owner.eq(o))))
             .set(content.eq(new_content))
-            .execute(&mut conn)?;
+            .returning(Message::as_returning())
+            .get_result(&mut conn)
+            .optional()?;
 
-        Ok(res > 0)
+        Ok(updated_msg)
     }
 
-    fn delete(&self, o: &user::Id, m_id: &message::Id) -> super::Result<bool> {
+    fn delete(&self, o: &user::Id, m_id: &message::Id) -> super::Result<Option<Message>> {
         let mut conn = self.pool.get()?;
 
-        let deleted_count =
-            delete(messages.filter(id.eq(m_id).and(owner.eq(o)))).execute(&mut conn)?;
+        let deleted_msg = delete(messages.filter(id.eq(m_id).and(owner.eq(o))))
+            .returning(Message::as_returning())
+            .get_result(&mut conn)
+            .optional()?;
 
-        Ok(deleted_count > 0)
+        Ok(deleted_msg)
     }
 
     fn mark_as_seen(&self, ids: &[message::Id]) -> super::Result<usize> {
