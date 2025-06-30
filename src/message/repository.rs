@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
     RunQueryDsl, SelectableHelper, delete, insert_into, r2d2::ConnectionManager, update,
@@ -30,14 +30,14 @@ pub trait MessageRepository {
     fn find_by_talk_id_before(
         &self,
         talk_id: &talk::Id,
-        before: NaiveDateTime,
+        before: DateTime<Utc>,
     ) -> super::Result<Vec<Message>>;
 
     fn find_by_talk_id_limited_before(
         &self,
         talk_id: &talk::Id,
         limit: i64,
-        before: NaiveDateTime,
+        before: DateTime<Utc>,
     ) -> super::Result<Vec<Message>>;
 
     fn update(
@@ -118,7 +118,7 @@ impl MessageRepository for PgMessageRepository {
     fn find_by_talk_id_before(
         &self,
         t_id: &talk::Id,
-        before: NaiveDateTime,
+        before: DateTime<Utc>,
     ) -> super::Result<Vec<Message>> {
         let mut conn = self.pool.get()?;
 
@@ -134,7 +134,7 @@ impl MessageRepository for PgMessageRepository {
         &self,
         t_id: &talk::Id,
         limit: i64,
-        before: NaiveDateTime,
+        before: DateTime<Utc>,
     ) -> super::Result<Vec<Message>> {
         let mut conn = self.pool.get()?;
 

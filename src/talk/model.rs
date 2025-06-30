@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use diesel::{
     prelude::{Associations, Identifiable, Insertable, Queryable, QueryableByName, Selectable},
     sql_types,
@@ -184,8 +184,8 @@ pub(super) struct ChatWithLastMessage {
     content: Option<String>,
     #[diesel(sql_type = sql_types::Nullable<sql_types::Bool>)]
     seen: Option<bool>,
-    #[diesel(sql_type = sql_types::Nullable<sql_types::Timestamp>)]
-    created_at: Option<NaiveDateTime>,
+    #[diesel(sql_type = sql_types::Nullable<sql_types::Timestamptz>)]
+    created_at: Option<DateTime<Utc>>,
     #[diesel(sql_type = sql_types::Uuid)]
     recipient: user::Id,
     #[diesel(sql_type = sql_types::Text)]

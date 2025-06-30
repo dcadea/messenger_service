@@ -20,6 +20,7 @@ pub(super) mod api {
     use axum::response::IntoResponse;
     use axum::{Extension, Form};
     use axum_extra::extract::Query;
+    use chrono::{DateTime, Utc};
     use maud::{Markup, Render};
     use serde::Deserialize;
 
@@ -49,7 +50,7 @@ pub(super) mod api {
     #[derive(Deserialize)]
     pub struct FindAllParams {
         talk_id: Option<talk::Id>,
-        _end_time: Option<i64>,
+        end_time: Option<i64>,
         limit: Option<i64>,
     }
 
@@ -70,7 +71,10 @@ pub(super) mod api {
                 &auth_user,
                 &talk_id,
                 params.limit,
-                None, /* FIXME: params.end_time*/
+                params
+                    .end_time
+                    .and_then(DateTime::from_timestamp_millis)
+                    .map(|t| t.with_timezone(&Utc)),
             )
             .await?;
 

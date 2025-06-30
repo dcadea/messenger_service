@@ -50,7 +50,7 @@ diesel::table! {
         talk_id -> Uuid,
         owner -> Uuid,
         content -> Text,
-        created_at -> Timestamp,
+        created_at -> Timestamptz,
         seen -> Bool,
     }
 }

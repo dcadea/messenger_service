@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use log::{debug, error};
 use text_splitter::{Characters, TextSplitter};
 
@@ -40,7 +40,7 @@ pub trait MessageService {
         auth_user: &auth::User,
         talk_id: &talk::Id,
         limit: Option<i64>,
-        end_time: Option<NaiveDateTime>,
+        end_time: Option<DateTime<Utc>>,
     ) -> super::Result<Vec<MessageDto>>;
 
     async fn mark_as_seen(&self, auth_id: &user::Id, msgs: &[MessageDto]) -> super::Result<()>;
@@ -144,7 +144,7 @@ impl MessageService for MessageServiceImpl {
         auth_user: &auth::User,
         talk_id: &talk::Id,
         limit: Option<i64>,
-        end_time: Option<NaiveDateTime>,
+        end_time: Option<DateTime<Utc>>,
     ) -> super::Result<Vec<MessageDto>> {
         let msgs = match (limit, end_time) {
             (None, None) => self.repo.find_by_talk_id(talk_id),

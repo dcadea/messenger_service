@@ -1,4 +1,4 @@
-use chrono::{NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use diesel::prelude::{Associations, Identifiable, Insertable, Queryable, Selectable};
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +18,7 @@ pub struct Message {
     talk_id: talk::Id,
     owner: user::Id,
     content: String,
-    created_at: NaiveDateTime,
+    created_at: DateTime<Utc>,
     seen: bool,
 }
 
@@ -28,7 +28,7 @@ impl Message {
         talk_id: talk::Id,
         owner: user::Id,
         content: String,
-        created_at: NaiveDateTime,
+        created_at: DateTime<Utc>,
         seen: bool,
     ) -> Self {
         Self {
@@ -66,7 +66,7 @@ pub struct MessageDto {
     talk_id: talk::Id,
     owner: user::Id,
     content: String,
-    created_at: NaiveDateTime,
+    created_at: DateTime<Utc>,
     seen: bool,
 }
 
@@ -77,7 +77,7 @@ impl MessageDto {
             talk_id,
             owner,
             content: text.into(),
-            created_at: Utc::now().naive_utc(),
+            created_at: Utc::now().to_utc(),
             seen: false,
         }
     }
@@ -98,8 +98,8 @@ impl MessageDto {
         self.content.as_str()
     }
 
-    pub const fn created_at(&self) -> NaiveDateTime {
-        self.created_at
+    pub const fn created_at(&self) -> &DateTime<Utc> {
+        &self.created_at
     }
 
     pub const fn seen(&self) -> bool {
@@ -131,16 +131,5 @@ impl From<Message> for MessageDto {
             created_at: m.created_at,
             seen: m.seen,
         }
-    }
-}
-
-#[cfg(test)]
-impl MessageDto {
-    pub const fn set_timestamp(&mut self, timestamp: NaiveDateTime) {
-        self.created_at = timestamp;
-    }
-
-    pub const fn set_seen(&mut self, seen: bool) {
-        self.seen = seen;
     }
 }

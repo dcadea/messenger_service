@@ -141,7 +141,7 @@ impl<'a> MessageItem<'a> {
             let path = format!(
                 "/api/messages?limit=20&talk_id={}&end_time={}",
                 self.msg.talk_id(),
-                self.msg.created_at()
+                self.msg.created_at().timestamp_millis()
             );
             Some(path)
         } else {
@@ -235,13 +235,13 @@ impl<'a> MessageList<'a> {
 
 impl Render for MessageList<'_> {
     fn render(&self) -> Markup {
-        let id = Some(self.auth_id);
+        let auth_id = Some(self.auth_id);
         html! {
             @for i in 0..self.messages.len() {
                 @if self.append && i == self.messages.len() - 1 {
-                    (MessageItem::new(&self.messages[i], id).as_last())
+                    (MessageItem::new(&self.messages[i], auth_id).as_last())
                 } @else {
-                    (MessageItem::new(&self.messages[i], id))
+                    (MessageItem::new(&self.messages[i], auth_id))
                 }
             }
         }
