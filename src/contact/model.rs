@@ -174,11 +174,11 @@ pub struct Contacts {
 }
 
 impl Contacts {
-    pub fn from_ref(c: &Vec<ContactDto>) -> Self {
-        Self { c: c.to_vec() }
+    pub fn from_ref(c: &[ContactDto]) -> Self {
+        Self { c: c.to_owned() }
     }
 
-    pub fn get(&self) -> &Vec<ContactDto> {
+    pub const fn get(&self) -> &Vec<ContactDto> {
         &self.c
     }
 }

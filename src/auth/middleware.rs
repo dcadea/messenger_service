@@ -53,8 +53,8 @@ pub async fn authorize(
     let token: &AccessToken = ext.get().ok_or(super::Error::Unauthorized)?;
 
     let user_dto = match user_service.find_by_sub(sub).await {
-        Ok(u) => u,
-        Err(user::Error::NotFound(_)) => {
+        Ok(Some(u)) => u,
+        Ok(None) => {
             debug!("{sub:?} not projected, fetching from IdP");
             let user_info = auth_service.get_user_info(token.secret()).await?;
             let id = user_service.project(&user_info)?;

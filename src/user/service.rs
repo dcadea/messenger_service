@@ -16,7 +16,7 @@ pub trait UserService {
 
     async fn find_one(&self, id: &user::Id) -> super::Result<UserDto>;
 
-    async fn find_by_sub(&self, sub: &Sub) -> super::Result<UserDto>;
+    async fn find_by_sub(&self, sub: &Sub) -> super::Result<Option<UserDto>>;
 
     async fn find_members(&self, talk_id: &talk::Id) -> super::Result<HashSet<user::Id>>;
 
@@ -75,14 +75,18 @@ impl UserService for UserServiceImpl {
         }
     }
 
-    async fn find_by_sub(&self, sub: &Sub) -> super::Result<UserDto> {
-        let u = self.repo.find_by_sub(sub)?.map(UserDto::from);
+    async fn find_by_sub(&self, sub: &Sub) -> super::Result<Option<UserDto>> {
+        let u = self.find_cached_by_sub(sub).await;
+
         match u {
-            Some(u) => {
-                self.cache(&u).await;
-                Ok(u)
-            }
-            None => Err(super::Error::NotFound(sub.clone())),
+            None => match self.repo.find_by_sub(sub)?.map(UserDto::from) {
+                Some(u) => {
+                    self.cache(&u).await;
+                    Ok(Some(u))
+                }
+                None => Ok(None),
+            },
+            some => Ok(some),
         }
     }
 
@@ -187,13 +191,23 @@ impl UserServiceImpl {
 // cache operations
 impl UserServiceImpl {
     async fn cache(&self, u: &UserDto) {
-        let k = cache::Key::User(u.id());
-        self.redis.json_set_ex(k, u).await;
+        tokio::join!(
+            self.redis.json_set_ex(cache::Key::User(u.id()), u),
+            self.redis.set_ex(cache::Key::Sub(u.sub()), u.id()),
+        );
     }
 
     async fn find_cached(&self, id: &user::Id) -> Option<UserDto> {
         let k = cache::Key::User(id);
         self.redis.json_get::<UserDto>(k, None).await
+    }
+
+    async fn find_cached_by_sub(&self, sub: &user::Sub) -> Option<UserDto> {
+        if let Some(id) = self.redis.get::<user::Id>(cache::Key::Sub(sub)).await {
+            let k = cache::Key::User(&id);
+            return self.redis.json_get::<UserDto>(k, None).await;
+        }
+        None
     }
 
     async fn find_cached_name(&self, id: &user::Id) -> Option<String> {
