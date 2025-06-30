@@ -194,7 +194,8 @@ pub(super) mod templates {
         user_service: State<user::Service>,
     ) -> crate::Result<Markup> {
         let contacts = contact_service
-            .find_by_user_id_and_status(auth_user.id(), &contact::Status::Accepted)?;
+            .find_by_user_id_and_status(auth_user.id(), &contact::Status::Accepted)
+            .await?;
 
         let mut members: Vec<GroupMemberDto> = Vec::with_capacity(contacts.len());
         for c in contacts {

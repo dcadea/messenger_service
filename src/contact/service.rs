@@ -13,7 +13,7 @@ pub trait ContactService {
 
     async fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>>;
 
-    fn find_by_user_id_and_status(
+    async fn find_by_user_id_and_status(
         &self,
         sub: &user::Id,
         s: &Status,
@@ -76,20 +76,29 @@ impl ContactService for ContactServiceImpl {
         }
     }
 
-    fn find_by_user_id_and_status(
+    async fn find_by_user_id_and_status(
         &self,
         user_id: &user::Id,
         s: &Status,
     ) -> super::Result<Vec<ContactDto>> {
-        // TODO: cache contacts
-        let contacts = self.repo.find_by_user_id_and_status(user_id, s)?;
+        let path = format!("$.c[?(@.status.indicator == '{}')]", s.as_str());
+        let contacts = self
+            .redis
+            .json_get::<Contacts>(cache::Key::Contacts(user_id), Some(&path))
+            .await;
 
-        let dtos = contacts
-            .iter()
-            .map(|c| map_to_dto(user_id, c))
-            .collect::<Vec<_>>();
-
-        Ok(dtos)
+        match contacts {
+            Some(c) => Ok(c.get().clone()),
+            None => {
+                let contacts = self
+                    .cache_contacts(user_id)
+                    .await?
+                    .into_iter()
+                    .filter(|c| c.status().eq(s))
+                    .collect::<Vec<_>>();
+                Ok(contacts)
+            }
+        }
     }
 
     fn add(&self, me: &user::Id, you: &user::Id) -> super::Result<Status> {

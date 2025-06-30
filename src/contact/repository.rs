@@ -20,12 +20,6 @@ pub trait ContactRepository {
 
     fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<Contact>>;
 
-    fn find_by_user_id_and_status(
-        &self,
-        user_id: &user::Id,
-        s: &Status,
-    ) -> super::Result<Vec<Contact>>;
-
     fn add(&self, c: &NewContact) -> super::Result<()>;
 
     fn update_status(&self, c_id: &contact::Id, status: &Status) -> super::Result<bool>;
@@ -74,20 +68,6 @@ impl ContactRepository for PgContactRepository {
 
         contacts
             .filter(user_id_1.eq(user_id).or(user_id_2.eq(user_id)))
-            .select(Contact::as_select())
-            .get_results(&mut conn)
-            .map_err(super::Error::from)
-    }
-
-    fn find_by_user_id_and_status(
-        &self,
-        user_id: &user::Id,
-        s: &Status,
-    ) -> super::Result<Vec<Contact>> {
-        let mut conn = self.pool.get()?;
-
-        contacts
-            .filter((user_id_1.eq(user_id).or(user_id_2.eq(user_id))).and(status.eq(s.as_str())))
             .select(Contact::as_select())
             .get_results(&mut conn)
             .map_err(super::Error::from)

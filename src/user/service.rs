@@ -163,6 +163,7 @@ impl UserServiceImpl {
         match self
             .contact_service
             .find_by_user_id_and_status(id, &contact::Status::Accepted)
+            .await
         {
             Ok(contacts) => {
                 let subjects = contacts
