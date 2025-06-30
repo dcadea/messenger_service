@@ -146,6 +146,16 @@ impl Redis {
         }
     }
 
+    pub async fn json_del<V>(&self, key: Key<'_>)
+    where
+        V: redis::FromRedisValue,
+    {
+        let mut con = self.con.clone();
+        if let Err(e) = con.json_del::<_, _, ()>(&key, "$").await {
+            error!("Failed to JSONDEL on {key:?}. Reason: {e:?}");
+        }
+    }
+
     pub async fn smembers<V>(&self, key: Key<'_>) -> Option<V>
     where
         V: redis::FromRedisValue + IntoIterator,

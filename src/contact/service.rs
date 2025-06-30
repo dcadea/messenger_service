@@ -21,7 +21,7 @@ pub trait ContactService {
 
     fn add(&self, me: &user::Id, you: &user::Id) -> super::Result<Status>;
 
-    fn transition_status(
+    async fn transition_status(
         &self,
         auth_id: &user::Id,
         id: &Id,
@@ -114,7 +114,7 @@ impl ContactService for ContactServiceImpl {
         })
     }
 
-    fn transition_status(
+    async fn transition_status(
         &self,
         auth_id: &user::Id,
         id: &Id,
@@ -126,6 +126,7 @@ impl ContactService for ContactServiceImpl {
                 let dto = map_to_dto(auth_id, &c);
                 let s = dto.transition(st)?;
                 self.repo.update_status(c.id(), &s)?;
+                self.invalidate(&c).await;
                 Ok(s)
             }
             None => Err(super::Error::NotFound(id.clone())),
@@ -168,6 +169,15 @@ impl ContactServiceImpl {
             .await;
 
         Ok(contacts)
+    }
+
+    async fn invalidate(&self, c: &Contact) {
+        tokio::join!(
+            self.redis
+                .json_del::<()>(cache::Key::Contacts(c.user_id_1())),
+            self.redis
+                .json_del::<()>(cache::Key::Contacts(c.user_id_2()))
+        );
     }
 }
 

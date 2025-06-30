@@ -56,7 +56,9 @@ pub(super) mod api {
             }
         };
 
-        let new_status = contact_service.transition_status(auth_user.id(), &id, st)?;
+        let new_status = contact_service
+            .transition_status(auth_user.id(), &id, st)
+            .await?;
 
         Ok(contact::markup::Icons::new(&id, &new_status, &auth_user).render())
     }
