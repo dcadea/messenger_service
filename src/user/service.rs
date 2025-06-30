@@ -169,7 +169,7 @@ impl UserServiceImpl {
                     .map(|c| event::Subject::Notifications(c.recipient()))
                     .collect::<Vec<_>>();
 
-                let status = OnlineStatus::new(id.to_owned(), online);
+                let status = OnlineStatus::from_ref(id, online);
                 self.event_service
                     .broadcast(
                         &subjects,

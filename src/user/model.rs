@@ -41,14 +41,16 @@ impl<'a> From<&'a auth::UserInfo> for NewUser<'a> {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct OnlineStatus {
-    // TODO: add lifetime
     id: Id,
     online: bool,
 }
 
 impl OnlineStatus {
-    pub const fn new(id: Id, online: bool) -> Self {
-        Self { id, online }
+    pub fn from_ref(id: &Id, online: bool) -> Self {
+        Self {
+            id: id.clone(),
+            online,
+        }
     }
 
     pub const fn id(&self) -> &Id {

@@ -122,7 +122,7 @@ impl Render for Header<'_> {
                     hx-swap="innerHTML" { "X" }
                 ."flex text-2xl" {
                     @if let DetailsDto::Chat{ recipient, .. } = &self.0.details() {
-                        (user::model::OnlineStatus::new(recipient.clone(), false))
+                        (user::model::OnlineStatus::from_ref(recipient, false))
                     }
 
                     (self.0.name())
@@ -218,7 +218,7 @@ impl Render for TalkDto {
                 hx-swap="innerHTML"
             {
                 @if let DetailsDto::Chat{recipient, ..} = &self.details() {
-                    (user::model::OnlineStatus::new(recipient.clone(), false))
+                    (user::model::OnlineStatus::from_ref(recipient, false))
                 }
                 img ."w-8 h-8 rounded-full"
                     src=(self.picture().as_str()) alt="Talk avatar" {}
