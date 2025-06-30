@@ -4,8 +4,8 @@ use log::error;
 
 use super::model::{ChatTalk, Details, DetailsDto, GroupTalk, TalkDto};
 use super::{Kind, Repository};
-use crate::integration::storage;
 use crate::integration::storage::Blob;
+use crate::integration::{cache, storage};
 use crate::message::model::MessageDto;
 use crate::talk::Picture;
 use crate::talk::model::NewTalk;
@@ -32,7 +32,7 @@ pub trait TalkService {
 
     fn find_all_by_kind(&self, auth_user: &auth::User, kind: &Kind) -> super::Result<Vec<TalkDto>>;
 
-    fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
+    async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -41,6 +41,7 @@ pub struct TalkServiceImpl {
     user_service: user::Service,
     contact_service: contact::Service,
     event_service: event::Service,
+    redis: cache::Redis,
     s3: storage::S3,
 }
 
@@ -50,6 +51,7 @@ impl TalkServiceImpl {
         user_service: user::Service,
         contact_service: contact::Service,
         event_service: event::Service,
+        redis: cache::Redis,
         s3: storage::S3,
     ) -> Self {
         Self {
@@ -57,6 +59,7 @@ impl TalkServiceImpl {
             user_service,
             contact_service,
             event_service,
+            redis,
             s3,
         }
     }
@@ -212,8 +215,10 @@ impl TalkService for TalkServiceImpl {
         Ok(talk_dtos)
     }
 
-    fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
-        self.repo.delete(auth_user.id(), id).map(|_| ())
+    async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {
+        self.repo.delete(auth_user.id(), id)?;
+        self.redis.del(cache::Key::Members(id)).await;
+        Ok(())
     }
 }
 

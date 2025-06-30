@@ -128,6 +128,13 @@ impl Redis {
         }
     }
 
+    pub async fn del(&self, key: Key<'_>) {
+        let mut con = self.con.clone();
+        if let Err(e) = con.del::<_, ()>(&key).await {
+            error!("Failed to DEL on {key:?}. Reason: {e:?}");
+        }
+    }
+
     pub async fn get_del<V>(&self, key: Key<'_>) -> Option<V>
     where
         V: redis::FromRedisValue,
@@ -146,10 +153,7 @@ impl Redis {
         }
     }
 
-    pub async fn json_del<V>(&self, key: Key<'_>)
-    where
-        V: redis::FromRedisValue,
-    {
+    pub async fn json_del(&self, key: Key<'_>) {
         let mut con = self.con.clone();
         if let Err(e) = con.json_del::<_, _, ()>(&key, "$").await {
             error!("Failed to JSONDEL on {key:?}. Reason: {e:?}");
@@ -236,7 +240,7 @@ pub enum Key<'a> {
     User(&'a user::Id),
     Sub(&'a user::Sub),
     Contacts(&'a user::Id),
-    Talk(&'a talk::Id),
+    Members(&'a talk::Id),
     Session(&'a auth::Session),
     Csrf(&'a auth::Csrf),
 }
@@ -247,7 +251,9 @@ impl Key<'_> {
         match self {
             // Just in case if token response does not provide an expiration claim
             // fallback with 3600 for Key::Session
-            Key::User(_) | Key::Sub(_) | Key::Talk(_) | Key::Session(_) | Key::Contacts(_) => 3600,
+            Key::User(_) | Key::Sub(_) | Key::Members(_) | Key::Session(_) | Key::Contacts(_) => {
+                3600
+            }
 
             // Since most of IDPs don't provide a code exchange TTL through
             // introspection endpoint - we set a limit of 120 seconds.
@@ -262,7 +268,7 @@ impl Display for Key<'_> {
             Self::User(id) => write!(f, "user:{id}"),
             Self::Sub(sub) => write!(f, "sub:{sub}"),
             Self::Contacts(id) => write!(f, "contacts:{id}"),
-            Self::Talk(id) => write!(f, "talk:{id}"),
+            Self::Members(id) => write!(f, "talk:{id}"),
             Self::Session(s) => write!(f, "session:{}", s.raw()),
             Self::Csrf(csrf) => write!(f, "csrf:{}", csrf.raw()),
         }

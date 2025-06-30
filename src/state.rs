@@ -60,6 +60,7 @@ impl AppState {
             user_service.clone(),
             contact_service.clone(),
             event_service.clone(),
+            redis.clone(),
             s3.clone(),
         ));
 

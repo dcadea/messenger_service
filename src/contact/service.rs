@@ -173,10 +173,8 @@ impl ContactServiceImpl {
 
     async fn invalidate(&self, c: &Contact) {
         tokio::join!(
-            self.redis
-                .json_del::<()>(cache::Key::Contacts(c.user_id_1())),
-            self.redis
-                .json_del::<()>(cache::Key::Contacts(c.user_id_2()))
+            self.redis.json_del(cache::Key::Contacts(c.user_id_1())),
+            self.redis.json_del(cache::Key::Contacts(c.user_id_2()))
         );
     }
 }

@@ -148,7 +148,7 @@ pub(super) mod api {
         auth_user: Extension<auth::User>,
         talk_service: State<talk::Service>,
     ) -> crate::Result<impl IntoResponse> {
-        talk_service.delete(&id, &auth_user)?;
+        talk_service.delete(&id, &auth_user).await?;
 
         Ok([("HX-Redirect", "/")])
     }

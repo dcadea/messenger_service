@@ -91,11 +91,8 @@ impl UserService for UserServiceImpl {
     }
 
     async fn find_members(&self, talk_id: &talk::Id) -> super::Result<HashSet<user::Id>> {
-        let talk_key = cache::Key::Talk(talk_id);
-        let members = self
-            .redis
-            .smembers::<HashSet<user::Id>>(talk_key.clone())
-            .await;
+        let key = cache::Key::Members(talk_id);
+        let members = self.redis.smembers::<HashSet<user::Id>>(key.clone()).await;
 
         match members {
             Some(m) if !m.is_empty() => Ok(m),
@@ -103,8 +100,8 @@ impl UserService for UserServiceImpl {
                 let m = self.repo.find_by_talk_id(talk_id)?;
                 let m = HashSet::from_iter(m);
 
-                self.redis.sadd(talk_key.clone(), &m).await;
-                self.redis.expire(talk_key).await;
+                self.redis.sadd(key.clone(), &m).await;
+                self.redis.expire(key).await;
 
                 Ok(m)
             }
