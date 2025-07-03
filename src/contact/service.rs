@@ -87,17 +87,16 @@ impl ContactService for ContactServiceImpl {
             .json_get::<Contacts>(cache::Key::Contacts(user_id), Some(&path))
             .await;
 
-        match contacts {
-            Some(c) => Ok(c.get().clone()),
-            None => {
-                let contacts = self
-                    .cache_contacts(user_id)
-                    .await?
-                    .into_iter()
-                    .filter(|c| c.status().eq(s))
-                    .collect::<Vec<_>>();
-                Ok(contacts)
-            }
+        if let Some(c) = contacts {
+            Ok(c.get().clone())
+        } else {
+            let c = self
+                .cache_contacts(user_id)
+                .await?
+                .into_iter()
+                .filter(|c| c.status().eq(s))
+                .collect::<Vec<_>>();
+            Ok(c)
         }
     }
 

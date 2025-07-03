@@ -4,7 +4,7 @@ use log::error;
 use maud::{Markup, Render, html};
 use serde::Serialize;
 
-use crate::{auth, contact, event, message, talk, user};
+use crate::{auth, contact, event, integration, message, talk, user};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -23,6 +23,8 @@ pub enum Error {
     _Message(#[from] message::Error),
     #[error(transparent)]
     _User(#[from] user::Error),
+    #[error(transparent)]
+    _Integration(#[from] integration::Error),
 }
 
 impl IntoResponse for Error {
@@ -57,6 +59,7 @@ impl From<Error> for StatusCode {
             Error::_Event(e) => e.into(),
             Error::_Message(m) => m.into(),
             Error::_User(u) => u.into(),
+            Error::_Integration(_) => Self::INTERNAL_SERVER_ERROR,
         }
     }
 }

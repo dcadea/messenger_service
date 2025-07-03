@@ -62,7 +62,10 @@ pub(super) mod api {
 
     use crate::{
         auth,
-        integration::storage::{self, Blob},
+        integration::{
+            self,
+            storage::{self, Blob},
+        },
         talk::{self, Kind, markup},
         user,
     };
@@ -87,17 +90,16 @@ pub(super) mod api {
         s3: State<storage::S3>,
         id: Path<talk::Id>,
     ) -> crate::Result<axum::body::Body> {
-        // TODO: handle result
-        let content = s3
-            .find_one(Blob::Png(&id.0.to_string()))
-            .await
-            .expect("failed to find object in s3");
-        let x = content
+        let content = s3.find_one(Blob::Png(&id.0.to_string())).await?;
+
+        let stream = content
             .to_stream()
             .await
-            .expect("failed to create stream")
-            .0;
-        Ok(axum::body::Body::from_stream(x))
+            .map(|(stream, _)| stream)
+            .map(axum::body::Body::from_stream)
+            .map_err(integration::Error::from)?;
+
+        Ok(stream)
     }
 
     #[derive(Deserialize)]
