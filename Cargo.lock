@@ -147,9 +147,9 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "async-nats"
-version = "0.40.0"
+version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e23419d455dc57d3ae60a2f4278cf561fc74fe866e548e14d2b0ad3e1b8ca0b2"
+checksum = "08f6da6d49a956424ca4e28fe93656f790d748b469eaccbc7488fec545315180"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -878,9 +878,9 @@ dependencies = [
 
 [[package]]
 name = "diesel"
-version = "2.2.10"
+version = "2.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff3e1edb1f37b4953dd5176916347289ed43d7119cc2e6c7c3f7849ff44ea506"
+checksum = "a917a9209950404d5be011c81d081a2692a822f73c3d6af586f0cab5ff50f614"
 dependencies = [
  "bitflags 2.9.1",
  "byteorder",
@@ -1721,9 +1721,9 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "identicon-rs"
-version = "6.0.2"
+version = "7.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1958c906c3817974e9ee3c02571993db21fc7c48b98e86b6670d9e131e80e861"
+checksum = "98f3ea7f0af9379319278e6e6d9ef4bac560ecc9459a1dcb6436cc01ecef36a1"
 dependencies = [
  "image",
  "sha3",
@@ -1821,6 +1821,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.101",
+]
+
+[[package]]
+name = "io-uring"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b86e202f00093dcba4275d4636b93ef9dd75d025ae560d2521b45ea28ab49013"
+dependencies = [
+ "bitflags 2.9.1",
+ "cfg-if",
+ "libc",
 ]
 
 [[package]]
@@ -2346,7 +2357,7 @@ version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51e219e79014df21a225b1860a479e2dcd7cbd9130f4defd4bd0e191ea31d67d"
 dependencies = [
- "base64 0.22.1",
+ "base64 0.21.7",
  "chrono",
  "getrandom 0.2.16",
  "http",
@@ -2882,9 +2893,9 @@ dependencies = [
 
 [[package]]
 name = "redis"
-version = "0.31.0"
+version = "0.32.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0bc1ea653e0b2e097db3ebb5b7f678be339620b8041f66b30a308c1d45d36a7f"
+checksum = "7f0f6a8c53351d89a3869a703459995a0bcadcfa846002707fbc7e5cca235c4a"
 dependencies = [
  "arc-swap",
  "backon",
@@ -2956,9 +2967,9 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
 name = "reqwest"
-version = "0.12.19"
+version = "0.12.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2f8e5513d63f2e5b386eb5106dc67eaf3f84e95258e210489136b8b92ad6119"
+checksum = "cbc931937e6ca3a06e3b6c0aa7841849b160a90351d6ab467a8b9b9959767531"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -2974,12 +2985,10 @@ dependencies = [
  "hyper-rustls",
  "hyper-tls",
  "hyper-util",
- "ipnet",
  "js-sys",
  "log",
  "mime",
  "native-tls",
- "once_cell",
  "percent-encoding",
  "pin-project-lite",
  "quinn",
@@ -3696,9 +3705,9 @@ dependencies = [
 
 [[package]]
 name = "text-splitter"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef565c233dd6cc1a2c31a89076800f091d84b8bdae32b5a23956dde2692e00a2"
+checksum = "9f7e97f5863248f7d07896a1816bd4110cb1b0b122741f157d702121a270bf33"
 dependencies = [
  "ahash",
  "auto_enums",
@@ -3822,17 +3831,19 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.45.1"
+version = "1.46.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75ef51a33ef1da925cea3e4eb122833cb377c61439ca401b770f54902b806779"
+checksum = "0cc3a2344dafbe23a245241fe8b09735b521110d30fcefbbd5feb1797ca35d17"
 dependencies = [
  "backtrace",
  "bytes",
+ "io-uring",
  "libc",
  "mio",
  "parking_lot",
  "pin-project-lite",
  "signal-hook-registry",
+ "slab",
  "socket2",
  "tokio-macros",
  "windows-sys 0.52.0",
