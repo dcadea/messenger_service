@@ -37,16 +37,16 @@ services:
   #       condition: service_healthy
 
   postgres:
-      image: postgres:alpine
-      container_name: awg.dev.postgres
-      ports:
-        - 5432:5432
-      environment:
-        POSTGRES_DB: messenger
-        POSTGRES_USER: postgres
-        POSTGRES_PASSWORD: postgres
-      volumes:
-      - ./docker-volumes/dev/postgres/data:/var/lib/postgresql/data
+    image: postgres:alpine
+    container_name: awg.dev.postgres
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_DB: messenger
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+    - ./docker-volumes/dev/postgres/data:/var/lib/postgresql/data
 
   redis:
     image: redis/redis-stack:latest
