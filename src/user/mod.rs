@@ -1,4 +1,4 @@
-use std::{fmt::Display, sync::Arc};
+use std::{fmt::Display, str::FromStr, sync::Arc};
 
 use axum::{Router, routing::post};
 use diesel::{deserialize::FromSqlRow, expression::AsExpression, sql_types};
@@ -159,11 +159,9 @@ impl TryFrom<&str> for Email {
     type Error = Error;
 
     fn try_from(s: &str) -> std::result::Result<Self, Self::Error> {
-        if s.is_empty() {
-            return Err(Self::Error::MalformedEmail(s.to_string()));
-        }
-        // TODO: parse email here
-        Ok(Self(s.to_string()))
+        email_address::EmailAddress::from_str(s)
+            .map(|e| Self(e.email()))
+            .map_err(|e| Self::Error::MalformedEmail(e.to_string()))
     }
 }
 

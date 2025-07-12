@@ -51,6 +51,7 @@ redis = { version = "0.32.3", features = [
 ] }
 async-nats = "0.42.0"
 minio = "0.3.0"
+email_address = "0.2.9"
 
 [dev-dependencies]
 testcontainers-modules = { version = "0.12.1", features = ["postgres"] }
