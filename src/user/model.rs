@@ -121,24 +121,3 @@ impl From<User> for UserDto {
         }
     }
 }
-
-// #[cfg(test)]
-// impl UserDto {
-//     pub fn new(
-//         id: Id,
-//         sub: Sub,
-//         nickname: Nickname,
-//         name: impl Into<String>,
-//         picture: Picture,
-//         email: Email,
-//     ) -> Self {
-//         Self {
-//             id,
-//             sub,
-//             nickname,
-//             name: name.into(),
-//             picture,
-//             email,
-//         }
-//     }
-// }
