@@ -6,7 +6,6 @@ impl From<super::Error> for StatusCode {
             super::Error::NotFound(_) => Self::NOT_FOUND,
             super::Error::EmptyContent => Self::BAD_REQUEST,
             super::Error::IdNotPresent
-            | super::Error::Unexpected(_)
             | super::Error::_User(_)
             | super::Error::_R2d2(_)
             | super::Error::_Diesel(_) => Self::INTERNAL_SERVER_ERROR,
