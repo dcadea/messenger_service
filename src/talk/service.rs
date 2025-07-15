@@ -79,10 +79,14 @@ impl TalkService for TalkServiceImpl {
             return Err(talk::Error::AlreadyExists);
         }
 
-        let contact = self.contact_service.find(auth_id, recipient).map_err(|e| {
-            error!("could not find contact: {e:?}");
-            talk::Error::NotCreated
-        })?;
+        let contact = self
+            .contact_service
+            .find(auth_id, recipient)
+            .map_err(|e| {
+                error!("could not find contact: {e:?}");
+                talk::Error::NotCreated
+            })
+            .await?;
 
         if contact.is_none_or(|c| !c.is_accepted()) {
             return Err(talk::Error::UnsupportedStatus);

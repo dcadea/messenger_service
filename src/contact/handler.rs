@@ -48,7 +48,7 @@ pub(super) mod api {
             Transition::Reject => StatusTransition::Reject { responder: auth_id },
             Transition::Block => StatusTransition::Block { initiator: auth_id },
             Transition::Unblock => {
-                let c = contact_service.find_by_id(auth_id, &id)?;
+                let c = contact_service.find_by_id(auth_id, &id).await?;
 
                 StatusTransition::Unblock {
                     target: &c.recipient().clone(),

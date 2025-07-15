@@ -7,9 +7,13 @@ use super::{
 
 #[async_trait::async_trait]
 pub trait ContactService {
-    fn find(&self, auth_id: &user::Id, recipient: &user::Id) -> super::Result<Option<ContactDto>>;
+    async fn find(
+        &self,
+        auth_id: &user::Id,
+        recipient: &user::Id,
+    ) -> super::Result<Option<ContactDto>>;
 
-    fn find_by_id(&self, auth_id: &user::Id, id: &Id) -> super::Result<ContactDto>;
+    async fn find_by_id(&self, auth_id: &user::Id, id: &Id) -> super::Result<ContactDto>;
 
     async fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>>;
 
@@ -45,23 +49,48 @@ impl ContactServiceImpl {
 
 #[async_trait::async_trait]
 impl ContactService for ContactServiceImpl {
-    fn find(&self, auth_id: &user::Id, recipient: &user::Id) -> super::Result<Option<ContactDto>> {
+    async fn find(
+        &self,
+        auth_id: &user::Id,
+        recipient: &user::Id,
+    ) -> super::Result<Option<ContactDto>> {
         if auth_id.eq(recipient) {
             return Err(super::Error::SameUsers(auth_id.clone()));
         }
 
-        // TODO: cache
-        self.repo
-            .find(auth_id, recipient)
-            .map(|c| c.map(|c| map_to_dto(auth_id, &c)))
+        let path = format!(r#"$.[?(@.recipient == "{recipient}")]"#);
+        let c = self
+            .redis
+            .json_get::<Contacts>(cache::Key::Contacts(auth_id), Some(&path))
+            .await
+            .and_then(|c| c.get().first().cloned());
+
+        c.map_or_else(
+            || {
+                self.repo
+                    .find(auth_id, recipient)
+                    .map(|c| c.map(|c| map_to_dto(auth_id, &c)))
+            },
+            |c| Ok(Some(c)),
+        )
     }
 
-    fn find_by_id(&self, auth_id: &user::Id, id: &Id) -> super::Result<ContactDto> {
-        // TODO: cache
-        let c = self.repo.find_by_id(id)?;
+    async fn find_by_id(&self, auth_id: &user::Id, id: &Id) -> super::Result<ContactDto> {
+        let path = format!(r#"$.[?(@.id == "{id}")]"#);
+        let c = self
+            .redis
+            .json_get::<Contacts>(cache::Key::Contacts(auth_id), Some(&path))
+            .await
+            .and_then(|c| c.get().first().cloned());
 
-        c.map(|c| map_to_dto(auth_id, &c))
-            .ok_or(super::Error::NotFound(id.clone()))
+        match c {
+            Some(c) => Ok(c),
+            None => self
+                .repo
+                .find_by_id(id)?
+                .map(|c| map_to_dto(auth_id, &c))
+                .ok_or(super::Error::NotFound(id.clone())),
+        }
     }
 
     async fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<ContactDto>> {
