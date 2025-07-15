@@ -24,7 +24,7 @@ pub(super) mod api {
         contact_service: State<contact::Service>,
         params: Form<CreateParams>,
     ) -> crate::Result<Markup> {
-        let s = contact_service.add(auth_user.id(), &params.user_id)?;
+        let s = contact_service.add(auth_user.id(), &params.user_id).await?;
         Ok(s.render())
     }
 
@@ -33,7 +33,7 @@ pub(super) mod api {
         user_id: Query<user::Id>,
         contact_service: State<contact::Service>,
     ) -> crate::Result<()> {
-        contact_service.delete(auth_user.id(), &user_id)?;
+        contact_service.delete(auth_user.id(), &user_id).await?;
         Ok(())
     }
 

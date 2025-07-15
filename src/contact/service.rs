@@ -23,7 +23,7 @@ pub trait ContactService {
         s: &Status,
     ) -> super::Result<Vec<ContactDto>>;
 
-    fn add(&self, me: &user::Id, you: &user::Id) -> super::Result<Status>;
+    async fn add(&self, me: &user::Id, you: &user::Id) -> super::Result<Status>;
 
     async fn transition_status(
         &self,
@@ -32,7 +32,7 @@ pub trait ContactService {
         t: StatusTransition<'_>,
     ) -> super::Result<Status>;
 
-    fn delete(&self, auth_id: &user::Id, contact: &user::Id) -> super::Result<()>;
+    async fn delete(&self, auth_id: &user::Id, contact: &user::Id) -> super::Result<()>;
 }
 
 #[derive(Clone)]
@@ -129,7 +129,7 @@ impl ContactService for ContactServiceImpl {
         }
     }
 
-    fn add(&self, me: &user::Id, you: &user::Id) -> super::Result<Status> {
+    async fn add(&self, me: &user::Id, you: &user::Id) -> super::Result<Status> {
         if me.eq(you) {
             return Err(super::Error::SameUsers(me.clone()));
         }
@@ -140,11 +140,7 @@ impl ContactService for ContactServiceImpl {
         }
 
         self.repo.add(&NewContact::new(me, you))?;
-        // tokio::try_join!(
-        // TODO
-        // self.cache_contacts(&c.sub1),
-        // self.cache_contacts(&c.sub2)
-        // )?;
+        self.invalidate([me.clone(), you.clone()]).await;
 
         Ok(Status::Pending {
             initiator: me.clone(),
@@ -163,25 +159,19 @@ impl ContactService for ContactServiceImpl {
                 let dto = map_to_dto(auth_id, &c);
                 let s = dto.transition(st)?;
                 self.repo.update_status(c.id(), &s)?;
-                self.invalidate(&c).await;
+                self.invalidate([c.user_id_1().clone(), c.user_id_2().clone()])
+                    .await;
                 Ok(s)
             }
             None => Err(super::Error::NotFound(id.clone())),
         }
     }
 
-    fn delete(&self, auth_id: &user::Id, contact: &user::Id) -> super::Result<()> {
+    async fn delete(&self, auth_id: &user::Id, contact: &user::Id) -> super::Result<()> {
         assert_ne!(auth_id, contact);
 
         self.repo.delete(auth_id, contact)?;
-
-        // FIXME:
-        // tokio::join!(
-        //     self.redis
-        //         .srem(cache::Key::Contacts(auth_id), contact.to_owned()),
-        //     self.redis
-        //         .srem(cache::Key::Contacts(contact), auth_sub.to_owned())
-        // );
+        self.invalidate([auth_id.clone(), contact.clone()]).await;
 
         Ok(())
     }
@@ -208,10 +198,10 @@ impl ContactServiceImpl {
         Ok(contacts)
     }
 
-    async fn invalidate(&self, c: &Contact) {
+    async fn invalidate(&self, user_ids: [user::Id; 2]) {
         tokio::join!(
-            self.redis.json_del(cache::Key::Contacts(c.user_id_1())),
-            self.redis.json_del(cache::Key::Contacts(c.user_id_2()))
+            self.redis.json_del(cache::Key::Contacts(&user_ids[0])),
+            self.redis.json_del(cache::Key::Contacts(&user_ids[1]))
         );
     }
 }
