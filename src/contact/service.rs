@@ -81,7 +81,7 @@ impl ContactService for ContactServiceImpl {
         user_id: &user::Id,
         s: &Status,
     ) -> super::Result<Vec<ContactDto>> {
-        let path = format!("$.c[?(@.status.indicator == '{}')]", s.as_str());
+        let path = format!(r#"$.[?(@.status.indicator == "{}")]"#, s.as_str());
         let contacts = self
             .redis
             .json_get::<Contacts>(cache::Key::Contacts(user_id), Some(&path))
@@ -173,7 +173,7 @@ impl ContactServiceImpl {
 
         let _: () = self
             .redis
-            .json_set_ex(cache::Key::Contacts(user_id), Contacts::from_ref(&contacts))
+            .json_set_ex(cache::Key::Contacts(user_id), &contacts)
             .await;
 
         Ok(contacts)

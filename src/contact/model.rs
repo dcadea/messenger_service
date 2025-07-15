@@ -168,17 +168,11 @@ impl ContactDto {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct Contacts {
-    c: Vec<ContactDto>,
-}
+#[derive(Deserialize, Clone)]
+pub struct Contacts(Vec<ContactDto>);
 
 impl Contacts {
-    pub fn from_ref(c: &[ContactDto]) -> Self {
-        Self { c: c.to_owned() }
-    }
-
     pub const fn get(&self) -> &Vec<ContactDto> {
-        &self.c
+        &self.0
     }
 }
