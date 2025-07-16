@@ -134,7 +134,10 @@ impl AuthService for AuthServiceImpl {
 
                 Ok((access_token, expires_in))
             }
-            Err(e) => Err(super::Error::Unexpected(e.to_string())),
+            Err(e) => {
+                error!("{e:?}");
+                Err(super::Error::TokenNotExchanged)
+            }
         }
     }
 

@@ -8,11 +8,11 @@ impl From<super::Error> for StatusCode {
                 Self::FORBIDDEN
             }
             super::Error::TokenMalformed => Self::BAD_REQUEST,
-            super::Error::_Configuration(_)
+            super::Error::TokenNotExchanged
+            | super::Error::_Configuration(_)
             | super::Error::_JsonWebtoken(_)
             | super::Error::_Uuid(_)
-            | super::Error::_Reqwest(_)
-            | super::Error::Unexpected(_) => Self::INTERNAL_SERVER_ERROR,
+            | super::Error::_Reqwest(_) => Self::INTERNAL_SERVER_ERROR,
         }
     }
 }

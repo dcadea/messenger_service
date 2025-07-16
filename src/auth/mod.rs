@@ -223,6 +223,8 @@ pub enum Error {
     TokenMalformed,
     #[error("invalid state")]
     InvalidState,
+    #[error("failed to exchange token")]
+    TokenNotExchanged,
 
     #[error(transparent)]
     _Configuration(#[from] oauth2::ConfigurationError),
@@ -235,9 +237,4 @@ pub enum Error {
 
     #[error(transparent)]
     _Reqwest(#[from] reqwest::Error),
-
-    // TODO: remove, was introduced due to very complex
-    // generic structure of errors from oauth2 crate
-    #[error("unexpected error happened: {0}")]
-    Unexpected(String),
 }
