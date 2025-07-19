@@ -94,12 +94,6 @@ impl From<Id> for Picture {
     }
 }
 
-impl From<Picture> for String {
-    fn from(p: Picture) -> Self {
-        p.0
-    }
-}
-
 impl From<user::Picture> for Picture {
     fn from(p: user::Picture) -> Self {
         Self(p.as_str().to_string())
@@ -109,13 +103,9 @@ impl From<user::Picture> for Picture {
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("talks not found: {0:?}")]
-    NotFound(Option<Id>),
-    #[error("user is not a member of the talk")]
-    NotMember,
+    NotFound(Id),
     #[error("could not create talk")]
     NotCreated,
-    #[error("could not delete talk")]
-    NotDeleted,
     #[error("talk already exists")]
     AlreadyExists,
     #[error("not enough members: {0:?}")]

@@ -4,14 +4,12 @@ impl From<super::Error> for StatusCode {
     fn from(e: super::Error) -> Self {
         match e {
             super::Error::NotFound(_) => Self::NOT_FOUND,
-            super::Error::NotMember => Self::FORBIDDEN,
             super::Error::AlreadyExists => Self::CONFLICT,
             super::Error::NotEnoughMembers(_)
             | super::Error::MissingName
             | super::Error::NonExistingUser(_)
             | super::Error::UnsupportedStatus => Self::BAD_REQUEST,
             super::Error::NotCreated
-            | super::Error::NotDeleted
             | super::Error::UnsupportedKind(_)
             | super::Error::_User(_)
             | super::Error::_Integration(_)

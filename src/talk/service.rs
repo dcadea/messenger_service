@@ -195,7 +195,7 @@ impl TalkService for TalkServiceImpl {
                 .find_group_by_id_and_user_id(id, auth_id)?
                 .map(|g| group_to_dto(&g, auth_id)),
         }
-        .ok_or(super::Error::NotFound(Some(id.clone())))
+        .ok_or(super::Error::NotFound(id.clone()))
     }
 
     fn find_all_by_kind(&self, auth_user: &auth::User, kind: &Kind) -> super::Result<Vec<TalkDto>> {
