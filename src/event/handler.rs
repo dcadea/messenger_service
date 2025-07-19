@@ -5,10 +5,7 @@ use super::Error;
 impl From<Error> for StatusCode {
     fn from(e: Error) -> Self {
         match e {
-            Error::NotOwner | Error::NotRecipient => Self::FORBIDDEN,
-            Error::_Axum(_) | Error::_NatsSub(_) | Error::_SerdeJson(_) => {
-                Self::INTERNAL_SERVER_ERROR
-            }
+            Error::_NatsSub(_) | Error::_SerdeJson(_) => Self::INTERNAL_SERVER_ERROR,
         }
     }
 }
@@ -188,8 +185,11 @@ pub mod ws {
             }
         }
 
-        sender.flush().await?;
-        debug!("WS send task stopped for talk {talk_id:?}");
+        if let Err(e) = sender.flush().await {
+            error!("Failed to stop WS send task: {e:?}");
+        } else {
+            debug!("WS send task stopped for talk {talk_id:?}");
+        }
 
         Ok(())
     }

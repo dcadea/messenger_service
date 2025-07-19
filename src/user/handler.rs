@@ -3,7 +3,6 @@ use axum::http::StatusCode;
 impl From<super::Error> for StatusCode {
     fn from(e: super::Error) -> Self {
         match e {
-            super::Error::NotFound(_) => Self::NOT_FOUND,
             super::Error::NotMember => Self::FORBIDDEN,
             super::Error::MalformedPicture(_)
             | super::Error::MalformedEmail(_)

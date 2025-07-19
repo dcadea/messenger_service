@@ -53,13 +53,6 @@ pub enum Message {
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("not a message owner")]
-    NotOwner,
-    #[error("not a message recipient")]
-    NotRecipient,
-
-    #[error(transparent)]
-    _Axum(#[from] axum::Error),
     #[error(transparent)]
     _NatsSub(#[from] async_nats::SubscribeError),
     #[error(transparent)]

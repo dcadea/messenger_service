@@ -69,12 +69,9 @@ pub fn templates<S>(s: AppState) -> Router<S> {
 #[error(transparent)]
 pub enum Error {
     #[error("message not found: {0:?}")]
-    NotFound(Option<Id>),
+    NotFound(Id),
     #[error("message content is empty")]
     EmptyContent,
-
-    #[error("message id not present")]
-    IdNotPresent,
 
     #[error(transparent)]
     _User(#[from] user::Error),

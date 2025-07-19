@@ -5,10 +5,9 @@ impl From<super::Error> for StatusCode {
         match e {
             super::Error::NotFound(_) => Self::NOT_FOUND,
             super::Error::EmptyContent => Self::BAD_REQUEST,
-            super::Error::IdNotPresent
-            | super::Error::_User(_)
-            | super::Error::_R2d2(_)
-            | super::Error::_Diesel(_) => Self::INTERNAL_SERVER_ERROR,
+            super::Error::_User(_) | super::Error::_R2d2(_) | super::Error::_Diesel(_) => {
+                Self::INTERNAL_SERVER_ERROR
+            }
         }
     }
 }
@@ -102,7 +101,7 @@ pub(super) mod api {
             ));
         }
 
-        Err(message::Error::NotFound(Some(params.message_id)))?
+        Err(message::Error::NotFound(params.message_id))?
     }
 
     pub async fn delete(
@@ -113,7 +112,7 @@ pub(super) mod api {
         if message_service.delete(&auth_user, &id).await? {
             Ok(())
         } else {
-            Err(message::Error::NotFound(Some(id)))?
+            Err(message::Error::NotFound(id))?
         }
     }
 }

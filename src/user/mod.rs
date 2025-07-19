@@ -167,8 +167,6 @@ impl TryFrom<&str> for Email {
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("user not found: {0:?}")]
-    NotFound(Sub),
     #[error("invalid picture format: {0:?}")]
     MalformedPicture(String),
     #[error("invalid email format: {0:?}")]
