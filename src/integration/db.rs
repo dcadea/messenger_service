@@ -178,4 +178,21 @@ pub mod pg {
             Ok(IsNull::No)
         }
     }
+
+    impl<DB> FromSql<sql_types::Text, DB> for talk::Picture
+    where
+        DB: Backend,
+        String: FromSql<sql_types::Text, DB>,
+    {
+        fn from_sql(bytes: DB::RawValue<'_>) -> deserialize::Result<Self> {
+            String::from_sql(bytes).map(Self::from)
+        }
+    }
+
+    impl ToSql<sql_types::Text, diesel::pg::Pg> for talk::Picture {
+        fn to_sql<'b>(&'b self, out: &mut Output<'b, '_, diesel::pg::Pg>) -> serialize::Result {
+            out.write_all(self.as_str().as_bytes())?;
+            Ok(IsNull::No)
+        }
+    }
 }

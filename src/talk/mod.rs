@@ -79,7 +79,7 @@ impl Kind {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Picture(String);
 
 impl Picture {
@@ -97,6 +97,12 @@ impl From<Id> for Picture {
 impl From<user::Picture> for Picture {
     fn from(p: user::Picture) -> Self {
         Self(p.as_str().to_string())
+    }
+}
+
+impl From<String> for Picture {
+    fn from(s: String) -> Self {
+        Self(s)
     }
 }
 

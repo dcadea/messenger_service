@@ -121,8 +121,8 @@ pub struct ChatTalk {
     id: Id,
     last_message: Option<Message>,
     recipient: user::Id,
-    name: String, // TODO: implement FromSql and ToSql for nickname and picture
-    picture: String,
+    name: String,
+    picture: Picture,
 }
 
 impl ChatTalk {
@@ -191,7 +191,7 @@ pub(super) struct ChatWithLastMessage {
     #[diesel(sql_type = sql_types::Text)]
     name: String,
     #[diesel(sql_type = sql_types::Text)]
-    picture: String,
+    picture: Picture,
 }
 
 pub struct GroupTalk {
