@@ -128,12 +128,14 @@ impl UserService for UserServiceImpl {
     }
 
     async fn find_picture(&self, id: &user::Id) -> super::Result<Picture> {
-        if let Some(p) = self.find_cached_picture(id).await {
-            Picture::try_from(p.as_str())
+        let p = if let Some(p) = self.find_cached_picture(id).await {
+            Picture::from(p)
         } else {
             let u = self.find_one(id).await?;
-            Ok(u.picture().clone())
-        }
+            u.picture().clone()
+        };
+
+        Ok(p)
     }
 
     fn exists(&self, id: &user::Id) -> super::Result<bool> {

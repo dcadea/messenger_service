@@ -128,15 +128,9 @@ impl Picture {
     }
 }
 
-impl TryFrom<&str> for Picture {
-    type Error = Error;
-
-    fn try_from(s: &str) -> std::result::Result<Self, Self::Error> {
-        if s.is_empty() {
-            return Err(Self::Error::MalformedPicture(s.to_string()));
-        }
-        // TODO: parse picture url here
-        Ok(Self(s.to_string()))
+impl From<String> for Picture {
+    fn from(s: String) -> Self {
+        Self(s)
     }
 }
 

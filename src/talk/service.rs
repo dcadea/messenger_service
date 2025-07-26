@@ -229,7 +229,7 @@ impl TalkService for TalkServiceImpl {
 fn chat_to_dto(c: &ChatTalk, auth_id: &user::Id) -> TalkDto {
     TalkDto::new(
         c.id().clone(),
-        Picture::from(user::Picture::try_from(c.picture()).expect("wrong picture format")), // FIXME
+        Picture::from(user::Picture::from(c.picture().to_string())),
         c.name(),
         DetailsDto::Chat {
             sender: auth_id.clone(),
