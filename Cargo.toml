@@ -13,10 +13,10 @@ bytes = "1.10.1"
 thiserror = "2.0.12"
 
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.141"
+serde_json = "1.0.142"
 text-splitter = "0.27.0"
 
-tokio = { version = "1.47.0", features = ["macros", "sync", "rt-multi-thread"] }
+tokio = { version = "1.47.1", features = ["macros", "sync", "rt-multi-thread"] }
 async-stream = "0.3.6"
 async-trait = "0.1.88"
 futures = { version = "0.3.31", default-features = false }
