@@ -10,7 +10,7 @@ impl From<Error> for StatusCode {
     }
 }
 
-pub mod sse {
+pub(super) mod sse {
     use crate::event::{self, Notification, Subject};
     use crate::{auth, user};
     use async_stream;
@@ -92,7 +92,7 @@ pub mod sse {
     }
 }
 
-pub mod ws {
+pub(super) mod ws {
     use std::sync::Arc;
 
     use crate::{
