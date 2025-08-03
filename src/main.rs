@@ -39,21 +39,23 @@ async fn main() {
             return;
         }
     };
-    let env = config.env();
 
-    let addr = env.addr();
-    let ssl_config = env.ssl_config();
-    let router = app(&app_state, env);
-    if let Err(e) = match ssl_config {
-        Some(ssl_config) => {
-            axum_server::bind_openssl(addr, ssl_config)
-                .serve(router.into_make_service())
-                .await
-        }
-        None => {
-            axum_server::bind(addr)
-                .serve(router.into_make_service())
-                .await
+    if let Err(e) = {
+        let env = config.env();
+        let addr = env.addr();
+        let router = app(&app_state, env);
+
+        match env.ssl_config() {
+            Some(ssl_config) => {
+                axum_server::bind_openssl(addr, ssl_config)
+                    .serve(router.into_make_service())
+                    .await
+            }
+            None => {
+                axum_server::bind(addr)
+                    .serve(router.into_make_service())
+                    .await
+            }
         }
     } {
         panic!("Failed to start server: {e:?}")
@@ -61,18 +63,18 @@ async fn main() {
 }
 
 fn app(s: &AppState, env: &Env) -> Router {
-    let tabs_router = Router::new()
-        .route("/tabs/chats", get(handler::chats_tab))
-        .route("/tabs/groups", get(handler::groups_tab))
-        .route("/tabs/contacts", get(handler::contacts_tab))
-        .route("/tabs/settings", get(handler::settings_tab))
-        .with_state(s.clone());
-
     let protected_router = Router::new()
         .route("/", get(handler::home))
-        .merge(tabs_router)
         .merge(talk::pages(s.clone()))
         .merge(event::api(s.clone()))
+        .nest(
+            "/tabs",
+            Router::new()
+                .route("/chats", get(handler::chats_tab))
+                .route("/groups", get(handler::groups_tab))
+                .route("/contacts", get(handler::contacts_tab))
+                .route("/settings", get(handler::settings_tab)),
+        )
         .nest(
             "/api",
             Router::new()
