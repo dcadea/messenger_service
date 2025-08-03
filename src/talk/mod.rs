@@ -79,6 +79,20 @@ impl Kind {
     }
 }
 
+impl TryFrom<String> for Kind {
+    type Error = Error;
+
+    fn try_from(s: String) -> std::result::Result<Self, Self::Error> {
+        if s.eq("chat") {
+            Ok(Self::Chat)
+        } else if s.eq("group") {
+            Ok(Self::Group)
+        } else {
+            Err(Error::UnsupportedKind(s))
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Picture(String);
 

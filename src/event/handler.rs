@@ -13,7 +13,6 @@ impl From<Error> for StatusCode {
 pub(super) mod sse {
     use crate::event::{self, Notification, Subject};
     use crate::{auth, user};
-    use async_stream;
     use axum::Extension;
     use axum::extract::State;
     use axum::response::sse;

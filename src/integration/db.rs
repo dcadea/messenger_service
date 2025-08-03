@@ -96,10 +96,9 @@ pub mod pg {
     {
         fn from_sql(bytes: DB::RawValue<'_>) -> deserialize::Result<Self> {
             let s = String::from_sql(bytes)?;
-            match s.as_str() {
-                "chat" => Ok(Self::Chat),
-                "group" => Ok(Self::Group),
-                other => Err(Box::new(talk::Error::UnsupportedKind(other.to_string()))),
+            match Self::try_from(s) {
+                Ok(kind) => Ok(kind),
+                Err(e) => Err(Box::new(e)),
             }
         }
     }
