@@ -50,7 +50,7 @@ pub struct AuthServiceImpl {
 }
 
 impl AuthServiceImpl {
-    pub fn try_new(cfg: &idp::Config, redis: cache::Redis) -> Self {
+    pub fn new(cfg: &idp::Config, redis: cache::Redis) -> Self {
         let jwt_validator = {
             let mut v = Validation::new(jsonwebtoken::Algorithm::RS256);
             v.set_required_spec_claims(cfg.required_claims());

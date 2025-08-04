@@ -32,13 +32,13 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub async fn init(cfg: integration::Config) -> crate::Result<Self> {
+    pub async fn init(cfg: integration::Config) -> Self {
         let pg = cfg.pg().connect();
         let redis = cfg.redis().connect().await;
         let pubsub = cfg.pubsub().connect().await;
         let s3 = cfg.s3().connect().await;
 
-        let auth_service = Arc::new(AuthServiceImpl::try_new(cfg.idp(), redis.clone()));
+        let auth_service = Arc::new(AuthServiceImpl::new(cfg.idp(), redis.clone()));
         let event_service = Arc::new(EventServiceImpl::new(pubsub));
 
         let contact_repo = Arc::new(PgContactRepository::new(pg.clone()));
@@ -70,7 +70,7 @@ impl AppState {
             event_service.clone(),
         ));
 
-        Ok(Self {
+        Self {
             cfg,
             auth_service,
             user_service,
@@ -79,7 +79,7 @@ impl AppState {
             message_service,
             event_service,
             s3,
-        })
+        }
     }
 }
 

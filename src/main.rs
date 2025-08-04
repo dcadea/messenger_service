@@ -5,7 +5,6 @@ use axum::http::StatusCode;
 use axum::middleware::{from_fn_with_state, map_response};
 use axum::routing::get;
 use integration::Env;
-use log::error;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
@@ -32,27 +31,20 @@ pub type Result<T> = std::result::Result<T, crate::error::Error>;
 #[tokio::main]
 async fn main() {
     let config = integration::Config::default();
-    let app_state = match AppState::init(config.clone()).await {
-        Ok(s) => s,
-        Err(e) => {
-            error!("Failed to initialize app state: {e:?}");
-            return;
-        }
-    };
+    let app_state = AppState::init(config.clone()).await;
 
     if let Err(e) = {
         let env = config.env();
-        let addr = env.addr();
         let router = app(&app_state, env);
 
         match env.ssl_config() {
             Some(ssl_config) => {
-                axum_server::bind_openssl(addr, ssl_config)
+                axum_server::bind_openssl(env.addr(), ssl_config)
                     .serve(router.into_make_service())
                     .await
             }
             None => {
-                axum_server::bind(addr)
+                axum_server::bind(env.addr())
                     .serve(router.into_make_service())
                     .await
             }
