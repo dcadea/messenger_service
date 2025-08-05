@@ -19,8 +19,6 @@ use super::integration;
 
 #[derive(Clone)]
 pub struct AppState {
-    cfg: integration::Config,
-
     auth_service: auth::Service,
     user_service: user::Service,
     contact_service: contact::Service,
@@ -71,7 +69,6 @@ impl AppState {
         ));
 
         Self {
-            cfg,
             auth_service,
             user_service,
             contact_service,
@@ -80,12 +77,6 @@ impl AppState {
             event_service,
             s3,
         }
-    }
-}
-
-impl FromRef<AppState> for integration::Config {
-    fn from_ref(s: &AppState) -> Self {
-        s.cfg.clone()
     }
 }
 
