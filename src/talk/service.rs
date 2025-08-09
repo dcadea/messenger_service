@@ -1,11 +1,12 @@
 use async_trait::async_trait;
 use futures::TryFutureExt;
 use log::error;
+use minio::s3::builders::ObjectContent;
 
 use super::model::{ChatTalk, Details, DetailsDto, GroupTalk, TalkDto};
 use super::{Kind, Repository};
 use crate::integration::storage::Blob;
-use crate::integration::{cache, storage};
+use crate::integration::{self, cache, storage};
 use crate::message::model::MessageDto;
 use crate::talk::Picture;
 use crate::talk::model::NewTalk;
@@ -31,6 +32,8 @@ pub trait TalkService {
     ) -> super::Result<TalkDto>;
 
     fn find_all_by_kind(&self, auth_user: &auth::User, kind: &Kind) -> super::Result<Vec<TalkDto>>;
+
+    async fn find_avatar(&self, id: &talk::Id) -> super::Result<ObjectContent>;
 
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
 }
@@ -217,6 +220,14 @@ impl TalkService for TalkServiceImpl {
         };
 
         Ok(talk_dtos)
+    }
+
+    async fn find_avatar(&self, id: &talk::Id) -> super::Result<ObjectContent> {
+        self.s3
+            .find_one(Blob::Png(&id.0.to_string()))
+            .await
+            .map_err(|e| Box::new(integration::Error::from(e)))
+            .map_err(super::Error::from)
     }
 
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {

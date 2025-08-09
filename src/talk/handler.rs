@@ -60,10 +60,7 @@ pub(super) mod api {
 
     use crate::{
         auth,
-        integration::{
-            self,
-            storage::{self, Blob},
-        },
+        integration::{self},
         talk::{self, Kind, markup},
         user,
     };
@@ -85,10 +82,10 @@ pub(super) mod api {
     }
 
     pub async fn find_avatar(
-        s3: State<storage::S3>,
+        talk_service: State<talk::Service>,
         id: Path<talk::Id>,
     ) -> crate::Result<axum::body::Body> {
-        let content = s3.find_one(Blob::Png(&id.0.to_string())).await?;
+        let content = talk_service.find_avatar(&id).await?;
 
         let stream = content
             .to_stream()
