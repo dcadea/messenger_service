@@ -56,7 +56,7 @@ impl AppState {
             contact_service.clone(),
             event_service.clone(),
             redis.clone(),
-            s3.clone(),
+            s3,
         ));
 
         let message_service = Arc::new(MessageServiceImpl::new(

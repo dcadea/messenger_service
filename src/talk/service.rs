@@ -1,7 +1,9 @@
+use std::pin::Pin;
+
 use async_trait::async_trait;
-use futures::TryFutureExt;
+use bytes::Bytes;
+use futures::{Stream, TryFutureExt, TryStreamExt};
 use log::error;
-use minio::s3::builders::ObjectContent;
 
 use super::model::{ChatTalk, Details, DetailsDto, GroupTalk, TalkDto};
 use super::{Kind, Repository};
@@ -33,7 +35,10 @@ pub trait TalkService {
 
     fn find_all_by_kind(&self, auth_user: &auth::User, kind: &Kind) -> super::Result<Vec<TalkDto>>;
 
-    async fn find_avatar(&self, id: &talk::Id) -> super::Result<ObjectContent>;
+    async fn find_avatar(
+        &self,
+        id: &talk::Id,
+    ) -> super::Result<Pin<Box<dyn Stream<Item = super::Result<Bytes>> + Send>>>;
 
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()>;
 }
@@ -222,12 +227,28 @@ impl TalkService for TalkServiceImpl {
         Ok(talk_dtos)
     }
 
-    async fn find_avatar(&self, id: &talk::Id) -> super::Result<ObjectContent> {
-        self.s3
+    async fn find_avatar(
+        &self,
+        id: &talk::Id,
+    ) -> super::Result<Pin<Box<dyn Stream<Item = super::Result<Bytes>> + Send>>> {
+        let content = self
+            .s3
             .find_one(Blob::Png(&id.0.to_string()))
             .await
+            .map_err(Box::new)?;
+
+        let (stream, _) = content
+            .to_stream()
+            .await
+            .map_err(|e| Box::new(integration::Error::from(e)))?;
+
+        let stream = stream
             .map_err(|e| Box::new(integration::Error::from(e)))
-            .map_err(super::Error::from)
+            .map_err(super::Error::from);
+
+        let stream = Box::pin(stream) as Pin<Box<dyn Stream<Item = super::Result<Bytes>> + Send>>;
+
+        Ok(stream)
     }
 
     async fn delete(&self, id: &talk::Id, auth_user: &auth::User) -> super::Result<()> {

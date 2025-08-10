@@ -60,7 +60,6 @@ pub(super) mod api {
 
     use crate::{
         auth,
-        integration::{self},
         talk::{self, Kind, markup},
         user,
     };
@@ -85,16 +84,9 @@ pub(super) mod api {
         talk_service: State<talk::Service>,
         id: Path<talk::Id>,
     ) -> crate::Result<axum::body::Body> {
-        let content = talk_service.find_avatar(&id).await?;
+        let stream = talk_service.find_avatar(&id).await?;
 
-        let stream = content
-            .to_stream()
-            .await
-            .map(|(stream, _)| stream)
-            .map(axum::body::Body::from_stream)
-            .map_err(integration::Error::from)?;
-
-        Ok(stream)
+        Ok(axum::body::Body::from_stream(stream))
     }
 
     #[derive(Deserialize)]
