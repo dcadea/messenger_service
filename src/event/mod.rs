@@ -8,7 +8,7 @@ use log::error;
 use serde::{Deserialize, Serialize};
 use service::EventService;
 
-use crate::state::AppState;
+use crate::state::AppServices;
 use crate::{message, talk, user};
 
 mod handler;
@@ -18,7 +18,7 @@ pub mod service;
 type Result<T> = std::result::Result<T, Error>;
 pub type Service = Arc<dyn EventService + Send + Sync>;
 
-pub fn api<S>(s: AppState) -> Router<S> {
+pub fn api<S>(s: AppServices) -> Router<S> {
     Router::new()
         .route("/sse", get(handler::sse::notifications))
         .route("/ws/{talk_id}", any(handler::ws::talk))

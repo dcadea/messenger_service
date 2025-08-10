@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::user::model::UserDto;
 use crate::user::{self, Email, Picture, Sub};
-use crate::{state::AppState, user::Nickname};
+use crate::{state::AppServices, user::Nickname};
 use axum::Router;
 use axum::routing::get;
 use axum_extra::extract::cookie::Cookie;
@@ -24,13 +24,13 @@ struct TokenClaims {
     sub: Sub,
 }
 
-pub fn pages<S>(s: AppState) -> Router<S> {
+pub fn pages<S>(s: AppServices) -> Router<S> {
     Router::new()
         .route("/login", get(handler::pages::login))
         .with_state(s)
 }
 
-pub fn api<S>(s: AppState) -> Router<S> {
+pub fn api<S>(s: AppServices) -> Router<S> {
     Router::new()
         .route("/sso/login", get(handler::api::sso_login))
         .route("/logout", get(handler::api::logout))

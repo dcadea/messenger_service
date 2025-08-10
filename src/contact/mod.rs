@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use service::ContactService;
 use uuid::Uuid;
 
-use crate::{state::AppState, user};
+use crate::{state::AppServices, user};
 
 mod handler;
 pub mod markup;
@@ -40,7 +40,7 @@ impl From<Uuid> for Id {
     }
 }
 
-pub fn api<S>(s: AppState) -> Router<S> {
+pub fn api<S>(s: AppServices) -> Router<S> {
     Router::new()
         .route("/contacts", post(handler::api::create))
         .route("/contacts/{id}", delete(handler::api::delete))

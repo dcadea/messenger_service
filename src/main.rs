@@ -10,7 +10,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 
-use crate::state::AppState;
+use crate::state::AppServices;
 
 mod auth;
 mod contact;
@@ -31,7 +31,7 @@ pub type Result<T> = std::result::Result<T, crate::error::Error>;
 #[tokio::main]
 async fn main() {
     let config = integration::Config::default();
-    let app_state = AppState::init(config.clone()).await;
+    let app_state = AppServices::init(config.clone()).await;
 
     if let Err(e) = {
         let env = config.env();
@@ -54,7 +54,7 @@ async fn main() {
     }
 }
 
-fn app(s: &AppState, env: &Env) -> Router {
+fn app(s: &AppServices, env: &Env) -> Router {
     let protected_router = Router::new()
         .route("/", get(handler::home))
         .merge(talk::pages(s.clone()))

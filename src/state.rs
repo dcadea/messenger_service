@@ -17,16 +17,16 @@ use crate::{auth, contact, event, message, talk, user};
 use super::integration;
 
 #[derive(Clone)]
-pub struct AppState {
-    auth_service: auth::Service,
-    user_service: user::Service,
-    contact_service: contact::Service,
-    talk_service: talk::Service,
-    message_service: message::Service,
-    event_service: event::Service,
+pub struct AppServices {
+    auth: auth::Service,
+    user: user::Service,
+    contact: contact::Service,
+    talk: talk::Service,
+    message: message::Service,
+    event: event::Service,
 }
 
-impl AppState {
+impl AppServices {
     pub async fn init(cfg: integration::Config) -> Self {
         let pg = cfg.pg().connect();
         let redis = cfg.redis().connect().await;
@@ -66,48 +66,48 @@ impl AppState {
         ));
 
         Self {
-            auth_service,
-            user_service,
-            contact_service,
-            talk_service,
-            message_service,
-            event_service,
+            auth: auth_service,
+            user: user_service,
+            contact: contact_service,
+            talk: talk_service,
+            message: message_service,
+            event: event_service,
         }
     }
 }
 
-impl FromRef<AppState> for auth::Service {
-    fn from_ref(s: &AppState) -> Self {
-        s.auth_service.clone()
+impl FromRef<AppServices> for auth::Service {
+    fn from_ref(s: &AppServices) -> Self {
+        s.auth.clone()
     }
 }
 
-impl FromRef<AppState> for user::Service {
-    fn from_ref(s: &AppState) -> Self {
-        s.user_service.clone()
+impl FromRef<AppServices> for user::Service {
+    fn from_ref(s: &AppServices) -> Self {
+        s.user.clone()
     }
 }
 
-impl FromRef<AppState> for contact::Service {
-    fn from_ref(s: &AppState) -> Self {
-        s.contact_service.clone()
+impl FromRef<AppServices> for contact::Service {
+    fn from_ref(s: &AppServices) -> Self {
+        s.contact.clone()
     }
 }
 
-impl FromRef<AppState> for talk::Service {
-    fn from_ref(s: &AppState) -> Self {
-        s.talk_service.clone()
+impl FromRef<AppServices> for talk::Service {
+    fn from_ref(s: &AppServices) -> Self {
+        s.talk.clone()
     }
 }
 
-impl FromRef<AppState> for message::Service {
-    fn from_ref(s: &AppState) -> Self {
-        s.message_service.clone()
+impl FromRef<AppServices> for message::Service {
+    fn from_ref(s: &AppServices) -> Self {
+        s.message.clone()
     }
 }
 
-impl FromRef<AppState> for event::Service {
-    fn from_ref(s: &AppState) -> Self {
-        s.event_service.clone()
+impl FromRef<AppServices> for event::Service {
+    fn from_ref(s: &AppServices) -> Self {
+        s.event.clone()
     }
 }

@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use service::MessageService;
 use uuid::Uuid;
 
-use crate::{state::AppState, user};
+use crate::{state::AppServices, user};
 
 mod handler;
 pub mod markup;
@@ -43,7 +43,7 @@ impl From<Uuid> for Id {
     }
 }
 
-pub fn api<S>(s: AppState) -> Router<S> {
+pub fn api<S>(s: AppServices) -> Router<S> {
     Router::new()
         .route("/messages", post(handler::api::create))
         .route("/messages", get(handler::api::find_all))
@@ -52,7 +52,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-pub fn templates<S>(s: AppState) -> Router<S> {
+pub fn templates<S>(s: AppServices) -> Router<S> {
     Router::new()
         .route(
             "/messages/input/blank",

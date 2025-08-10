@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use service::TalkService;
 use uuid::Uuid;
 
-use crate::{integration, schema::sql_types, state::AppState, user};
+use crate::{integration, schema::sql_types, state::AppServices, user};
 
 mod handler;
 pub mod markup;
@@ -24,13 +24,13 @@ type Result<T> = std::result::Result<T, Error>;
 pub type Repository = Arc<dyn TalkRepository + Send + Sync>;
 pub type Service = Arc<dyn TalkService + Send + Sync>;
 
-pub fn pages<S>(s: AppState) -> Router<S> {
+pub fn pages<S>(s: AppServices) -> Router<S> {
     Router::new()
         .route("/talks/{id}", get(handler::pages::active_talk))
         .with_state(s)
 }
 
-pub fn api<S>(s: AppState) -> Router<S> {
+pub fn api<S>(s: AppServices) -> Router<S> {
     Router::new()
         .route("/talks/{id}", get(handler::api::find_one))
         .route("/talks/{id}/avatar.png", get(handler::api::find_avatar))
@@ -39,7 +39,7 @@ pub fn api<S>(s: AppState) -> Router<S> {
         .with_state(s)
 }
 
-pub fn templates<S>(s: AppState) -> Router<S> {
+pub fn templates<S>(s: AppServices) -> Router<S> {
     Router::new()
         .route("/talks/group/create", get(handler::templates::create_group))
         .with_state(s)
