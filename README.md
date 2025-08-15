@@ -47,7 +47,9 @@ docker run -d -p 8000:8000 messenger_service:latest
 make dev            # Run the service with hot-reload locally
 make image          # Build the Docker image
 make compose        # Run the service with Docker Compose (dev mode)
+make stg            # Run the service with Docker Compose (stage mode)
 make prod           # Run the service with Docker Compose (prod mode)
+make migrate        # Apply diesel migrations
 ```
 
 ### Configuration
@@ -91,6 +93,11 @@ POSTGRES_PASSWORD={redacted}
 
 NATS_HOST=127.0.0.1
 NATS_PORT=4222
+
+MINIO_HOST=127.0.0.1
+MINIO_PORT=9000
+MINIO_USER={redacted}
+MINIO_PASSWORD={redacted}
 ```
 
 ### Add new migrations
@@ -114,6 +121,7 @@ diesel migration run
 - [PostgreSQL](https://www.postgresql.org) - Database
 - [Redis](https://redis.io/) - In-memory data structure store
 - [NATS](https://nats.io) - Pub/Sub messaging system and not only :)
+- [minio](https://min.io) - Object storage server
 
 ## Authors
 
