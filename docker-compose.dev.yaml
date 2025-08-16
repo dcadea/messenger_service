@@ -1,40 +1,38 @@
 name: messenger_dev
 services:
-  # messenger_service:
-  #   image: messenger_service:latest
-  #   container_name: awg.dev.messenger_service
-  #   ports:
-  #     - 8000:8000
-  #   environment:
-  #     ENV: dev
+  messenger_service:
+    image: messenger_service:latest
+    container_name: awg.dev.messenger_service
+    ports:
+      - 8000:8000
+    environment:
+      ENV: dev
 
-  #     RUST_LOG: debug
-  #     RUST_BACKTRACE: 1
+      RUST_LOG: debug
+      RUST_BACKTRACE: 1
 
-  #     CLIENT_ID: /secrets/auth0/client_id
-  #     CLIENT_SECRET: /secrets/auth0/client_secret
-  #     REDIRECT_URL: http://localhost:8000/callback
-  #     ISSUER: https://dcadea.auth0.com/
-  #     AUDIENCE: https://messenger.angelwing.io/api/v1
-  #     REQUIRED_CLAIMS: iss,sub,aud,exp,permissions
+      CLIENT_ID: /secrets/auth0/client_id
+      CLIENT_SECRET: /secrets/auth0/client_secret
+      REDIRECT_URL: http://localhost:8000/callback
+      ISSUER: https://dcadea.auth0.com/
+      AUDIENCE: https://messenger.angelwing.io/api/v1
+      REQUIRED_CLAIMS: iss,sub,aud,exp,permissions
 
-  #     REDIS_HOST: awg.dev.redis
-  #     POSTGRES_HOST: awg.dev.postgres
-  #     POSTGRES_DB: messenger
-  #     NATS_HOST: awg.dev.nats
-  #   volumes:
-  #     - ./docker-volumes/dev/messenger_service/service.log:/usr/local/bin/service.log
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     postgres:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #     nats:
-  #       condition: service_healthy
-  #     minio:
-  #       condition: service_healthy
+      REDIS_HOST: awg.dev.redis
+      POSTGRES_HOST: awg.dev.postgres
+      POSTGRES_DB: messenger
+      NATS_HOST: awg.dev.nats
+    volumes:
+      - ./docker-volumes/dev/messenger_service/service.log:/usr/local/bin/service.log
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
   postgres:
     image: postgres:alpine
