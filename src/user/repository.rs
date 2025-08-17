@@ -11,7 +11,6 @@ use diesel::insert_into;
 use diesel::r2d2::ConnectionManager;
 use uuid::Uuid;
 
-use crate::schema::users::dsl::{id, nickname, sub, users};
 use crate::talk;
 
 use super::Nickname;
@@ -23,13 +22,13 @@ use crate::user;
 pub trait UserRepository {
     fn create(&self, u: &NewUser) -> super::Result<user::Id>;
 
-    fn find_by_id(&self, u_id: &user::Id) -> super::Result<User>;
+    fn find_by_id(&self, id: &user::Id) -> super::Result<User>;
 
     fn find_by_sub(&self, s: &Sub) -> super::Result<Option<User>>;
 
     fn find_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<Vec<user::Id>>;
 
-    fn exists(&self, u_id: &user::Id) -> super::Result<bool>;
+    fn exists(&self, id: &user::Id) -> super::Result<bool>;
 
     fn find_by_nickname_like_and_excluding(
         &self,
@@ -50,6 +49,8 @@ impl PgUserRepository {
 
 impl UserRepository for PgUserRepository {
     fn create(&self, u: &NewUser) -> super::Result<user::Id> {
+        use crate::schema::users::dsl::{id, users};
+
         let mut conn = self.pool.get()?;
 
         insert_into(users)
@@ -60,27 +61,28 @@ impl UserRepository for PgUserRepository {
             .map_err(super::Error::from)
     }
 
-    fn find_by_id(&self, u_id: &user::Id) -> super::Result<User> {
+    fn find_by_id(&self, id: &user::Id) -> super::Result<User> {
+        use crate::schema::users::dsl::users;
+
         let mut conn = self.pool.get()?;
 
-        let u = users
-            .find(u_id)
-            .select(User::as_select())
-            .first(&mut conn)?;
+        let u = users.find(id).select(User::as_select()).first(&mut conn)?;
 
         Ok(u)
     }
 
-    fn find_by_sub(&self, s: &Sub) -> super::Result<Option<User>> {
+    fn find_by_sub(&self, sub: &Sub) -> super::Result<Option<User>> {
+        use crate::schema::users::dsl as u;
+
         let mut conn = self.pool.get()?;
 
-        let u = users
-            .filter(sub.eq(s.as_str()))
+        let x = u::users
+            .filter(u::sub.eq(sub.as_str()))
             .select(User::as_select())
             .get_result(&mut conn)
             .optional()?;
 
-        Ok(u)
+        Ok(x)
     }
 
     fn find_by_talk_id(&self, t_id: &talk::Id) -> super::Result<Vec<user::Id>> {
@@ -102,6 +104,8 @@ impl UserRepository for PgUserRepository {
     }
 
     fn exists(&self, u_id: &user::Id) -> super::Result<bool> {
+        use crate::schema::users::dsl::users;
+
         let mut conn = self.pool.get()?;
 
         let count = users.find(u_id).count().get_result::<i64>(&mut conn)?;
@@ -114,13 +118,15 @@ impl UserRepository for PgUserRepository {
         n: &Nickname,
         exclude: &Nickname,
     ) -> super::Result<Vec<User>> {
+        use crate::schema::users::dsl as u;
+
         let mut conn = self.pool.get()?;
 
-        users
+        u::users
             .filter(
-                nickname
+                u::nickname
                     .like(format!("%{}%", n.as_str()))
-                    .and(nickname.ne(exclude.as_str())),
+                    .and(u::nickname.ne(exclude.as_str())),
             )
             .select(User::as_select())
             .get_results(&mut conn)
