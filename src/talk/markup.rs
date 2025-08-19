@@ -14,7 +14,7 @@ use super::model::TalkDto;
 
 impl Display for super::Id {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        f.write_str(&self.0.to_string())
     }
 }
 
