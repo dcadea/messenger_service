@@ -8,7 +8,7 @@ use axum::Router;
 use axum::routing::get;
 use axum_extra::extract::cookie::Cookie;
 use log::error;
-use messenger_service::{Raw, Redact};
+use messenger_service::{AsStr, Redact};
 use serde::Deserialize;
 
 pub mod handler;
@@ -132,15 +132,15 @@ impl UserInfo {
 pub struct Code(String);
 
 impl Code {
-    pub fn new(s: impl Into<String>) -> Self {
-        Self(s.into())
+    pub const fn new(s: String) -> Self {
+        Self(s)
     }
 }
 
 impl Redact for Code {}
 
-impl Raw for Code {
-    fn raw(&self) -> &str {
+impl AsStr for Code {
+    fn as_str(&self) -> &str {
         &self.0
     }
 }
@@ -155,15 +155,15 @@ impl fmt::Debug for Code {
 pub struct Csrf(String);
 
 impl Csrf {
-    pub fn new(s: impl Into<String>) -> Self {
-        Self(s.into())
+    pub const fn new(s: String) -> Self {
+        Self(s)
     }
 }
 
 impl Redact for Csrf {}
 
-impl Raw for Csrf {
-    fn raw(&self) -> &str {
+impl AsStr for Csrf {
+    fn as_str(&self) -> &str {
         &self.0
     }
 }
@@ -180,15 +180,15 @@ pub struct Session(String);
 impl Session {
     const ID: &str = "session_id";
 
-    pub fn new(sid: impl Into<String>) -> Self {
-        Self(sid.into())
+    pub const fn new(sid: String) -> Self {
+        Self(sid)
     }
 }
 
 impl Redact for Session {}
 
-impl Raw for Session {
-    fn raw(&self) -> &str {
+impl AsStr for Session {
+    fn as_str(&self) -> &str {
         &self.0
     }
 }
@@ -201,13 +201,13 @@ impl fmt::Debug for Session {
 
 impl From<&Cookie<'_>> for Session {
     fn from(c: &Cookie<'_>) -> Self {
-        Self::new(c.value())
+        Self::new(c.value().to_string())
     }
 }
 
 impl From<Session> for Cookie<'_> {
     fn from(s: Session) -> Self {
-        Self::new(Session::ID, s.raw().to_string())
+        Self::new(Session::ID, s.as_str().to_string())
     }
 }
 

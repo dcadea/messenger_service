@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use messenger_service::Raw;
+use messenger_service::AsStr;
 use oauth2::{
     AuthType, AuthUrl, ClientId, ClientSecret, EndpointNotSet, EndpointSet, RedirectUrl,
     RevocationUrl, StandardRevocableToken, TokenUrl,
@@ -123,7 +123,7 @@ impl From<oauth2::AuthorizationCode> for auth::Code {
 
 impl From<auth::Code> for oauth2::AuthorizationCode {
     fn from(c: auth::Code) -> Self {
-        Self::new(c.raw().to_string())
+        Self::new(c.as_str().to_string())
     }
 }
 

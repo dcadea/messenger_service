@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use std::time::Duration;
 
 use log::{error, trace, warn};
-use messenger_service::Raw;
+use messenger_service::AsStr;
 use redis::{AsyncCommands, JsonAsyncCommands};
 use serde::Serialize;
 use uuid::Uuid;
@@ -269,8 +269,8 @@ impl Display for Key<'_> {
             Self::Sub(sub) => write!(f, "sub:{sub}"),
             Self::Contacts(id) => write!(f, "contacts:{id}"),
             Self::Members(id) => write!(f, "talk:{id}"),
-            Self::Session(s) => write!(f, "session:{}", s.raw()),
-            Self::Csrf(csrf) => write!(f, "csrf:{}", csrf.raw()),
+            Self::Session(s) => write!(f, "session:{}", s.as_str()),
+            Self::Csrf(csrf) => write!(f, "csrf:{}", csrf.as_str()),
         }
     }
 }

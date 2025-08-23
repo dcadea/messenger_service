@@ -7,7 +7,7 @@ use futures::FutureExt;
 use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{DecodingKey, Validation, decode, decode_header};
 use log::{debug, error, warn};
-use messenger_service::Raw;
+use messenger_service::AsStr;
 use oauth2::{AccessToken, CsrfToken, Scope, StandardRevocableToken, TokenResponse};
 use tokio::sync::RwLock;
 
@@ -210,7 +210,7 @@ impl AuthServiceImpl {
     async fn cache_csrf(&self, csrf: impl Into<Csrf>) {
         let csrf = csrf.into();
         let csrf_key = cache::Key::Csrf(&csrf);
-        self.redis.set_ex(csrf_key, csrf.raw()).await;
+        self.redis.set_ex(csrf_key, csrf.as_str()).await;
     }
 
     async fn validate_state(&self, csrf: Csrf) -> super::Result<()> {
