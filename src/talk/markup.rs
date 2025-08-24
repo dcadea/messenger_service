@@ -2,6 +2,7 @@ use std::fmt::Display;
 use std::rc::Rc;
 
 use maud::{Markup, Render, html};
+use messenger_service::AsStr;
 
 use crate::markup::IdExt;
 use crate::message::markup::{MESSAGE_INPUT_TARGET, MESSAGE_LIST_ID, MESSAGE_LIST_TARGET};

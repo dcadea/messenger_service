@@ -1,3 +1,5 @@
+use messenger_service::AsStr;
+
 use crate::{integration::cache, user};
 
 use super::{

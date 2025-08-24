@@ -5,6 +5,7 @@ pub mod pg {
     use diesel::deserialize::FromSql;
     use diesel::serialize::{IsNull, Output, ToSql};
     use diesel::{deserialize, serialize, sql_types};
+    use messenger_service::AsStr;
     use std::io::Write;
     use uuid::Uuid;
 

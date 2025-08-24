@@ -9,6 +9,7 @@ use diesel::SelectableHelper;
 use diesel::TextExpressionMethods;
 use diesel::insert_into;
 use diesel::r2d2::ConnectionManager;
+use messenger_service::AsStr;
 use uuid::Uuid;
 
 use crate::talk;

@@ -2,6 +2,7 @@ use diesel::{
     BoolExpressionMethods, ExpressionMethods, OptionalExtension, PgConnection, QueryDsl,
     RunQueryDsl, SelectableHelper, delete, insert_into, r2d2::ConnectionManager, update,
 };
+use messenger_service::AsStr;
 
 use crate::schema::contacts::dsl::{contacts, id, initiator, status, user_id_1, user_id_2};
 

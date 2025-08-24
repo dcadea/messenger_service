@@ -3,6 +3,7 @@ use diesel::{
     prelude::{Associations, Identifiable, Insertable, Queryable, QueryableByName, Selectable},
     sql_types,
 };
+use messenger_service::AsStr;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -142,7 +143,7 @@ impl ChatTalk {
         self.name.as_str()
     }
 
-    pub const fn picture(&self) -> &str {
+    pub fn picture(&self) -> &str {
         self.picture.as_str()
     }
 }

@@ -1,4 +1,5 @@
 use diesel::prelude::{Insertable, Queryable, Selectable};
+use messenger_service::AsStr;
 use serde::{Deserialize, Serialize};
 
 use crate::auth::{self, UserInfo};

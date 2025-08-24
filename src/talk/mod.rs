@@ -6,6 +6,7 @@ use axum::{
 };
 use diesel::{deserialize::FromSqlRow, expression::AsExpression};
 use log::error;
+use messenger_service::AsStr;
 use repository::TalkRepository;
 use serde::{Deserialize, Serialize};
 
@@ -70,8 +71,8 @@ pub enum Kind {
     Group,
 }
 
-impl Kind {
-    pub const fn as_str(&self) -> &str {
+impl AsStr for Kind {
+    fn as_str(&self) -> &str {
         match self {
             Self::Chat => "chat",
             Self::Group => "group",
@@ -96,8 +97,8 @@ impl TryFrom<String> for Kind {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Picture(String);
 
-impl Picture {
-    pub const fn as_str(&self) -> &str {
+impl AsStr for Picture {
+    fn as_str(&self) -> &str {
         self.0.as_str()
     }
 }

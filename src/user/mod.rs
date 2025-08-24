@@ -3,6 +3,7 @@ use std::{fmt::Display, str::FromStr, sync::Arc};
 use axum::{Router, routing::post};
 use diesel::{deserialize::FromSqlRow, expression::AsExpression, sql_types};
 use log::error;
+use messenger_service::AsStr;
 use repository::UserRepository;
 use serde::{Deserialize, Serialize};
 use service::UserService;
@@ -62,10 +63,6 @@ impl Sub {
         Self(s.to_string())
     }
 
-    pub const fn as_str(&self) -> &str {
-        self.0.as_str()
-    }
-
     fn parts(&self) -> (&str, &str) {
         let (provider, id) = {
             let mut parts = self.0.splitn(2, '|');
@@ -79,6 +76,12 @@ impl Sub {
 
     pub fn id(&self) -> &str {
         self.parts().1
+    }
+}
+
+impl AsStr for Sub {
+    fn as_str(&self) -> &str {
+        self.0.as_str()
     }
 }
 
@@ -97,11 +100,12 @@ impl From<&str> for Sub {
 #[derive(Serialize, Deserialize, FromSqlRow, Clone, PartialEq, Eq, Debug)]
 pub struct Nickname(String);
 
-impl Nickname {
-    pub const fn as_str(&self) -> &str {
+impl AsStr for Nickname {
+    fn as_str(&self) -> &str {
         self.0.as_str()
     }
-
+}
+impl Nickname {
     pub const fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -122,8 +126,8 @@ impl From<&str> for Nickname {
 #[derive(Serialize, Deserialize, FromSqlRow, Clone, PartialEq, Eq, Debug)]
 pub struct Picture(String);
 
-impl Picture {
-    pub const fn as_str(&self) -> &str {
+impl AsStr for Picture {
+    fn as_str(&self) -> &str {
         self.0.as_str()
     }
 }
@@ -143,8 +147,8 @@ impl Display for Picture {
 #[derive(Serialize, Deserialize, FromSqlRow, Clone, PartialEq, Eq, Debug)]
 pub struct Email(String);
 
-impl Email {
-    pub const fn as_str(&self) -> &str {
+impl AsStr for Email {
+    fn as_str(&self) -> &str {
         self.0.as_str()
     }
 }

@@ -5,6 +5,7 @@ use axum::{
     routing::{delete, post, put},
 };
 use diesel::{deserialize::FromSqlRow, expression::AsExpression, sql_types};
+use messenger_service::AsStr;
 use model::Contact;
 use repository::ContactRepository;
 use serde::{Deserialize, Serialize};
@@ -57,8 +58,8 @@ pub enum Status {
     Blocked { initiator: user::Id },
 }
 
-impl Status {
-    pub const fn as_str(&self) -> &str {
+impl AsStr for Status {
+    fn as_str(&self) -> &str {
         match self {
             Self::Pending { .. } => "pending",
             Self::Accepted => "accepted",
@@ -66,7 +67,9 @@ impl Status {
             Self::Blocked { .. } => "blocked",
         }
     }
+}
 
+impl Status {
     pub const fn initiator(&self) -> Option<&user::Id> {
         match self {
             Self::Accepted | Self::Rejected => None,
