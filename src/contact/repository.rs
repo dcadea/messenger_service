@@ -4,9 +4,7 @@ use diesel::{
 };
 use messenger_service::AsStr;
 
-use crate::schema::contacts::dsl::{contacts, id, initiator, status, user_id_1, user_id_2};
-
-use crate::contact::{self};
+use crate::contact;
 use crate::user;
 
 use super::{
@@ -15,15 +13,15 @@ use super::{
 };
 
 pub trait ContactRepository {
-    fn find(&self, u1: &user::Id, u2: &user::Id) -> super::Result<Option<Contact>>;
+    fn find(&self, me: &user::Id, you: &user::Id) -> super::Result<Option<Contact>>;
 
-    fn find_by_id(&self, c_id: &contact::Id) -> super::Result<Option<Contact>>;
+    fn find_by_id(&self, id: &contact::Id) -> super::Result<Option<Contact>>;
 
     fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<Contact>>;
 
     fn add(&self, c: &NewContact) -> super::Result<()>;
 
-    fn update_status(&self, c_id: &contact::Id, status: &Status) -> super::Result<bool>;
+    fn update_status(&self, id: &contact::Id, status: &Status) -> super::Result<bool>;
 
     fn delete(&self, me: &user::Id, you: &user::Id) -> super::Result<bool>;
 
@@ -42,6 +40,8 @@ impl PgContactRepository {
 
 impl ContactRepository for PgContactRepository {
     fn find(&self, me: &user::Id, you: &user::Id) -> super::Result<Option<Contact>> {
+        use crate::schema::contacts::dsl::{contacts, user_id_1, user_id_2};
+
         let mut conn = self.pool.get()?;
 
         contacts
@@ -54,17 +54,21 @@ impl ContactRepository for PgContactRepository {
             .map_err(super::Error::from)
     }
 
-    fn find_by_id(&self, c_id: &contact::Id) -> super::Result<Option<Contact>> {
+    fn find_by_id(&self, id: &contact::Id) -> super::Result<Option<Contact>> {
+        use crate::schema::contacts::dsl::contacts;
+
         let mut conn = self.pool.get()?;
 
         contacts
-            .find(c_id)
+            .find(id)
             .first::<Contact>(&mut conn)
             .optional()
             .map_err(super::Error::from)
     }
 
     fn find_by_user_id(&self, user_id: &user::Id) -> super::Result<Vec<Contact>> {
+        use crate::schema::contacts::dsl::{contacts, user_id_1, user_id_2};
+
         let mut conn = self.pool.get()?;
 
         contacts
@@ -75,6 +79,8 @@ impl ContactRepository for PgContactRepository {
     }
 
     fn add(&self, c: &NewContact) -> super::Result<()> {
+        use crate::schema::contacts::dsl::contacts;
+
         assert_ne!(c.user_id_1(), c.user_id_2());
 
         let mut conn = self.pool.get()?;
@@ -84,23 +90,27 @@ impl ContactRepository for PgContactRepository {
         Ok(())
     }
 
-    fn update_status(&self, c_id: &contact::Id, s: &Status) -> super::Result<bool> {
+    fn update_status(&self, id: &contact::Id, status: &Status) -> super::Result<bool> {
+        use crate::schema::contacts::dsl as c;
+
         let mut conn = self.pool.get()?;
 
-        let i = match s {
+        let i = match status {
             Status::Accepted | Status::Rejected => None,
             Status::Pending { initiator: i } | Status::Blocked { initiator: i } => Some(i),
         };
 
-        let modified_count = update(contacts)
-            .filter(id.eq(c_id))
-            .set((status.eq(s.as_str()), initiator.eq(i)))
+        let modified_count = update(c::contacts)
+            .filter(c::id.eq(id))
+            .set((c::status.eq(status.as_str()), c::initiator.eq(i)))
             .execute(&mut conn)?;
 
         Ok(modified_count > 0)
     }
 
     fn delete(&self, me: &user::Id, you: &user::Id) -> super::Result<bool> {
+        use crate::schema::contacts::dsl::{contacts, user_id_1, user_id_2};
+
         let mut conn = self.pool.get()?;
 
         let deleted_count = delete(contacts)
@@ -114,7 +124,10 @@ impl ContactRepository for PgContactRepository {
     }
 
     fn exists(&self, me: &user::Id, you: &user::Id) -> super::Result<bool> {
+        use crate::schema::contacts::dsl::{contacts, user_id_1, user_id_2};
+
         let mut conn = self.pool.get()?;
+
         let count: i64 = contacts
             .filter(
                 (user_id_1.eq(me).and(user_id_2.eq(you)))
