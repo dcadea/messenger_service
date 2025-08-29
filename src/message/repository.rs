@@ -7,10 +7,7 @@ use diesel::{
 use crate::{message, user};
 
 use super::model::{Message, NewMessage};
-use crate::{
-    schema::messages::dsl::{content, created_at, id, messages, owner, seen, talk_id},
-    talk,
-};
+use crate::talk;
 
 pub trait MessageRepository {
     fn insert(&self, new_message: &NewMessage) -> super::Result<Message>;
@@ -64,6 +61,8 @@ impl PgMessageRepository {
 
 impl MessageRepository for PgMessageRepository {
     fn insert(&self, msg: &NewMessage) -> super::Result<Message> {
+        use crate::schema::messages::dsl::messages;
+
         let mut conn = self.pool.get()?;
 
         insert_into(messages)
@@ -74,6 +73,8 @@ impl MessageRepository for PgMessageRepository {
     }
 
     fn insert_many(&self, msgs: &[NewMessage]) -> super::Result<Vec<Message>> {
+        use crate::schema::messages::dsl::messages;
+
         let mut conn = self.pool.get()?;
 
         insert_into(messages)
@@ -83,33 +84,43 @@ impl MessageRepository for PgMessageRepository {
             .map_err(super::Error::from)
     }
 
-    fn find_by_id(&self, o: &user::Id, m_id: &message::Id) -> super::Result<Message> {
+    fn find_by_id(&self, owner: &user::Id, id: &message::Id) -> super::Result<Message> {
+        use crate::schema::messages::dsl as m;
+
         let mut conn = self.pool.get()?;
 
-        messages
-            .filter(id.eq(m_id).and(owner.eq(o)))
+        m::messages
+            .filter(m::id.eq(id).and(m::owner.eq(owner)))
             .select(Message::as_select())
             .first(&mut conn)
             .map_err(super::Error::from)
     }
 
-    fn find_by_talk_id(&self, t_id: &talk::Id) -> super::Result<Vec<Message>> {
+    fn find_by_talk_id(&self, talk_id: &talk::Id) -> super::Result<Vec<Message>> {
+        use crate::schema::messages::dsl as m;
+
         let mut conn = self.pool.get()?;
 
-        messages
-            .filter(talk_id.eq(t_id))
+        m::messages
+            .filter(m::talk_id.eq(talk_id))
             .select(Message::as_select())
             .get_results(&mut conn)
             .map_err(super::Error::from)
     }
 
-    fn find_by_talk_id_limited(&self, t_id: &talk::Id, limit: i64) -> super::Result<Vec<Message>> {
+    fn find_by_talk_id_limited(
+        &self,
+        talk_id: &talk::Id,
+        limit: i64,
+    ) -> super::Result<Vec<Message>> {
+        use crate::schema::messages::dsl as m;
+
         let mut conn = self.pool.get()?;
 
-        messages
-            .filter(talk_id.eq(t_id))
+        m::messages
+            .filter(m::talk_id.eq(talk_id))
             .limit(limit)
-            .order(created_at.desc())
+            .order(m::created_at.desc())
             .select(Message::as_select())
             .get_results(&mut conn)
             .map_err(super::Error::from)
@@ -117,14 +128,16 @@ impl MessageRepository for PgMessageRepository {
 
     fn find_by_talk_id_before(
         &self,
-        t_id: &talk::Id,
+        talk_id: &talk::Id,
         before: DateTime<Utc>,
     ) -> super::Result<Vec<Message>> {
+        use crate::schema::messages::dsl as m;
+
         let mut conn = self.pool.get()?;
 
-        messages
-            .filter(talk_id.eq(t_id).and(created_at.lt(before)))
-            .order(created_at.desc())
+        m::messages
+            .filter(m::talk_id.eq(talk_id).and(m::created_at.lt(before)))
+            .order(m::created_at.desc())
             .select(Message::as_select())
             .get_results(&mut conn)
             .map_err(super::Error::from)
@@ -132,16 +145,18 @@ impl MessageRepository for PgMessageRepository {
 
     fn find_by_talk_id_limited_before(
         &self,
-        t_id: &talk::Id,
+        talk_id: &talk::Id,
         limit: i64,
         before: DateTime<Utc>,
     ) -> super::Result<Vec<Message>> {
+        use crate::schema::messages::dsl as m;
+
         let mut conn = self.pool.get()?;
 
-        messages
-            .filter(talk_id.eq(t_id).and(created_at.lt(before)))
+        m::messages
+            .filter(m::talk_id.eq(talk_id).and(m::created_at.lt(before)))
             .limit(limit)
-            .order(created_at.desc())
+            .order(m::created_at.desc())
             .select(Message::as_select())
             .get_results(&mut conn)
             .map_err(super::Error::from)
@@ -149,14 +164,16 @@ impl MessageRepository for PgMessageRepository {
 
     fn update(
         &self,
-        o: &user::Id,
-        m_id: &message::Id,
+        owner: &user::Id,
+        id: &message::Id,
         new_content: &str,
     ) -> super::Result<Option<Message>> {
+        use crate::schema::messages::dsl as m;
+
         let mut conn = self.pool.get()?;
 
-        let updated_msg = update(messages.filter(id.eq(m_id).and(owner.eq(o))))
-            .set(content.eq(new_content))
+        let updated_msg = update(m::messages.filter(m::id.eq(id).and(m::owner.eq(owner))))
+            .set(m::content.eq(new_content))
             .returning(Message::as_returning())
             .get_result(&mut conn)
             .optional()?;
@@ -164,10 +181,12 @@ impl MessageRepository for PgMessageRepository {
         Ok(updated_msg)
     }
 
-    fn delete(&self, o: &user::Id, m_id: &message::Id) -> super::Result<Option<Message>> {
+    fn delete(&self, owner: &user::Id, id: &message::Id) -> super::Result<Option<Message>> {
+        use crate::schema::messages::dsl as m;
+
         let mut conn = self.pool.get()?;
 
-        let deleted_msg = delete(messages.filter(id.eq(m_id).and(owner.eq(o))))
+        let deleted_msg = delete(m::messages.filter(m::id.eq(id).and(m::owner.eq(owner))))
             .returning(Message::as_returning())
             .get_result(&mut conn)
             .optional()?;
@@ -176,10 +195,12 @@ impl MessageRepository for PgMessageRepository {
     }
 
     fn mark_as_seen(&self, ids: &[message::Id]) -> super::Result<usize> {
+        use crate::schema::messages::dsl as m;
+
         let mut conn = self.pool.get()?;
 
-        let modified_count = update(messages.filter(id.eq_any(ids)))
-            .set(seen.eq(true))
+        let modified_count = update(m::messages.filter(m::id.eq_any(ids)))
+            .set(m::seen.eq(true))
             .execute(&mut conn)?;
 
         Ok(modified_count)
