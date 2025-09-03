@@ -18,7 +18,7 @@ pub mod service;
 type Result<T> = std::result::Result<T, Error>;
 pub type Service = Arc<dyn EventService + Send + Sync>;
 
-pub fn api<S>(s: AppServices) -> Router<S> {
+pub fn routes<S>(s: AppServices) -> Router<S> {
     Router::new()
         .route("/sse", get(handler::sse::notifications))
         .route("/ws/{talk_id}", any(handler::ws::talk))

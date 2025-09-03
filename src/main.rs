@@ -55,32 +55,14 @@ async fn main() {
 }
 
 fn app(s: &AppServices, env: &Env) -> Router {
-    let protected_router = Router::new()
+    let protected_routes = Router::new()
         .route("/", get(handler::home))
-        .merge(talk::pages(s.clone()))
-        .merge(event::api(s.clone()))
-        .nest(
-            "/tabs",
-            Router::new()
-                .route("/chats", get(handler::chats_tab))
-                .route("/groups", get(handler::groups_tab))
-                .route("/contacts", get(handler::contacts_tab))
-                .route("/settings", get(handler::settings_tab)),
-        )
-        .nest(
-            "/api",
-            Router::new()
-                .merge(contact::api(s.clone()))
-                .merge(message::api(s.clone()))
-                .merge(talk::api(s.clone()))
-                .merge(user::api(s.clone())),
-        )
-        .nest(
-            "/templates",
-            Router::new()
-                .merge(message::templates(s.clone()))
-                .merge(talk::templates(s.clone())),
-        )
+        .merge(contact::routes(s.clone()))
+        .merge(event::routes(s.clone()))
+        .merge(message::routes(s.clone()))
+        .merge(talk::routes(s.clone()))
+        .merge(user::routes(s.clone()))
+        .merge(tabs_routes(s.clone()))
         .route_layer(
             ServiceBuilder::new()
                 .layer(from_fn_with_state(s.clone(), validate_sid))
@@ -90,9 +72,8 @@ fn app(s: &AppServices, env: &Env) -> Router {
 
     Router::new()
         .nest_service("/static", ServeDir::new("static"))
-        .merge(auth::pages(s.clone()))
-        .merge(auth::api(s.clone()))
-        .merge(protected_router)
+        .merge(auth::routes(s.clone()))
+        .merge(protected_routes)
         .route(
             "/health",
             get(|| async { (StatusCode::OK, "I'm good! Hbu?") }),
@@ -109,4 +90,13 @@ fn app(s: &AppServices, env: &Env) -> Router {
                 )
                 .layer(map_response(async |r| wrap_in_base(r))),
         )
+}
+
+fn tabs_routes<S>(s: AppServices) -> Router<S> {
+    Router::new()
+        .route("/tabs/chats", get(handler::chats_tab))
+        .route("/tabs/groups", get(handler::groups_tab))
+        .route("/tabs/contacts", get(handler::contacts_tab))
+        .route("/tabs/settings", get(handler::settings_tab))
+        .with_state(s)
 }

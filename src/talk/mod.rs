@@ -25,24 +25,21 @@ type Result<T> = std::result::Result<T, Error>;
 pub type Repository = Arc<dyn TalkRepository + Send + Sync>;
 pub type Service = Arc<dyn TalkService + Send + Sync>;
 
-pub fn pages<S>(s: AppServices) -> Router<S> {
+pub fn routes<S>(s: AppServices) -> Router<S> {
     Router::new()
         .route("/talks/{id}", get(handler::pages::active_talk))
-        .with_state(s)
-}
-
-pub fn api<S>(s: AppServices) -> Router<S> {
-    Router::new()
-        .route("/talks/{id}", get(handler::api::find_one))
-        .route("/talks/{id}/avatar.png", get(handler::api::find_avatar))
-        .route("/talks", post(handler::api::create))
-        .route("/talks/{id}", delete(handler::api::delete))
-        .with_state(s)
-}
-
-pub fn templates<S>(s: AppServices) -> Router<S> {
-    Router::new()
-        .route("/talks/group/create", get(handler::templates::create_group))
+        .nest(
+            "/api",
+            Router::new()
+                .route("/talks/{id}", get(handler::api::find_one))
+                .route("/talks/{id}/avatar.png", get(handler::api::find_avatar))
+                .route("/talks", post(handler::api::create))
+                .route("/talks/{id}", delete(handler::api::delete)),
+        )
+        .nest(
+            "/templates",
+            Router::new().route("/talks/group/create", get(handler::templates::create_group)),
+        )
         .with_state(s)
 }
 

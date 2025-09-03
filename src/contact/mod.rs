@@ -41,11 +41,15 @@ impl From<Uuid> for Id {
     }
 }
 
-pub fn api<S>(s: AppServices) -> Router<S> {
+pub fn routes<S>(s: AppServices) -> Router<S> {
     Router::new()
-        .route("/contacts", post(handler::api::create))
-        .route("/contacts/{id}", delete(handler::api::delete))
-        .route("/contacts/{id}/{transition}", put(handler::api::transition))
+        .nest(
+            "/api",
+            Router::new()
+                .route("/contacts", post(handler::api::create))
+                .route("/contacts/{id}", delete(handler::api::delete))
+                .route("/contacts/{id}/{transition}", put(handler::api::transition)),
+        )
         .with_state(s)
 }
 

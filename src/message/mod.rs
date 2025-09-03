@@ -43,24 +43,27 @@ impl From<Uuid> for Id {
     }
 }
 
-pub fn api<S>(s: AppServices) -> Router<S> {
+pub fn routes<S>(s: AppServices) -> Router<S> {
     Router::new()
-        .route("/messages", post(handler::api::create))
-        .route("/messages", get(handler::api::find_all))
-        .route("/messages", put(handler::api::update))
-        .route("/messages/{id}", delete(handler::api::delete))
-        .with_state(s)
-}
-
-pub fn templates<S>(s: AppServices) -> Router<S> {
-    Router::new()
-        .route(
-            "/messages/input/blank",
-            get(handler::templates::message_input_blank),
+        .nest(
+            "/api",
+            Router::new()
+                .route("/messages", post(handler::api::create))
+                .route("/messages", get(handler::api::find_all))
+                .route("/messages", put(handler::api::update))
+                .route("/messages/{id}", delete(handler::api::delete)),
         )
-        .route(
-            "/messages/input/edit",
-            get(handler::templates::message_input_edit),
+        .nest(
+            "/templates",
+            Router::new()
+                .route(
+                    "/messages/input/blank",
+                    get(handler::templates::message_input_blank),
+                )
+                .route(
+                    "/messages/input/edit",
+                    get(handler::templates::message_input_edit),
+                ),
         )
         .with_state(s)
 }

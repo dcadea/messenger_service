@@ -21,9 +21,9 @@ type Result<T> = std::result::Result<T, Error>;
 pub type Repository = Arc<dyn UserRepository + Send + Sync>;
 pub type Service = Arc<dyn UserService + Send + Sync>;
 
-pub fn api<S>(s: AppServices) -> Router<S> {
+pub fn routes<S>(s: AppServices) -> Router<S> {
     Router::new()
-        .route("/users/search", post(handler::api::search))
+        .route("/api/users/search", post(handler::api::search))
         .with_state(s)
 }
 
