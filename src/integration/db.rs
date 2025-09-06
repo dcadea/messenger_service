@@ -195,4 +195,23 @@ pub mod pg {
             Ok(IsNull::No)
         }
     }
+
+    #[cfg(test)]
+    mod test {
+        use testcontainers_modules::{postgres, testcontainers::runners::AsyncRunner};
+
+        use super::*;
+
+        impl Config {
+            pub async fn test(pg: postgres::Postgres) -> Self {
+                let c = pg.start().await.unwrap();
+                Self {
+                    host: String::from("127.0.0.1"),
+                    port: c.get_host_port_ipv4(5432).await.unwrap(),
+                    db: String::from("postgres"),
+                    credentials: Credentials::default(),
+                }
+            }
+        }
+    }
 }
