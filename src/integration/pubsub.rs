@@ -83,3 +83,20 @@ impl From<event::Message> for Bytes {
         bytes.into()
     }
 }
+
+#[cfg(test)]
+mod test {
+    use testcontainers_modules::{nats, testcontainers::runners::AsyncRunner};
+
+    use super::*;
+
+    impl Config {
+        pub async fn test(n: nats::Nats) -> Self {
+            let c = n.start().await.unwrap();
+            Self {
+                host: String::from("127.0.0.1"),
+                port: c.get_host_port_ipv4(4222).await.unwrap(),
+            }
+        }
+    }
+}
