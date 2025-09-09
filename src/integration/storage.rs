@@ -149,3 +149,21 @@ impl Config {
         S3 { client }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use testcontainers_modules::{minio, testcontainers::runners::AsyncRunner};
+
+    use super::*;
+
+    impl Config {
+        pub async fn test(m: minio::MinIO) -> Self {
+            let c = m.start().await.unwrap();
+            Self {
+                host: String::from("127.0.0.1"),
+                port: c.get_host_port_ipv4(9000).await.unwrap(),
+                credentials: Credentials::default(),
+            }
+        }
+    }
+}
